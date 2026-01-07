@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,11 +19,14 @@ Deno.serve(async (req) => {
     const { exercises } = await req.json();
     
     if (!exercises || !Array.isArray(exercises)) {
+      console.error("Invalid exercises data received");
       return new Response(JSON.stringify({ error: "Invalid exercises data" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`Importing ${exercises.length} exercises...`);
 
     const { data, error } = await supabase
       .from("exercises")
@@ -37,12 +40,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log(`Successfully imported ${exercises.length} exercises`);
     return new Response(JSON.stringify({ success: true, count: exercises.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error:", message);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
