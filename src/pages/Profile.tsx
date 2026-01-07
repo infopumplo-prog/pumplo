@@ -3,20 +3,21 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Button } from '@/components/ui/button';
-import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
+import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
-
-const menuItems = [
-  { icon: Settings, label: 'Nastavení' },
-  { icon: Bell, label: 'Oznámení' },
-  { icon: HelpCircle, label: 'Nápověda' },
-];
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const { profile } = useUserProfile();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  const menuItems = [
+    { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
+    { icon: Settings, label: 'Nastavení', onClick: () => {} },
+    { icon: Bell, label: 'Oznámení', onClick: () => {} },
+    { icon: HelpCircle, label: 'Nápověda', onClick: () => {} },
+  ];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -99,6 +100,7 @@ const Profile = () => {
               return (
                 <button
                   key={item.label}
+                  onClick={item.onClick}
                   className={`w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors ${
                     index !== menuItems.length - 1 ? 'border-b border-border' : ''
                   }`}

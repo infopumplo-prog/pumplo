@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import pumploLogo from '@/assets/pumplo-logo.png';
 
 const GOALS = [
   { id: 'muscle', label: 'Nabrat svaly', emoji: '💪' },
@@ -77,7 +76,7 @@ interface OnboardingDrawerProps {
 }
 
 const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
-  const { profile, updateProfile } = useUserProfile();
+  const { profile, updateProfile, refetch } = useUserProfile();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -117,16 +116,51 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
 
   const progress = ((currentStep + 1) / TOTAL_STEPS) * 100;
 
+  // Check if current step is valid to proceed
+  const isStepValid = (): boolean => {
+    switch (currentStep) {
+      case 0:
+        return gender !== null;
+      case 1:
+        return primaryGoal !== null;
+      case 2:
+        return trainingDays.length > 0;
+      case 3:
+        return preferredTime !== null;
+      case 4:
+        return age !== '' && height !== '' && weight !== '';
+      case 5:
+        return injuries.length > 0;
+      case 6:
+        return trainingSplit !== null;
+      case 7:
+        return motivations.length > 0;
+      default:
+        return false;
+    }
+  };
+
   const handleGoalClick = (goalId: string) => {
     if (primaryGoal === goalId) {
-      setSecondaryGoals(prev => prev.includes(goalId) ? prev.filter(g => g !== goalId) : [...prev, goalId]);
+      // Clicking primary goal converts it to secondary (but keeps a primary)
+      // Only allow if there's another goal that can become primary
+      setSecondaryGoals(prev => [...prev, goalId]);
       setPrimaryGoal(null);
     } else if (secondaryGoals.includes(goalId)) {
-      setSecondaryGoals(prev => prev.filter(g => g !== goalId));
-    } else if (!primaryGoal) {
-      setPrimaryGoal(goalId);
+      // Clicking secondary removes it, unless we have no primary (then make it primary)
+      if (!primaryGoal) {
+        setPrimaryGoal(goalId);
+        setSecondaryGoals(prev => prev.filter(g => g !== goalId));
+      } else {
+        setSecondaryGoals(prev => prev.filter(g => g !== goalId));
+      }
     } else {
-      setSecondaryGoals(prev => [...prev, goalId]);
+      // New goal clicked
+      if (!primaryGoal) {
+        setPrimaryGoal(goalId);
+      } else {
+        setSecondaryGoals(prev => [...prev, goalId]);
+      }
     }
   };
 
@@ -183,7 +217,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   };
 
   const handleNext = async () => {
-    if (currentStep < TOTAL_STEPS - 1) {
+    if (currentStep < TOTAL_STEPS - 1 && isStepValid()) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
       await updateProfile({ current_step: nextStep });
@@ -197,6 +231,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   };
 
   const handleComplete = async () => {
+    if (!isStepValid()) return;
+    
     await updateProfile({
       gender,
       primary_goal: primaryGoal,
@@ -214,6 +250,10 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       onboarding_completed: true,
       current_step: TOTAL_STEPS,
     });
+    
+    // Refetch profile to update UI immediately
+    await refetch();
+    
     toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen.' });
     onOpenChange(false);
   };
@@ -505,11 +545,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerTitle className="sr-only">Dotazník</DrawerTitle>
         
-        {/* Header with logo and progress */}
-        <div className="px-4 pt-2 pb-4 border-b border-border">
-          <div className="flex justify-center mb-4">
-            <img src={pumploLogo} alt="Pumplo" className="w-16 h-16 object-contain" />
-          </div>
+        {/* Header with progress */}
+        <div className="px-4 pt-4 pb-4 border-b border-border">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Krok {currentStep + 1} z {TOTAL_STEPS}</span>
@@ -547,12 +584,20 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               Zpět
             </Button>
             {currentStep < TOTAL_STEPS - 1 ? (
-              <Button onClick={handleNext} className="flex-1">
+              <Button 
+                onClick={handleNext} 
+                className="flex-1"
+                disabled={!isStepValid()}
+              >
                 Další
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
-              <Button onClick={handleComplete} className="flex-1 bg-green-500 hover:bg-green-600">
+              <Button 
+                onClick={handleComplete} 
+                className="flex-1 bg-green-500 hover:bg-green-600"
+                disabled={!isStepValid()}
+              >
                 Dokončit
               </Button>
             )}
