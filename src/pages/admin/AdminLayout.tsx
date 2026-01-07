@@ -32,50 +32,67 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Compact Mobile Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+    <div className="min-h-screen bg-background flex flex-col pb-20">
+      {/* Minimal Top Bar - just back button */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3 px-4 py-3">
           <Link 
             to="/" 
-            className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-lg font-semibold">Admin</h1>
         </div>
-        
-        {/* Scrollable Navigation Pills */}
-        <nav className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
       </header>
 
-      {/* Content */}
+      {/* Content - scrollable area */}
       <motion.main
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="flex-1 p-4 pb-8"
+        className="flex-1 px-4 py-2"
       >
         {children}
       </motion.main>
+
+      {/* Bottom Navigation - Apple-style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
+        <div className="bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg mx-auto max-w-md">
+          <div className="flex items-center justify-around py-2">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="flex flex-col items-center gap-1 px-4 py-2 relative"
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="admin-nav-indicator"
+                      className="absolute inset-0 bg-primary/10 rounded-xl"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <item.icon 
+                    className={`w-5 h-5 relative z-10 transition-colors ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`} 
+                  />
+                  <span 
+                    className={`text-xs font-medium relative z-10 transition-colors ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
     </div>
   );
 };
