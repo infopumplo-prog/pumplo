@@ -32,20 +32,22 @@ const Home = () => {
       {/* Header */}
       <div className="gradient-hero px-6 pt-8 pb-6">
         <motion.div
-          className="flex items-center justify-between"
+          className="flex flex-col"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
+          <div className="flex justify-center mb-4">
+            <img 
+              src={pumploLogo} 
+              alt="Pumplo" 
+              className="w-12 h-12 object-contain"
+            />
+          </div>
           <div>
             <p className="text-muted-foreground text-sm">Ahoj,</p>
             <h1 className="text-2xl font-bold text-foreground">{user?.user_metadata?.name || 'Sportovče'} 💪</h1>
           </div>
-          <img 
-            src={pumploLogo} 
-            alt="Pumplo" 
-            className="w-10 h-10 object-contain"
-          />
         </motion.div>
       </div>
 
