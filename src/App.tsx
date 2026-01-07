@@ -14,6 +14,7 @@ import Dashboard from "@/pages/admin/Dashboard";
 import UsersManagement from "@/pages/admin/UsersManagement";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
+import ImportExercises from "@/pages/admin/ImportExercises";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const AppRoutes = () => (
     <Route path="/admin/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
     <Route path="/admin/machines" element={<ProtectedRoute><MachinesManagement /></ProtectedRoute>} />
     <Route path="/admin/exercises" element={<ProtectedRoute><ExercisesManagement /></ProtectedRoute>} />
+    <Route path="/admin/import" element={<ProtectedRoute><ImportExercises /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
