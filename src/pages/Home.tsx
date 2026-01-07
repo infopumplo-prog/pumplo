@@ -36,7 +36,7 @@ const Home = () => {
           transition={{ duration: 0.4 }}
         >
           <p className="text-muted-foreground text-sm">Ahoj,</p>
-          <h1 className="text-2xl font-bold text-foreground">{user?.name || 'Sportovče'} 💪</h1>
+          <h1 className="text-2xl font-bold text-foreground">{user?.user_metadata?.name || 'Sportovče'} 💪</h1>
         </motion.div>
       </div>
 
