@@ -15,6 +15,9 @@ import UsersManagement from "@/pages/admin/UsersManagement";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
 import ImportExercises from "@/pages/admin/ImportExercises";
+import GymDashboard from "@/pages/business/GymDashboard";
+import GymMachines from "@/pages/business/GymMachines";
+import GymSettings from "@/pages/business/GymSettings";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +70,9 @@ const AppRoutes = () => (
     <Route path="/admin/machines" element={<ProtectedRoute><MachinesManagement /></ProtectedRoute>} />
     <Route path="/admin/exercises" element={<ProtectedRoute><ExercisesManagement /></ProtectedRoute>} />
     <Route path="/admin/import" element={<ProtectedRoute><ImportExercises /></ProtectedRoute>} />
+    <Route path="/business" element={<ProtectedRoute><GymDashboard /></ProtectedRoute>} />
+    <Route path="/business/machines" element={<ProtectedRoute><GymMachines /></ProtectedRoute>} />
+    <Route path="/business/settings" element={<ProtectedRoute><GymSettings /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
