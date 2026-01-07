@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Gym } from '@/hooks/useGym';
+import { Gym, OpeningHours } from '@/hooks/useGym';
+import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -121,7 +122,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
     };
   }, []);
 
-  // Add/update gym markers
+  // Add/update gym markers - only show open gyms
   useEffect(() => {
     if (!mapRef.current || !isMapReady) return;
 
@@ -129,8 +130,14 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current.clear();
 
+    // Filter to only open gyms
+    const openGyms = gyms.filter(gym => {
+      const hours = gym.opening_hours as OpeningHours;
+      return isGymCurrentlyOpen(hours);
+    });
+
     // Add new markers
-    gyms.forEach(gym => {
+    openGyms.forEach(gym => {
       const marker = L.marker([gym.latitude, gym.longitude], {
         icon: createGymIcon(gym.logo_url),
       }).addTo(mapRef.current!);
@@ -140,8 +147,8 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
     });
 
     // Fit bounds if we have gyms
-    if (gyms.length > 0) {
-      const bounds = L.latLngBounds(gyms.map(g => [g.latitude, g.longitude]));
+    if (openGyms.length > 0) {
+      const bounds = L.latLngBounds(openGyms.map(g => [g.latitude, g.longitude]));
       if (userLocation) {
         bounds.extend([userLocation.lat, userLocation.lng]);
       }

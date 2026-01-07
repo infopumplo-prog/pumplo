@@ -1,6 +1,8 @@
 import { Gym, OpeningHours } from '@/hooks/useGym';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock } from 'lucide-react';
+import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
+import { cn } from '@/lib/utils';
 
 const DAYS = [
   { key: 'monday', label: 'Po' },
@@ -14,15 +16,24 @@ const DAYS = [
 
 interface GymProfilePreviewProps {
   gym: Gym;
+  variant?: 'default' | 'drawer';
+  showBadge?: boolean;
 }
 
-const GymProfilePreview = ({ gym }: GymProfilePreviewProps) => {
+const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymProfilePreviewProps) => {
   const hours = gym.opening_hours as OpeningHours;
+  const isOpen = isGymCurrentlyOpen(hours);
+  const status = getTodayOpeningStatus(hours);
+
+  const isDrawer = variant === 'drawer';
 
   return (
-    <div className="rounded-xl overflow-hidden bg-background border shadow-sm">
+    <div className={cn(
+      "overflow-hidden bg-background",
+      !isDrawer && "rounded-xl border shadow-sm"
+    )}>
       {/* Cover Photo with Gradient */}
-      <div className="relative h-40">
+      <div className={cn("relative", isDrawer ? "h-48" : "h-40")}>
         {gym.cover_photo_url ? (
           <img 
             src={gym.cover_photo_url} 
@@ -51,11 +62,13 @@ const GymProfilePreview = ({ gym }: GymProfilePreviewProps) => {
         </div>
         
         {/* Status Badge */}
-        <div className="absolute top-3 right-3">
-          <Badge variant={gym.is_published ? 'default' : 'secondary'}>
-            {gym.is_published ? 'Veřejná' : 'Soukromá'}
-          </Badge>
-        </div>
+        {showBadge && (
+          <div className="absolute top-3 right-3">
+            <Badge variant={gym.is_published ? 'default' : 'secondary'}>
+              {gym.is_published ? 'Veřejná' : 'Soukromá'}
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -68,6 +81,18 @@ const GymProfilePreview = ({ gym }: GymProfilePreviewProps) => {
               {gym.address}
             </div>
           )}
+        </div>
+
+        {/* Today's Status */}
+        <div className={cn(
+          "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium",
+          isOpen ? "bg-green-100 text-green-700" : "bg-destructive/10 text-destructive"
+        )}>
+          <div className={cn(
+            "w-2 h-2 rounded-full",
+            isOpen ? "bg-green-500" : "bg-destructive"
+          )} />
+          {status.text}
         </div>
 
         {gym.description && (
