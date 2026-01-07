@@ -1,21 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+  DrawerClose,
+} from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -23,11 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Eye, KeyRound, Pencil, Shield, Loader2, Search } from 'lucide-react';
+import { Eye, KeyRound, Pencil, Shield, Loader2, Search, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
+import MobileCard from '@/components/admin/MobileCard';
+import AdminPagination from '@/components/admin/AdminPagination';
 
 interface UserData {
   id: string;
@@ -39,22 +34,23 @@ interface UserData {
   onboarding_completed: boolean;
   created_at: string;
   role?: string;
-  email?: string;
 }
+
+const ITEMS_PER_PAGE = 100;
 
 const UsersManagement = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [dialogMode, setDialogMode] = useState<'view' | 'edit' | 'role' | null>(null);
+  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'role' | null>(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '' });
   const [selectedRole, setSelectedRole] = useState<string>('user');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsers = async () => {
     setIsLoading(true);
     
-    // Fetch profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('user_profiles')
       .select('*')
@@ -66,7 +62,6 @@ const UsersManagement = () => {
       return;
     }
 
-    // Fetch roles for each user
     const usersWithRoles = await Promise.all(
       (profiles || []).map(async (profile) => {
         const { data: roleData } = await supabase
@@ -90,29 +85,52 @@ const UsersManagement = () => {
     fetchUsers();
   }, []);
 
+  // Filter users based on search
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      const searchLower = searchTerm.toLowerCase();
+      const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
+      return fullName.includes(searchLower) || user.user_id.includes(searchLower);
+    });
+  }, [users, searchTerm]);
+
+  // Paginate filtered results
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleViewUser = (user: UserData) => {
     setSelectedUser(user);
-    setDialogMode('view');
+    setDrawerMode('view');
   };
 
-  const handleEditUser = (user: UserData) => {
+  const handleEditUser = (user: UserData, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedUser(user);
     setEditForm({
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       age: user.age?.toString() || '',
     });
-    setDialogMode('edit');
+    setDrawerMode('edit');
   };
 
-  const handleChangeRole = (user: UserData) => {
+  const handleChangeRole = (user: UserData, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedUser(user);
     setSelectedRole(user.role || 'user');
-    setDialogMode('role');
+    setDrawerMode('role');
   };
 
-  const handleSendPasswordReset = async (user: UserData) => {
-    // Note: This would require admin API access or edge function
+  const handleSendPasswordReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
     toast.info('Funkcia reset hesla vyžaduje nastavenie edge function');
   };
 
@@ -134,7 +152,7 @@ const UsersManagement = () => {
     }
 
     toast.success('Používateľ aktualizovaný');
-    setDialogMode(null);
+    setDrawerMode(null);
     fetchUsers();
   };
 
@@ -152,22 +170,33 @@ const UsersManagement = () => {
     }
 
     toast.success('Rola zmenená');
-    setDialogMode(null);
+    setDrawerMode(null);
     fetchUsers();
   };
 
-  const filteredUsers = users.filter((user) => {
-    const searchLower = searchTerm.toLowerCase();
-    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-    return fullName.includes(searchLower) || user.user_id.includes(searchLower);
-  });
+  const closeDrawer = () => {
+    setDrawerMode(null);
+    setSelectedUser(null);
+  };
+
+  const getRoleBadgeClass = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-destructive/10 text-destructive';
+      case 'business':
+        return 'bg-primary/10 text-primary';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
     <AdminLayout>
       <div className="space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Používatelia</h2>
-          <p className="text-sm text-muted-foreground">{users.length} celkom</p>
+          <h2 className="text-xl font-bold">Používatelia</h2>
+          <span className="text-sm text-muted-foreground">{users.length} celkom</span>
         </div>
 
         {/* Search */}
@@ -181,146 +210,134 @@ const UsersManagement = () => {
           />
         </div>
 
-        {/* Users Table */}
-        <Card className="overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Meno</TableHead>
-                    <TableHead>Rola</TableHead>
-                    <TableHead>Onboarding</TableHead>
-                    <TableHead className="text-right">Akcie</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {user.first_name || user.last_name
-                              ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                              : 'Bez mena'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {user.user_id.slice(0, 8)}...
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.role === 'admin'
-                              ? 'bg-red-500/10 text-red-500'
-                              : user.role === 'business'
-                              ? 'bg-blue-500/10 text-blue-500'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {user.role}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            user.onboarding_completed
-                              ? 'bg-green-500/10 text-green-500'
-                              : 'bg-orange-500/10 text-orange-500'
-                          }`}
-                        >
-                          {user.onboarding_completed ? 'Dokončený' : 'Nedokončený'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleViewUser(user)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditUser(user)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleChangeRole(user)}
-                          >
-                            <Shield className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleSendPasswordReset(user)}
-                          >
-                            <KeyRound className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </Card>
+        {/* Mobile Card List */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {paginatedUsers.map((user) => (
+              <MobileCard key={user.id} onClick={() => handleViewUser(user)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {user.first_name || user.last_name
+                        ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                        : 'Bez mena'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeClass(user.role || 'user')}`}>
+                        {user.role}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        user.onboarding_completed 
+                          ? 'bg-green-500/10 text-green-600' 
+                          : 'bg-orange-500/10 text-orange-600'
+                      }`}>
+                        {user.onboarding_completed ? 'Onboarded' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={(e) => handleEditUser(user, e)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={(e) => handleChangeRole(user, e)}
+                    >
+                      <Shield className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={handleSendPasswordReset}
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </Button>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground ml-1" />
+                  </div>
+                </div>
+              </MobileCard>
+            ))}
+          </div>
+        )}
 
-        {/* View Dialog */}
-        <Dialog open={dialogMode === 'view'} onOpenChange={() => setDialogMode(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Detail používateľa</DialogTitle>
-            </DialogHeader>
+        {/* Pagination */}
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+
+        {/* View Drawer */}
+        <Drawer open={drawerMode === 'view'} onOpenChange={closeDrawer}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Detail používateľa</DrawerTitle>
+            </DrawerHeader>
             {selectedUser && (
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-muted-foreground">Meno</Label>
-                  <p className="font-medium">
-                    {selectedUser.first_name} {selectedUser.last_name}
-                  </p>
+              <div className="px-4 pb-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Meno</Label>
+                    <p className="font-medium">{selectedUser.first_name || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Priezvisko</Label>
+                    <p className="font-medium">{selectedUser.last_name || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Vek</Label>
+                    <p className="font-medium">{selectedUser.age || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Pohlavie</Label>
+                    <p className="font-medium">{selectedUser.gender || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Rola</Label>
+                    <p className="font-medium">{selectedUser.role}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Registrácia</Label>
+                    <p className="font-medium">
+                      {new Date(selectedUser.created_at).toLocaleDateString('sk-SK')}
+                    </p>
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Vek</Label>
-                  <p className="font-medium">{selectedUser.age || 'Neuvedený'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Pohlavie</Label>
-                  <p className="font-medium">{selectedUser.gender || 'Neuvedené'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Rola</Label>
-                  <p className="font-medium">{selectedUser.role}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Registrácia</Label>
-                  <p className="font-medium">
-                    {new Date(selectedUser.created_at).toLocaleDateString('sk-SK')}
-                  </p>
+                  <Label className="text-muted-foreground text-xs">User ID</Label>
+                  <p className="font-mono text-sm break-all">{selectedUser.user_id}</p>
                 </div>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline">Zavrieť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
 
-        {/* Edit Dialog */}
-        <Dialog open={dialogMode === 'edit'} onOpenChange={() => setDialogMode(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upraviť používateľa</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+        {/* Edit Drawer */}
+        <Drawer open={drawerMode === 'edit'} onOpenChange={closeDrawer}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Upraviť používateľa</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4 space-y-4">
               <div>
                 <Label>Meno</Label>
                 <Input
@@ -343,20 +360,23 @@ const UsersManagement = () => {
                   onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
                 />
               </div>
-              <Button onClick={saveUserEdit} className="w-full">
-                Uložiť
-              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+            <DrawerFooter>
+              <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Zrušiť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
 
-        {/* Role Dialog */}
-        <Dialog open={dialogMode === 'role'} onOpenChange={() => setDialogMode(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Zmeniť rolu</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+        {/* Role Drawer */}
+        <Drawer open={drawerMode === 'role'} onOpenChange={closeDrawer}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Zmeniť rolu</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4 space-y-4">
               <div>
                 <Label>Rola</Label>
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -370,12 +390,15 @@ const UsersManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={saveRoleChange} className="w-full">
-                Uložiť
-              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+            <DrawerFooter>
+              <Button onClick={saveRoleChange} className="w-full">Uložiť</Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Zrušiť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       </div>
     </AdminLayout>
   );
