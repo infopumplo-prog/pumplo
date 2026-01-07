@@ -94,10 +94,14 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [motivations, setMotivations] = useState<string[]>([]);
 
+  const isEditMode = profile?.onboarding_completed ?? false;
+
   // Load existing profile data
   useEffect(() => {
     if (profile) {
-      setCurrentStep(profile.current_step || 0);
+      // For edit mode, always start at step 0 to show all answers
+      // For new users, use their saved step
+      setCurrentStep(isEditMode ? 0 : Math.min(profile.current_step || 0, TOTAL_STEPS - 1));
       setGender(profile.gender);
       setPrimaryGoal(profile.primary_goal);
       setSecondaryGoals(profile.secondary_goals || []);
@@ -112,13 +116,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setEquipmentPreference(profile.equipment_preference);
       setMotivations(profile.motivations || []);
     }
-  }, [profile]);
+  }, [profile, open]);
 
   const progress = ((currentStep + 1) / TOTAL_STEPS) * 100;
 
-  // Check if current step is valid to proceed
-  const isStepValid = (): boolean => {
-    switch (currentStep) {
+  // Check if a specific step is valid
+  const isStepValidAt = (step: number): boolean => {
+    switch (step) {
       case 0:
         return gender !== null;
       case 1:
@@ -140,10 +144,19 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     }
   };
 
+  const isStepValid = (): boolean => isStepValidAt(currentStep);
+
+  // Check if all steps are valid (for complete questionnaire)
+  const areAllStepsValid = (): boolean => {
+    for (let i = 0; i < TOTAL_STEPS; i++) {
+      if (!isStepValidAt(i)) return false;
+    }
+    return true;
+  };
+
   const handleGoalClick = (goalId: string) => {
     if (primaryGoal === goalId) {
-      // Clicking primary goal converts it to secondary (but keeps a primary)
-      // Only allow if there's another goal that can become primary
+      // Clicking primary goal converts it to secondary
       setSecondaryGoals(prev => [...prev, goalId]);
       setPrimaryGoal(null);
     } else if (secondaryGoals.includes(goalId)) {
@@ -189,38 +202,51 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     );
   };
 
-  const saveProgress = async () => {
-    await updateProfile({
-      gender,
-      primary_goal: primaryGoal,
-      secondary_goals: secondaryGoals,
-      training_days: trainingDays,
-      preferred_time: preferredTime,
-      training_duration_minutes: trainingDuration,
-      age: age ? parseInt(age) : null,
-      height_cm: height ? parseInt(height) : null,
-      weight_kg: weight ? parseFloat(weight) : null,
-      injuries,
-      training_split: trainingSplit,
-      equipment_preference: equipmentPreference,
-      motivations,
-      current_step: currentStep,
-    });
-  };
-
   const handleClose = async (isOpen: boolean) => {
     if (!isOpen) {
-      await saveProgress();
-      toast({ title: 'Uloženo', description: 'Tvůj pokrok byl uložen.' });
+      // Save all data and determine if onboarding is complete
+      const allValid = areAllStepsValid();
+      
+      await updateProfile({
+        gender,
+        primary_goal: primaryGoal,
+        secondary_goals: secondaryGoals,
+        training_days: trainingDays,
+        preferred_time: preferredTime,
+        training_duration_minutes: trainingDuration,
+        age: age ? parseInt(age) : null,
+        height_cm: height ? parseInt(height) : null,
+        weight_kg: weight ? parseFloat(weight) : null,
+        injuries,
+        training_split: trainingSplit,
+        equipment_preference: equipmentPreference,
+        motivations,
+        current_step: currentStep,
+        onboarding_completed: allValid,
+      });
+      
+      await refetch();
+      
+      if (allValid) {
+        toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
+      } else {
+        toast({ 
+          title: 'Dotazník není kompletní', 
+          description: 'Některé odpovědi chybí. Vyplň je prosím.',
+          variant: 'destructive'
+        });
+      }
     }
     onOpenChange(isOpen);
   };
 
-  const handleNext = async () => {
-    if (currentStep < TOTAL_STEPS - 1 && isStepValid()) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      await updateProfile({ current_step: nextStep });
+  const handleNext = () => {
+    // In edit mode, allow navigation even if step is not valid
+    // For new users, require valid step to proceed
+    if (currentStep < TOTAL_STEPS - 1) {
+      if (isEditMode || isStepValid()) {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
 
@@ -231,7 +257,14 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   };
 
   const handleComplete = async () => {
-    if (!isStepValid()) return;
+    if (!areAllStepsValid()) {
+      toast({ 
+        title: 'Chybí odpovědi', 
+        description: 'Prosím vyplň všechny povinné otázky.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     await updateProfile({
       gender,
@@ -248,13 +281,12 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       equipment_preference: equipmentPreference,
       motivations,
       onboarding_completed: true,
-      current_step: TOTAL_STEPS,
+      current_step: TOTAL_STEPS - 1,
     });
     
-    // Refetch profile to update UI immediately
     await refetch();
     
-    toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen.' });
+    toast({ title: 'Hotovo!', description: isEditMode ? 'Změny byly uloženy.' : 'Tvůj profil byl vytvořen.' });
     onOpenChange(false);
   };
 
@@ -587,7 +619,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               <Button 
                 onClick={handleNext} 
                 className="flex-1"
-                disabled={!isStepValid()}
+                disabled={!isEditMode && !isStepValid()}
               >
                 Další
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -596,9 +628,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               <Button 
                 onClick={handleComplete} 
                 className="flex-1 bg-green-500 hover:bg-green-600"
-                disabled={!isStepValid()}
+                disabled={!areAllStepsValid()}
               >
-                Dokončit
+                {isEditMode ? 'Uložit' : 'Dokončit'}
               </Button>
             )}
           </div>
