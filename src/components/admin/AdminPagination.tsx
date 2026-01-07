@@ -60,7 +60,7 @@ const AdminPagination = ({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex flex-col gap-2 items-center">
+    <div className="flex flex-col gap-2 items-center pb-24">
       <p className="text-sm text-muted-foreground">
         {startItem}-{endItem} z {totalItems}
       </p>
