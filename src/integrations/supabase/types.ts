@@ -127,11 +127,13 @@ export type Database = {
       gyms: {
         Row: {
           address: string | null
+          cover_photo_url: string | null
           created_at: string
           description: string | null
           id: string
           is_published: boolean
           latitude: number
+          logo_url: string | null
           longitude: number
           name: string
           opening_hours: Json
@@ -140,11 +142,13 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_published?: boolean
           latitude: number
+          logo_url?: string | null
           longitude: number
           name: string
           opening_hours?: Json
@@ -153,11 +157,13 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_published?: boolean
           latitude?: number
+          logo_url?: string | null
           longitude?: number
           name?: string
           opening_hours?: Json

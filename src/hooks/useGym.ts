@@ -17,6 +17,8 @@ export interface Gym {
   address: string | null;
   is_published: boolean;
   opening_hours: OpeningHours;
+  cover_photo_url: string | null;
+  logo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,9 +61,9 @@ export const useGym = () => {
 
     if (error) {
       console.error('Error fetching gym:', error);
-      toast.error('Nepodarilo sa načítať posilňovňu');
+      toast.error('Nepodařilo se načíst posilovnu');
     } else {
-      setGym(data as Gym | null);
+      setGym(data ? { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym : null);
     }
     setIsLoading(false);
   };
@@ -111,8 +113,8 @@ export const useGym = () => {
       return { success: false, error: error.message };
     }
 
-    setGym(data as Gym);
-    toast.success('Posilňovňa bola vytvorená');
+    setGym({ ...data, opening_hours: data.opening_hours as OpeningHours } as Gym);
+    toast.success('Posilovna byla vytvořena');
     return { success: true };
   };
 
@@ -131,8 +133,8 @@ export const useGym = () => {
       return { success: false, error: error.message };
     }
 
-    setGym(data as Gym);
-    toast.success('Posilňovňa bola aktualizovaná');
+    setGym({ ...data, opening_hours: data.opening_hours as OpeningHours } as Gym);
+    toast.success('Posilovna byla aktualizována');
     return { success: true };
   };
 
@@ -145,10 +147,10 @@ export const useGym = () => {
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa zmeniť stav publikovania');
+      toast.error('Nepodařilo se změnit stav zveřejnění');
     } else {
       setGym({ ...gym, is_published: !gym.is_published });
-      toast.success(gym.is_published ? 'Posilňovňa je teraz súkromná' : 'Posilňovňa bola zverejnená');
+      toast.success(gym.is_published ? 'Posilovna je nyní soukromá' : 'Posilovna byla zveřejněna');
     }
   };
 
