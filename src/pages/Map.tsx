@@ -232,7 +232,7 @@ const Map = () => {
 
       {/* Gym Detail Drawer */}
       <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
-        <DrawerContent className="max-h-[90vh] z-[100]">
+        <DrawerContent className="max-h-[90vh] border-0">
           <div className="overflow-y-auto -mt-6">
             {selectedGym && (
               <>
