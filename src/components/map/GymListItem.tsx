@@ -1,30 +1,53 @@
-import { Gym } from '@/hooks/useGym';
-import { MapPin, Navigation } from 'lucide-react';
+import { Gym, OpeningHours } from '@/hooks/useGym';
+import { MapPin, Navigation, Heart } from 'lucide-react';
+import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
+import { cn } from '@/lib/utils';
 
 interface GymListItemProps {
   gym: Gym;
   distance?: number; // in km
   onClick: () => void;
+  isFavorite?: boolean;
 }
 
-const GymListItem = ({ gym, distance, onClick }: GymListItemProps) => {
+const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) => {
+  const hours = gym.opening_hours as OpeningHours;
+  const isOpen = isGymCurrentlyOpen(hours);
+  const status = getTodayOpeningStatus(hours);
+
   return (
     <button
       onClick={onClick}
-      className="w-full bg-card border border-border rounded-xl p-4 flex items-center gap-4 shadow-card hover:bg-accent/50 transition-colors text-left"
+      className={cn(
+        "w-full bg-card border border-border rounded-xl p-4 flex items-center gap-4 shadow-card transition-colors text-left",
+        isOpen ? "hover:bg-accent/50" : "opacity-60 hover:opacity-70"
+      )}
     >
       {/* Logo */}
-      {gym.logo_url ? (
-        <img 
-          src={gym.logo_url}
-          alt={gym.name}
-          className="w-12 h-12 rounded-full object-cover border-2 border-border flex-shrink-0"
-        />
-      ) : (
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-          <MapPin className="w-6 h-6 text-primary" />
-        </div>
-      )}
+      <div className="relative flex-shrink-0">
+        {gym.logo_url ? (
+          <img 
+            src={gym.logo_url}
+            alt={gym.name}
+            className={cn(
+              "w-12 h-12 rounded-full object-cover border-2 border-border",
+              !isOpen && "grayscale"
+            )}
+          />
+        ) : (
+          <div className={cn(
+            "w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center",
+            !isOpen && "bg-muted"
+          )}>
+            <MapPin className={cn("w-6 h-6", isOpen ? "text-primary" : "text-muted-foreground")} />
+          </div>
+        )}
+        {isFavorite && (
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center">
+            <Heart className="w-3 h-3 text-white fill-white" />
+          </div>
+        )}
+      </div>
       
       {/* Info */}
       <div className="flex-1 min-w-0">
@@ -32,6 +55,12 @@ const GymListItem = ({ gym, distance, onClick }: GymListItemProps) => {
         {gym.address && (
           <p className="text-sm text-muted-foreground truncate">{gym.address}</p>
         )}
+        <p className={cn(
+          "text-xs mt-0.5",
+          isOpen ? "text-green-600" : "text-destructive"
+        )}>
+          {status.text}
+        </p>
       </div>
       
       {/* Distance */}

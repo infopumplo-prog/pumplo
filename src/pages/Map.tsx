@@ -1,16 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Search, Lock, X } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Lock, Heart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms } from '@/hooks/usePublishedGyms';
+import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
-import { Gym } from '@/hooks/useGym';
+import { Gym, OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { isGymCurrentlyOpen } from '@/lib/gymUtils';
+import { cn } from '@/lib/utils';
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -28,6 +32,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 const Map = () => {
   const { profile } = useUserProfile();
   const { gyms, isLoading } = usePublishedGyms();
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteGyms();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
@@ -59,7 +64,7 @@ const Map = () => {
   }, []);
 
   // Sort and filter gyms
-  const sortedGyms = useCallback(() => {
+  const sortedGyms = useMemo(() => {
     let filtered = gyms;
     
     // Filter by search
@@ -71,24 +76,43 @@ const Map = () => {
       );
     }
 
-    // Sort by distance or alphabetically
-    if (userLocation && hasGpsAccess) {
-      return filtered
-        .map(gym => ({
-          gym,
-          distance: calculateDistance(userLocation.lat, userLocation.lng, gym.latitude, gym.longitude),
-        }))
-        .sort((a, b) => a.distance - b.distance);
-    } else {
-      return filtered
-        .map(gym => ({ gym, distance: undefined }))
-        .sort((a, b) => a.gym.name.localeCompare(b.gym.name, 'cs'));
-    }
-  }, [gyms, userLocation, hasGpsAccess, searchQuery])();
+    // Calculate distances and open status
+    const gymsWithMeta = filtered.map(gym => {
+      const hours = gym.opening_hours as OpeningHours;
+      const isOpen = isGymCurrentlyOpen(hours);
+      const distance = userLocation && hasGpsAccess
+        ? calculateDistance(userLocation.lat, userLocation.lng, gym.latitude, gym.longitude)
+        : undefined;
+      const isFav = isFavorite(gym.id);
+      
+      return { gym, distance, isOpen, isFavorite: isFav };
+    });
+
+    // Sort: favorites first, then open gyms, then by distance/alphabetically
+    return gymsWithMeta.sort((a, b) => {
+      // Favorites always first
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      
+      // Open gyms before closed ones
+      if (a.isOpen && !b.isOpen) return -1;
+      if (!a.isOpen && b.isOpen) return 1;
+      
+      // Then by distance or alphabetically
+      if (a.distance !== undefined && b.distance !== undefined) {
+        return a.distance - b.distance;
+      }
+      return a.gym.name.localeCompare(b.gym.name, 'cs');
+    });
+  }, [gyms, userLocation, hasGpsAccess, searchQuery, favorites, isFavorite]);
 
   const handleGymSelect = (gym: Gym) => {
     setSelectedGym(gym);
   };
+
+  const selectedGymIsOpen = selectedGym 
+    ? isGymCurrentlyOpen(selectedGym.opening_hours as OpeningHours)
+    : false;
 
   if (!isOnboardingComplete) {
     return (
@@ -193,12 +217,13 @@ const Map = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {sortedGyms.map(({ gym, distance }) => (
+            {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
               <GymListItem
                 key={gym.id}
                 gym={gym}
                 distance={distance}
                 onClick={() => handleGymSelect(gym)}
+                isFavorite={isFav}
               />
             ))}
           </div>
@@ -207,12 +232,36 @@ const Map = () => {
 
       {/* Gym Detail Drawer */}
       <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="overflow-y-auto">
+        <DrawerContent className="max-h-[90vh] z-[100]">
+          <div className="overflow-y-auto -mt-6">
             {selectedGym && (
-              <div className="pb-6">
-                <GymProfilePreview gym={selectedGym} />
-              </div>
+              <>
+                <GymProfilePreview gym={selectedGym} variant="drawer" showBadge={false} />
+                
+                {/* Action Buttons */}
+                <div className="px-4 pb-6 pt-2 flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-shrink-0"
+                    onClick={() => toggleFavorite(selectedGym.id)}
+                  >
+                    <Heart 
+                      className={cn(
+                        "w-5 h-5",
+                        isFavorite(selectedGym.id) && "fill-destructive text-destructive"
+                      )} 
+                    />
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="flex-1"
+                    disabled={!selectedGymIsOpen}
+                  >
+                    {selectedGymIsOpen ? 'Vybrat posilovnu' : 'Posilovna je zavřená'}
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </DrawerContent>
