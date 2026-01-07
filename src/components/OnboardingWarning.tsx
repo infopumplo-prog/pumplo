@@ -1,10 +1,11 @@
-import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const OnboardingWarning = () => {
-  const navigate = useNavigate();
+interface OnboardingWarningProps {
+  onClick: () => void;
+}
 
+const OnboardingWarning = ({ onClick }: OnboardingWarningProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -12,7 +13,7 @@ const OnboardingWarning = () => {
       className="mx-4 mb-4"
     >
       <button
-        onClick={() => navigate('/onboarding')}
+        onClick={onClick}
         className="w-full p-3 bg-warning/10 border border-warning/30 rounded-xl flex items-center gap-3 hover:bg-warning/20 transition-colors"
       >
         <div className="p-2 bg-warning/20 rounded-full">

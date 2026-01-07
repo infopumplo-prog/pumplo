@@ -1,18 +1,21 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import OnboardingWarning from '@/components/OnboardingWarning';
+import OnboardingDrawer from '@/components/OnboardingDrawer';
 
 const Map = () => {
   const { profile } = useUserProfile();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background safe-top">
       {/* Onboarding Warning */}
       {profile && !profile.onboarding_completed && (
         <div className="pt-4">
-          <OnboardingWarning />
+          <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
         </div>
       )}
 
@@ -77,6 +80,9 @@ const Map = () => {
           ))}
         </div>
       </motion.div>
+
+      {/* Onboarding Drawer */}
+      <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
     </div>
   );
 };

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Button } from '@/components/ui/button';
 import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
+import OnboardingDrawer from '@/components/OnboardingDrawer';
 
 const menuItems = [
   { icon: Settings, label: 'Nastavení' },
@@ -14,6 +16,7 @@ const menuItems = [
 const Profile = () => {
   const { user, logout } = useAuth();
   const { profile } = useUserProfile();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -35,7 +38,7 @@ const Profile = () => {
       {/* Onboarding Warning */}
       {profile && !profile.onboarding_completed && (
         <div className="pt-4">
-          <OnboardingWarning />
+          <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
         </div>
       )}
 
@@ -124,6 +127,9 @@ const Profile = () => {
           </Button>
         </motion.div>
       </motion.div>
+
+      {/* Onboarding Drawer */}
+      <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
     </div>
   );
 };
