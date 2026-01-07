@@ -97,21 +97,37 @@ const ExercisesManagement = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
-    const [exercisesRes, machinesRes] = await Promise.all([
-      supabase.from('exercises').select('*').order('name'),
-      supabase.from('machines').select('id, name').order('name'),
-    ]);
-
-    if (exercisesRes.error) {
-      console.error('Error fetching exercises:', exercisesRes.error);
-    } else {
-      setExercises(exercisesRes.data || []);
+    // Fetch all exercises (bypassing 1000 limit with range)
+    let allExercises: Exercise[] = [];
+    let from = 0;
+    const batchSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .order('name')
+        .range(from, from + batchSize - 1);
+      
+      if (error) {
+        console.error('Error fetching exercises:', error);
+        break;
+      }
+      
+      allExercises = [...allExercises, ...(data || [])];
+      
+      if (!data || data.length < batchSize) break;
+      from += batchSize;
     }
+    
+    setExercises(allExercises);
 
-    if (!machinesRes.error) {
-      setMachines(machinesRes.data || []);
-    }
+    const { data: machinesData } = await supabase
+      .from('machines')
+      .select('id, name')
+      .order('name');
 
+    setMachines(machinesData || []);
     setIsLoading(false);
   };
 
