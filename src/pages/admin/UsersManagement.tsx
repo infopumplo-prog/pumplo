@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Eye, KeyRound, Pencil, Shield, Loader2, Search, ChevronRight } from 'lucide-react';
+import { KeyRound, Pencil, Loader2, Search, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -43,9 +43,8 @@ const UsersManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'role' | null>(null);
-  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '' });
-  const [selectedRole, setSelectedRole] = useState<string>('user');
+  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '', role: 'user' });
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsers = async () => {
@@ -118,15 +117,9 @@ const UsersManagement = () => {
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       age: user.age?.toString() || '',
+      role: user.role || 'user',
     });
     setDrawerMode('edit');
-  };
-
-  const handleChangeRole = (user: UserData, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedUser(user);
-    setSelectedRole(user.role || 'user');
-    setDrawerMode('role');
   };
 
   const handleSendPasswordReset = (e: React.MouseEvent) => {
@@ -137,7 +130,8 @@ const UsersManagement = () => {
   const saveUserEdit = async () => {
     if (!selectedUser) return;
 
-    const { error } = await supabase
+    // Update profile
+    const { error: profileError } = await supabase
       .from('user_profiles')
       .update({
         first_name: editForm.first_name || null,
@@ -146,30 +140,25 @@ const UsersManagement = () => {
       })
       .eq('user_id', selectedUser.user_id);
 
-    if (error) {
-      toast.error('Chyba pri ukladaní');
+    if (profileError) {
+      toast.error('Chyba pri ukladaní profilu');
       return;
+    }
+
+    // Update role if changed
+    if (editForm.role !== selectedUser.role) {
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .update({ role: editForm.role as 'user' | 'business' | 'admin' })
+        .eq('user_id', selectedUser.user_id);
+
+      if (roleError) {
+        toast.error('Chyba pri zmene role');
+        return;
+      }
     }
 
     toast.success('Používateľ aktualizovaný');
-    setDrawerMode(null);
-    fetchUsers();
-  };
-
-  const saveRoleChange = async () => {
-    if (!selectedUser) return;
-
-    const { error } = await supabase
-      .from('user_roles')
-      .update({ role: selectedRole as 'user' | 'business' | 'admin' })
-      .eq('user_id', selectedUser.user_id);
-
-    if (error) {
-      toast.error('Chyba pri zmene role');
-      return;
-    }
-
-    toast.success('Rola zmenená');
     setDrawerMode(null);
     fetchUsers();
   };
@@ -247,14 +236,6 @@ const UsersManagement = () => {
                       onClick={(e) => handleEditUser(user, e)}
                     >
                       <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={(e) => handleChangeRole(user, e)}
-                    >
-                      <Shield className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -360,26 +341,9 @@ const UsersManagement = () => {
                   onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
                 />
               </div>
-            </div>
-            <DrawerFooter>
-              <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
-              <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Role Drawer */}
-        <Drawer open={drawerMode === 'role'} onOpenChange={closeDrawer}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Zmeniť rolu</DrawerTitle>
-            </DrawerHeader>
-            <div className="px-4 pb-4 space-y-4">
               <div>
                 <Label>Rola</Label>
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -392,7 +356,7 @@ const UsersManagement = () => {
               </div>
             </div>
             <DrawerFooter>
-              <Button onClick={saveRoleChange} className="w-full">Uložiť</Button>
+              <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
               <DrawerClose asChild>
                 <Button variant="outline">Zrušiť</Button>
               </DrawerClose>
