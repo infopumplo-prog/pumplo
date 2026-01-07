@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { Dumbbell, Flame, Clock, Trophy, Lock } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Dumbbell, Flame, Clock, Trophy, Lock, Shield } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -14,8 +15,8 @@ const statCards = [
 ];
 
 const Home = () => {
-  const { user } = useAuth();
   const { profile } = useUserProfile();
+  const { isAdmin } = useUserRole();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
@@ -60,9 +61,22 @@ const Home = () => {
               className="w-20 h-20 object-contain"
             />
           </div>
-          <div>
-            <p className="text-muted-foreground text-sm">Ahoj,</p>
-            <h1 className="text-2xl font-bold text-foreground">{user?.user_metadata?.name || 'Sportovče'} 💪</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-muted-foreground text-sm">Ahoj,</p>
+              <h1 className="text-2xl font-bold text-foreground">
+                {profile?.first_name || 'Športovec'} 💪
+              </h1>
+            </div>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium"
+              >
+                <Shield className="w-4 h-4" />
+                Admin
+              </Link>
+            )}
           </div>
         </motion.div>
       </div>
