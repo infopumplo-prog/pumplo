@@ -1,0 +1,575 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useToast } from '@/hooks/use-toast';
+import pumploLogo from '@/assets/pumplo-logo.png';
+
+const GOALS = [
+  { id: 'muscle', label: 'Nabrat svaly', emoji: '💪' },
+  { id: 'fat_loss', label: 'Zhubnout / shodit tuk', emoji: '🔥' },
+  { id: 'tone', label: 'Zpevnit postavu', emoji: '✨' },
+  { id: 'strength', label: 'Získat sílu', emoji: '🏋️' },
+  { id: 'endurance', label: 'Zlepšit kondici', emoji: '🏃' },
+  { id: 'consistency', label: 'Chci hlavně vydržet cvičit dlouhodobě', emoji: '📅' },
+];
+
+const DAYS = [
+  { id: 'monday', label: 'Pondělí' },
+  { id: 'tuesday', label: 'Úterý' },
+  { id: 'wednesday', label: 'Středa' },
+  { id: 'thursday', label: 'Čtvrtek' },
+  { id: 'friday', label: 'Pátek' },
+  { id: 'saturday', label: 'Sobota' },
+  { id: 'sunday', label: 'Neděle' },
+];
+
+const TIMES = [
+  { id: 'morning', label: 'Ráno', time: '6:00 - 10:00', emoji: '🌅' },
+  { id: 'late_morning', label: 'Dopoledne', time: '10:00 - 14:00', emoji: '☀️' },
+  { id: 'afternoon', label: 'Odpoledne', time: '14:00 - 18:00', emoji: '🌤️' },
+  { id: 'evening', label: 'Večer', time: '18:00 - 22:00', emoji: '🌙' },
+];
+
+const INJURIES = [
+  { id: 'neck', label: 'Krk' },
+  { id: 'upper_back', label: 'Horní záda' },
+  { id: 'lower_back', label: 'Bedra' },
+  { id: 'shoulders', label: 'Ramena' },
+  { id: 'elbows', label: 'Lokty' },
+  { id: 'wrists', label: 'Zápěstí' },
+  { id: 'hips', label: 'Kyčle' },
+  { id: 'knees', label: 'Kolena' },
+  { id: 'ankles', label: 'Kotníky' },
+  { id: 'none', label: 'Nemám žádné' },
+];
+
+const SPLITS = [
+  { id: 'full_body', label: 'Full Body', description: 'Celé tělo každý trénink' },
+  { id: 'upper_lower', label: 'Horní / Dolní', description: 'Střídání horní a dolní části těla' },
+  { id: 'ppl', label: 'Push / Pull / Legs', description: 'Rotace: tlak, tah, nohy' },
+];
+
+const EQUIPMENT = [
+  { id: 'machines', label: 'Hlavně stroje' },
+  { id: 'free_weights', label: 'Více volných vah' },
+  { id: 'intense', label: 'Krátké intenzivní tréninky' },
+];
+
+const MOTIVATIONS = [
+  { id: 'challenges', label: 'Výzvy a odměny', emoji: '🏆' },
+  { id: 'progress', label: 'Viditelný progres', emoji: '📈' },
+  { id: 'routine', label: 'Tréninková rutina', emoji: '📋' },
+  { id: 'friends', label: 'Výzvy s kamarády', emoji: '👥' },
+  { id: 'done', label: 'Odháčkování úkolů ("done" pocit)', emoji: '✅' },
+];
+
+const TOTAL_STEPS = 8;
+
+const Onboarding = () => {
+  const navigate = useNavigate();
+  const { profile, updateProfile, isLoading } = useUserProfile();
+  const { toast } = useToast();
+  
+  const [currentStep, setCurrentStep] = useState(0);
+  const [gender, setGender] = useState<string | null>(null);
+  const [primaryGoal, setPrimaryGoal] = useState<string | null>(null);
+  const [secondaryGoals, setSecondaryGoals] = useState<string[]>([]);
+  const [trainingDays, setTrainingDays] = useState<string[]>([]);
+  const [preferredTime, setPreferredTime] = useState<string | null>(null);
+  const [trainingDuration, setTrainingDuration] = useState(45);
+  const [age, setAge] = useState<string>('');
+  const [height, setHeight] = useState<string>('');
+  const [weight, setWeight] = useState<string>('');
+  const [injuries, setInjuries] = useState<string[]>([]);
+  const [trainingSplit, setTrainingSplit] = useState<string | null>(null);
+  const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
+  const [motivations, setMotivations] = useState<string[]>([]);
+
+  // Load existing profile data
+  useEffect(() => {
+    if (profile) {
+      setCurrentStep(profile.current_step || 0);
+      setGender(profile.gender);
+      setPrimaryGoal(profile.primary_goal);
+      setSecondaryGoals(profile.secondary_goals || []);
+      setTrainingDays(profile.training_days || []);
+      setPreferredTime(profile.preferred_time);
+      setTrainingDuration(profile.training_duration_minutes || 45);
+      setAge(profile.age?.toString() || '');
+      setHeight(profile.height_cm?.toString() || '');
+      setWeight(profile.weight_kg?.toString() || '');
+      setInjuries(profile.injuries || []);
+      setTrainingSplit(profile.training_split);
+      setEquipmentPreference(profile.equipment_preference);
+      setMotivations(profile.motivations || []);
+    }
+  }, [profile]);
+
+  const progress = ((currentStep + 1) / TOTAL_STEPS) * 100;
+
+  const handleGoalClick = (goalId: string) => {
+    if (primaryGoal === goalId) {
+      // If clicking the primary goal, move it to secondary and clear primary
+      setSecondaryGoals(prev => prev.includes(goalId) ? prev.filter(g => g !== goalId) : [...prev, goalId]);
+      setPrimaryGoal(null);
+    } else if (secondaryGoals.includes(goalId)) {
+      // If it's a secondary goal, remove it
+      setSecondaryGoals(prev => prev.filter(g => g !== goalId));
+    } else if (!primaryGoal) {
+      // If no primary goal, set this as primary
+      setPrimaryGoal(goalId);
+    } else {
+      // Otherwise, add as secondary
+      setSecondaryGoals(prev => [...prev, goalId]);
+    }
+  };
+
+  const handleDayToggle = (dayId: string) => {
+    setTrainingDays(prev => 
+      prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
+    );
+  };
+
+  const handleInjuryToggle = (injuryId: string) => {
+    if (injuryId === 'none') {
+      setInjuries(prev => prev.includes('none') ? [] : ['none']);
+    } else {
+      setInjuries(prev => {
+        const newInjuries = prev.filter(i => i !== 'none');
+        return newInjuries.includes(injuryId) 
+          ? newInjuries.filter(i => i !== injuryId) 
+          : [...newInjuries, injuryId];
+      });
+    }
+  };
+
+  const handleMotivationToggle = (motId: string) => {
+    setMotivations(prev => 
+      prev.includes(motId) ? prev.filter(m => m !== motId) : [...prev, motId]
+    );
+  };
+
+  const saveProgress = async () => {
+    await updateProfile({
+      gender,
+      primary_goal: primaryGoal,
+      secondary_goals: secondaryGoals,
+      training_days: trainingDays,
+      preferred_time: preferredTime,
+      training_duration_minutes: trainingDuration,
+      age: age ? parseInt(age) : null,
+      height_cm: height ? parseInt(height) : null,
+      weight_kg: weight ? parseFloat(weight) : null,
+      injuries,
+      training_split: trainingSplit,
+      equipment_preference: equipmentPreference,
+      motivations,
+      current_step: currentStep,
+    });
+    toast({ title: 'Uloženo', description: 'Tvůj pokrok byl uložen.' });
+  };
+
+  const handleSaveAndExit = async () => {
+    await saveProgress();
+    navigate('/');
+  };
+
+  const handleNext = async () => {
+    if (currentStep < TOTAL_STEPS - 1) {
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      await updateProfile({ current_step: nextStep });
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = async () => {
+    await updateProfile({
+      gender,
+      primary_goal: primaryGoal,
+      secondary_goals: secondaryGoals,
+      training_days: trainingDays,
+      preferred_time: preferredTime,
+      training_duration_minutes: trainingDuration,
+      age: age ? parseInt(age) : null,
+      height_cm: height ? parseInt(height) : null,
+      weight_kg: weight ? parseFloat(weight) : null,
+      injuries,
+      training_split: trainingSplit,
+      equipment_preference: equipmentPreference,
+      motivations,
+      onboarding_completed: true,
+      current_step: TOTAL_STEPS,
+    });
+    toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen.' });
+    navigate('/');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">Pohlaví</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {['Muž', 'Žena'].map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setGender(g.toLowerCase())}
+                  className={`p-6 rounded-2xl border-2 transition-all ${
+                    gender === g.toLowerCase()
+                      ? 'border-primary bg-primary/10 shadow-primary'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="text-4xl block mb-2">{g === 'Muž' ? '👨' : '👩'}</span>
+                  <span className="font-medium">{g}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Co je tvůj hlavní cíl?</h2>
+              <p className="text-muted-foreground mt-2 text-sm">
+                Klikni jednou pro hlavní cíl, znovu pro vedlejší
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {GOALS.map((goal) => {
+                const isPrimary = primaryGoal === goal.id;
+                const isSecondary = secondaryGoals.includes(goal.id);
+                return (
+                  <button
+                    key={goal.id}
+                    onClick={() => handleGoalClick(goal.id)}
+                    className={`p-4 rounded-xl border-2 transition-all text-left flex items-center gap-3 ${
+                      isPrimary
+                        ? 'border-primary bg-primary/20 shadow-primary'
+                        : isSecondary
+                        ? 'border-primary/50 bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <span className="text-2xl">{goal.emoji}</span>
+                    <span className="font-medium flex-1">{goal.label}</span>
+                    {isPrimary && <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">Hlavní</span>}
+                    {isSecondary && <span className="text-xs bg-primary/30 text-primary px-2 py-1 rounded-full">Vedlejší</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">Ve které dny v týdnu chceš cvičit?</h2>
+            <div className="grid grid-cols-1 gap-2">
+              {DAYS.map((day) => (
+                <button
+                  key={day.id}
+                  onClick={() => handleDayToggle(day.id)}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    trainingDays.includes(day.id)
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="font-medium">{day.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">V jaký čas nejraději cvičíš?</h2>
+            <div className="grid grid-cols-1 gap-3">
+              {TIMES.map((time) => (
+                <button
+                  key={time.id}
+                  onClick={() => setPreferredTime(time.id)}
+                  className={`p-4 rounded-xl border-2 transition-all text-left ${
+                    preferredTime === time.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{time.emoji}</span>
+                    <div>
+                      <span className="font-medium block">{time.label}</span>
+                      <span className="text-sm text-muted-foreground">{time.time}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            <div className="space-y-4 pt-4">
+              <h3 className="text-lg font-semibold text-center">Kolik minut chceš mít jeden trénink?</h3>
+              <div className="px-4">
+                <div className="text-center mb-4">
+                  <span className="text-4xl font-bold text-primary">{trainingDuration}</span>
+                  <span className="text-muted-foreground ml-1">min</span>
+                </div>
+                <Slider
+                  value={[trainingDuration]}
+                  onValueChange={(value) => setTrainingDuration(value[0])}
+                  min={15}
+                  max={120}
+                  step={5}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                  <span>15 min</span>
+                  <span>30</span>
+                  <span>45</span>
+                  <span>60</span>
+                  <span>90</span>
+                  <span>120 min</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">O tobě</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Kolik ti je let?</label>
+                <Input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="25"
+                  className="text-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Kolik měříš? (cm)</label>
+                <Input
+                  type="number"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="175"
+                  className="text-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Kolik vážíš? (kg)</label>
+                <Input
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="75"
+                  className="text-lg"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Máš nějaké zranění / omezení?</h2>
+              <p className="text-muted-foreground mt-2 text-sm">Můžeš vybrat více částí těla</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {INJURIES.map((injury) => (
+                <button
+                  key={injury.id}
+                  onClick={() => handleInjuryToggle(injury.id)}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    injuries.includes(injury.id)
+                      ? injury.id === 'none' 
+                        ? 'border-green-500 bg-green-500/10'
+                        : 'border-destructive bg-destructive/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="font-medium text-sm">{injury.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Jaký typ tréninku preferuješ?</h2>
+              <p className="text-muted-foreground mt-2 text-sm">Vyber si JEDEN hlavní split</p>
+            </div>
+            
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground">Tréninkový split (vyber jeden)</h3>
+              {SPLITS.map((split) => (
+                <button
+                  key={split.id}
+                  onClick={() => setTrainingSplit(split.id)}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    trainingSplit === split.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="font-medium block">{split.label}</span>
+                  <span className="text-sm text-muted-foreground">{split.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-3 pt-4">
+              <h3 className="font-semibold text-sm text-muted-foreground">Preference vybavení (volitelné)</h3>
+              <div className="grid grid-cols-1 gap-2">
+                {EQUIPMENT.map((eq) => (
+                  <button
+                    key={eq.id}
+                    onClick={() => setEquipmentPreference(equipmentPreference === eq.id ? null : eq.id)}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      equipmentPreference === eq.id
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{eq.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">Můžeš to kdykoli změnit v nastavení.</p>
+            </div>
+          </div>
+        );
+
+      case 7:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Co tě nejvíc motivuje vydržet?</h2>
+              <p className="text-muted-foreground mt-2 text-sm">Můžeš vybrat více možností</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {MOTIVATIONS.map((mot) => (
+                <button
+                  key={mot.id}
+                  onClick={() => handleMotivationToggle(mot.id)}
+                  className={`p-4 rounded-xl border-2 transition-all text-left flex items-center gap-3 ${
+                    motivations.includes(mot.id)
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="text-2xl">{mot.emoji}</span>
+                  <span className="font-medium">{mot.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-4 py-4 border-b border-border">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={handleSaveAndExit} className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+          <img src={pumploLogo} alt="Pumplo" className="w-10 h-10 object-contain" />
+          <button onClick={handleSaveAndExit} className="flex items-center gap-1 text-sm text-primary">
+            <Save className="w-4 h-4" />
+            Uložit
+          </button>
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Krok {currentStep + 1} z {TOTAL_STEPS}</span>
+            <span className="font-medium text-primary">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderStep()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation */}
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4 safe-bottom">
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={handlePrev}
+            disabled={currentStep === 0}
+            className="flex-1"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Zpět
+          </Button>
+          {currentStep < TOTAL_STEPS - 1 ? (
+            <Button onClick={handleNext} className="flex-1">
+              Další
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleComplete} className="flex-1 bg-green-500 hover:bg-green-600">
+              Dokončit
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Onboarding;

@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      user_profiles: {
+        Row: {
+          age: number | null
+          created_at: string
+          current_step: number | null
+          equipment_preference: string | null
+          gender: string | null
+          height_cm: number | null
+          id: string
+          injuries: string[] | null
+          motivations: string[] | null
+          onboarding_completed: boolean | null
+          preferred_time: string | null
+          primary_goal: string | null
+          secondary_goals: string[] | null
+          training_days: string[] | null
+          training_duration_minutes: number | null
+          training_split: string | null
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          current_step?: number | null
+          equipment_preference?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          injuries?: string[] | null
+          motivations?: string[] | null
+          onboarding_completed?: boolean | null
+          preferred_time?: string | null
+          primary_goal?: string | null
+          secondary_goals?: string[] | null
+          training_days?: string[] | null
+          training_duration_minutes?: number | null
+          training_split?: string | null
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          current_step?: number | null
+          equipment_preference?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          injuries?: string[] | null
+          motivations?: string[] | null
+          onboarding_completed?: boolean | null
+          preferred_time?: string | null
+          primary_goal?: string | null
+          secondary_goals?: string[] | null
+          training_days?: string[] | null
+          training_duration_minutes?: number | null
+          training_split?: string | null
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
