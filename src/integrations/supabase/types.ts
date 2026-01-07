@@ -14,16 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      machines: {
+        Row: {
+          created_at: string
+          description: string | null
+          equipment_type: string
+          id: string
+          image_url: string | null
+          name: string
+          target_muscles: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          equipment_type?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          target_muscles?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          equipment_type?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          target_muscles?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           age: number | null
           created_at: string
           current_step: number | null
           equipment_preference: string | null
+          first_name: string | null
           gender: string | null
           height_cm: number | null
           id: string
           injuries: string[] | null
+          last_name: string | null
           motivations: string[] | null
           onboarding_completed: boolean | null
           preferred_time: string | null
@@ -41,10 +76,12 @@ export type Database = {
           created_at?: string
           current_step?: number | null
           equipment_preference?: string | null
+          first_name?: string | null
           gender?: string | null
           height_cm?: number | null
           id?: string
           injuries?: string[] | null
+          last_name?: string | null
           motivations?: string[] | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
@@ -62,10 +99,12 @@ export type Database = {
           created_at?: string
           current_step?: number | null
           equipment_preference?: string | null
+          first_name?: string | null
           gender?: string | null
           height_cm?: number | null
           id?: string
           injuries?: string[] | null
+          last_name?: string | null
           motivations?: string[] | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
@@ -80,15 +119,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "business" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -215,6 +281,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "business", "admin"],
+    },
   },
 } as const
