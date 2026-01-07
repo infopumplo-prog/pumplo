@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import OnboardingWarning from '@/components/OnboardingWarning';
@@ -10,15 +10,46 @@ const Map = () => {
   const { profile } = useUserProfile();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  return (
-    <div className="min-h-screen bg-background safe-top">
-      {/* Onboarding Warning */}
-      {profile && !profile.onboarding_completed && (
+  const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  if (!isOnboardingComplete) {
+    return (
+      <div className="min-h-screen bg-background safe-top">
+        {/* Onboarding Warning */}
         <div className="pt-4">
           <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
         </div>
-      )}
 
+        {/* Locked State */}
+        <div className="flex flex-col items-center justify-center px-6 py-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Mapa je uzamčená</h2>
+            <p className="text-muted-foreground mb-6">
+              Pro přístup k mapě posiloven nejdříve vyplň dotazník
+            </p>
+            <button
+              onClick={() => setOnboardingOpen(true)}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium"
+            >
+              Vyplnit dotazník
+            </button>
+          </motion.div>
+        </div>
+
+        <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background safe-top">
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
         <motion.div
@@ -80,9 +111,6 @@ const Map = () => {
           ))}
         </div>
       </motion.div>
-
-      {/* Onboarding Drawer */}
-      <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
     </div>
   );
 };

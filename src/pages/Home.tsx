@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { Dumbbell, Flame, Clock, Trophy } from 'lucide-react';
+import { Dumbbell, Flame, Clock, Trophy, Lock } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -18,6 +18,8 @@ const Home = () => {
   const { profile } = useUserProfile();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
+  const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -31,6 +33,14 @@ const Home = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
+  };
+
+  const handleStartTraining = () => {
+    if (!isOnboardingComplete) {
+      setOnboardingOpen(true);
+    } else {
+      // TODO: Start training logic
+    }
   };
 
   return (
@@ -72,15 +82,30 @@ const Home = () => {
         {/* Quick Action Card */}
         <motion.div
           variants={itemVariants}
-          className="bg-primary rounded-2xl p-6 text-primary-foreground shadow-primary"
+          onClick={handleStartTraining}
+          className={`rounded-2xl p-6 shadow-primary cursor-pointer transition-all ${
+            isOnboardingComplete 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-muted text-muted-foreground'
+          }`}
         >
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold mb-1">Začít trénink</h2>
-              <p className="text-primary-foreground/80 text-sm">Vyber si cvičení a pusť se do toho!</p>
+              <p className={`text-sm ${isOnboardingComplete ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                {isOnboardingComplete 
+                  ? 'Vyber si cvičení a pusť se do toho!' 
+                  : 'Nejdříve vyplň dotazník'}
+              </p>
             </div>
-            <div className="w-14 h-14 bg-primary-foreground/20 rounded-2xl flex items-center justify-center">
-              <Dumbbell className="w-7 h-7" />
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+              isOnboardingComplete ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20'
+            }`}>
+              {isOnboardingComplete ? (
+                <Dumbbell className="w-7 h-7" />
+              ) : (
+                <Lock className="w-7 h-7" />
+              )}
             </div>
           </div>
         </motion.div>
