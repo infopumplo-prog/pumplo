@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import PageTransition from '@/components/PageTransition';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -35,6 +36,7 @@ const Profile = () => {
   };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background safe-top">
       {/* Onboarding Warning */}
       {profile && !profile.onboarding_completed && (
@@ -133,6 +135,7 @@ const Profile = () => {
       {/* Onboarding Drawer */}
       <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
     </div>
+    </PageTransition>
   );
 };
 

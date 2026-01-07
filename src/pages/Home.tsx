@@ -7,6 +7,7 @@ import { Dumbbell, Flame, Clock, Trophy, Lock, Shield } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import PageTransition from '@/components/PageTransition';
 
 const statCards = [
   { icon: Flame, label: 'Spálené kalorie', value: '0', color: 'text-warning' },
@@ -45,6 +46,7 @@ const Home = () => {
   };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background safe-top">
       {/* Header */}
       <div className="gradient-hero px-6 pt-8 pb-6">
@@ -158,6 +160,7 @@ const Home = () => {
       {/* Onboarding Drawer */}
       <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
     </div>
+    </PageTransition>
   );
 };
 

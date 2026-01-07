@@ -15,6 +15,7 @@ import { Gym, OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
+import PageTransition from '@/components/PageTransition';
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -116,6 +117,7 @@ const Map = () => {
 
   if (!isOnboardingComplete) {
     return (
+      <PageTransition>
       <div className="min-h-screen bg-background safe-top">
         <div className="pt-4">
           <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
@@ -145,10 +147,12 @@ const Map = () => {
 
         <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
       </div>
+      </PageTransition>
     );
   }
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background safe-top pb-24">
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
@@ -267,6 +271,7 @@ const Map = () => {
         </DrawerContent>
       </Drawer>
     </div>
+    </PageTransition>
   );
 };
 
