@@ -22,8 +22,8 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   const markerRef = useRef<L.Marker | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // Default center (Slovakia)
-  const defaultCenter: [number, number] = [48.669, 19.699];
+  // Default center (Czechia)
+  const defaultCenter: [number, number] = [49.8, 15.5];
   const initialCenter = latitude && longitude ? [latitude, longitude] as [number, number] : defaultCenter;
   const initialZoom = latitude && longitude ? 15 : 7;
 
@@ -105,7 +105,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
         className="w-full h-64 rounded-lg overflow-hidden border border-border"
       />
       <p className="text-xs text-muted-foreground mt-2 px-1">
-        Kliknite na mapu pre výber lokácie
+        Klikněte na mapu pro výběr lokace
       </p>
     </div>
   );

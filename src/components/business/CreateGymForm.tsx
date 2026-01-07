@@ -13,7 +13,7 @@ import LocationPicker from './LocationPicker';
 import { useGym, OpeningHours } from '@/hooks/useGym';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Názov musí mať aspoň 2 znaky'),
+  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
   description: z.string().optional(),
   address: z.string().optional(),
 });
@@ -21,13 +21,13 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const DAYS = [
-  { key: 'monday', label: 'Pondelok' },
-  { key: 'tuesday', label: 'Utorok' },
-  { key: 'wednesday', label: 'Streda' },
-  { key: 'thursday', label: 'Štvrtok' },
-  { key: 'friday', label: 'Piatok' },
+  { key: 'monday', label: 'Pondělí' },
+  { key: 'tuesday', label: 'Úterý' },
+  { key: 'wednesday', label: 'Středa' },
+  { key: 'thursday', label: 'Čtvrtek' },
+  { key: 'friday', label: 'Pátek' },
   { key: 'saturday', label: 'Sobota' },
-  { key: 'sunday', label: 'Nedeľa' },
+  { key: 'sunday', label: 'Neděle' },
 ];
 
 const CreateGymForm = () => {
@@ -73,15 +73,15 @@ const CreateGymForm = () => {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Základné informácie</CardTitle>
+          <CardTitle className="text-lg">Základní informace</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Názov posilňovne *</Label>
+            <Label htmlFor="name">Název posilovny *</Label>
             <Input
               id="name"
               {...register('name')}
-              placeholder="Napr. FitZone Gym"
+              placeholder="Např. FitZone Gym"
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -93,7 +93,7 @@ const CreateGymForm = () => {
             <Textarea
               id="description"
               {...register('description')}
-              placeholder="Popíšte svoju posilňovňu..."
+              placeholder="Popište svou posilovnu..."
               rows={3}
             />
           </div>
@@ -103,7 +103,7 @@ const CreateGymForm = () => {
             <Input
               id="address"
               {...register('address')}
-              placeholder="Napr. Hlavná 123, Bratislava"
+              placeholder="Např. Hlavní 123, Praha"
             />
           </div>
         </CardContent>
@@ -111,7 +111,7 @@ const CreateGymForm = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Lokácia na mape *</CardTitle>
+          <CardTitle className="text-lg">Lokace na mapě *</CardTitle>
         </CardHeader>
         <CardContent>
           <LocationPicker
@@ -119,7 +119,7 @@ const CreateGymForm = () => {
           />
           {location && (
             <p className="text-sm text-muted-foreground mt-2">
-              Vybraná pozícia: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+              Vybraná pozice: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
             </p>
           )}
         </CardContent>
@@ -127,34 +127,36 @@ const CreateGymForm = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Otváracie hodiny</CardTitle>
+          <CardTitle className="text-lg">Otevírací hodiny</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {DAYS.map(day => (
-            <div key={day.key} className="flex items-center gap-3">
-              <div className="w-24 text-sm font-medium">{day.label}</div>
-              <Switch
-                checked={!openingHours[day.key]?.closed}
-                onCheckedChange={(checked) => updateOpeningHours(day.key, 'closed', !checked)}
-              />
+            <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{day.label}</span>
+                <Switch
+                  checked={!openingHours[day.key]?.closed}
+                  onCheckedChange={(checked) => updateOpeningHours(day.key, 'closed', !checked)}
+                />
+              </div>
               {!openingHours[day.key]?.closed ? (
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex items-center gap-2">
                   <Input
                     type="time"
                     value={openingHours[day.key]?.open || '06:00'}
                     onChange={(e) => updateOpeningHours(day.key, 'open', e.target.value)}
-                    className="w-28"
+                    className="flex-1"
                   />
                   <span className="text-muted-foreground">-</span>
                   <Input
                     type="time"
                     value={openingHours[day.key]?.close || '22:00'}
                     onChange={(e) => updateOpeningHours(day.key, 'close', e.target.value)}
-                    className="w-28"
+                    className="flex-1"
                   />
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">Zatvorené</span>
+                <span className="text-sm text-muted-foreground">Zavřeno</span>
               )}
             </div>
           ))}
@@ -169,10 +171,10 @@ const CreateGymForm = () => {
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Vytváranie...
+            Vytvářím...
           </>
         ) : (
-          'Vytvoriť posilňovňu'
+          'Vytvořit posilovnu'
         )}
       </Button>
     </form>

@@ -35,10 +35,10 @@ const GymSettings = () => {
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa odstrániť posilňovňu');
+      toast.error('Nepodařilo se odstranit posilovnu');
       setIsDeleting(false);
     } else {
-      toast.success('Posilňovňa bola odstránená');
+      toast.success('Posilovna byla odstraněna');
       await refetch();
       navigate('/business');
     }
@@ -60,14 +60,14 @@ const GymSettings = () => {
         <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
-            Nemáte vytvorený profil posilňovne
+            Nemáte vytvořený profil posilovny
           </AlertTitle>
           <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Pre prístup k nastaveniam musíte mať vytvorený profil posilňovne.
+            Pro přístup k nastavení musíte mít vytvořený profil posilovny.
           </AlertDescription>
         </Alert>
         <Button asChild className="w-full mt-4">
-          <Link to="/business">Vytvoriť profil</Link>
+          <Link to="/business">Vytvořit profil</Link>
         </Button>
       </BusinessLayout>
     );
@@ -76,14 +76,14 @@ const GymSettings = () => {
   return (
     <BusinessLayout>
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Nastavenia</h2>
+        <h2 className="text-lg font-semibold">Nastavení</h2>
 
         {/* Danger Zone */}
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="text-destructive">Nebezpečná zóna</CardTitle>
             <CardDescription>
-              Tieto akcie sú nezvratné. Buďte opatrní.
+              Tyto akce jsou nevratné. Buďte opatrní.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -91,19 +91,19 @@ const GymSettings = () => {
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full gap-2">
                   <Trash2 className="w-4 h-4" />
-                  Odstrániť posilňovňu
+                  Odstranit posilovnu
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Ste si istí?</AlertDialogTitle>
+                  <AlertDialogTitle>Jste si jistí?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Táto akcia je nezvratná. Váš profil posilňovne "{gym.name}" bude 
-                    permanentne odstránený spolu so všetkými strojmi.
+                    Tato akce je nevratná. Váš profil posilovny "{gym.name}" bude 
+                    trvale odstraněn spolu se všemi stroji.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Zrušiť</AlertDialogCancel>
+                  <AlertDialogCancel>Zrušit</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={handleDeleteGym}
                     disabled={isDeleting}
@@ -112,10 +112,10 @@ const GymSettings = () => {
                     {isDeleting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Odstraňujem...
+                        Odstraňuji...
                       </>
                     ) : (
-                      'Odstrániť'
+                      'Odstranit'
                     )}
                   </AlertDialogAction>
                 </AlertDialogFooter>
