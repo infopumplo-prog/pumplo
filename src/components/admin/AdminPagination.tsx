@@ -1,12 +1,5 @@
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface AdminPaginationProps {
   currentPage: number;
@@ -60,43 +53,49 @@ const AdminPagination = ({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex flex-col gap-2 items-center pb-24">
+    <div className="flex flex-col gap-3 items-center pb-24">
       <p className="text-sm text-muted-foreground">
         {startItem}-{endItem} z {totalItems}
       </p>
-      <Pagination>
-        <PaginationContent className="flex-wrap justify-center">
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
-              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-            />
-          </PaginationItem>
-          
-          {getPageNumbers().map((page, index) => (
-            <PaginationItem key={index}>
-              {page === 'ellipsis' ? (
-                <PaginationEllipsis />
-              ) : (
-                <PaginationLink
-                  onClick={() => onPageChange(page)}
-                  isActive={currentPage === page}
-                  className="cursor-pointer"
-                >
-                  {page}
-                </PaginationLink>
-              )}
-            </PaginationItem>
-          ))}
-          
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
-              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="h-9 w-9"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        {getPageNumbers().map((page, index) => (
+          page === 'ellipsis' ? (
+            <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+              •••
+            </span>
+          ) : (
+            <Button
+              key={page}
+              variant={currentPage === page ? 'default' : 'ghost'}
+              size="icon"
+              onClick={() => onPageChange(page)}
+              className="h-9 w-9"
+            >
+              {page}
+            </Button>
+          )
+        ))}
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="h-9 w-9"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };

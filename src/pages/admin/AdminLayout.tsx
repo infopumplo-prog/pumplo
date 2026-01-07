@@ -66,22 +66,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="flex flex-col items-center gap-1 px-4 py-2 relative"
+                  className={`flex flex-col items-center gap-1 px-4 py-2 relative rounded-xl transition-colors ${
+                    isActive ? 'bg-primary/10' : ''
+                  }`}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="admin-nav-indicator"
-                      className="absolute inset-0 bg-primary/10 rounded-xl"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
                   <item.icon 
-                    className={`w-5 h-5 relative z-10 transition-colors ${
+                    className={`w-5 h-5 transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`} 
                   />
                   <span 
-                    className={`text-xs font-medium relative z-10 transition-colors ${
+                    className={`text-xs font-medium transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`}
                   >
