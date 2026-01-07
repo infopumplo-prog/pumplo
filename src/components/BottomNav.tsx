@@ -28,8 +28,7 @@ const BottomNav = () => {
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute inset-0 bg-primary/10 rounded-xl"
-                    style={{ width: `${100 / navItems.length}%` }}
+                    className="absolute inset-2 bg-primary/10 rounded-xl"
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
