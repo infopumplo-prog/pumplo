@@ -79,6 +79,93 @@ export type Database = {
           },
         ]
       }
+      gym_machines: {
+        Row: {
+          created_at: string
+          gym_id: string
+          id: string
+          machine_id: string
+          max_weight_kg: number | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gym_id: string
+          id?: string
+          machine_id: string
+          max_weight_kg?: number | null
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gym_id?: string
+          id?: string
+          machine_id?: string
+          max_weight_kg?: number | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gym_machines_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gym_machines_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gyms: {
+        Row: {
+          address: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          latitude: number
+          longitude: number
+          name: string
+          opening_hours: Json
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          latitude: number
+          longitude: number
+          name: string
+          opening_hours?: Json
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          opening_hours?: Json
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       machines: {
         Row: {
           created_at: string
