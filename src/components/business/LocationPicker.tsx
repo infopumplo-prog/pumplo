@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -26,33 +26,34 @@ const MapClickHandler = ({ onLocationChange }: { onLocationChange: (lat: number,
   return null;
 };
 
+const SetViewOnMount = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+        },
+        () => {
+          // Keep default center if geolocation fails
+        }
+      );
+    }
+  }, [map]);
+  
+  return null;
+};
+
 const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
   const [position, setPosition] = useState<[number, number] | null>(
     latitude && longitude ? [latitude, longitude] : null
   );
-  const mapRef = useRef<L.Map | null>(null);
 
   const handleLocationChange = (lat: number, lng: number) => {
     setPosition([lat, lng]);
     onLocationChange(lat, lng);
   };
-
-  // Try to get user's location on mount if no position
-  useEffect(() => {
-    if (!position && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          if (mapRef.current) {
-            mapRef.current.setView([lat, lng], 13);
-          }
-        },
-        () => {
-          // Default to Slovakia center if geolocation fails
-        }
-      );
-    }
-  }, []);
 
   // Default center (Slovakia)
   const defaultCenter: [number, number] = [48.669, 19.699];
@@ -61,7 +62,6 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
   return (
     <div className="w-full h-64 rounded-lg overflow-hidden border border-border">
       <MapContainer
-        ref={mapRef}
         center={center}
         zoom={position ? 15 : 7}
         className="w-full h-full"
@@ -72,6 +72,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onLocationChange={handleLocationChange} />
+        {!position && <SetViewOnMount center={center} />}
         {position && <Marker position={position} />}
       </MapContainer>
       <p className="text-xs text-muted-foreground mt-2 px-1">
