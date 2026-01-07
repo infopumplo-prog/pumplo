@@ -26,21 +26,27 @@ const MapClickHandler = ({ onLocationChange }: { onLocationChange: (lat: number,
   return null;
 };
 
-const SetViewOnMount = ({ center }: { center: [number, number] }) => {
+const GeolocationHandler = () => {
   const map = useMap();
+  const [initialized, setInitialized] = useState(false);
   
   useEffect(() => {
+    if (initialized) return;
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+          setInitialized(true);
         },
         () => {
-          // Keep default center if geolocation fails
+          setInitialized(true);
         }
       );
+    } else {
+      setInitialized(true);
     }
-  }, [map]);
+  }, [map, initialized]);
   
   return null;
 };
@@ -72,7 +78,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onLocationChange={handleLocationChange} />
-        {!position && <SetViewOnMount center={center} />}
+        {!position && <GeolocationHandler />}
         {position && <Marker position={position} />}
       </MapContainer>
       <p className="text-xs text-muted-foreground mt-2 px-1">
