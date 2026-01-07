@@ -1,13 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
@@ -16,74 +13,80 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'pumplo_auth';
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Demo login - in production this would call a real API
-    if (email && password.length >= 6) {
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        email,
-        name: email.split('@')[0],
-      };
-      setUser(newUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-      return { success: true };
-    }
-    
-    return { success: false, error: 'Neplatné přihlašovací údaje' };
-  };
-
-  const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    if (!email.includes('@')) {
-      return { success: false, error: 'Neplatná emailová adresa' };
-    }
-    
-    if (password.length < 6) {
-      return { success: false, error: 'Heslo musí mít alespoň 6 znaků' };
-    }
-    
-    const newUser: User = {
-      id: crypto.randomUUID(),
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      name,
-    };
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+      password,
+    });
+
+    if (error) {
+      if (error.message.includes('Invalid login credentials')) {
+        return { success: false, error: 'Neplatné přihlašovací údaje' };
+      }
+      return { success: false, error: error.message };
+    }
+
     return { success: true };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+  const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name,
+        },
+      },
+    });
+
+    if (error) {
+      if (error.message.includes('User already registered')) {
+        return { success: false, error: 'Uživatel s tímto emailem již existuje' };
+      }
+      if (error.message.includes('Password should be at least 6 characters')) {
+        return { success: false, error: 'Heslo musí mít alespoň 6 znaků' };
+      }
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

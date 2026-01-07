@@ -57,7 +57,7 @@ const Profile = () => {
               <User className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-foreground truncate">{user?.name}</h2>
+              <h2 className="text-lg font-bold text-foreground truncate">{user?.user_metadata?.name}</h2>
               <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
