@@ -25,14 +25,15 @@ const BottomNav = () => {
                 to={item.path}
                 className="flex flex-col items-center justify-center flex-1 h-full relative group py-2"
               >
-                <div className="relative flex flex-col items-center justify-center">
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute -inset-1.5 bg-primary/10 rounded-xl"
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  )}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-primary/10 rounded-xl"
+                    style={{ width: `${100 / navItems.length}%` }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  />
+                )}
+                <div className="relative flex flex-col items-center justify-center z-10">
                   <Icon 
                     className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
                       isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
