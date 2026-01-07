@@ -185,7 +185,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
   return (
     <div 
       ref={mapContainerRef} 
-      className="w-full h-80 rounded-2xl overflow-hidden border border-border shadow-sm"
+      className="w-full h-80 rounded-2xl overflow-hidden border border-border shadow-sm relative z-0"
     />
   );
 };

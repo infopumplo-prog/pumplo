@@ -30,7 +30,8 @@ const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymPr
   return (
     <div className={cn(
       "overflow-hidden bg-background",
-      !isDrawer && "rounded-xl border shadow-sm"
+      !isDrawer && "rounded-xl border shadow-sm",
+      isDrawer && "rounded-t-[10px]"
     )}>
       {/* Cover Photo with Gradient */}
       <div className={cn("relative", isDrawer ? "h-48" : "h-40")}>
