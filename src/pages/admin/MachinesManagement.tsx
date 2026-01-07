@@ -1,24 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+  DrawerClose,
+} from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -26,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Pencil, Trash2, Plus, Search, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
+import MobileCard from '@/components/admin/MobileCard';
+import AdminPagination from '@/components/admin/AdminPagination';
 
 interface Machine {
   id: string;
@@ -53,13 +48,16 @@ const MUSCLE_GROUPS = [
   'core', 'legs', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'cardio',
 ];
 
+const ITEMS_PER_PAGE = 100;
+
 const MachinesManagement = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -86,7 +84,28 @@ const MachinesManagement = () => {
     fetchMachines();
   }, []);
 
-  const openAddDialog = () => {
+  // Filter machines based on search and type
+  const filteredMachines = useMemo(() => {
+    return machines.filter((machine) => {
+      const matchesSearch = machine.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || machine.equipment_type === filterType;
+      return matchesSearch && matchesType;
+    });
+  }, [machines, searchTerm, filterType]);
+
+  // Paginate filtered results
+  const totalPages = Math.ceil(filteredMachines.length / ITEMS_PER_PAGE);
+  const paginatedMachines = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredMachines.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredMachines, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType]);
+
+  const openAddDrawer = () => {
     setEditingMachine(null);
     setForm({
       name: '',
@@ -94,10 +113,10 @@ const MachinesManagement = () => {
       equipment_type: 'machine',
       target_muscles: [],
     });
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
-  const openEditDialog = (machine: Machine) => {
+  const openEditDrawer = (machine: Machine) => {
     setEditingMachine(machine);
     setForm({
       name: machine.name,
@@ -105,7 +124,7 @@ const MachinesManagement = () => {
       equipment_type: machine.equipment_type,
       target_muscles: machine.target_muscles || [],
     });
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
   const handleSave = async () => {
@@ -145,11 +164,12 @@ const MachinesManagement = () => {
       toast.success('Stroj pridaný');
     }
 
-    setDialogOpen(false);
+    setDrawerOpen(false);
     fetchMachines();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     const { error } = await supabase.from('machines').delete().eq('id', id);
 
     if (error) {
@@ -170,26 +190,21 @@ const MachinesManagement = () => {
     }));
   };
 
-  const filteredMachines = machines.filter((machine) => {
-    const matchesSearch = machine.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || machine.equipment_type === filterType;
-    return matchesSearch && matchesType;
-  });
-
   return (
     <AdminLayout>
       <div className="space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Stroje</h2>
-          <Button onClick={openAddDialog} size="sm">
+          <h2 className="text-xl font-bold">Stroje</h2>
+          <Button onClick={openAddDrawer} size="sm">
             <Plus className="w-4 h-4 mr-1" />
             Pridať
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        <div className="space-y-2">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Hľadať stroj..."
@@ -199,7 +214,7 @@ const MachinesManagement = () => {
             />
           </div>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger>
               <SelectValue placeholder="Typ" />
             </SelectTrigger>
             <SelectContent>
@@ -213,96 +228,64 @@ const MachinesManagement = () => {
           </Select>
         </div>
 
-        {/* Machines Table */}
-        <Card className="overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Názov</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Svaly</TableHead>
-                    <TableHead className="text-right">Akcie</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMachines.map((machine) => (
-                    <TableRow key={machine.id}>
-                      <TableCell>
-                        <p className="font-medium">{machine.name}</p>
-                        {machine.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {machine.description}
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className="px-2 py-1 rounded-full text-xs bg-muted">
-                          {EQUIPMENT_TYPES.find((t) => t.value === machine.equipment_type)?.label ||
-                            machine.equipment_type}
+        {/* Mobile Card List */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {paginatedMachines.map((machine) => (
+              <MobileCard key={machine.id} onClick={() => openEditDrawer(machine)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{machine.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-muted">
+                        {EQUIPMENT_TYPES.find((t) => t.value === machine.equipment_type)?.label}
+                      </span>
+                      {machine.target_muscles.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {machine.target_muscles.length} sval(ov)
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {machine.target_muscles.slice(0, 3).map((muscle) => (
-                            <span
-                              key={muscle}
-                              className="px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary"
-                            >
-                              {muscle}
-                            </span>
-                          ))}
-                          {machine.target_muscles.length > 3 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{machine.target_muscles.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(machine)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(machine.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </Card>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={(e) => handleDelete(machine.id, e)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </div>
+              </MobileCard>
+            ))}
+          </div>
+        )}
 
-        <p className="text-sm text-muted-foreground text-center">
-          {filteredMachines.length} z {machines.length} strojov
-        </p>
+        {/* Pagination */}
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredMachines.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
 
-        {/* Add/Edit Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
+        {/* Add/Edit Drawer */}
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader>
+              <DrawerTitle>
                 {editingMachine ? 'Upraviť stroj' : 'Pridať stroj'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4 space-y-4 overflow-y-auto">
               <div>
                 <Label>Názov</Label>
                 <Input
@@ -355,12 +338,17 @@ const MachinesManagement = () => {
                   ))}
                 </div>
               </div>
+            </div>
+            <DrawerFooter>
               <Button onClick={handleSave} className="w-full">
                 {editingMachine ? 'Uložiť zmeny' : 'Pridať stroj'}
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              <DrawerClose asChild>
+                <Button variant="outline">Zrušiť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       </div>
     </AdminLayout>
   );

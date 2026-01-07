@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      exercises: {
+        Row: {
+          category: string
+          contraindicated_injuries: string[]
+          created_at: string
+          description: string | null
+          difficulty: number
+          equipment: string[]
+          id: string
+          machine_id: string | null
+          movement_pattern: string | null
+          name: string
+          primary_muscles: string[]
+          requires_machine: boolean
+          secondary_muscles: string[]
+          updated_at: string
+          video_path: string | null
+          workout_split: string[]
+        }
+        Insert: {
+          category: string
+          contraindicated_injuries?: string[]
+          created_at?: string
+          description?: string | null
+          difficulty?: number
+          equipment?: string[]
+          id?: string
+          machine_id?: string | null
+          movement_pattern?: string | null
+          name: string
+          primary_muscles?: string[]
+          requires_machine?: boolean
+          secondary_muscles?: string[]
+          updated_at?: string
+          video_path?: string | null
+          workout_split?: string[]
+        }
+        Update: {
+          category?: string
+          contraindicated_injuries?: string[]
+          created_at?: string
+          description?: string | null
+          difficulty?: number
+          equipment?: string[]
+          id?: string
+          machine_id?: string | null
+          movement_pattern?: string | null
+          name?: string
+          primary_muscles?: string[]
+          requires_machine?: boolean
+          secondary_muscles?: string[]
+          updated_at?: string
+          video_path?: string | null
+          workout_split?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machines: {
         Row: {
           created_at: string
