@@ -30,7 +30,11 @@ const DAYS = [
   { key: 'sunday', label: 'Neděle' },
 ];
 
-const CreateGymForm = () => {
+interface CreateGymFormProps {
+  onSuccess?: () => void;
+}
+
+const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
   const { createGym } = useGym();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -58,7 +62,7 @@ const CreateGymForm = () => {
     }
 
     setIsSubmitting(true);
-    await createGym({
+    const result = await createGym({
       name: data.name,
       description: data.description,
       address: data.address,
@@ -67,6 +71,10 @@ const CreateGymForm = () => {
       opening_hours: openingHours,
     });
     setIsSubmitting(false);
+    
+    if (result.success) {
+      onSuccess?.();
+    }
   };
 
   return (

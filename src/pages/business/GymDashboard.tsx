@@ -8,7 +8,7 @@ import { useGym } from '@/hooks/useGym';
 import { useState } from 'react';
 
 const GymDashboard = () => {
-  const { gym, isLoading } = useGym();
+  const { gym, isLoading, refetch } = useGym();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   if (isLoading) {
@@ -55,7 +55,10 @@ const GymDashboard = () => {
           >
             ← Zpět
           </Button>
-          <CreateGymForm />
+          <CreateGymForm onSuccess={() => {
+            refetch();
+            setShowCreateForm(false);
+          }} />
         </div>
       </BusinessLayout>
     );
