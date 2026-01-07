@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Dumbbell, Flame, Clock, Trophy } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
+import OnboardingWarning from '@/components/OnboardingWarning';
 
 const statCards = [
   { icon: Flame, label: 'Spálené kalorie', value: '0', color: 'text-warning' },
@@ -11,6 +13,7 @@ const statCards = [
 
 const Home = () => {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -50,6 +53,9 @@ const Home = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Onboarding Warning */}
+      {profile && !profile.onboarding_completed && <OnboardingWarning />}
 
       {/* Content */}
       <motion.div

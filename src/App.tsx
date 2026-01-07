@@ -4,11 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
 import Profile from "@/pages/Profile";
+import Onboarding from "@/pages/Onboarding";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,8 +18,9 @@ const queryClient = new QueryClient();
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
+  const { profile, isLoading: profileLoading } = useUserProfile();
   
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -27,6 +30,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Redirect to onboarding if not completed (but allow access to onboarding page)
+  if (profile && !profile.onboarding_completed && window.location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
   
   return <>{children}</>;
@@ -60,6 +68,14 @@ const AppRoutes = () => (
           <Auth />
         </AuthRoute>
       } 
+    />
+    <Route
+      path="/onboarding"
+      element={
+        <ProtectedRoute>
+          <Onboarding />
+        </ProtectedRoute>
+      }
     />
     <Route
       element={

@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Button } from '@/components/ui/button';
 import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
+import OnboardingWarning from '@/components/OnboardingWarning';
 
 const menuItems = [
   { icon: Settings, label: 'Nastavení' },
@@ -11,6 +13,7 @@ const menuItems = [
 
 const Profile = () => {
   const { user, logout } = useAuth();
+  const { profile } = useUserProfile();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -29,6 +32,13 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background safe-top">
+      {/* Onboarding Warning */}
+      {profile && !profile.onboarding_completed && (
+        <div className="pt-4">
+          <OnboardingWarning />
+        </div>
+      )}
+
       {/* Header */}
       <div className="gradient-hero px-6 pt-8 pb-6">
         <motion.h1

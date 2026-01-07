@@ -1,10 +1,21 @@
 import { motion } from 'framer-motion';
 import { MapPin, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import OnboardingWarning from '@/components/OnboardingWarning';
 
 const Map = () => {
+  const { profile } = useUserProfile();
+
   return (
     <div className="min-h-screen bg-background safe-top">
+      {/* Onboarding Warning */}
+      {profile && !profile.onboarding_completed && (
+        <div className="pt-4">
+          <OnboardingWarning />
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
         <motion.div
