@@ -12,7 +12,7 @@ const BottomNav = () => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 safe-bottom z-50 px-4 pb-2">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6">
       <nav className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg max-w-md mx-auto">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
