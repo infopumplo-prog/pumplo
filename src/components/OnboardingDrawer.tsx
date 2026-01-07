@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import pumploLogo from '@/assets/pumplo-logo.png';
@@ -71,9 +71,13 @@ const MOTIVATIONS = [
 
 const TOTAL_STEPS = 8;
 
-const Onboarding = () => {
-  const navigate = useNavigate();
-  const { profile, updateProfile, isLoading } = useUserProfile();
+interface OnboardingDrawerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
+  const { profile, updateProfile } = useUserProfile();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -115,17 +119,13 @@ const Onboarding = () => {
 
   const handleGoalClick = (goalId: string) => {
     if (primaryGoal === goalId) {
-      // If clicking the primary goal, move it to secondary and clear primary
       setSecondaryGoals(prev => prev.includes(goalId) ? prev.filter(g => g !== goalId) : [...prev, goalId]);
       setPrimaryGoal(null);
     } else if (secondaryGoals.includes(goalId)) {
-      // If it's a secondary goal, remove it
       setSecondaryGoals(prev => prev.filter(g => g !== goalId));
     } else if (!primaryGoal) {
-      // If no primary goal, set this as primary
       setPrimaryGoal(goalId);
     } else {
-      // Otherwise, add as secondary
       setSecondaryGoals(prev => [...prev, goalId]);
     }
   };
@@ -172,12 +172,14 @@ const Onboarding = () => {
       motivations,
       current_step: currentStep,
     });
-    toast({ title: 'Uloženo', description: 'Tvůj pokrok byl uložen.' });
   };
 
-  const handleSaveAndExit = async () => {
-    await saveProgress();
-    navigate('/');
+  const handleClose = async (isOpen: boolean) => {
+    if (!isOpen) {
+      await saveProgress();
+      toast({ title: 'Uloženo', description: 'Tvůj pokrok byl uložen.' });
+    }
+    onOpenChange(isOpen);
   };
 
   const handleNext = async () => {
@@ -213,16 +215,8 @@ const Onboarding = () => {
       current_step: TOTAL_STEPS,
     });
     toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen.' });
-    navigate('/');
+    onOpenChange(false);
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -507,69 +501,66 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-4 py-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={handleSaveAndExit} className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-          <img src={pumploLogo} alt="Pumplo" className="w-10 h-10 object-contain" />
-          <button onClick={handleSaveAndExit} className="flex items-center gap-1 text-sm text-primary">
-            <Save className="w-4 h-4" />
-            Uložit
-          </button>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Krok {currentStep + 1} z {TOTAL_STEPS}</span>
-            <span className="font-medium text-primary">{Math.round(progress)}%</span>
+    <Drawer open={open} onOpenChange={handleClose}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerTitle className="sr-only">Dotazník</DrawerTitle>
+        
+        {/* Header with logo and progress */}
+        <div className="px-4 pt-2 pb-4 border-b border-border">
+          <div className="flex justify-center mb-4">
+            <img src={pumploLogo} alt="Pumplo" className="w-16 h-16 object-contain" />
           </div>
-          <Progress value={progress} className="h-2" />
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Krok {currentStep + 1} z {TOTAL_STEPS}</span>
+              <span className="font-medium text-primary">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderStep()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Navigation */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-4 safe-bottom">
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handlePrev}
-            disabled={currentStep === 0}
-            className="flex-1"
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Zpět
-          </Button>
-          {currentStep < TOTAL_STEPS - 1 ? (
-            <Button onClick={handleNext} className="flex-1">
-              Další
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={handleComplete} className="flex-1 bg-green-500 hover:bg-green-600">
-              Dokončit
-            </Button>
-          )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderStep()}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
-    </div>
+
+        {/* Navigation */}
+        <div className="border-t border-border px-4 pt-4 pb-8">
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handlePrev}
+              disabled={currentStep === 0}
+              className="flex-1"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Zpět
+            </Button>
+            {currentStep < TOTAL_STEPS - 1 ? (
+              <Button onClick={handleNext} className="flex-1">
+                Další
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleComplete} className="flex-1 bg-green-500 hover:bg-green-600">
+                Dokončit
+              </Button>
+            )}
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 };
 
-export default Onboarding;
+export default OnboardingDrawer;
