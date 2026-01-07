@@ -21,7 +21,7 @@ import LocationPicker from './LocationPicker';
 import { useGym, Gym, OpeningHours } from '@/hooks/useGym';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Názov musí mať aspoň 2 znaky'),
+  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
   description: z.string().optional(),
   address: z.string().optional(),
 });
@@ -30,10 +30,10 @@ type FormData = z.infer<typeof formSchema>;
 
 const DAYS = [
   { key: 'monday', label: 'Po' },
-  { key: 'tuesday', label: 'Ut' },
+  { key: 'tuesday', label: 'Út' },
   { key: 'wednesday', label: 'St' },
-  { key: 'thursday', label: 'Št' },
-  { key: 'friday', label: 'Pi' },
+  { key: 'thursday', label: 'Čt' },
+  { key: 'friday', label: 'Pá' },
   { key: 'saturday', label: 'So' },
   { key: 'sunday', label: 'Ne' },
 ];
@@ -102,7 +102,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                 <h2 className="font-semibold text-lg">{gym.name}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={gym.is_published ? 'default' : 'secondary'}>
-                    {gym.is_published ? 'Verejná' : 'Súkromná'}
+                    {gym.is_published ? 'Veřejná' : 'Soukromá'}
                   </Badge>
                 </div>
               </div>
@@ -116,12 +116,12 @@ const GymProfile = ({ gym }: GymProfileProps) => {
               {gym.is_published ? (
                 <>
                   <EyeOff className="w-4 h-4" />
-                  Skryť
+                  Skrýt
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4" />
-                  Zverejniť
+                  Zveřejnit
                 </>
               )}
             </Button>
@@ -141,13 +141,13 @@ const GymProfile = ({ gym }: GymProfileProps) => {
             </DrawerTrigger>
             <DrawerContent className="max-h-[90vh]">
               <DrawerHeader>
-                <DrawerTitle>Upraviť posilňovňu</DrawerTitle>
+                <DrawerTitle>Upravit posilovnu</DrawerTitle>
               </DrawerHeader>
               <div className="px-4 pb-8 overflow-y-auto">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="space-y-4">
+                    <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Názov posilňovne</Label>
+                      <Label htmlFor="name">Název posilovny</Label>
                       <Input id="name" {...register('name')} />
                       {errors.name && (
                         <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -166,7 +166,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Lokácia na mape</Label>
+                    <Label>Lokace na mapě</Label>
                     <LocationPicker
                       latitude={location.lat}
                       longitude={location.lng}
@@ -174,24 +174,26 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                     />
                   </div>
 
-                  <div className="space-y-4">
-                    <Label>Otváracie hodiny</Label>
+                  <div className="space-y-3">
+                    <Label>Otevírací hodiny</Label>
                     {DAYS.map(day => (
-                      <div key={day.key} className="flex items-center gap-3">
-                        <div className="w-8 text-sm font-medium">{day.label}</div>
-                        <Switch
-                          checked={!openingHours[day.key]?.closed}
-                          onCheckedChange={(checked) => updateOpeningHoursField(day.key, 'closed', !checked)}
-                        />
+                      <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{day.label}</span>
+                          <Switch
+                            checked={!openingHours[day.key]?.closed}
+                            onCheckedChange={(checked) => updateOpeningHoursField(day.key, 'closed', !checked)}
+                          />
+                        </div>
                         {!openingHours[day.key]?.closed ? (
-                          <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-2">
                             <Input
                               type="time"
                               value={openingHours[day.key]?.open || '06:00'}
                               onChange={(e) => updateOpeningHoursField(day.key, 'open', e.target.value)}
                               className="flex-1"
                             />
-                            <span>-</span>
+                            <span className="text-muted-foreground">-</span>
                             <Input
                               type="time"
                               value={openingHours[day.key]?.close || '22:00'}
@@ -200,7 +202,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                             />
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Zatvorené</span>
+                          <span className="text-sm text-muted-foreground">Zavřeno</span>
                         )}
                       </div>
                     ))}
@@ -210,10 +212,10 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Ukladanie...
+                        Ukládám...
                       </>
                     ) : (
-                      'Uložiť zmeny'
+                      'Uložit změny'
                     )}
                   </Button>
                 </form>
@@ -239,17 +241,17 @@ const GymProfile = ({ gym }: GymProfileProps) => {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Otváracie hodiny
+            Otevírací hodiny
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="space-y-1.5 text-sm">
             {DAYS.map(day => (
-              <div key={day.key} className="flex justify-between">
+              <div key={day.key} className="flex justify-between py-1">
                 <span className="font-medium">{day.label}</span>
                 <span className="text-muted-foreground">
                   {hours[day.key]?.closed 
-                    ? 'Zatvorené' 
+                    ? 'Zavřeno' 
                     : `${hours[day.key]?.open || '-'} - ${hours[day.key]?.close || '-'}`
                   }
                 </span>

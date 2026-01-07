@@ -29,14 +29,14 @@ const GymDashboard = () => {
           <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800 dark:text-amber-200">
-              Nemáte vytvorený profil posilňovne
+              Nemáte vytvořený profil posilovny
             </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Vytvorte si profil svojej posilňovne, aby ste mohli spravovať stroje a zverejniť ju na mape.
+              Vytvořte si profil své posilovny, abyste mohli spravovat stroje a zveřejnit ji na mapě.
             </AlertDescription>
           </Alert>
           <Button onClick={() => setShowCreateForm(true)} className="w-full">
-            Vytvoriť profil posilňovne
+            Vytvořit profil posilovny
           </Button>
         </div>
       </BusinessLayout>
@@ -53,7 +53,7 @@ const GymDashboard = () => {
             onClick={() => setShowCreateForm(false)}
             className="mb-2"
           >
-            ← Späť
+            ← Zpět
           </Button>
           <CreateGymForm />
         </div>
