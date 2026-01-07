@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dumbbell, Flame, Clock, Trophy } from 'lucide-react';
+import pumploLogo from '@/assets/pumplo-logo.png';
 
 const statCards = [
   { icon: Flame, label: 'Spálené kalorie', value: '0', color: 'text-warning' },
@@ -31,12 +32,20 @@ const Home = () => {
       {/* Header */}
       <div className="gradient-hero px-6 pt-8 pb-6">
         <motion.div
+          className="flex items-center justify-between"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <p className="text-muted-foreground text-sm">Ahoj,</p>
-          <h1 className="text-2xl font-bold text-foreground">{user?.user_metadata?.name || 'Sportovče'} 💪</h1>
+          <div>
+            <p className="text-muted-foreground text-sm">Ahoj,</p>
+            <h1 className="text-2xl font-bold text-foreground">{user?.user_metadata?.name || 'Sportovče'} 💪</h1>
+          </div>
+          <img 
+            src={pumploLogo} 
+            alt="Pumplo" 
+            className="w-10 h-10 object-contain"
+          />
         </motion.div>
       </div>
 
