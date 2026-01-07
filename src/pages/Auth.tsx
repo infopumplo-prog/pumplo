@@ -12,7 +12,8 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +32,7 @@ const Auth = () => {
           setError(result.error || 'Přihlášení se nezdařilo');
         }
       } else {
-        const result = await register(email, password, name);
+        const result = await register(email, password, firstName, lastName);
         if (!result.success) {
           setError(result.error || 'Registrace se nezdařila');
         }
@@ -114,17 +115,30 @@ const Auth = () => {
               transition={{ duration: 0.2 }}
             >
               {mode === 'register' && (
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Jméno"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-12"
-                    required
-                  />
-                </div>
+                <>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Meno"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="pl-12"
+                      required
+                    />
+                  </div>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Priezvisko"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="pl-12"
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               <div className="relative">

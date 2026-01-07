@@ -10,10 +10,12 @@ import Index from "@/pages/Index";
 import Map from "@/pages/Map";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
+import Dashboard from "@/pages/admin/Dashboard";
+import UsersManagement from "@/pages/admin/UsersManagement";
+import MachinesManagement from "@/pages/admin/MachinesManagement";
 
 const queryClient = new QueryClient();
 
-// Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -32,7 +34,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Auth route wrapper (redirects if already logged in)
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -53,25 +54,15 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => (
   <Routes>
-    <Route 
-      path="/auth" 
-      element={
-        <AuthRoute>
-          <Auth />
-        </AuthRoute>
-      } 
-    />
-    <Route
-      element={
-        <ProtectedRoute>
-          <AppLayout />
-        </ProtectedRoute>
-      }
-    >
+    <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+    <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
       <Route path="/profile" element={<Profile />} />
     </Route>
+    <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+    <Route path="/admin/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
+    <Route path="/admin/machines" element={<ProtectedRoute><MachinesManagement /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { success: true };
   };
 
-  const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+  const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string }> => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -63,10 +63,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          name,
+          first_name: firstName,
+          last_name: lastName,
         },
       },
     });
+
+    if (!error && data.user) {
+      // Update profile with names
+      await supabase
+        .from('user_profiles')
+        .update({ first_name: firstName, last_name: lastName })
+        .eq('user_id', data.user.id);
+    }
 
     if (error) {
       if (error.message.includes('User already registered')) {
