@@ -16,6 +16,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 import PageTransition from '@/components/PageTransition';
+import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -31,7 +32,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 const Map = () => {
-  const { profile } = useUserProfile();
+  const { profile, isLoading: isProfileLoading } = useUserProfile();
   const { gyms, isLoading } = usePublishedGyms();
   const { favorites, toggleFavorite, isFavorite } = useFavoriteGyms();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -41,6 +42,10 @@ const Map = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  if (isProfileLoading) {
+    return <MapPageSkeleton />;
+  }
 
   // Get user location
   useEffect(() => {

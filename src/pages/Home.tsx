@@ -8,6 +8,7 @@ import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 
 const statCards = [
   { icon: Flame, label: 'Spálené kalorie', value: '0', color: 'text-warning' },
@@ -16,11 +17,15 @@ const statCards = [
 ];
 
 const Home = () => {
-  const { profile } = useUserProfile();
+  const { profile, isLoading } = useUserProfile();
   const { isAdmin } = useUserRole();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  if (isLoading) {
+    return <HomePageSkeleton />;
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
