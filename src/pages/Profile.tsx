@@ -7,11 +7,16 @@ import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList }
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 
 const Profile = () => {
   const { user, logout } = useAuth();
-  const { profile } = useUserProfile();
+  const { profile, isLoading } = useUserProfile();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  if (isLoading) {
+    return <ProfilePageSkeleton />;
+  }
 
   const menuItems = [
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
