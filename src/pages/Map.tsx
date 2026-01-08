@@ -43,10 +43,6 @@ const Map = () => {
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
-  if (isProfileLoading) {
-    return <MapPageSkeleton />;
-  }
-
   // Get user location
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -119,6 +115,11 @@ const Map = () => {
   const selectedGymIsOpen = selectedGym 
     ? isGymCurrentlyOpen(selectedGym.opening_hours as OpeningHours)
     : false;
+
+  // Early returns AFTER all hooks
+  if (isProfileLoading) {
+    return <MapPageSkeleton />;
+  }
 
   if (!isOnboardingComplete) {
     return (
