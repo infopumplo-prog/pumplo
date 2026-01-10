@@ -37,7 +37,7 @@ const getSnapPoints = () => {
   if (typeof window === 'undefined') return { collapsed: 500, half: 300, full: 60 };
   const vh = window.innerHeight;
   return {
-    collapsed: vh - BOTTOM_NAV_HEIGHT - 140, // Just handle + search visible
+    collapsed: vh - BOTTOM_NAV_HEIGHT - 100, // Just handle visible (lower default)
     half: vh * 0.45, // Half screen
     full: 60, // Almost full screen
   };

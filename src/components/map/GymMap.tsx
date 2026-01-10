@@ -73,17 +73,34 @@ const createUserIcon = () => {
   return L.divIcon({
     className: 'user-marker',
     html: `
-      <div style="
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: hsl(var(--primary));
-        border: 3px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      "></div>
+      <div style="position: relative; width: 32px; height: 32px;">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: hsl(var(--primary) / 0.3);
+          animation: userPulse 2s ease-in-out infinite;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: hsl(var(--primary));
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        "></div>
+      </div>
     `,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 };
 
