@@ -282,8 +282,36 @@ export const useWorkoutGenerator = () => {
       }
     }
 
-    // 7. No exercise found - skip slot
-    return { exercise: null, isFallback: true, fallbackReason: 'skipped' };
+    // 7. LAST RESORT: Pick ANY exercise for this role (never return null)
+    const { data: anyExercises } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('primary_role', role)
+      .limit(20);
+    
+    if (anyExercises && anyExercises.length > 0) {
+      // Filter out only used exercises
+      const available = anyExercises.filter(ex => !usedExerciseIds.includes(ex.id));
+      if (available.length > 0) {
+        const randomIndex = Math.floor(Math.random() * available.length);
+        return { 
+          exercise: available[randomIndex], 
+          isFallback: true, 
+          fallbackReason: 'any_available' 
+        };
+      }
+      // Even if all are used, still return one
+      const randomIndex = Math.floor(Math.random() * anyExercises.length);
+      return { 
+        exercise: anyExercises[randomIndex], 
+        isFallback: true, 
+        fallbackReason: 'any_available' 
+      };
+    }
+
+    // 8. Absolute fallback - should never happen but just in case
+    console.warn(`No exercises found for role: ${role}`);
+    return { exercise: null, isFallback: true, fallbackReason: 'no_exercises_in_db' };
   }, []);
 
   // Fetch day templates from database
