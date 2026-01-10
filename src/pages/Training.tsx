@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target } from 'lucide-react';
+import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -104,6 +104,25 @@ const Training = () => {
   const handleCompleteDay = async () => {
     await advanceToNextDay();
     setIsStartingWorkout(false);
+  };
+
+  const handleCancelPlan = async () => {
+    if (!plan) return;
+    
+    // Delete the current plan (exercises will cascade)
+    await supabase
+      .from('user_workout_exercises')
+      .delete()
+      .eq('plan_id', plan.id);
+    
+    await supabase
+      .from('user_workout_plans')
+      .delete()
+      .eq('id', plan.id);
+    
+    // Reset selection and refetch
+    setSelectedGoalId(null);
+    refetchPlan();
   };
 
   const handleSelectGym = () => {
@@ -360,9 +379,14 @@ const Training = () => {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-2xl font-bold">Trénink</h1>
-            <Button variant="ghost" size="icon" onClick={handleRegeneratePlan} disabled={isGenerating}>
-              <RefreshCw className={cn("w-5 h-5", isGenerating && "animate-spin")} />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={handleCancelPlan} title="Změnit cíl">
+                <X className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleRegeneratePlan} disabled={isGenerating} title="Přegenerovat plán">
+                <RefreshCw className={cn("w-5 h-5", isGenerating && "animate-spin")} />
+              </Button>
+            </div>
           </div>
           
           {/* Gym info */}
