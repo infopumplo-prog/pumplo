@@ -213,6 +213,7 @@ export type Database = {
           equipment_preference: string | null
           first_name: string | null
           gender: string | null
+          gym_license_count: number | null
           height_cm: number | null
           id: string
           injuries: string[] | null
@@ -236,6 +237,7 @@ export type Database = {
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
+          gym_license_count?: number | null
           height_cm?: number | null
           id?: string
           injuries?: string[] | null
@@ -259,6 +261,7 @@ export type Database = {
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
+          gym_license_count?: number | null
           height_cm?: number | null
           id?: string
           injuries?: string[] | null

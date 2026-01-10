@@ -22,6 +22,7 @@ export interface UserProfile {
   motivations: string[] | null;
   onboarding_completed: boolean;
   current_step: number;
+  gym_license_count: number;
   created_at: string;
   updated_at: string;
 }
