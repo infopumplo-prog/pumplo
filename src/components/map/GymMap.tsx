@@ -116,24 +116,34 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
       minZoom: 7,
       maxZoom: 18,
       attributionControl: false,
+      zoomControl: true,
     });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(map);
 
-    // Set view to show all of Czechia
+    // Set view to show all of Czechia centered
     map.setView(defaultCenter, 7);
-    
-    // Invalidate size after a short delay to fix gray tiles
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
 
     mapRef.current = map;
     setIsMapReady(true);
 
+    // Handle resize to fix gray tiles
+    const handleResize = () => {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Initial invalidate after mount
+    setTimeout(() => map.invalidateSize(), 200);
+    setTimeout(() => map.invalidateSize(), 500);
+
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -201,10 +211,18 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
     }
   }, [selectedGymId, gyms, isMapReady]);
 
+  // Invalidate map size when component updates
+  useEffect(() => {
+    if (mapRef.current && isMapReady) {
+      mapRef.current.invalidateSize();
+    }
+  }, [isMapReady]);
+
   return (
     <div 
       ref={mapContainerRef} 
       className="w-full h-full overflow-hidden relative z-0"
+      style={{ background: '#f0f0f0' }}
     />
   );
 };

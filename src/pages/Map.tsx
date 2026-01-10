@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, useMotionValue, useAnimationControls, PanInfo } from 'framer-motion';
 import { Search, Lock, Heart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { Gym, OpeningHours } from '@/hooks/useGym';
-import { Drawer as VaulDrawer } from 'vaul';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
@@ -32,6 +31,18 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
+// Snap points for the drawer (distance from top of screen)
+const BOTTOM_NAV_HEIGHT = 100; // Height of bottom nav + padding
+const getSnapPoints = () => {
+  if (typeof window === 'undefined') return { collapsed: 500, half: 300, full: 60 };
+  const vh = window.innerHeight;
+  return {
+    collapsed: vh - BOTTOM_NAV_HEIGHT - 140, // Just handle + search visible
+    half: vh * 0.45, // Half screen
+    full: 60, // Almost full screen
+  };
+};
+
 const Map = () => {
   const { profile, isLoading: isProfileLoading } = useUserProfile();
   const { gyms, isLoading } = usePublishedGyms();
@@ -41,8 +52,59 @@ const Map = () => {
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const controls = useAnimationControls();
+  const y = useMotionValue(getSnapPoints().collapsed);
+  const [currentSnap, setCurrentSnap] = useState<'collapsed' | 'half' | 'full'>('collapsed');
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  // Snap to nearest point
+  const snapTo = useCallback((snapPoint: 'collapsed' | 'half' | 'full') => {
+    const snaps = getSnapPoints();
+    setCurrentSnap(snapPoint);
+    controls.start({ 
+      y: snaps[snapPoint],
+      transition: { type: 'spring', damping: 30, stiffness: 400 }
+    });
+  }, [controls]);
+
+  // Handle drag end
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    const snaps = getSnapPoints();
+    const currentY = y.get();
+    const velocity = info.velocity.y;
+    
+    // Determine snap based on position and velocity
+    if (velocity < -500) {
+      // Fast upward swipe
+      if (currentSnap === 'collapsed') snapTo('half');
+      else snapTo('full');
+    } else if (velocity > 500) {
+      // Fast downward swipe
+      if (currentSnap === 'full') snapTo('half');
+      else snapTo('collapsed');
+    } else {
+      // Snap to nearest
+      const distances = {
+        collapsed: Math.abs(currentY - snaps.collapsed),
+        half: Math.abs(currentY - snaps.half),
+        full: Math.abs(currentY - snaps.full),
+      };
+      
+      const nearest = Object.entries(distances).reduce((a, b) => 
+        a[1] < b[1] ? a : b
+      )[0] as 'collapsed' | 'half' | 'full';
+      
+      snapTo(nearest);
+    }
+  };
+
+  // Initialize position
+  useEffect(() => {
+    const snaps = getSnapPoints();
+    controls.set({ y: snaps.collapsed });
+  }, [controls]);
 
   // Get user location
   useEffect(() => {
@@ -160,9 +222,9 @@ const Map = () => {
 
   return (
     <PageTransition>
-      <div className="fixed inset-0 bg-background">
+      <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT }}>
           <GymMap
             gyms={gyms}
             userLocation={userLocation}
@@ -172,71 +234,81 @@ const Map = () => {
         </div>
 
         {/* Bottom Draggable Drawer for Gym List */}
-        <VaulDrawer.Root 
-          open={true} 
-          modal={false}
-          snapPoints={[0.25, 0.6, 0.9]}
-          activeSnapPoint={0.25}
+        <motion.div
+          className="fixed left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] z-40"
+          style={{ 
+            y,
+            height: '100vh',
+            bottom: BOTTOM_NAV_HEIGHT,
+          }}
+          drag="y"
+          dragConstraints={{
+            top: getSnapPoints().full,
+            bottom: getSnapPoints().collapsed,
+          }}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
+          animate={controls}
         >
-          <VaulDrawer.Portal>
-            <VaulDrawer.Content 
-              className="fixed bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40 outline-none"
-              style={{ height: '90vh' }}
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-                <div className="w-12 h-1.5 bg-muted rounded-full" />
-              </div>
-              
-              {/* Search Bar */}
-              <div className="px-4 pb-3">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Hledat posilovny..."
-                    className="pl-12"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+          {/* Handle */}
+          <div 
+            className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
+            onDoubleClick={() => snapTo(currentSnap === 'collapsed' ? 'half' : 'collapsed')}
+          >
+            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
+          </div>
+          
+          {/* Search Bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Hledat posilovny..."
+                className="pl-12"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => snapTo('half')}
+              />
+            </div>
+          </div>
 
-              {/* Gym List */}
-              <div className="px-4 overflow-y-auto h-[calc(100%-100px)] pb-24">
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
-                        <div className="w-12 h-12 bg-muted rounded-full" />
-                        <div className="flex-1">
-                          <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                          <div className="h-3 bg-muted rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
+          {/* Gym List */}
+          <div 
+            className="px-4 overflow-y-auto overscroll-contain"
+            style={{ height: 'calc(100vh - 120px)' }}
+          >
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
+                    <div className="w-12 h-12 bg-muted rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
                   </div>
-                ) : sortedGyms.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
-                      <GymListItem
-                        key={gym.id}
-                        gym={gym}
-                        distance={distance}
-                        onClick={() => handleGymSelect(gym)}
-                        isFavorite={isFav}
-                      />
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
-            </VaulDrawer.Content>
-          </VaulDrawer.Portal>
-        </VaulDrawer.Root>
+            ) : sortedGyms.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
+              </div>
+            ) : (
+              <div className="space-y-3 pb-8">
+                {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
+                  <GymListItem
+                    key={gym.id}
+                    gym={gym}
+                    distance={distance}
+                    onClick={() => handleGymSelect(gym)}
+                    isFavorite={isFav}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* Gym Detail Drawer */}
         <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
