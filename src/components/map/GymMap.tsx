@@ -96,6 +96,12 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
 
   // Default center (Czechia)
   const defaultCenter: [number, number] = [49.8, 15.5];
+  
+  // Czechia bounds
+  const czechiaBounds = L.latLngBounds(
+    [48.5, 12.0], // Southwest corner
+    [51.1, 18.9]  // Northeast corner
+  );
 
   // Initialize map
   useEffect(() => {
@@ -105,11 +111,19 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
       center: defaultCenter,
       zoom: 7,
       scrollWheelZoom: true,
+      maxBounds: czechiaBounds,
+      maxBoundsViscosity: 1.0,
+      minZoom: 7,
+      maxZoom: 18,
+      attributionControl: false,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
     }).addTo(map);
+
+    // Fit to Czechia bounds on init
+    map.fitBounds(czechiaBounds, { padding: [20, 20] });
 
     mapRef.current = map;
     setIsMapReady(true);

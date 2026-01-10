@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Lock, Heart, GripHorizontal } from 'lucide-react';
+import { Search, Lock, Heart, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -12,16 +12,11 @@ import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { Gym, OpeningHours } from '@/hooks/useGym';
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 import PageTransition from '@/components/PageTransition';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -45,6 +40,7 @@ const Map = () => {
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
@@ -166,7 +162,7 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pb-[180px]">
           <GymMap
             gyms={gyms}
             userLocation={userLocation}
@@ -175,76 +171,79 @@ const Map = () => {
           />
         </div>
 
-        {/* Bottom Pull-up Sheet for Gym List */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-card border border-border shadow-lg rounded-full px-6 py-3 flex items-center gap-2">
-              <GripHorizontal className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium text-foreground">
-                {hasGpsAccess ? 'Posilovny poblíž' : 'Zobrazit posilovny'}
-              </span>
-            </button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl px-0 pt-0">
-            <div className="flex flex-col h-full">
-              {/* Handle */}
-              <div className="flex justify-center py-3">
-                <div className="w-12 h-1.5 bg-muted rounded-full" />
-              </div>
-              
-              {/* Search Bar */}
-              <div className="px-4 pb-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Hledat posilovny..."
-                    className="pl-12"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Gym List */}
-              <div className="flex-1 overflow-y-auto px-4 pb-6">
-                <h3 className="text-lg font-semibold text-foreground mb-4">
-                  {hasGpsAccess ? 'Posilovny poblíž' : 'Posilovny'}
-                </h3>
-                
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
-                        <div className="w-12 h-12 bg-muted rounded-full" />
-                        <div className="flex-1">
-                          <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                          <div className="h-3 bg-muted rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : sortedGyms.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
-                      <GymListItem
-                        key={gym.id}
-                        gym={gym}
-                        distance={distance}
-                        onClick={() => handleGymSelect(gym)}
-                        isFavorite={isFav}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Bottom Pull-up Drawer for Gym List */}
+        <motion.div
+          className="fixed bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40"
+          initial={{ y: 0 }}
+          animate={{ 
+            height: drawerExpanded ? '75vh' : '180px',
+          }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        >
+          {/* Handle - tap to toggle */}
+          <button 
+            className="w-full flex flex-col items-center pt-3 pb-2"
+            onClick={() => setDrawerExpanded(!drawerExpanded)}
+          >
+            <div className="w-12 h-1.5 bg-muted rounded-full mb-2" />
+            <ChevronUp 
+              className={cn(
+                "w-5 h-5 text-muted-foreground transition-transform duration-300",
+                drawerExpanded && "rotate-180"
+              )} 
+            />
+          </button>
+          
+          {/* Search Bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Hledat posilovny..."
+                className="pl-12"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          </SheetContent>
-        </Sheet>
+          </div>
+
+          {/* Gym List */}
+          <div className={cn(
+            "px-4 overflow-y-auto",
+            drawerExpanded ? "h-[calc(75vh-120px)] pb-24" : "h-[60px] overflow-hidden"
+          )}>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
+                    <div className="w-12 h-12 bg-muted rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sortedGyms.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
+                  <GymListItem
+                    key={gym.id}
+                    gym={gym}
+                    distance={distance}
+                    onClick={() => handleGymSelect(gym)}
+                    isFavorite={isFav}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* Gym Detail Drawer */}
         <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
