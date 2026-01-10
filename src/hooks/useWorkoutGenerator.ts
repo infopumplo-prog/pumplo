@@ -102,11 +102,19 @@ export const useWorkoutGenerator = () => {
       // Filter by difficulty
       if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
       
-      // Filter by injuries
-      if (activeInjuries.length > 0 && ex.contraindicated_injuries) {
-        const hasContraindication = ex.contraindicated_injuries.some(
-          (injury: string) => activeInjuries.includes(injury)
-        );
+      // Filter by injuries - check both singular and plural forms
+      if (activeInjuries.length > 0 && ex.contraindicated_injuries && ex.contraindicated_injuries.length > 0) {
+        const normalizedInjuries = activeInjuries.map(i => i.toLowerCase());
+        const hasContraindication = ex.contraindicated_injuries.some((injury: string) => {
+          const normalizedInjury = injury.toLowerCase();
+          return normalizedInjuries.some(userInjury => 
+            normalizedInjury.includes(userInjury) || 
+            userInjury.includes(normalizedInjury) ||
+            // Check singular/plural variants
+            normalizedInjury === userInjury.replace(/s$/, '') ||
+            normalizedInjury + 's' === userInjury
+          );
+        });
         if (hasContraindication) return false;
       }
       
@@ -114,14 +122,41 @@ export const useWorkoutGenerator = () => {
       if (usedExerciseIds.includes(ex.id)) return false;
       
       // Filter by equipment availability
+      // Priority: check equipment array first, only use machine_id for actual machines
+      const exerciseEquipment = ex.equipment || [];
+      const hasBodyweight = exerciseEquipment.includes('bodyweight');
+      
+      // Bodyweight exercises are always available
+      if (hasBodyweight && !ex.requires_machine) {
+        return true;
+      }
+      
+      // Free weights (barbell, dumbbell, kettlebell) - check equipment array, NOT machine_id
+      const isFreeWeightsExercise = exerciseEquipment.some(eq => 
+        ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq)
+      );
+      
+      if (isFreeWeightsExercise) {
+        // Check if gym has free_weights equipment type
+        const hasRequiredEquipment = exerciseEquipment.some(eq => availableEquipmentTypes.includes(eq));
+        return hasRequiredEquipment;
+      }
+      
+      // Cable exercises
+      const isCableExercise = exerciseEquipment.includes('cable');
+      if (isCableExercise) {
+        return availableEquipmentTypes.includes('cable') || 
+               availableEquipmentTypes.includes('machine'); // cable stations often counted as machines
+      }
+      
+      // Actual machine exercises - check machine_id
       if (ex.requires_machine && ex.machine_id) {
-        if (!availableMachineIds.includes(ex.machine_id)) return false;
-      } else if (ex.equipment && ex.equipment.length > 0) {
-        const hasBodyweight = ex.equipment.includes('bodyweight');
-        if (!hasBodyweight) {
-          const hasAvailableEquipment = ex.equipment.some(eq => availableEquipmentTypes.includes(eq));
-          if (!hasAvailableEquipment) return false;
-        }
+        return availableMachineIds.includes(ex.machine_id);
+      }
+      
+      // Default: check if any equipment matches
+      if (exerciseEquipment.length > 0) {
+        return exerciseEquipment.some(eq => availableEquipmentTypes.includes(eq));
       }
       
       return true;
