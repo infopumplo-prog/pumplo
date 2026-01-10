@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Loader2, Plus, Pencil, Trash2, Search, Dumbbell } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, Pencil, Trash2, Search, Dumbbell, Building2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ interface Machine {
 }
 
 const GymMachines = () => {
-  const { gym, gymMachines, isLoading, addMachine, updateMachine, removeMachine } = useGym();
+  const { gym, gyms, gymMachines, isLoading, addMachine, updateMachine, removeMachine } = useGym();
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
@@ -145,6 +145,18 @@ const GymMachines = () => {
   return (
     <BusinessLayout>
       <div className="space-y-4">
+        {/* Current Gym Indicator */}
+        {gyms.length > 1 && (
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Stroje pre:</span>
+            <Badge variant="secondary">{gym.name}</Badge>
+            <Link to="/business" className="ml-auto text-xs text-primary hover:underline">
+              Zmeniť
+            </Link>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Stroje ({gymMachines.length})</h2>
