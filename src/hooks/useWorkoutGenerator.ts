@@ -122,34 +122,40 @@ export const useWorkoutGenerator = () => {
       if (usedExerciseIds.includes(ex.id)) return false;
       
       // Filter by equipment availability
-      // Priority: check equipment array first, only use machine_id for actual machines
       const exerciseEquipment = ex.equipment || [];
-      const hasBodyweight = exerciseEquipment.includes('bodyweight');
       
       // Bodyweight exercises are always available
-      if (hasBodyweight && !ex.requires_machine) {
+      if (exerciseEquipment.includes('bodyweight')) {
         return true;
       }
       
-      // Free weights (barbell, dumbbell, kettlebell) - check equipment array, NOT machine_id
+      // Free weights (barbell, dumbbell, kettlebell) - check equipment array, IGNORE machine_id
       const isFreeWeightsExercise = exerciseEquipment.some(eq => 
         ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq)
       );
       
       if (isFreeWeightsExercise) {
-        // Check if gym has free_weights equipment type
-        const hasRequiredEquipment = exerciseEquipment.some(eq => availableEquipmentTypes.includes(eq));
-        return hasRequiredEquipment;
+        // Check if gym has free_weights equipment type - expand to specific types
+        const hasBarbell = availableEquipmentTypes.includes('barbell') || rawEquipmentTypes.includes('free_weights');
+        const hasDumbbell = availableEquipmentTypes.includes('dumbbell') || rawEquipmentTypes.includes('free_weights');
+        const hasKettlebell = availableEquipmentTypes.includes('kettlebell') || rawEquipmentTypes.includes('free_weights');
+        
+        if (exerciseEquipment.includes('barbell') && hasBarbell) return true;
+        if (exerciseEquipment.includes('dumbbell') && hasDumbbell) return true;
+        if (exerciseEquipment.includes('kettlebell') && hasKettlebell) return true;
+        if (exerciseEquipment.includes('free_weights') && (hasBarbell || hasDumbbell || hasKettlebell)) return true;
+        
+        return false;
       }
       
       // Cable exercises
       const isCableExercise = exerciseEquipment.includes('cable');
       if (isCableExercise) {
         return availableEquipmentTypes.includes('cable') || 
-               availableEquipmentTypes.includes('machine'); // cable stations often counted as machines
+               rawEquipmentTypes.includes('machine'); // cable stations often counted as machines
       }
       
-      // Actual machine exercises - check machine_id
+      // Actual machine exercises that REQUIRE a specific machine - check machine_id
       if (ex.requires_machine && ex.machine_id) {
         return availableMachineIds.includes(ex.machine_id);
       }
