@@ -170,16 +170,31 @@ export const useWorkoutGenerator = () => {
     });
 
     // 4. Sort/prioritize based on equipment preference
+    // IMPORTANT: Check ONLY the 'equipment' array, not 'requires_machine' or 'machine_id' 
+    // because the DB incorrectly has requires_machine=true for barbell exercises
     if (filteredExercises.length > 0) {
       let sortedExercises = [...filteredExercises];
       
       if (equipmentPreference === 'machines') {
-        // Prefer machine exercises, then cable, then others
+        // Prefer ACTUAL machine exercises - check equipment array for 'machine', 'cable', 'plate_loaded'
         sortedExercises.sort((a, b) => {
-          const aIsMachine = a.requires_machine || a.equipment?.includes('machine') || a.equipment?.includes('cable') || a.machine_id;
-          const bIsMachine = b.requires_machine || b.equipment?.includes('machine') || b.equipment?.includes('cable') || b.machine_id;
+          const machineTypes = ['machine', 'cable', 'plate_loaded'];
+          const freeWeightTypes = ['barbell', 'dumbbell', 'kettlebell', 'free_weights'];
+          
+          const aIsMachine = a.equipment?.some(eq => machineTypes.includes(eq)) && 
+                            !a.equipment?.some(eq => freeWeightTypes.includes(eq));
+          const bIsMachine = b.equipment?.some(eq => machineTypes.includes(eq)) && 
+                            !b.equipment?.some(eq => freeWeightTypes.includes(eq));
+          
           if (aIsMachine && !bIsMachine) return -1;
           if (!aIsMachine && bIsMachine) return 1;
+          
+          // Secondary: cable over free weights
+          const aIsCable = a.equipment?.includes('cable');
+          const bIsCable = b.equipment?.includes('cable');
+          if (aIsCable && !bIsCable) return -1;
+          if (!aIsCable && bIsCable) return 1;
+          
           return 0;
         });
       } else if (equipmentPreference === 'bodyweight') {
@@ -202,8 +217,8 @@ export const useWorkoutGenerator = () => {
         });
       }
       
-      // Pick from top 3 (if available) for some variety within preference
-      const topCandidates = sortedExercises.slice(0, Math.min(3, sortedExercises.length));
+      // Pick from top candidates matching preference
+      const topCandidates = sortedExercises.slice(0, Math.min(5, sortedExercises.length));
       const randomIndex = Math.floor(Math.random() * topCandidates.length);
       return { 
         exercise: topCandidates[randomIndex], 
