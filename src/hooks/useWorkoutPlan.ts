@@ -75,6 +75,22 @@ export const useWorkoutPlan = () => {
         .order('day_letter')
         .order('slot_order');
 
+      // 4. Get day templates for day names
+      const { data: dayTemplatesData } = await supabase
+        .from('day_templates')
+        .select('day_letter, day_name')
+        .eq('goal_id', planData.goal_id);
+      
+      // Create a map of day_letter -> day_name
+      const dayNameMap: Record<string, string> = {};
+      if (dayTemplatesData) {
+        dayTemplatesData.forEach(dt => {
+          if (!dayNameMap[dt.day_letter]) {
+            dayNameMap[dt.day_letter] = dt.day_name;
+          }
+        });
+      }
+
       if (exError) throw exError;
 
       // 4. Transform exercises
@@ -98,7 +114,7 @@ export const useWorkoutPlan = () => {
         const dayExercises = exercises.filter(e => e.dayLetter === letter);
         return {
           dayLetter: letter,
-          dayName: `Den ${letter}`,
+          dayName: dayNameMap[letter] || `Den ${letter}`,
           slots: dayExercises.map(e => ({
             id: e.id,
             slotOrder: e.slotOrder,

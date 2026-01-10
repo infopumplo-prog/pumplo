@@ -381,12 +381,14 @@ const Training = () => {
             {schedule.map((day, index) => {
               const isCurrentDay = day.dayLetter === currentDayLetter && index === 0;
               const isCompleted = index < 0; // TODO: track completed days
+              const dayInfo = plan.allDays.find(d => d.dayLetter === day.dayLetter);
+              const dayTypeName = dayInfo?.dayName || '';
               
               return (
                 <div
                   key={`${day.dayOfWeek}-${index}`}
                   className={cn(
-                    "flex-shrink-0 flex flex-col items-center p-3 rounded-xl min-w-[60px] transition-all",
+                    "flex-shrink-0 flex flex-col items-center p-3 rounded-xl min-w-[70px] transition-all",
                     isCurrentDay
                       ? "bg-primary text-primary-foreground shadow-lg"
                       : isCompleted
@@ -403,6 +405,14 @@ const Training = () => {
                   )}>
                     {day.dayLetter}
                   </span>
+                  {dayTypeName && (
+                    <span className={cn(
+                      "text-[10px] mt-0.5",
+                      isCurrentDay ? "opacity-80" : "text-muted-foreground"
+                    )}>
+                      {dayTypeName}
+                    </span>
+                  )}
                   {isCurrentDay && (
                     <span className="text-[10px] mt-0.5 opacity-80">dnes</span>
                   )}
@@ -412,12 +422,24 @@ const Training = () => {
           </div>
         </div>
 
+        {/* Current Day Info */}
+        {(() => {
+          const currentDayInfo = plan.allDays.find(d => d.dayLetter === currentDayLetter);
+          const dayTypeName = currentDayInfo?.dayName || '';
+          return (
+            <div className="px-4 mb-3">
+              <h2 className="text-lg font-bold">
+                Den {currentDayLetter} {dayTypeName && `• ${dayTypeName}`}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {currentExercises.length} cviků
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Exercises List */}
         <div className="px-4 space-y-3">
-          <p className="text-sm font-medium mb-2">
-            Den {currentDayLetter} • {currentExercises.length} cviků
-          </p>
-          
           <AnimatePresence mode="wait">
             {currentExercises.length === 0 ? (
               <motion.div
