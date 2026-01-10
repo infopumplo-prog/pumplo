@@ -67,23 +67,38 @@ export const useWorkoutGenerator = () => {
     const availableMachineIds = gymMachines?.map(m => m.machine_id).filter(Boolean) || [];
     const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
     
+    console.log('[WorkoutGenerator] Gym equipment types:', rawEquipmentTypes);
+    console.log('[WorkoutGenerator] Equipment preference:', equipmentPreference);
+    
     // Expand equipment types to include sub-types
-    // e.g. 'free_weights' should match 'barbell', 'dumbbell', 'kettlebell'
     const expandedEquipment = new Set<string>(rawEquipmentTypes);
+    
+    // Free weights expansion
     if (rawEquipmentTypes.includes('free_weights')) {
       expandedEquipment.add('barbell');
       expandedEquipment.add('dumbbell');
       expandedEquipment.add('kettlebell');
     }
-    // Machine types often include plate loaded machines too
-    if (rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded')) {
+    
+    // Machine types - CRITICAL: 'machine' in gym means 'cable', 'machine', 'plate_loaded' in exercises
+    if (rawEquipmentTypes.includes('machine')) {
+      expandedEquipment.add('machine');
+      expandedEquipment.add('cable');
+      expandedEquipment.add('plate_loaded');
+    }
+    if (rawEquipmentTypes.includes('plate_loaded')) {
       expandedEquipment.add('machine');
       expandedEquipment.add('plate_loaded');
     }
+    if (rawEquipmentTypes.includes('cable')) {
+      expandedEquipment.add('cable');
+    }
+    
     // Always include bodyweight as available
     expandedEquipment.add('bodyweight');
     
     const availableEquipmentTypes = Array.from(expandedEquipment);
+    console.log('[WorkoutGenerator] Expanded equipment:', availableEquipmentTypes);
     
     // 2. Get exercises with primary_role
     const { data: exercises, error: exError } = await supabase
@@ -170,59 +185,81 @@ export const useWorkoutGenerator = () => {
     });
 
     // 4. Sort/prioritize based on equipment preference
-    // IMPORTANT: Check ONLY the 'equipment' array, not 'requires_machine' or 'machine_id' 
-    // because the DB incorrectly has requires_machine=true for barbell exercises
+    console.log(`[WorkoutGenerator] Role ${role}: ${filteredExercises.length} exercises after filter, preference: ${equipmentPreference}`);
+    
     if (filteredExercises.length > 0) {
       let sortedExercises = [...filteredExercises];
       
       if (equipmentPreference === 'machines') {
         // Prefer ACTUAL machine exercises - check equipment array for 'machine', 'cable', 'plate_loaded'
+        // Score: machine/cable/plate_loaded = 100, everything else = 0
         sortedExercises.sort((a, b) => {
           const machineTypes = ['machine', 'cable', 'plate_loaded'];
-          const freeWeightTypes = ['barbell', 'dumbbell', 'kettlebell', 'free_weights'];
+          const bodyweightType = 'bodyweight';
           
-          const aIsMachine = a.equipment?.some(eq => machineTypes.includes(eq)) && 
-                            !a.equipment?.some(eq => freeWeightTypes.includes(eq));
-          const bIsMachine = b.equipment?.some(eq => machineTypes.includes(eq)) && 
-                            !b.equipment?.some(eq => freeWeightTypes.includes(eq));
+          const aIsMachine = a.equipment?.some(eq => machineTypes.includes(eq));
+          const bIsMachine = b.equipment?.some(eq => machineTypes.includes(eq));
+          const aIsBodyweight = a.equipment?.includes(bodyweightType);
+          const bIsBodyweight = b.equipment?.includes(bodyweightType);
           
-          if (aIsMachine && !bIsMachine) return -1;
-          if (!aIsMachine && bIsMachine) return 1;
+          // Machines first, then free weights, then bodyweight last
+          const aScore = aIsMachine ? 100 : (aIsBodyweight ? 0 : 50);
+          const bScore = bIsMachine ? 100 : (bIsBodyweight ? 0 : 50);
           
-          // Secondary: cable over free weights
-          const aIsCable = a.equipment?.includes('cable');
-          const bIsCable = b.equipment?.includes('cable');
-          if (aIsCable && !bIsCable) return -1;
-          if (!aIsCable && bIsCable) return 1;
-          
-          return 0;
+          return bScore - aScore;
         });
+        
+        // Filter to ONLY machine exercises if available
+        const machineOnly = sortedExercises.filter(ex => 
+          ex.equipment?.some(eq => ['machine', 'cable', 'plate_loaded'].includes(eq))
+        );
+        
+        if (machineOnly.length > 0) {
+          console.log(`[WorkoutGenerator] Found ${machineOnly.length} machine exercises for ${role}`);
+          const randomIndex = Math.floor(Math.random() * Math.min(3, machineOnly.length));
+          return { 
+            exercise: machineOnly[randomIndex], 
+            isFallback: false, 
+            fallbackReason: null 
+          };
+        }
+        
+        // Fallback to sorted list if no pure machine exercises
+        console.log(`[WorkoutGenerator] No machine exercises for ${role}, using best available`);
       } else if (equipmentPreference === 'bodyweight') {
-        // Prefer bodyweight exercises
-        sortedExercises.sort((a, b) => {
-          const aIsBodyweight = a.equipment?.includes('bodyweight');
-          const bIsBodyweight = b.equipment?.includes('bodyweight');
-          if (aIsBodyweight && !bIsBodyweight) return -1;
-          if (!aIsBodyweight && bIsBodyweight) return 1;
-          return 0;
-        });
+        // Prefer bodyweight exercises - ONLY select bodyweight if available
+        const bodyweightOnly = sortedExercises.filter(ex => ex.equipment?.includes('bodyweight'));
+        
+        if (bodyweightOnly.length > 0) {
+          const randomIndex = Math.floor(Math.random() * Math.min(3, bodyweightOnly.length));
+          return { 
+            exercise: bodyweightOnly[randomIndex], 
+            isFallback: false, 
+            fallbackReason: null 
+          };
+        }
       } else if (equipmentPreference === 'free_weights') {
-        // Prefer free weights
-        sortedExercises.sort((a, b) => {
-          const aIsFreeWeights = a.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq));
-          const bIsFreeWeights = b.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq));
-          if (aIsFreeWeights && !bIsFreeWeights) return -1;
-          if (!aIsFreeWeights && bIsFreeWeights) return 1;
-          return 0;
-        });
+        // Prefer free weights - ONLY select free weights if available
+        const freeWeightsOnly = sortedExercises.filter(ex => 
+          ex.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
+        );
+        
+        if (freeWeightsOnly.length > 0) {
+          const randomIndex = Math.floor(Math.random() * Math.min(3, freeWeightsOnly.length));
+          return { 
+            exercise: freeWeightsOnly[randomIndex], 
+            isFallback: false, 
+            fallbackReason: null 
+          };
+        }
       }
       
-      // Pick from top candidates matching preference
+      // Pick from top candidates if preference filter didn't return
       const topCandidates = sortedExercises.slice(0, Math.min(5, sortedExercises.length));
       const randomIndex = Math.floor(Math.random() * topCandidates.length);
       return { 
         exercise: topCandidates[randomIndex], 
-        isFallback: false, 
+        isFallback: false,
         fallbackReason: null 
       };
     }
