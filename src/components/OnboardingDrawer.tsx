@@ -68,7 +68,13 @@ const MOTIVATIONS = [
   { id: 'done', label: 'Odháčkování úkolů ("done" pocit)', emoji: '✅' },
 ];
 
-const TOTAL_STEPS = 8;
+const USER_LEVELS = [
+  { id: 'beginner', label: 'Začátečník', description: 'Méně než 1 rok tréninku', emoji: '🌱' },
+  { id: 'intermediate', label: 'Pokročilý', description: '1-3 roky pravidelného tréninku', emoji: '💪' },
+  { id: 'advanced', label: 'Expert', description: 'Více než 3 roky intenzivního tréninku', emoji: '🔥' },
+];
+
+const TOTAL_STEPS = 9;
 
 interface OnboardingDrawerProps {
   open: boolean;
@@ -93,6 +99,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [trainingSplit, setTrainingSplit] = useState<string | null>(null);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [motivations, setMotivations] = useState<string[]>([]);
+  const [userLevel, setUserLevel] = useState<string | null>(null);
 
   const isEditMode = profile?.onboarding_completed ?? false;
 
@@ -115,6 +122,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setTrainingSplit(profile.training_split);
       setEquipmentPreference(profile.equipment_preference);
       setMotivations(profile.motivations || []);
+      setUserLevel(profile.user_level);
     }
   }, [profile, open]);
 
@@ -136,8 +144,10 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       case 5:
         return injuries.length > 0;
       case 6:
-        return trainingSplit !== null;
+        return userLevel !== null;
       case 7:
+        return trainingSplit !== null;
+      case 8:
         return motivations.length > 0;
       default:
         return false;
@@ -221,6 +231,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         training_split: trainingSplit,
         equipment_preference: equipmentPreference,
         motivations,
+        user_level: userLevel as any,
         current_step: currentStep,
         onboarding_completed: allValid,
       });
@@ -280,6 +291,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       training_split: trainingSplit,
       equipment_preference: equipmentPreference,
       motivations,
+      user_level: userLevel as any,
       onboarding_completed: true,
       current_step: TOTAL_STEPS - 1,
     });
@@ -497,6 +509,35 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         return (
           <div className="space-y-6">
             <div className="text-center">
+              <h2 className="text-2xl font-bold">Jaká je tvoje tréninková úroveň?</h2>
+              <p className="text-muted-foreground mt-2 text-sm">Pomůže nám nastavit správný objem tréninku</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {USER_LEVELS.map((level) => (
+                <button
+                  key={level.id}
+                  onClick={() => setUserLevel(level.id)}
+                  className={`p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4 ${
+                    userLevel === level.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <span className="text-3xl">{level.emoji}</span>
+                  <div>
+                    <span className="font-medium block">{level.label}</span>
+                    <span className="text-sm text-muted-foreground">{level.description}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 7:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
               <h2 className="text-2xl font-bold">Jaký typ tréninku preferuješ?</h2>
               <p className="text-muted-foreground mt-2 text-sm">Vyber si JEDEN hlavní split</p>
             </div>
@@ -541,7 +582,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           </div>
         );
 
-      case 7:
+      case 8:
         return (
           <div className="space-y-6">
             <div className="text-center">

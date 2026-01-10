@@ -22,6 +22,7 @@ import ImportExercises from "@/pages/admin/ImportExercises";
 import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
+import Training from "@/pages/Training";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const AppRoutes = () => (
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
+      <Route path="/training" element={<Training />} />
       <Route path="/profile" element={<Profile />} />
     </Route>
     
