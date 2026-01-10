@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Dumbbell, Flame, Clock, Trophy, Lock, Shield } from 'lucide-react';
+import { Dumbbell, Flame, Clock, Trophy, Shield } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
+import MyPlanSection from '@/components/home/MyPlanSection';
 
 const statCards = [
   { icon: Flame, label: 'Spálené kalorie', value: '0', color: 'text-warning' },
@@ -42,17 +43,9 @@ const Home = () => {
     visible: { opacity: 1, y: 0 },
   };
 
-  const handleStartTraining = () => {
-    if (!isOnboardingComplete) {
-      setOnboardingOpen(true);
-    } else {
-      // TODO: Start training logic
-    }
-  };
-
   return (
     <PageTransition>
-    <div className="min-h-screen bg-background safe-top">
+    <div className="min-h-screen bg-background safe-top pb-24">
       {/* Header */}
       <div className="gradient-hero px-6 pt-8 pb-6">
         <motion.div
@@ -100,36 +93,13 @@ const Home = () => {
         initial="hidden"
         animate="visible"
       >
-        {/* Quick Action Card */}
-        <motion.div
-          variants={itemVariants}
-          onClick={handleStartTraining}
-          className={`rounded-2xl p-6 shadow-primary cursor-pointer transition-all ${
-            isOnboardingComplete 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted text-muted-foreground'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold mb-1">Začít trénink</h2>
-              <p className={`text-sm ${isOnboardingComplete ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                {isOnboardingComplete 
-                  ? 'Vyber si cvičení a pusť se do toho!' 
-                  : 'Nejdříve vyplň dotazník'}
-              </p>
-            </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-              isOnboardingComplete ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20'
-            }`}>
-              {isOnboardingComplete ? (
-                <Dumbbell className="w-7 h-7" />
-              ) : (
-                <Lock className="w-7 h-7" />
-              )}
-            </div>
-          </div>
-        </motion.div>
+        {/* My Plan Section - only show if onboarding complete */}
+        {isOnboardingComplete && (
+          <motion.div variants={itemVariants}>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Můj plán</h3>
+            <MyPlanSection />
+          </motion.div>
+        )}
 
         {/* Stats */}
         <motion.div variants={itemVariants}>

@@ -290,6 +290,7 @@ export type Database = {
           created_at: string | null
           day_count: number
           description: string | null
+          duration_weeks: number | null
           id: string
           name: string
         }
@@ -297,6 +298,7 @@ export type Database = {
           created_at?: string | null
           day_count: number
           description?: string | null
+          duration_weeks?: number | null
           id: string
           name: string
         }
@@ -304,6 +306,7 @@ export type Database = {
           created_at?: string | null
           day_count?: number
           description?: string | null
+          duration_weeks?: number | null
           id?: string
           name?: string
         }
@@ -516,28 +519,34 @@ export type Database = {
       user_workout_plans: {
         Row: {
           created_at: string | null
+          current_week: number | null
           goal_id: string
           gym_id: string
           id: string
           is_active: boolean | null
+          started_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          current_week?: number | null
           goal_id: string
           gym_id: string
           id?: string
           is_active?: boolean | null
+          started_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
+          current_week?: number | null
           goal_id?: string
           gym_id?: string
           id?: string
           is_active?: boolean | null
+          started_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
