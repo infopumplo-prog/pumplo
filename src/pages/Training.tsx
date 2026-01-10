@@ -467,6 +467,25 @@ const Training = () => {
                         <h3 className="font-medium truncate">
                           {exercise.exerciseName || 'Cvičení nenalezeno'}
                         </h3>
+                        
+                        {/* Equipment info */}
+                        {(exercise.equipment && exercise.equipment.length > 0) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {exercise.machineName || exercise.equipment.map(eq => {
+                              const eqNames: Record<string, string> = {
+                                'barbell': 'Velká činka',
+                                'dumbbell': 'Jednoručky',
+                                'kettlebell': 'Kettlebell',
+                                'cable': 'Kabel',
+                                'machine': 'Stroj',
+                                'bodyweight': 'Vlastní váha',
+                                'free_weights': 'Volné váhy',
+                              };
+                              return eqNames[eq] || eq;
+                            }).join(', ')}
+                          </p>
+                        )}
+                        
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="secondary" className="text-xs">
                             {TRAINING_ROLE_NAMES[exercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || exercise.roleId}

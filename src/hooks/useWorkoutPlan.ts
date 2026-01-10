@@ -64,12 +64,12 @@ export const useWorkoutPlan = () => {
       const dayCount = (planData.training_goals as any)?.day_count || 2;
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
-      // 3. Get exercises for this plan
+      // 3. Get exercises for this plan with machine info
       const { data: exercisesData, error: exError } = await supabase
         .from('user_workout_exercises')
         .select(`
           *,
-          exercises (id, name, description, video_path)
+          exercises (id, name, description, video_path, equipment, machine_id, machines (name))
         `)
         .eq('plan_id', planData.id)
         .order('day_letter')
@@ -101,6 +101,8 @@ export const useWorkoutPlan = () => {
         roleId: ex.role_id,
         exerciseId: ex.exercise_id,
         exerciseName: (ex.exercises as any)?.name || null,
+        equipment: (ex.exercises as any)?.equipment || [],
+        machineName: (ex.exercises as any)?.machines?.name || null,
         sets: ex.sets,
         repMin: ex.rep_min || 8,
         repMax: ex.rep_max || 12,
