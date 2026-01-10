@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
@@ -63,7 +64,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const BusinessRouteGuard = ({ children }: { children: React.ReactNode }) => {
+const BusinessLayout = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
   
@@ -80,16 +81,10 @@ const BusinessRouteGuard = ({ children }: { children: React.ReactNode }) => {
     return <Forbidden requiredRole="business" />;
   }
   
-  return <>{children}</>;
-};
-
-const BusinessLayout = () => {
   return (
-    <BusinessRouteGuard>
-      <GymProvider>
-        <Outlet />
-      </GymProvider>
-    </BusinessRouteGuard>
+    <GymProvider>
+      <Outlet />
+    </GymProvider>
   );
 };
 
@@ -136,17 +131,19 @@ const AppRoutes = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
