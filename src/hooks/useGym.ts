@@ -41,35 +41,58 @@ export interface GymMachine {
 
 export const useGym = () => {
   const { user } = useAuth();
-  const [gym, setGym] = useState<Gym | null>(null);
+  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [gymMachines, setGymMachines] = useState<GymMachine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [licenseCount, setLicenseCount] = useState(0);
 
-  const fetchGym = async () => {
+  const fetchGyms = async () => {
     if (!user) {
-      setGym(null);
+      setGyms([]);
+      setSelectedGym(null);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    
+    // Fetch user's license count
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('gym_license_count')
+      .eq('user_id', user.id)
+      .single();
+    
+    setLicenseCount(profileData?.gym_license_count || 0);
+
+    // Fetch all gyms owned by user
     const { data, error } = await supabase
       .from('gyms')
       .select('*')
       .eq('owner_id', user.id)
-      .maybeSingle();
+      .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching gym:', error);
-      toast.error('Nepodařilo se načíst posilovnu');
+      console.error('Error fetching gyms:', error);
+      toast.error('Nepodařilo se načíst posilovny');
     } else {
-      setGym(data ? { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym : null);
+      const gymList = (data || []).map(g => ({ ...g, opening_hours: g.opening_hours as OpeningHours })) as Gym[];
+      setGyms(gymList);
+      // Auto-select first gym if none selected
+      if (gymList.length > 0 && !selectedGym) {
+        setSelectedGym(gymList[0]);
+      }
     }
     setIsLoading(false);
   };
 
+  const selectGym = (gym: Gym) => {
+    setSelectedGym(gym);
+  };
+
   const fetchGymMachines = async () => {
-    if (!gym) {
+    if (!selectedGym) {
       setGymMachines([]);
       return;
     }
@@ -80,13 +103,17 @@ export const useGym = () => {
         *,
         machine:machines(id, name, description, target_muscles, image_url, equipment_type)
       `)
-      .eq('gym_id', gym.id);
+      .eq('gym_id', selectedGym.id);
 
     if (error) {
       console.error('Error fetching gym machines:', error);
     } else {
       setGymMachines(data as GymMachine[]);
     }
+  };
+
+  const canCreateMoreGyms = () => {
+    return gyms.length < licenseCount;
   };
 
   const createGym = async (gymData: {
@@ -98,6 +125,10 @@ export const useGym = () => {
     opening_hours: OpeningHours;
   }) => {
     if (!user) return { success: false, error: 'Nie ste prihlásený' };
+    
+    if (!canCreateMoreGyms()) {
+      return { success: false, error: `Dosiahli ste limit ${licenseCount} posilovní. Kontaktujte podporu pre navýšenie licencie.` };
+    }
 
     const { data, error } = await supabase
       .from('gyms')
@@ -113,18 +144,20 @@ export const useGym = () => {
       return { success: false, error: error.message };
     }
 
-    setGym({ ...data, opening_hours: data.opening_hours as OpeningHours } as Gym);
+    const newGym = { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym;
+    setGyms(prev => [...prev, newGym]);
+    setSelectedGym(newGym);
     toast.success('Posilovna byla vytvořena');
     return { success: true };
   };
 
   const updateGym = async (updates: Partial<Gym>) => {
-    if (!gym) return { success: false, error: 'Posilňovňa neexistuje' };
+    if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
 
     const { data, error } = await supabase
       .from('gyms')
       .update(updates)
-      .eq('id', gym.id)
+      .eq('id', selectedGym.id)
       .select()
       .single();
 
@@ -133,34 +166,38 @@ export const useGym = () => {
       return { success: false, error: error.message };
     }
 
-    setGym({ ...data, opening_hours: data.opening_hours as OpeningHours } as Gym);
+    const updatedGym = { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym;
+    setGyms(prev => prev.map(g => g.id === updatedGym.id ? updatedGym : g));
+    setSelectedGym(updatedGym);
     toast.success('Posilovna byla aktualizována');
     return { success: true };
   };
 
   const togglePublish = async () => {
-    if (!gym) return;
+    if (!selectedGym) return;
     
     const { error } = await supabase
       .from('gyms')
-      .update({ is_published: !gym.is_published })
-      .eq('id', gym.id);
+      .update({ is_published: !selectedGym.is_published })
+      .eq('id', selectedGym.id);
 
     if (error) {
       toast.error('Nepodařilo se změnit stav zveřejnění');
     } else {
-      setGym({ ...gym, is_published: !gym.is_published });
-      toast.success(gym.is_published ? 'Posilovna je nyní soukromá' : 'Posilovna byla zveřejněna');
+      const updatedGym = { ...selectedGym, is_published: !selectedGym.is_published };
+      setGyms(prev => prev.map(g => g.id === updatedGym.id ? updatedGym : g));
+      setSelectedGym(updatedGym);
+      toast.success(selectedGym.is_published ? 'Posilovna je nyní soukromá' : 'Posilovna byla zveřejněna');
     }
   };
 
   const addMachine = async (machineId: string, quantity: number, maxWeight?: number) => {
-    if (!gym) return { success: false, error: 'Posilňovňa neexistuje' };
+    if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
 
     const { error } = await supabase
       .from('gym_machines')
       .insert({
-        gym_id: gym.id,
+        gym_id: selectedGym.id,
         machine_id: machineId,
         quantity,
         max_weight_kg: maxWeight || null,
@@ -214,25 +251,30 @@ export const useGym = () => {
   };
 
   useEffect(() => {
-    fetchGym();
+    fetchGyms();
   }, [user]);
 
   useEffect(() => {
-    if (gym) {
+    if (selectedGym) {
       fetchGymMachines();
     }
-  }, [gym?.id]);
+  }, [selectedGym?.id]);
 
+  // For backwards compatibility, expose 'gym' as selectedGym
   return {
-    gym,
+    gym: selectedGym,
+    gyms,
     gymMachines,
     isLoading,
+    licenseCount,
+    canCreateMoreGyms,
+    selectGym,
     createGym,
     updateGym,
     togglePublish,
     addMachine,
     updateMachine,
     removeMachine,
-    refetch: fetchGym,
+    refetch: fetchGyms,
   };
 };

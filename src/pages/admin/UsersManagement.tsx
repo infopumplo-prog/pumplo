@@ -34,6 +34,7 @@ interface UserData {
   onboarding_completed: boolean;
   created_at: string;
   role?: string;
+  gym_license_count: number;
 }
 
 const ITEMS_PER_PAGE = 100;
@@ -44,7 +45,7 @@ const UsersManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | null>(null);
-  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '', role: 'user' });
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '', role: 'user', gym_license_count: '0' });
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsers = async () => {
@@ -118,6 +119,7 @@ const UsersManagement = () => {
       last_name: user.last_name || '',
       age: user.age?.toString() || '',
       role: user.role || 'user',
+      gym_license_count: user.gym_license_count?.toString() || '0',
     });
     setDrawerMode('edit');
   };
@@ -130,14 +132,23 @@ const UsersManagement = () => {
   const saveUserEdit = async () => {
     if (!selectedUser) return;
 
-    // Update profile
+    // Update profile (including gym_license_count for business users)
+    const profileUpdate: Record<string, unknown> = {
+      first_name: editForm.first_name || null,
+      last_name: editForm.last_name || null,
+      age: editForm.age ? parseInt(editForm.age) : null,
+    };
+
+    // Only set gym_license_count if role is business
+    if (editForm.role === 'business') {
+      profileUpdate.gym_license_count = editForm.gym_license_count ? parseInt(editForm.gym_license_count) : 1;
+    } else {
+      profileUpdate.gym_license_count = 0;
+    }
+
     const { error: profileError } = await supabase
       .from('user_profiles')
-      .update({
-        first_name: editForm.first_name || null,
-        last_name: editForm.last_name || null,
-        age: editForm.age ? parseInt(editForm.age) : null,
-      })
+      .update(profileUpdate)
       .eq('user_id', selectedUser.user_id);
 
     if (profileError) {
@@ -297,6 +308,12 @@ const UsersManagement = () => {
                       {new Date(selectedUser.created_at).toLocaleDateString('sk-SK')}
                     </p>
                   </div>
+                  {selectedUser.role === 'business' && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Licencia posilovní</Label>
+                      <p className="font-medium">{selectedUser.gym_license_count || 0}</p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">User ID</Label>
@@ -343,17 +360,33 @@ const UsersManagement = () => {
               </div>
               <div>
                 <Label>Rola</Label>
-                <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value })}>
+                <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value, gym_license_count: value === 'business' ? (editForm.gym_license_count || '1') : '0' })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200]">
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="business">Business</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {editForm.role === 'business' && (
+                <div>
+                  <Label>Počet licencií na posilovne</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={editForm.gym_license_count}
+                    onChange={(e) => setEditForm({ ...editForm, gym_license_count: e.target.value })}
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Koľko posilovní môže tento používateľ vytvoriť
+                  </p>
+                </div>
+              )}
             </div>
             <DrawerFooter>
               <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
