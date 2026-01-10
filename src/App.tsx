@@ -4,12 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
+import Forbidden from "@/pages/Forbidden";
 import Dashboard from "@/pages/admin/Dashboard";
 import UsersManagement from "@/pages/admin/UsersManagement";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
@@ -21,15 +23,17 @@ import GymSettings from "@/pages/business/GymSettings";
 
 const queryClient = new QueryClient();
 
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
   
   if (!user) {
@@ -39,15 +43,50 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading: authLoading } = useAuth();
+  const { role, isLoading: roleLoading } = useUserRole();
+  
+  if (authLoading || roleLoading) {
+    return <LoadingSpinner />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  if (role !== 'admin') {
+    return <Forbidden requiredRole="admin" />;
+  }
+  
+  return <>{children}</>;
+};
+
+const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading: authLoading } = useAuth();
+  const { role, isLoading: roleLoading } = useUserRole();
+  
+  if (authLoading || roleLoading) {
+    return <LoadingSpinner />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  // Allow both business and admin roles to access business pages
+  if (role !== 'business' && role !== 'admin') {
+    return <Forbidden requiredRole="business" />;
+  }
+  
+  return <>{children}</>;
+};
+
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
   
   if (user) {
@@ -65,14 +104,20 @@ const AppRoutes = () => (
       <Route path="/map" element={<Map />} />
       <Route path="/profile" element={<Profile />} />
     </Route>
-    <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    <Route path="/admin/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
-    <Route path="/admin/machines" element={<ProtectedRoute><MachinesManagement /></ProtectedRoute>} />
-    <Route path="/admin/exercises" element={<ProtectedRoute><ExercisesManagement /></ProtectedRoute>} />
-    <Route path="/admin/import" element={<ProtectedRoute><ImportExercises /></ProtectedRoute>} />
-    <Route path="/business" element={<ProtectedRoute><GymDashboard /></ProtectedRoute>} />
-    <Route path="/business/machines" element={<ProtectedRoute><GymMachines /></ProtectedRoute>} />
-    <Route path="/business/settings" element={<ProtectedRoute><GymSettings /></ProtectedRoute>} />
+    
+    {/* Admin Routes */}
+    <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+    <Route path="/admin/users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
+    <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
+    <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
+    <Route path="/admin/import" element={<AdminRoute><ImportExercises /></AdminRoute>} />
+    
+    {/* Business Routes */}
+    <Route path="/business" element={<BusinessRoute><GymDashboard /></BusinessRoute>} />
+    <Route path="/business/machines" element={<BusinessRoute><GymMachines /></BusinessRoute>} />
+    <Route path="/business/settings" element={<BusinessRoute><GymSettings /></BusinessRoute>} />
+    
+    {/* Fallback */}
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
