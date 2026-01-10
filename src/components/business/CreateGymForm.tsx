@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import LocationPicker from './LocationPicker';
 import { useGym, OpeningHours } from '@/hooks/useGym';
 
@@ -58,6 +59,7 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
 
   const onSubmit = async (data: FormData) => {
     if (!location) {
+      toast.error('Vyberte prosím lokaci na mapě');
       return;
     }
 
@@ -74,6 +76,8 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
     
     if (result.success) {
       onSuccess?.();
+    } else if (result.error) {
+      toast.error(result.error);
     }
   };
 
