@@ -111,7 +111,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
       center: defaultCenter,
       zoom: 7,
       scrollWheelZoom: true,
-      maxBounds: czechiaBounds,
+      maxBounds: czechiaBounds.pad(0.1),
       maxBoundsViscosity: 1.0,
       minZoom: 7,
       maxZoom: 18,
@@ -122,8 +122,13 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
       maxZoom: 19,
     }).addTo(map);
 
-    // Fit to Czechia bounds on init
-    map.fitBounds(czechiaBounds, { padding: [20, 20] });
+    // Set view to show all of Czechia
+    map.setView(defaultCenter, 7);
+    
+    // Invalidate size after a short delay to fix gray tiles
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
 
     mapRef.current = map;
     setIsMapReady(true);

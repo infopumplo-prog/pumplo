@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Lock, Heart, ChevronUp } from 'lucide-react';
+import { Search, Lock, Heart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -12,6 +12,7 @@ import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { Gym, OpeningHours } from '@/hooks/useGym';
+import { Drawer as VaulDrawer } from 'vaul';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
@@ -40,7 +41,6 @@ const Map = () => {
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [drawerExpanded, setDrawerExpanded] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
@@ -162,7 +162,7 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0 pb-[180px]">
+        <div className="absolute inset-0">
           <GymMap
             gyms={gyms}
             userLocation={userLocation}
@@ -171,83 +171,76 @@ const Map = () => {
           />
         </div>
 
-        {/* Bottom Pull-up Drawer for Gym List */}
-        <motion.div
-          className="fixed bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40"
-          initial={{ y: 0 }}
-          animate={{ 
-            height: drawerExpanded ? '75vh' : '180px',
-          }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        {/* Bottom Draggable Drawer for Gym List */}
+        <VaulDrawer.Root 
+          open={true} 
+          modal={false}
+          snapPoints={[0.25, 0.6, 0.9]}
+          activeSnapPoint={0.25}
         >
-          {/* Handle - tap to toggle */}
-          <button 
-            className="w-full flex flex-col items-center pt-3 pb-2"
-            onClick={() => setDrawerExpanded(!drawerExpanded)}
-          >
-            <div className="w-12 h-1.5 bg-muted rounded-full mb-2" />
-            <ChevronUp 
-              className={cn(
-                "w-5 h-5 text-muted-foreground transition-transform duration-300",
-                drawerExpanded && "rotate-180"
-              )} 
-            />
-          </button>
-          
-          {/* Search Bar */}
-          <div className="px-4 pb-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Hledat posilovny..."
-                className="pl-12"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Gym List */}
-          <div className={cn(
-            "px-4 overflow-y-auto",
-            drawerExpanded ? "h-[calc(75vh-120px)] pb-24" : "h-[60px] overflow-hidden"
-          )}>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
-                    <div className="w-12 h-12 bg-muted rounded-full" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
+          <VaulDrawer.Portal>
+            <VaulDrawer.Content 
+              className="fixed bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40 outline-none"
+              style={{ height: '90vh' }}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
+                <div className="w-12 h-1.5 bg-muted rounded-full" />
               </div>
-            ) : sortedGyms.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-sm">
-                {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
-                  <GymListItem
-                    key={gym.id}
-                    gym={gym}
-                    distance={distance}
-                    onClick={() => handleGymSelect(gym)}
-                    isFavorite={isFav}
+              
+              {/* Search Bar */}
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Hledat posilovny..."
+                    className="pl-12"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                ))}
+                </div>
               </div>
-            )}
-          </div>
-        </motion.div>
+
+              {/* Gym List */}
+              <div className="px-4 overflow-y-auto h-[calc(100%-100px)] pb-24">
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
+                        <div className="w-12 h-12 bg-muted rounded-full" />
+                        <div className="flex-1">
+                          <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : sortedGyms.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
+                      <GymListItem
+                        key={gym.id}
+                        gym={gym}
+                        distance={distance}
+                        onClick={() => handleGymSelect(gym)}
+                        isFavorite={isFav}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </VaulDrawer.Content>
+          </VaulDrawer.Portal>
+        </VaulDrawer.Root>
 
         {/* Gym Detail Drawer */}
         <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
-          <DrawerContent className="max-h-[90vh] border-0">
+          <DrawerContent className="max-h-[90vh] border-0 z-50">
             <div className="overflow-y-auto -mt-6">
               {selectedGym && (
                 <>
