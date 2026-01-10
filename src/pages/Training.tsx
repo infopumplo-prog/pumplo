@@ -81,7 +81,8 @@ const Training = () => {
       profile.selected_gym_id,
       selectedGoalId as TrainingGoalId,
       profile.user_level,
-      profile.injuries || []
+      profile.injuries || [],
+      profile.equipment_preference || null
     );
     refetchPlan();
   };
@@ -94,7 +95,8 @@ const Training = () => {
       profile.selected_gym_id,
       goalId as TrainingGoalId,
       profile.user_level,
-      profile.injuries || []
+      profile.injuries || [],
+      profile.equipment_preference || null
     );
     refetchPlan();
   };
@@ -465,7 +467,7 @@ const Training = () => {
                       
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">
-                          {exercise.exerciseName || 'Cvičení nenalezeno'}
+                          {exercise.exerciseName}
                         </h3>
                         
                         {/* Equipment info */}
@@ -490,11 +492,6 @@ const Training = () => {
                           <Badge variant="secondary" className="text-xs">
                             {TRAINING_ROLE_NAMES[exercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || exercise.roleId}
                           </Badge>
-                          {exercise.isFallback && (
-                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                              Náhrada
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {exercise.sets} sérií × {exercise.repMin}-{exercise.repMax} opakování

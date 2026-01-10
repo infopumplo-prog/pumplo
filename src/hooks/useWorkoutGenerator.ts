@@ -53,7 +53,8 @@ export const useWorkoutGenerator = () => {
     gymId: string,
     userLevel: UserLevel,
     userInjuries: string[],
-    usedExerciseIds: string[]
+    usedExerciseIds: string[],
+    equipmentPreference: string | null
   ): Promise<AssignedExercise> => {
     const levelNumber = getLevelNumber(userLevel);
     
@@ -168,11 +169,44 @@ export const useWorkoutGenerator = () => {
       return true;
     });
 
-    // 4. If found, return random exercise
+    // 4. Sort/prioritize based on equipment preference
     if (filteredExercises.length > 0) {
-      const randomIndex = Math.floor(Math.random() * filteredExercises.length);
+      let sortedExercises = [...filteredExercises];
+      
+      if (equipmentPreference === 'machines') {
+        // Prefer machine exercises, then cable, then others
+        sortedExercises.sort((a, b) => {
+          const aIsMachine = a.requires_machine || a.equipment?.includes('machine') || a.equipment?.includes('cable') || a.machine_id;
+          const bIsMachine = b.requires_machine || b.equipment?.includes('machine') || b.equipment?.includes('cable') || b.machine_id;
+          if (aIsMachine && !bIsMachine) return -1;
+          if (!aIsMachine && bIsMachine) return 1;
+          return 0;
+        });
+      } else if (equipmentPreference === 'bodyweight') {
+        // Prefer bodyweight exercises
+        sortedExercises.sort((a, b) => {
+          const aIsBodyweight = a.equipment?.includes('bodyweight');
+          const bIsBodyweight = b.equipment?.includes('bodyweight');
+          if (aIsBodyweight && !bIsBodyweight) return -1;
+          if (!aIsBodyweight && bIsBodyweight) return 1;
+          return 0;
+        });
+      } else if (equipmentPreference === 'free_weights') {
+        // Prefer free weights
+        sortedExercises.sort((a, b) => {
+          const aIsFreeWeights = a.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq));
+          const bIsFreeWeights = b.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq));
+          if (aIsFreeWeights && !bIsFreeWeights) return -1;
+          if (!aIsFreeWeights && bIsFreeWeights) return 1;
+          return 0;
+        });
+      }
+      
+      // Pick from top 3 (if available) for some variety within preference
+      const topCandidates = sortedExercises.slice(0, Math.min(3, sortedExercises.length));
+      const randomIndex = Math.floor(Math.random() * topCandidates.length);
       return { 
-        exercise: filteredExercises[randomIndex], 
+        exercise: topCandidates[randomIndex], 
         isFallback: false, 
         fallbackReason: null 
       };
@@ -281,7 +315,8 @@ export const useWorkoutGenerator = () => {
     gymId: string,
     goalId: TrainingGoalId,
     userLevel: UserLevel,
-    userInjuries: string[]
+    userInjuries: string[],
+    equipmentPreference: string | null
   ): Promise<string | null> => {
     if (!user) {
       setError('Uživatel není přihlášen');
@@ -333,7 +368,8 @@ export const useWorkoutGenerator = () => {
             gymId,
             userLevel,
             userInjuries,
-            usedExerciseIds
+            usedExerciseIds,
+            equipmentPreference
           );
           
           if (exercise) {
