@@ -108,7 +108,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '© OpenStreetMap',
     }).addTo(map);
 
     mapRef.current = map;
@@ -185,7 +185,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
   return (
     <div 
       ref={mapContainerRef} 
-      className="w-full h-80 rounded-2xl overflow-hidden border border-border shadow-sm relative z-0"
+      className="w-full h-full overflow-hidden relative z-0"
     />
   );
 };
