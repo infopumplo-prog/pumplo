@@ -106,26 +106,58 @@ const Map = () => {
     controls.set({ y: snaps.collapsed });
   }, [controls]);
 
-  // Get user location
+  // Get user location with watchPosition for real-time updates
   useEffect(() => {
     if (!navigator.geolocation) {
+      console.log('Geolocation not supported');
       setHasGpsAccess(false);
       return;
     }
 
+    let watchId: number;
+
+    // First try getCurrentPosition for quick initial location
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log('Got initial position:', position.coords);
         setUserLocation({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
         setHasGpsAccess(true);
       },
-      () => {
-        setHasGpsAccess(false);
+      (error) => {
+        console.log('getCurrentPosition error:', error.code, error.message);
+        // Don't set hasGpsAccess to false yet, watchPosition might work
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
+
+    // Also use watchPosition for continuous updates
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        console.log('Watch position update:', position.coords);
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setHasGpsAccess(true);
+      },
+      (error) => {
+        console.log('watchPosition error:', error.code, error.message);
+        // Only set to false if we never got a position
+        if (!userLocation) {
+          setHasGpsAccess(false);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   // Sort and filter gyms
