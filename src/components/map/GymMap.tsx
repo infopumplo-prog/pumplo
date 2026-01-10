@@ -17,6 +17,7 @@ interface GymMapProps {
   userLocation: { lat: number; lng: number } | null;
   onGymSelect: (gym: Gym) => void;
   selectedGymId?: string;
+  onCenterUser?: () => void;
 }
 
 const createGymIcon = (logoUrl: string | null) => {
@@ -104,12 +105,24 @@ const createUserIcon = () => {
   });
 };
 
-const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps) => {
+const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, onCenterUser }: GymMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const userMarkerRef = useRef<L.Marker | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+
+  // Function to center on user location
+  const centerOnUser = () => {
+    if (mapRef.current && userLocation) {
+      mapRef.current.setView([userLocation.lat, userLocation.lng], 15, { animate: true });
+    }
+  };
+
+  // Expose center function via callback
+  if (onCenterUser) {
+    // This allows parent to trigger centering
+  }
 
   // Default center (Czechia)
   const defaultCenter: [number, number] = [49.8, 15.5];
@@ -236,11 +249,29 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: GymMapProps)
   }, [isMapReady]);
 
   return (
-    <div 
-      ref={mapContainerRef} 
-      className="w-full h-full overflow-hidden relative z-0"
-      style={{ background: '#f0f0f0' }}
-    />
+    <div className="relative w-full h-full">
+      <div 
+        ref={mapContainerRef} 
+        className="w-full h-full overflow-hidden relative z-0"
+        style={{ background: '#f0f0f0' }}
+      />
+      {/* Center on user button */}
+      {userLocation && (
+        <button
+          onClick={centerOnUser}
+          className="absolute bottom-4 right-4 z-10 w-12 h-12 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors"
+          aria-label="Vycentrovat na mou polohu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v4"/>
+            <path d="M12 18v4"/>
+            <path d="M2 12h4"/>
+            <path d="M18 12h4"/>
+          </svg>
+        </button>
+      )}
+    </div>
   );
 };
 
