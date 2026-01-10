@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Gym, OpeningHours } from '@/hooks/useGym';
-import { isGymCurrentlyOpen } from '@/lib/gymUtils';
+import { isGymCurrentlyOpen, isClosingSoon } from '@/lib/gymUtils';
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -20,16 +20,40 @@ interface GymMapProps {
   onCenterUser?: () => void;
 }
 
-const createGymIcon = (logoUrl: string | null) => {
+const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false) => {
+  const borderColor = closingSoon ? '#f59e0b' : 'hsl(var(--primary))';
+  const warningBadge = closingSoon ? `
+    <div style="
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #f59e0b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite;
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+        <path d="M12 9v4"/>
+        <path d="M12 17h.01"/>
+      </svg>
+    </div>
+  ` : '';
+
   if (logoUrl) {
     return L.divIcon({
       className: 'gym-marker',
       html: `
         <div style="
+          position: relative;
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          border: 3px solid hsl(var(--primary));
+          border: 3px solid ${borderColor};
           background: white;
           box-shadow: 0 2px 8px rgba(0,0,0,0.2);
           overflow: hidden;
@@ -38,6 +62,7 @@ const createGymIcon = (logoUrl: string | null) => {
           justify-content: center;
         ">
           <img src="${logoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
+          ${warningBadge}
         </div>
       `,
       iconSize: [44, 44],
@@ -49,10 +74,11 @@ const createGymIcon = (logoUrl: string | null) => {
     className: 'gym-marker',
     html: `
       <div style="
+        position: relative;
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        border: 3px solid hsl(var(--primary));
+        border: 3px solid ${borderColor};
         background: hsl(var(--primary) / 0.1);
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         display: flex;
@@ -63,6 +89,7 @@ const createGymIcon = (logoUrl: string | null) => {
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
           <circle cx="12" cy="10" r="3"/>
         </svg>
+        ${warningBadge}
       </div>
     `,
     iconSize: [44, 44],
@@ -192,8 +219,11 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
 
     // Add new markers
     openGyms.forEach(gym => {
+      const hours = gym.opening_hours as OpeningHours;
+      const closingSoon = isClosingSoon(hours);
+      
       const marker = L.marker([gym.latitude, gym.longitude], {
-        icon: createGymIcon(gym.logo_url),
+        icon: createGymIcon(gym.logo_url, closingSoon),
       }).addTo(mapRef.current!);
 
       marker.on('click', () => onGymSelect(gym));

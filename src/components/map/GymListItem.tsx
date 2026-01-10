@@ -1,5 +1,5 @@
 import { Gym, OpeningHours } from '@/hooks/useGym';
-import { MapPin, Navigation, Heart } from 'lucide-react';
+import { MapPin, Navigation, Heart, AlertTriangle } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,12 @@ const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) =
             <MapPin className={cn("w-6 h-6", isOpen ? "text-primary" : "text-muted-foreground")} />
           </div>
         )}
+        {/* Closing Soon Badge */}
+        {status.closingSoon && (
+          <div className="absolute -top-1 -left-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center animate-pulse">
+            <AlertTriangle className="w-3 h-3 text-white" />
+          </div>
+        )}
         {isFavorite && (
           <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center">
             <Heart className="w-3 h-3 text-white fill-white" />
@@ -56,8 +62,8 @@ const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) =
           <p className="text-sm text-muted-foreground truncate">{gym.address}</p>
         )}
         <p className={cn(
-          "text-xs mt-0.5",
-          isOpen ? "text-green-600" : "text-destructive"
+          "text-xs mt-0.5 font-medium",
+          status.closingSoon ? "text-amber-600" : isOpen ? "text-green-600" : "text-destructive"
         )}>
           {status.text}
         </p>
