@@ -64,7 +64,25 @@ export const useWorkoutGenerator = () => {
       .eq('gym_id', gymId);
     
     const availableMachineIds = gymMachines?.map(m => m.machine_id).filter(Boolean) || [];
-    const availableEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+    const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+    
+    // Expand equipment types to include sub-types
+    // e.g. 'free_weights' should match 'barbell', 'dumbbell', 'kettlebell'
+    const expandedEquipment = new Set<string>(rawEquipmentTypes);
+    if (rawEquipmentTypes.includes('free_weights')) {
+      expandedEquipment.add('barbell');
+      expandedEquipment.add('dumbbell');
+      expandedEquipment.add('kettlebell');
+    }
+    // Machine types often include plate loaded machines too
+    if (rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded')) {
+      expandedEquipment.add('machine');
+      expandedEquipment.add('plate_loaded');
+    }
+    // Always include bodyweight as available
+    expandedEquipment.add('bodyweight');
+    
+    const availableEquipmentTypes = Array.from(expandedEquipment);
     
     // 2. Get exercises with primary_role
     const { data: exercises, error: exError } = await supabase
