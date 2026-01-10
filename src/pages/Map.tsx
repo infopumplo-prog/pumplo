@@ -224,7 +224,7 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT }}>
+        <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT + 120 }}>
           <GymMap
             gyms={gyms}
             userLocation={userLocation}
