@@ -150,15 +150,18 @@ export const useWorkoutGenerator = () => {
       .from('exercises')
       .select('*')
       .eq('primary_role', role)
-      .or('equipment_type.eq.bodyweight,requires_machine.eq.false');
+      .eq('requires_machine', false);
     
     if (bodyweightExercises && bodyweightExercises.length > 0) {
+      // Filter for bodyweight or exercises without equipment requirements
       const validBodyweight = bodyweightExercises.filter(ex => {
         if (usedExerciseIds.includes(ex.id)) return false;
         if (activeInjuries.length > 0 && ex.contraindicated_injuries) {
           if (ex.contraindicated_injuries.some((i: string) => activeInjuries.includes(i))) return false;
         }
-        return true;
+        // Accept if equipment includes bodyweight or is empty (fallback)
+        const hasBodyweight = ex.equipment?.includes('bodyweight') || ex.equipment?.length === 0;
+        return hasBodyweight;
       });
       
       if (validBodyweight.length > 0) {
