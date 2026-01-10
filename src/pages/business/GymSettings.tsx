@@ -1,7 +1,8 @@
-import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Trash2, Building2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,7 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 
 const GymSettings = () => {
-  const { gym, isLoading, refetch } = useGym();
+  const { gym, gyms, isLoading, refetch } = useGym();
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -76,6 +77,18 @@ const GymSettings = () => {
   return (
     <BusinessLayout>
       <div className="space-y-4">
+        {/* Current Gym Indicator */}
+        {gyms.length > 1 && (
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Nastavenia pre:</span>
+            <Badge variant="secondary">{gym.name}</Badge>
+            <Link to="/business" className="ml-auto text-xs text-primary hover:underline">
+              Zmeniť
+            </Link>
+          </div>
+        )}
+
         <h2 className="text-lg font-semibold">Nastavení</h2>
 
         {/* Danger Zone */}
