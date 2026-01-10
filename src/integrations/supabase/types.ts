@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      day_templates: {
+        Row: {
+          advanced_sets: number
+          beginner_sets: number
+          created_at: string | null
+          day_letter: string
+          day_name: string
+          goal_id: string
+          id: string
+          intermediate_sets: number
+          rep_max: number | null
+          rep_min: number | null
+          role_id: string
+          slot_order: number
+        }
+        Insert: {
+          advanced_sets?: number
+          beginner_sets?: number
+          created_at?: string | null
+          day_letter: string
+          day_name: string
+          goal_id: string
+          id?: string
+          intermediate_sets?: number
+          rep_max?: number | null
+          rep_min?: number | null
+          role_id: string
+          slot_order: number
+        }
+        Update: {
+          advanced_sets?: number
+          beginner_sets?: number
+          created_at?: string | null
+          day_letter?: string
+          day_name?: string
+          goal_id?: string
+          id?: string
+          intermediate_sets?: number
+          rep_max?: number | null
+          rep_min?: number | null
+          role_id?: string
+          slot_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_templates_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "training_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_templates_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           category: string
@@ -27,8 +87,10 @@ export type Database = {
           movement_pattern: string | null
           name: string
           primary_muscles: string[]
+          primary_role: string | null
           requires_machine: boolean
           secondary_muscles: string[]
+          secondary_role: string | null
           updated_at: string
           video_path: string | null
           workout_split: string[]
@@ -45,8 +107,10 @@ export type Database = {
           movement_pattern?: string | null
           name: string
           primary_muscles?: string[]
+          primary_role?: string | null
           requires_machine?: boolean
           secondary_muscles?: string[]
+          secondary_role?: string | null
           updated_at?: string
           video_path?: string | null
           workout_split?: string[]
@@ -63,8 +127,10 @@ export type Database = {
           movement_pattern?: string | null
           name?: string
           primary_muscles?: string[]
+          primary_role?: string | null
           requires_machine?: boolean
           secondary_muscles?: string[]
+          secondary_role?: string | null
           updated_at?: string
           video_path?: string | null
           workout_split?: string[]
@@ -75,6 +141,20 @@ export type Database = {
             columns: ["machine_id"]
             isOneToOne: false
             referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercises_primary_role_fkey"
+            columns: ["primary_role"]
+            isOneToOne: false
+            referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercises_secondary_role_fkey"
+            columns: ["secondary_role"]
+            isOneToOne: false
+            referencedRelation: "training_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -205,10 +285,59 @@ export type Database = {
         }
         Relationships: []
       }
+      training_goals: {
+        Row: {
+          created_at: string | null
+          day_count: number
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_count: number
+          description?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          day_count?: number
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      training_roles: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           age: number | null
           created_at: string
+          current_day_index: number | null
           current_step: number | null
           equipment_preference: string | null
           first_name: string | null
@@ -223,16 +352,19 @@ export type Database = {
           preferred_time: string | null
           primary_goal: string | null
           secondary_goals: string[] | null
+          selected_gym_id: string | null
           training_days: string[] | null
           training_duration_minutes: number | null
           training_split: string | null
           updated_at: string
           user_id: string
+          user_level: string | null
           weight_kg: number | null
         }
         Insert: {
           age?: number | null
           created_at?: string
+          current_day_index?: number | null
           current_step?: number | null
           equipment_preference?: string | null
           first_name?: string | null
@@ -247,16 +379,19 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           secondary_goals?: string[] | null
+          selected_gym_id?: string | null
           training_days?: string[] | null
           training_duration_minutes?: number | null
           training_split?: string | null
           updated_at?: string
           user_id: string
+          user_level?: string | null
           weight_kg?: number | null
         }
         Update: {
           age?: number | null
           created_at?: string
+          current_day_index?: number | null
           current_step?: number | null
           equipment_preference?: string | null
           first_name?: string | null
@@ -271,14 +406,24 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           secondary_goals?: string[] | null
+          selected_gym_id?: string | null
           training_days?: string[] | null
           training_duration_minutes?: number | null
           training_split?: string | null
           updated_at?: string
           user_id?: string
+          user_level?: string | null
           weight_kg?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_selected_gym_id_fkey"
+            columns: ["selected_gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -300,6 +445,118 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_workout_exercises: {
+        Row: {
+          created_at: string | null
+          day_letter: string
+          exercise_id: string | null
+          fallback_reason: string | null
+          id: string
+          is_fallback: boolean | null
+          plan_id: string
+          rep_max: number | null
+          rep_min: number | null
+          role_id: string
+          sets: number
+          slot_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          day_letter: string
+          exercise_id?: string | null
+          fallback_reason?: string | null
+          id?: string
+          is_fallback?: boolean | null
+          plan_id: string
+          rep_max?: number | null
+          rep_min?: number | null
+          role_id: string
+          sets: number
+          slot_order: number
+        }
+        Update: {
+          created_at?: string | null
+          day_letter?: string
+          exercise_id?: string | null
+          fallback_reason?: string | null
+          id?: string
+          is_fallback?: boolean | null
+          plan_id?: string
+          rep_max?: number | null
+          rep_min?: number | null
+          role_id?: string
+          sets?: number
+          slot_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_workout_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_workout_exercises_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_workout_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_workout_exercises_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_workout_plans: {
+        Row: {
+          created_at: string | null
+          goal_id: string
+          gym_id: string
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          goal_id: string
+          gym_id: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          goal_id?: string
+          gym_id?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_workout_plans_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "training_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_workout_plans_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

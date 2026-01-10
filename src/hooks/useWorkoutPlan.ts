@@ -1,0 +1,174 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { TrainingGoalId, WorkoutExercise, DayTemplate } from '@/lib/trainingGoals';
+import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
+
+interface WorkoutPlanData {
+  id: string;
+  gymId: string;
+  goalId: TrainingGoalId;
+  dayCount: number;
+  currentDayIndex: number;
+  currentDayLetter: string;
+  exercises: WorkoutExercise[];
+  allDays: DayTemplate[];
+}
+
+export const useWorkoutPlan = () => {
+  const { user } = useAuth();
+  const [plan, setPlan] = useState<WorkoutPlanData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActivePlan = useCallback(async () => {
+    if (!user) {
+      setPlan(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 1. Get active plan
+      const { data: planData, error: planError } = await supabase
+        .from('user_workout_plans')
+        .select(`
+          *,
+          training_goals (day_count, name)
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (planError) {
+        if (planError.code === 'PGRST116') {
+          // No active plan
+          setPlan(null);
+          setIsLoading(false);
+          return;
+        }
+        throw planError;
+      }
+
+      // 2. Get user's current day index
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('current_day_index')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentDayIndex = profileData?.current_day_index || 0;
+      const dayCount = (planData.training_goals as any)?.day_count || 2;
+      const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
+
+      // 3. Get exercises for this plan
+      const { data: exercisesData, error: exError } = await supabase
+        .from('user_workout_exercises')
+        .select(`
+          *,
+          exercises (id, name, description, image_url, video_url)
+        `)
+        .eq('plan_id', planData.id)
+        .order('day_letter')
+        .order('slot_order');
+
+      if (exError) throw exError;
+
+      // 4. Transform exercises
+      const exercises: WorkoutExercise[] = (exercisesData || []).map(ex => ({
+        id: ex.id,
+        dayLetter: ex.day_letter,
+        slotOrder: ex.slot_order,
+        roleId: ex.role_id,
+        exerciseId: ex.exercise_id,
+        exerciseName: (ex.exercises as any)?.name || null,
+        sets: ex.sets,
+        repMin: ex.rep_min || 8,
+        repMax: ex.rep_max || 12,
+        isFallback: ex.is_fallback || false,
+        fallbackReason: ex.fallback_reason
+      }));
+
+      // 5. Group exercises by day
+      const dayLetters = getAllDayLetters(dayCount);
+      const allDays: DayTemplate[] = dayLetters.map(letter => {
+        const dayExercises = exercises.filter(e => e.dayLetter === letter);
+        return {
+          dayLetter: letter,
+          dayName: `Den ${letter}`,
+          slots: dayExercises.map(e => ({
+            id: e.id,
+            slotOrder: e.slotOrder,
+            roleId: e.roleId,
+            beginnerSets: e.sets,
+            intermediateSets: e.sets,
+            advancedSets: e.sets,
+            repMin: e.repMin,
+            repMax: e.repMax
+          }))
+        };
+      });
+
+      setPlan({
+        id: planData.id,
+        gymId: planData.gym_id,
+        goalId: planData.goal_id as TrainingGoalId,
+        dayCount,
+        currentDayIndex,
+        currentDayLetter,
+        exercises,
+        allDays
+      });
+    } catch (err) {
+      console.error('Error fetching workout plan:', err);
+      setError('Nepodařilo se načíst tréninkový plán');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Move to next day in rotation
+  const advanceToNextDay = useCallback(async () => {
+    if (!user || !plan) return;
+
+    const { nextIndex } = getNextDayLetter(plan.dayCount, plan.currentDayIndex);
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ current_day_index: nextIndex })
+      .eq('user_id', user.id);
+
+    if (!error) {
+      await fetchActivePlan();
+    }
+  }, [user, plan, fetchActivePlan]);
+
+  // Get exercises for current day
+  const getCurrentDayExercises = useCallback((): WorkoutExercise[] => {
+    if (!plan) return [];
+    return plan.exercises.filter(e => e.dayLetter === plan.currentDayLetter);
+  }, [plan]);
+
+  // Get exercises for specific day
+  const getExercisesForDay = useCallback((dayLetter: string): WorkoutExercise[] => {
+    if (!plan) return [];
+    return plan.exercises.filter(e => e.dayLetter === dayLetter);
+  }, [plan]);
+
+  useEffect(() => {
+    fetchActivePlan();
+  }, [fetchActivePlan]);
+
+  return {
+    plan,
+    isLoading,
+    error,
+    refetch: fetchActivePlan,
+    advanceToNextDay,
+    getCurrentDayExercises,
+    getExercisesForDay
+  };
+};
