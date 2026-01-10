@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
@@ -62,7 +63,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
+const BusinessRouteGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading: authLoading } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
   
@@ -80,6 +81,16 @@ const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   return <>{children}</>;
+};
+
+const BusinessLayout = () => {
+  return (
+    <BusinessRouteGuard>
+      <GymProvider>
+        <Outlet />
+      </GymProvider>
+    </BusinessRouteGuard>
+  );
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
@@ -112,10 +123,12 @@ const AppRoutes = () => (
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
     <Route path="/admin/import" element={<AdminRoute><ImportExercises /></AdminRoute>} />
     
-    {/* Business Routes */}
-    <Route path="/business" element={<BusinessRoute><GymDashboard /></BusinessRoute>} />
-    <Route path="/business/machines" element={<BusinessRoute><GymMachines /></BusinessRoute>} />
-    <Route path="/business/settings" element={<BusinessRoute><GymSettings /></BusinessRoute>} />
+    {/* Business Routes - share GymProvider via BusinessLayout */}
+    <Route element={<BusinessLayout />}>
+      <Route path="/business" element={<GymDashboard />} />
+      <Route path="/business/machines" element={<GymMachines />} />
+      <Route path="/business/settings" element={<GymSettings />} />
+    </Route>
     
     {/* Fallback */}
     <Route path="*" element={<NotFound />} />
