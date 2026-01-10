@@ -4,6 +4,7 @@ import { useGymMachines } from '@/hooks/useGymMachines';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, ChevronDown, Dumbbell, AlertTriangle } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus, isClosingSoon } from '@/lib/gymUtils';
+import { getEquipmentTypeLabel } from '@/lib/equipmentTypes';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -209,7 +210,7 @@ const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymPr
                 Object.entries(groupedMachines).map(([type, items]) => (
                   <div key={type}>
                     <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      {type}
+                      {getEquipmentTypeLabel(type)}
                     </h5>
                     <div className="space-y-1">
                       {items.map((gm) => (
