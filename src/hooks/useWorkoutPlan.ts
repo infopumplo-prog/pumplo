@@ -8,6 +8,7 @@ interface WorkoutPlanData {
   id: string;
   gymId: string;
   goalId: TrainingGoalId;
+  goalName: string;
   dayCount: number;
   currentDayIndex: number;
   currentDayLetter: string;
@@ -62,6 +63,7 @@ export const useWorkoutPlan = () => {
 
       const currentDayIndex = profileData?.current_day_index || 0;
       const dayCount = (planData.training_goals as any)?.day_count || 2;
+      const goalName = (planData.training_goals as any)?.name || 'Trénink';
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
       // 3. Get exercises for this plan with machine info
@@ -134,6 +136,7 @@ export const useWorkoutPlan = () => {
         id: planData.id,
         gymId: planData.gym_id,
         goalId: planData.goal_id as TrainingGoalId,
+        goalName,
         dayCount,
         currentDayIndex,
         currentDayLetter,

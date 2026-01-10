@@ -378,7 +378,12 @@ const Training = () => {
         {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold">Trénink</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Trénink</h1>
+              {plan && (
+                <p className="text-sm text-primary font-medium">{plan.goalName}</p>
+              )}
+            </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={handleCancelPlan} title="Změnit cíl">
                 <X className="w-5 h-5" />
