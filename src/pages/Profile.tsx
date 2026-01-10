@@ -2,19 +2,31 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 
+const getRoleLabel = (role: string | null): string => {
+  switch (role) {
+    case 'admin': return 'Administrátor';
+    case 'business': return 'Business';
+    case 'user': return 'Uživatel';
+    default: return 'Uživatel';
+  }
+};
+
 const Profile = () => {
   const { user, logout } = useAuth();
   const { profile, isLoading } = useUserProfile();
+  const { role, isLoading: roleLoading } = useUserRole();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || roleLoading) {
     return <ProfilePageSkeleton />;
   }
 
@@ -78,8 +90,15 @@ const Profile = () => {
               <User className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-foreground truncate">{user?.user_metadata?.name}</h2>
+              <h2 className="text-lg font-bold text-foreground truncate">
+                {profile?.first_name && profile?.last_name 
+                  ? `${profile.first_name} ${profile.last_name}` 
+                  : user?.user_metadata?.name || 'Uživatel'}
+              </h2>
               <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+              <Badge variant="secondary" className="mt-2 text-xs">
+                {getRoleLabel(role)}
+              </Badge>
             </div>
           </div>
         </motion.div>

@@ -74,8 +74,8 @@ const BusinessRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
   
-  // Allow both business and admin roles to access business pages
-  if (role !== 'business' && role !== 'admin') {
+  // Only business role can access business pages
+  if (role !== 'business') {
     return <Forbidden requiredRole="business" />;
   }
   
