@@ -105,7 +105,7 @@ const createUserIcon = () => {
   });
 };
 
-const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, onCenterUser }: GymMapProps) => {
+const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapProps, 'onCenterUser'>) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -118,11 +118,6 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, onCenterUser }
       mapRef.current.setView([userLocation.lat, userLocation.lng], 15, { animate: true });
     }
   };
-
-  // Expose center function via callback
-  if (onCenterUser) {
-    // This allows parent to trigger centering
-  }
 
   // Default center (Czechia)
   const defaultCenter: [number, number] = [49.8, 15.5];
@@ -255,22 +250,21 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, onCenterUser }
         className="w-full h-full overflow-hidden relative z-0"
         style={{ background: '#f0f0f0' }}
       />
-      {/* Center on user button - top right */}
-      {userLocation && (
-        <button
-          onClick={centerOnUser}
-          className="absolute top-4 right-4 z-10 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors"
-          aria-label="Vycentrovat na mou polohu"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 2v4"/>
-            <path d="M12 18v4"/>
-            <path d="M2 12h4"/>
-            <path d="M18 12h4"/>
-          </svg>
-        </button>
-      )}
+      {/* Center on user button - top right - always show */}
+      <button
+        onClick={centerOnUser}
+        disabled={!userLocation}
+        className="absolute top-4 right-4 z-10 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Vycentrovat na mou polohu"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "#4CC9FF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4"/>
+          <path d="M12 18v4"/>
+          <path d="M2 12h4"/>
+          <path d="M18 12h4"/>
+        </svg>
+      </button>
     </div>
   );
 };
