@@ -71,37 +71,37 @@ const createGymIcon = (logoUrl: string | null) => {
 };
 
 const createUserIcon = () => {
+  // Use fixed color for user marker (primary color #4CC9FF)
   return L.divIcon({
     className: 'user-marker',
     html: `
-      <div style="position: relative; width: 32px; height: 32px;">
-        <div style="
+      <div style="position: relative; width: 40px; height: 40px;">
+        <div class="user-pulse-ring" style="
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          width: 32px;
-          height: 32px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          background: hsl(var(--primary) / 0.3);
-          animation: userPulse 2s ease-in-out infinite;
+          background: rgba(76, 201, 255, 0.3);
         "></div>
         <div style="
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          width: 16px;
-          height: 16px;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
-          background: hsl(var(--primary));
+          background: #4CC9FF;
           border: 3px solid white;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         "></div>
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 };
 
@@ -255,14 +255,14 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, onCenterUser }
         className="w-full h-full overflow-hidden relative z-0"
         style={{ background: '#f0f0f0' }}
       />
-      {/* Center on user button */}
+      {/* Center on user button - top right */}
       {userLocation && (
         <button
           onClick={centerOnUser}
-          className="absolute bottom-4 right-4 z-10 w-12 h-12 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors"
+          className="absolute top-4 right-4 z-10 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors"
           aria-label="Vycentrovat na mou polohu"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M12 2v4"/>
             <path d="M12 18v4"/>

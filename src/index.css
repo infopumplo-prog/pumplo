@@ -146,9 +146,13 @@
     opacity: 0.6;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.5);
+    transform: translate(-50%, -50%) scale(1.8);
     opacity: 0;
   }
+}
+
+.user-pulse-ring {
+  animation: userPulse 2s ease-in-out infinite;
 }
 
 @layer utilities {
