@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, useMotionValue, useAnimationControls, PanInfo } from 'framer-motion';
-import { Search, Lock, Heart } from 'lucide-react';
+import { Search, Lock, Heart, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
+import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap from '@/components/map/GymMap';
@@ -44,7 +46,9 @@ const getSnapPoints = () => {
 };
 
 const Map = () => {
-  const { profile, isLoading: isProfileLoading } = useUserProfile();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
   const { gyms, isLoading } = usePublishedGyms();
   const { favorites, toggleFavorite, isFavorite } = useFavoriteGyms();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -52,6 +56,7 @@ const Map = () => {
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSelectingGym, setIsSelectingGym] = useState(false);
   
   const controls = useAnimationControls();
   const y = useMotionValue(getSnapPoints().collapsed);
@@ -211,6 +216,31 @@ const Map = () => {
     ? isGymCurrentlyOpen(selectedGym.opening_hours as OpeningHours)
     : false;
 
+  const isCurrentlySelectedGym = selectedGym?.id === profile?.selected_gym_id;
+
+  const handleSelectGymForTraining = async () => {
+    if (!selectedGym || !selectedGymIsOpen) return;
+    
+    setIsSelectingGym(true);
+    try {
+      await updateProfile({ selected_gym_id: selectedGym.id });
+      toast({
+        title: 'Posilovna vybrána',
+        description: `${selectedGym.name} byla nastavena jako tvoje posilovna pro trénink.`
+      });
+      setSelectedGym(null);
+      navigate('/training');
+    } catch (error) {
+      toast({
+        title: 'Chyba',
+        description: 'Nepodařilo se vybrat posilovnu.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSelectingGym(false);
+    }
+  };
+
   // Early returns AFTER all hooks
   if (isProfileLoading) {
     return <MapPageSkeleton />;
@@ -367,10 +397,28 @@ const Map = () => {
                     </Button>
                     <Button
                       size="lg"
-                      className="flex-1"
-                      disabled={!selectedGymIsOpen}
+                      className={cn(
+                        "flex-1 gap-2",
+                        isCurrentlySelectedGym && "bg-green-500 hover:bg-green-600"
+                      )}
+                      disabled={!selectedGymIsOpen || isSelectingGym}
+                      onClick={handleSelectGymForTraining}
                     >
-                      {selectedGymIsOpen ? 'Vybrat posilovnu' : 'Posilovna je zavřená'}
+                      {isSelectingGym ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Vybírám...
+                        </>
+                      ) : isCurrentlySelectedGym ? (
+                        <>
+                          <Check className="w-5 h-5" />
+                          Aktuální posilovna
+                        </>
+                      ) : selectedGymIsOpen ? (
+                        'Vybrat pro trénink'
+                      ) : (
+                        'Posilovna je zavřená'
+                      )}
                     </Button>
                   </div>
                 </>

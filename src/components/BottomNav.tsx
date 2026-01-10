@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, MapPin, User } from 'lucide-react';
+import { Home, MapPin, Dumbbell, User } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Domů', icon: Home },
   { path: '/map', label: 'Mapa', icon: MapPin },
-  { path: '/profile', label: 'Můj profil', icon: User },
+  { path: '/training', label: 'Trénink', icon: Dumbbell },
+  { path: '/profile', label: 'Profil', icon: User },
 ];
 
 const BottomNav = () => {

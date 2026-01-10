@@ -23,6 +23,9 @@ export interface UserProfile {
   onboarding_completed: boolean;
   current_step: number;
   gym_license_count: number;
+  user_level: 'beginner' | 'intermediate' | 'advanced' | null;
+  selected_gym_id: string | null;
+  current_day_index: number;
   created_at: string;
   updated_at: string;
 }
