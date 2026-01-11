@@ -23,6 +23,7 @@ import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
 import Training from "@/pages/Training";
+import WorkoutHistory from "@/pages/WorkoutHistory";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ const AppRoutes = () => (
       <Route path="/map" element={<Map />} />
       <Route path="/training" element={<Training />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/profile/history" element={<WorkoutHistory />} />
     </Route>
     
     {/* Admin Routes */}

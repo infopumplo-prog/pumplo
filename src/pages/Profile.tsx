@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList } from 'lucide-react';
+import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3 } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -21,16 +23,19 @@ const getRoleLabel = (role: string | null): string => {
 };
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { profile, isLoading } = useUserProfile();
   const { role, isLoading: roleLoading } = useUserRole();
+  const { stats, isLoading: statsLoading } = useWorkoutStats();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  if (isLoading || roleLoading) {
+  if (isLoading || roleLoading || statsLoading) {
     return <ProfilePageSkeleton />;
   }
 
   const menuItems = [
+    { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
     { icon: Settings, label: 'Nastavení', onClick: () => {} },
     { icon: Bell, label: 'Oznámení', onClick: () => {} },
@@ -105,14 +110,22 @@ const Profile = () => {
 
         {/* Stats Summary */}
         <motion.div variants={itemVariants}>
-          <h3 className="text-lg font-semibold text-foreground mb-4">Statistiky</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Statistiky</h3>
+            <button 
+              onClick={() => navigate('/profile/history')}
+              className="text-sm text-primary font-medium"
+            >
+              Zobrazit vše
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-secondary rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-secondary-foreground">0</p>
+            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{stats.allTime.totalWorkouts}</p>
               <p className="text-sm text-muted-foreground">Tréninků</p>
             </div>
-            <div className="bg-secondary rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-secondary-foreground">0</p>
+            <div className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border border-chart-2/20 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{Math.round(stats.allTime.totalDuration / 60)}</p>
               <p className="text-sm text-muted-foreground">Hodin cvičení</p>
             </div>
           </div>
