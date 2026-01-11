@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X } from 'lucide-react';
+import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,9 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
+import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
-import { getTrainingSchedule, getCurrentDayLetter } from '@/lib/workoutRotation';
+import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
 import OnboardingWarning from '@/components/OnboardingWarning';
@@ -33,6 +34,7 @@ const Training = () => {
   const { profile, isLoading: profileLoading, updateProfile } = useUserProfile();
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan } = useWorkoutPlan();
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
+  const { stats } = useWorkoutStats();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -538,7 +540,20 @@ const Training = () => {
   // Get training schedule based on user's frequency
   const schedule = getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex);
   const currentDayLetter = getCurrentDayLetter(plan.dayCount, plan.currentDayIndex);
+  const today = getCurrentWeekday();
   // currentExercises is defined above in useEffect section
+
+  // Check if workout was completed today
+  const completedTodayDayLetter = stats.today.totalWorkouts > 0 
+    ? stats.lastDays.find(d => {
+        const sessionDate = new Date(d.date);
+        const now = new Date();
+        return sessionDate.getFullYear() === now.getFullYear() &&
+               sessionDate.getMonth() === now.getMonth() &&
+               sessionDate.getDate() === now.getDate() &&
+               d.completed;
+      })?.dayLetter || null
+    : null;
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
@@ -577,7 +592,8 @@ const Training = () => {
           <div className="flex gap-2 overflow-x-auto pb-2">
             {schedule.map((day, index) => {
               const isCurrentDay = day.dayLetter === currentDayLetter && index === 0;
-              const isCompleted = index < 0; // TODO: track completed days
+              const isTodayWeekday = day.dayOfWeek === today && index === 0;
+              const isCompletedToday = isTodayWeekday && completedTodayDayLetter === day.dayLetter;
               const dayInfo = plan.allDays.find(d => d.dayLetter === day.dayLetter);
               const dayTypeName = dayInfo?.dayName || '';
               
@@ -586,10 +602,10 @@ const Training = () => {
                   key={`${day.dayOfWeek}-${index}`}
                   className={cn(
                     "flex-shrink-0 flex flex-col items-center p-3 rounded-xl min-w-[70px] transition-all",
-                    isCurrentDay
-                      ? "bg-primary text-primary-foreground shadow-lg"
-                      : isCompleted
-                        ? "bg-muted/50 text-muted-foreground"
+                    isCompletedToday
+                      ? "bg-green-500 text-white shadow-lg"
+                      : isCurrentDay
+                        ? "bg-primary text-primary-foreground shadow-lg"
                         : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -597,20 +613,26 @@ const Training = () => {
                     {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
                   </span>
                   <span className={cn(
-                    "text-lg font-bold",
-                    isCurrentDay ? "text-primary-foreground" : "text-foreground"
+                    "text-lg font-bold flex items-center justify-center",
+                    isCompletedToday ? "text-white" : isCurrentDay ? "text-primary-foreground" : "text-foreground"
                   )}>
-                    {day.dayLetter}
+                    {isCompletedToday ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      day.dayLetter
+                    )}
                   </span>
                   {dayTypeName && (
                     <span className={cn(
                       "text-[10px] mt-0.5",
-                      isCurrentDay ? "opacity-80" : "text-muted-foreground"
+                      isCompletedToday ? "opacity-80" : isCurrentDay ? "opacity-80" : "text-muted-foreground"
                     )}>
                       {dayTypeName}
                     </span>
                   )}
-                  {isCurrentDay && (
+                  {isCompletedToday ? (
+                    <span className="text-[10px] mt-0.5 opacity-80">hotovo</span>
+                  ) : isCurrentDay && (
                     <span className="text-[10px] mt-0.5 opacity-80">dnes</span>
                   )}
                 </div>
