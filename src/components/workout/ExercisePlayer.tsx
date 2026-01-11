@@ -95,16 +95,25 @@ export const ExercisePlayer = ({
 
   const equipmentDisplay = machineName || equipment.map(eq => {
     const eqNames: Record<string, string> = {
-      'barbell': 'Velká činka',
+      'barbell': 'Veľká činka',
       'dumbbell': 'Jednoručky',
       'kettlebell': 'Kettlebell',
-      'cable': 'Kabel',
+      'cable': 'Kladka',
       'machine': 'Stroj',
-      'bodyweight': 'Vlastní váha',
-      'free_weights': 'Volné váhy',
-      'plate_loaded': 'Kotouče'
+      'bodyweight': 'Vlastná váha',
+      'free_weights': 'Voľné váhy',
+      'plate_loaded': 'Kotúčový stroj',
+      'resistance_band': 'Guma',
+      'exercise_ball': 'Fitlopta',
+      'trx': 'TRX',
+      'ez_bar': 'EZ činka',
+      'smith_machine': 'Smithov stroj',
+      'pull_up_bar': 'Hrazda',
+      'bench': 'Lavička',
+      'foam_roller': 'Valec',
+      'medicine_ball': 'Medicinbal'
     };
-    return eqNames[eq] || eq;
+    return eqNames[eq] || eq.replace(/_/g, ' ');
   }).join(', ');
 
   const completedSets = setsData.filter(s => s.completed).length;
