@@ -69,9 +69,7 @@ export const WorkoutSession = ({
   const currentExercise = exercises[currentExerciseIndex];
   const restTimes = REST_TIMES[goalId] || REST_TIMES.general_fitness;
 
-  // Check if exercise is cardio/bodyweight (no weight tracking needed)
-  const isBodyweight = currentExercise?.equipment?.includes('bodyweight') || 
-                       currentExercise?.equipment?.length === 0;
+  // Note: weight tracking is now determined by exercise_with_weights field from DB
 
   const handleCompleteExercise = useCallback((setsData: SetData[]) => {
     const newResult: ExerciseResult = {
@@ -234,7 +232,7 @@ export const WorkoutSession = ({
         totalExercises={exercises.length}
         onCompleteExercise={handleCompleteExercise}
         onSkipExercise={handleSkipExercise}
-        showWeightInput={!isBodyweight}
+        showWeightInput={true}
         restBetweenSets={restTimes.betweenSets}
       />
     </div>
@@ -259,7 +257,12 @@ const ExercisePlayerWithVideo = ({
   showWeightInput: boolean;
   restBetweenSets: number;
 }) => {
-  const [videoData, setVideoData] = useState<{ url: string | null; description: string | null; difficulty: number | null }>({ url: null, description: null, difficulty: null });
+  const [videoData, setVideoData] = useState<{ 
+    url: string | null; 
+    description: string | null; 
+    difficulty: number | null;
+    exerciseWithWeights: boolean;
+  }>({ url: null, description: null, difficulty: null, exerciseWithWeights: true });
 
   // Fetch video path from exercise on mount
   useEffect(() => {
@@ -268,7 +271,7 @@ const ExercisePlayerWithVideo = ({
       
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, description, difficulty')
+        .select('video_path, description, difficulty, exercise_with_weights')
         .eq('id', exercise.exerciseId)
         .single();
       
@@ -284,7 +287,8 @@ const ExercisePlayerWithVideo = ({
         setVideoData({ 
           url,
           description: data.description,
-          difficulty: data.difficulty
+          difficulty: data.difficulty,
+          exerciseWithWeights: data.exercise_with_weights ?? true
         });
       }
     };
@@ -307,7 +311,7 @@ const ExercisePlayerWithVideo = ({
       totalExercises={totalExercises}
       onCompleteExercise={onCompleteExercise}
       onSkipExercise={onSkipExercise}
-      showWeightInput={showWeightInput}
+      showWeightInput={videoData.exerciseWithWeights}
       restBetweenSets={restBetweenSets}
     />
   );
