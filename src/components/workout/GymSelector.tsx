@@ -4,9 +4,10 @@ import { MapPin, Check, X, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePublishedGyms } from '@/hooks/usePublishedGyms';
+import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
+import { OpeningHours } from '@/hooks/useGym';
 
 interface GymSelectorProps {
   onSelect: (gymId: string) => void;
@@ -20,8 +21,8 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
 
   // Filter to only show open gyms first
   const sortedGyms = [...gyms].sort((a, b) => {
-    const aStatus = getTodayOpeningStatus(a.opening_hours as any);
-    const bStatus = getTodayOpeningStatus(b.opening_hours as any);
+    const aStatus = getTodayOpeningStatus(a.opening_hours as OpeningHours);
+    const bStatus = getTodayOpeningStatus(b.opening_hours as OpeningHours);
     
     // Open gyms first
     if (aStatus.isOpen && !bStatus.isOpen) return -1;
@@ -69,7 +70,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
           </div>
         ) : (
           sortedGyms.map((gym) => {
-            const status = getTodayOpeningStatus(gym.opening_hours as any);
+            const status = getTodayOpeningStatus(gym.opening_hours as OpeningHours);
             const isSelected = selected === gym.id;
             const isDisabled = !status.isOpen;
             

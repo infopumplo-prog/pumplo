@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
+import { PublicGym } from '@/hooks/usePublishedGyms';
 import { useGymMachines } from '@/hooks/useGymMachines';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, ChevronDown, Dumbbell, AlertTriangle } from 'lucide-react';
@@ -32,8 +33,11 @@ const DAYS_SHORT = [
   { key: 'sunday', label: 'Ne' },
 ];
 
+// Accept both Gym (with owner_id) and PublicGym (without owner_id)
+type GymData = Gym | PublicGym;
+
 interface GymProfilePreviewProps {
-  gym: Gym;
+  gym: GymData;
   variant?: 'default' | 'drawer';
   showBadge?: boolean;
 }

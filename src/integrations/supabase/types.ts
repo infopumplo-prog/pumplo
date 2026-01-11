@@ -199,6 +199,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gym_machines_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gym_machines_machine_id_fkey"
             columns: ["machine_id"]
             isOneToOne: false
@@ -429,6 +436,13 @@ export type Database = {
             referencedRelation: "gyms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_profiles_selected_gym_id_fkey"
+            columns: ["selected_gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -568,6 +582,13 @@ export type Database = {
             referencedRelation: "gyms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_workout_plans_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       workout_session_sets: {
@@ -676,6 +697,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workout_sessions_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workout_sessions_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -686,7 +714,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_gyms: {
+        Row: {
+          address: string | null
+          cover_photo_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          is_published: boolean | null
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          name: string | null
+          opening_hours: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          cover_photo_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_published?: boolean | null
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          cover_photo_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_published?: boolean | null
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
