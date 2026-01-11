@@ -71,6 +71,7 @@ export interface WorkoutExercise {
   exerciseName?: string;
   equipment?: string[];
   machineName?: string | null;
+  difficulty?: number;
   sets: number;
   repMin: number;
   repMax: number;

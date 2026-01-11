@@ -259,7 +259,7 @@ const ExercisePlayerWithVideo = ({
   showWeightInput: boolean;
   restBetweenSets: number;
 }) => {
-  const [videoData, setVideoData] = useState<{ url: string | null; description: string | null }>({ url: null, description: null });
+  const [videoData, setVideoData] = useState<{ url: string | null; description: string | null; difficulty: number | null }>({ url: null, description: null, difficulty: null });
 
   // Fetch video path from exercise on mount
   useEffect(() => {
@@ -268,18 +268,23 @@ const ExercisePlayerWithVideo = ({
       
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, description')
+        .select('video_path, description, difficulty')
         .eq('id', exercise.exerciseId)
         .single();
       
-      if (data?.video_path) {
-        const { data: urlData } = supabase.storage
-          .from('exercise-videos')
-          .getPublicUrl(data.video_path);
+      if (data) {
+        let url = null;
+        if (data.video_path) {
+          const { data: urlData } = supabase.storage
+            .from('exercise-videos')
+            .getPublicUrl(data.video_path);
+          url = urlData?.publicUrl || null;
+        }
         
         setVideoData({ 
-          url: urlData?.publicUrl || null,
-          description: data.description
+          url,
+          description: data.description,
+          difficulty: data.difficulty
         });
       }
     };
@@ -294,6 +299,7 @@ const ExercisePlayerWithVideo = ({
       roleId={exercise.roleId}
       equipment={exercise.equipment || []}
       machineName={exercise.machineName}
+      difficulty={videoData.difficulty || exercise.difficulty}
       totalSets={exercise.sets}
       repMin={exercise.repMin}
       repMax={exercise.repMax}
