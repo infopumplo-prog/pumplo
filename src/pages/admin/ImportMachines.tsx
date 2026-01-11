@@ -14,7 +14,7 @@ interface Machine {
   image_url: string | null;
 }
 
-// Parse CSV with semicolon delimiter and handle quoted fields
+// Parse CSV with semicolon delimiter and handle quoted fields with escaped quotes
 function parseCSV(text: string): Machine[] {
   const lines = text.trim().split('\n');
   const machines: Machine[] = [];
@@ -24,14 +24,20 @@ function parseCSV(text: string): Machine[] {
     const line = lines[i];
     if (!line.trim()) continue;
     
-    // Parse semicolon-separated values, handling quoted fields
+    // Parse semicolon-separated values, handling quoted fields with escaped quotes
     const values: string[] = [];
     let current = '';
     let inQuotes = false;
     
     for (let j = 0; j < line.length; j++) {
       const char = line[j];
-      if (char === '"') {
+      const nextChar = line[j + 1];
+      
+      if (char === '"' && nextChar === '"') {
+        // Escaped quote inside quoted field
+        current += '"';
+        j++; // Skip next quote
+      } else if (char === '"') {
         inQuotes = !inQuotes;
       } else if (char === ';' && !inQuotes) {
         values.push(current.trim());
@@ -48,13 +54,8 @@ function parseCSV(text: string): Machine[] {
     // Parse target_muscles JSON array
     let targetMuscles: string[] = [];
     try {
-      // Handle the escaped JSON format: ["back","legs"] stored as text
-      const cleaned = targetMusclesStr
-        .replace(/^"/, '')
-        .replace(/"$/, '')
-        .replace(/""/g, '"');
-      if (cleaned && cleaned !== '[]') {
-        targetMuscles = JSON.parse(cleaned);
+      if (targetMusclesStr && targetMusclesStr.startsWith('[')) {
+        targetMuscles = JSON.parse(targetMusclesStr);
       }
     } catch (e) {
       console.warn(`Failed to parse target_muscles for ${name}:`, targetMusclesStr);
