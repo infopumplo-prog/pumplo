@@ -11,6 +11,7 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import MyPlanSection from '@/components/home/MyPlanSection';
+import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -258,37 +259,11 @@ const Home = () => {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-card border border-border rounded-xl p-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <span className="text-lg font-bold text-primary">
-                          {session.day_letter.includes('_EXT') 
-                            ? `${session.day_letter.replace('_EXT', '')}+` 
-                            : session.day_letter}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {session.day_letter.includes('_EXT') 
-                            ? `Den ${session.day_letter.replace('_EXT', '')} (rozšírenie)` 
-                            : `Den ${session.day_letter}`}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatFullDate(session.started_at)} • {formatDate(session.started_at)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">
-                        {formatDuration(Math.floor((session.duration_seconds || 0) / 60))}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {session.total_sets} sérií
-                      </p>
-                    </div>
-                  </div>
+                  <WorkoutSessionCard 
+                    session={session} 
+                    variant="compact"
+                  />
                 </motion.div>
               ))}
             </div>
