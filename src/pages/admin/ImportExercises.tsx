@@ -36,21 +36,40 @@ const ImportExercises = () => {
       headers.forEach((header, i) => {
         const value = values[i] || "";
         
+        // Array fields
         if (["primary_muscles", "secondary_muscles", "contraindicated_injuries", "workout_split", "equipment"].includes(header)) {
           try {
-            obj[header] = JSON.parse(value.replace(/\\/g, "") || "[]");
+            const cleaned = value.replace(/\\/g, "").replace(/""/g, '"');
+            obj[header] = JSON.parse(cleaned || "[]");
           } catch {
             obj[header] = [];
           }
-        } else if (header === "requires_machine") {
-          obj[header] = value === "true";
-        } else if (header === "difficulty") {
+        } 
+        // Boolean fields
+        else if (header === "requires_machine") {
+          obj[header] = value.toLowerCase() === "true";
+        }
+        else if (header === "exercise_with_weights") {
+          obj[header] = value.toLowerCase() === "true";
+        }
+        // Number fields
+        else if (header === "difficulty") {
           obj[header] = parseInt(value) || 5;
-        } else if (header === "machine_id") {
-          obj[header] = value || null;
-        } else if (header === "created_at" || header === "updated_at") {
-          // Skip timestamps, let DB handle them
-        } else {
+        } 
+        // Nullable UUID fields
+        else if (header === "machine_id") {
+          obj[header] = value && value.length > 0 ? value : null;
+        }
+        // Nullable string fields
+        else if (header === "primary_role" || header === "secondary_role") {
+          obj[header] = value && value.length > 0 ? value : null;
+        }
+        // Skip timestamps
+        else if (header === "created_at" || header === "updated_at") {
+          // Let DB handle timestamps
+        } 
+        // Other string fields
+        else {
           obj[header] = value || null;
         }
       });
