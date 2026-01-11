@@ -1,10 +1,11 @@
-import { Gym, OpeningHours } from '@/hooks/useGym';
+import { OpeningHours } from '@/hooks/useGym';
+import { PublicGym } from '@/hooks/usePublishedGyms';
 import { MapPin, Navigation, Heart, AlertTriangle } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 
 interface GymListItemProps {
-  gym: Gym;
+  gym: PublicGym;
   distance?: number; // in km
   onClick: () => void;
   isFavorite?: boolean;

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { usePublishedGyms } from '@/hooks/usePublishedGyms';
+import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
@@ -13,7 +13,7 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
-import { Gym, OpeningHours } from '@/hooks/useGym';
+import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
@@ -54,7 +54,7 @@ const Map = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
-  const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
+  const [selectedGym, setSelectedGym] = useState<PublicGym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectingGym, setIsSelectingGym] = useState(false);
   
@@ -208,7 +208,7 @@ const Map = () => {
     });
   }, [gyms, userLocation, hasGpsAccess, searchQuery, favorites, isFavorite]);
 
-  const handleGymSelect = (gym: Gym) => {
+  const handleGymSelect = (gym: PublicGym) => {
     setSelectedGym(gym);
   };
 

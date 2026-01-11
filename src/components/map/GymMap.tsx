@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Gym, OpeningHours } from '@/hooks/useGym';
+import { OpeningHours } from '@/hooks/useGym';
+import { PublicGym } from '@/hooks/usePublishedGyms';
 import { isGymCurrentlyOpen, isClosingSoon } from '@/lib/gymUtils';
 
 // Fix for default marker icon
@@ -13,9 +14,9 @@ L.Icon.Default.mergeOptions({
 });
 
 interface GymMapProps {
-  gyms: Gym[];
+  gyms: PublicGym[];
   userLocation: { lat: number; lng: number } | null;
-  onGymSelect: (gym: Gym) => void;
+  onGymSelect: (gym: PublicGym) => void;
   selectedGymId?: string;
   onCenterUser?: () => void;
 }
