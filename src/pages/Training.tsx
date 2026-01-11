@@ -134,6 +134,11 @@ const Training = () => {
     setIsGeneratingDayExercises(true);
     
     try {
+      // Determine training split from profile
+      const trainingSplit = profile?.training_split === 'ppl' ? 'ppl' : 
+                            profile?.training_split === 'full_body' ? 'full_body' : 
+                            profile?.training_split === 'upper_lower' ? 'upper_lower' : 'ppl';
+      
       // Generate exercises using the workout generator for just this day
       const exercises = await generateExercisesForDay(
         gymId,
@@ -141,7 +146,8 @@ const Training = () => {
         plan.currentDayLetter,
         profile.user_level,
         profile.injuries || [],
-        profile.equipment_preference || null
+        profile.equipment_preference || null,
+        trainingSplit
       );
       
       setGeneratedExercises(exercises);
@@ -166,7 +172,8 @@ const Training = () => {
     dayLetter: string,
     userLevel: string,
     userInjuries: string[],
-    equipmentPreference: string | null
+    equipmentPreference: string | null,
+    trainingSplit: string = 'ppl' // 'ppl', 'full_body', 'upper_lower'
   ): Promise<WorkoutExercise[]> => {
     // Get day template for this day
     const { data: templates } = await supabase
@@ -218,6 +225,12 @@ const Training = () => {
       const activeInjuries = userInjuries.filter(i => i && i !== 'none');
 
       let filteredExercises = roleExercises.filter(ex => {
+        // Filter by workout_split - CRITICAL: only include exercises matching the user's split
+        const exerciseSplits = ex.workout_split || [];
+        if (exerciseSplits.length > 0 && !exerciseSplits.includes(trainingSplit)) {
+          return false;
+        }
+        
         if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
         if (usedExerciseIds.includes(ex.id)) return false;
         
@@ -452,6 +465,11 @@ const Training = () => {
       const equipmentPreference = profile.equipment_preference || null;
       const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
       const activeInjuries = userInjuries.filter(i => i && i !== 'none');
+      
+      // Determine training split for filtering
+      const trainingSplit = profile?.training_split === 'ppl' ? 'ppl' : 
+                            profile?.training_split === 'full_body' ? 'full_body' : 
+                            profile?.training_split === 'upper_lower' ? 'upper_lower' : 'ppl';
 
       // Get the current day's exercises to find max slot_order
       const currentMaxSlot = generatedExercises.length > 0 
@@ -473,6 +491,12 @@ const Training = () => {
 
         // Filter exercises
         let filteredExercises = roleExercises.filter(ex => {
+          // Filter by workout_split - CRITICAL: only include exercises matching the user's split
+          const exerciseSplits = ex.workout_split || [];
+          if (exerciseSplits.length > 0 && !exerciseSplits.includes(trainingSplit)) {
+            return false;
+          }
+          
           if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
           if (usedExerciseIds.includes(ex.id)) return false;
           

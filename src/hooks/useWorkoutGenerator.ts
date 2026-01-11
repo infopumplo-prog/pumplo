@@ -54,7 +54,8 @@ export const useWorkoutGenerator = () => {
     userLevel: UserLevel,
     userInjuries: string[],
     usedExerciseIds: string[],
-    equipmentPreference: string | null
+    equipmentPreference: string | null,
+    workoutSplit: string // 'ppl', 'full_body', 'upper_lower'
   ): Promise<AssignedExercise> => {
     const levelNumber = getLevelNumber(userLevel);
     
@@ -115,6 +116,12 @@ export const useWorkoutGenerator = () => {
     const activeInjuries = userInjuries.filter(i => i && i !== 'none');
     
     let filteredExercises = exercises.filter(ex => {
+      // Filter by workout_split - CRITICAL: only include exercises matching the user's split
+      const exerciseSplits = ex.workout_split || [];
+      if (exerciseSplits.length > 0 && !exerciseSplits.includes(workoutSplit)) {
+        return false;
+      }
+      
       // Filter by difficulty
       if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
       
@@ -399,7 +406,8 @@ export const useWorkoutGenerator = () => {
     goalId: TrainingGoalId,
     userLevel: UserLevel,
     userInjuries: string[],
-    equipmentPreference: string | null
+    equipmentPreference: string | null,
+    trainingSplit: string = 'ppl' // 'ppl', 'full_body', 'upper_lower'
   ): Promise<string | null> => {
     if (!user) {
       setError('Uživatel není přihlášen');
@@ -452,7 +460,8 @@ export const useWorkoutGenerator = () => {
             userLevel,
             userInjuries,
             usedExerciseIds,
-            equipmentPreference
+            equipmentPreference,
+            trainingSplit
           );
           
           if (exercise) {
