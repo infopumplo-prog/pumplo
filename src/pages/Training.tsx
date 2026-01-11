@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,15 +9,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
-import { usePublishedGyms } from '@/hooks/usePublishedGyms';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
-import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId } from '@/lib/trainingGoals';
+import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingSchedule, getCurrentDayLetter } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
+import { GymSelector } from '@/components/workout/GymSelector';
 import { cn } from '@/lib/utils';
 
 interface TrainingGoalOption {
@@ -33,17 +33,18 @@ const Training = () => {
   const { profile, isLoading: profileLoading, updateProfile } = useUserProfile();
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan } = useWorkoutPlan();
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
-  const { gyms } = usePublishedGyms();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const [showGymSelector, setShowGymSelector] = useState(false);
+  const [selectedWorkoutGymId, setSelectedWorkoutGymId] = useState<string | null>(null);
+  const [generatedExercises, setGeneratedExercises] = useState<WorkoutExercise[]>([]);
+  const [isGeneratingDayExercises, setIsGeneratingDayExercises] = useState(false);
   const [availableGoals, setAvailableGoals] = useState<TrainingGoalOption[]>([]);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [isLoadingGoals, setIsLoadingGoals] = useState(true);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
-  const selectedGym = gyms.find(g => g.id === profile?.selected_gym_id);
-  const currentExercises = getCurrentDayExercises();
   
   // User's training frequency (days per week)
   const trainingDays = profile?.training_days || [];
@@ -91,41 +92,229 @@ const Training = () => {
     }
   }, [profile?.primary_goal, profile?.training_split, availableGoals, selectedGoalId]);
 
-  const handleGeneratePlan = async () => {
-    if (!profile?.selected_gym_id || !selectedGoalId || !profile?.user_level) return;
+  // Create a plan structure without exercises (just schedule)
+  const handleCreatePlanSchedule = async () => {
+    if (!selectedGoalId || !profile?.user_level) return;
     
-    await generateWorkoutPlan(
-      profile.selected_gym_id,
-      selectedGoalId as TrainingGoalId,
-      profile.user_level,
-      profile.injuries || [],
-      profile.equipment_preference || null
-    );
-    refetchPlan();
+    // Create plan without gym_id - exercises will be generated when gym is selected
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    // Deactivate existing plans
+    await supabase
+      .from('user_workout_plans')
+      .update({ is_active: false })
+      .eq('user_id', user.user.id);
+
+    // Create new plan without gym_id (will be set when exercises are generated)
+    const { error } = await supabase
+      .from('user_workout_plans')
+      .insert({
+        user_id: user.user.id,
+        goal_id: selectedGoalId,
+        is_active: true,
+        gym_id: null
+      });
+
+    if (!error) {
+      refetchPlan();
+    }
   };
 
-  const handleRegeneratePlan = async () => {
-    if (!profile?.selected_gym_id || !profile?.user_level) return;
+  // Generate exercises for current day based on selected gym
+  const handleGenerateDayExercises = useCallback(async (gymId: string) => {
+    if (!plan || !profile?.user_level) return;
+
+    setIsGeneratingDayExercises(true);
     
-    const goalId = plan?.goalId || selectedGoalId || 'general_fitness';
-    await generateWorkoutPlan(
-      profile.selected_gym_id,
-      goalId as TrainingGoalId,
-      profile.user_level,
-      profile.injuries || [],
-      profile.equipment_preference || null
-    );
-    refetchPlan();
+    try {
+      // Generate exercises using the workout generator for just this day
+      const exercises = await generateExercisesForDay(
+        gymId,
+        plan.goalId,
+        plan.currentDayLetter,
+        profile.user_level,
+        profile.injuries || [],
+        profile.equipment_preference || null
+      );
+      
+      setGeneratedExercises(exercises);
+      setSelectedWorkoutGymId(gymId);
+      setShowGymSelector(false);
+      setIsWorkoutActive(true);
+    } catch (err) {
+      console.error('Error generating day exercises:', err);
+    } finally {
+      setIsGeneratingDayExercises(false);
+    }
+  }, [plan, profile]);
+
+  // Generate exercises for a specific day
+  const generateExercisesForDay = async (
+    gymId: string,
+    goalId: TrainingGoalId,
+    dayLetter: string,
+    userLevel: string,
+    userInjuries: string[],
+    equipmentPreference: string | null
+  ): Promise<WorkoutExercise[]> => {
+    // Get day template for this day
+    const { data: templates } = await supabase
+      .from('day_templates')
+      .select('*')
+      .eq('goal_id', goalId)
+      .eq('day_letter', dayLetter)
+      .order('slot_order');
+
+    if (!templates || templates.length === 0) return [];
+
+    // Get gym equipment
+    const { data: gymMachines } = await supabase
+      .from('gym_machines')
+      .select('machine_id, machines(id, equipment_type)')
+      .eq('gym_id', gymId);
+
+    const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+    
+    // Expand equipment types
+    const expandedEquipment = new Set<string>(rawEquipmentTypes);
+    if (rawEquipmentTypes.includes('free_weights')) {
+      expandedEquipment.add('barbell');
+      expandedEquipment.add('dumbbell');
+      expandedEquipment.add('kettlebell');
+    }
+    if (rawEquipmentTypes.includes('machine')) {
+      expandedEquipment.add('machine');
+      expandedEquipment.add('cable');
+      expandedEquipment.add('plate_loaded');
+    }
+    expandedEquipment.add('bodyweight');
+
+    const availableEquipmentTypes = Array.from(expandedEquipment);
+    const usedExerciseIds: string[] = [];
+    const exercises: WorkoutExercise[] = [];
+
+    for (const slot of templates) {
+      // Fetch exercises for this role
+      const { data: roleExercises } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('primary_role', slot.role_id);
+
+      if (!roleExercises || roleExercises.length === 0) continue;
+
+      // Filter exercises
+      const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
+      const activeInjuries = userInjuries.filter(i => i && i !== 'none');
+
+      let filteredExercises = roleExercises.filter(ex => {
+        if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
+        if (usedExerciseIds.includes(ex.id)) return false;
+        
+        // Injury filter
+        if (activeInjuries.length > 0 && ex.contraindicated_injuries?.length > 0) {
+          const hasContraindication = ex.contraindicated_injuries.some((injury: string) =>
+            activeInjuries.some(userInjury => 
+              injury.toLowerCase().includes(userInjury.toLowerCase()) ||
+              userInjury.toLowerCase().includes(injury.toLowerCase())
+            )
+          );
+          if (hasContraindication) return false;
+        }
+
+        // Equipment filter
+        const exEquipment = ex.equipment || [];
+        if (exEquipment.includes('bodyweight')) return true;
+        if (exEquipment.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))) {
+          return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.some(t => exEquipment.includes(t));
+        }
+        if (exEquipment.includes('cable')) {
+          return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
+        }
+        if (exEquipment.some((eq: string) => ['machine', 'plate_loaded'].includes(eq))) {
+          return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
+        }
+        return exEquipment.some((eq: string) => availableEquipmentTypes.includes(eq));
+      });
+
+      // Apply preference sorting
+      if (equipmentPreference === 'machines') {
+        const machineExercises = filteredExercises.filter(ex =>
+          ex.equipment?.some((eq: string) => ['machine', 'cable', 'plate_loaded'].includes(eq))
+        );
+        if (machineExercises.length > 0) filteredExercises = machineExercises;
+      } else if (equipmentPreference === 'free_weights') {
+        const fwExercises = filteredExercises.filter(ex =>
+          ex.equipment?.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
+        );
+        if (fwExercises.length > 0) filteredExercises = fwExercises;
+      } else if (equipmentPreference === 'bodyweight') {
+        const bwExercises = filteredExercises.filter(ex => ex.equipment?.includes('bodyweight'));
+        if (bwExercises.length > 0) filteredExercises = bwExercises;
+      }
+
+      if (filteredExercises.length === 0) continue;
+
+      // Pick random exercise
+      const randomIndex = Math.floor(Math.random() * Math.min(3, filteredExercises.length));
+      const selectedExercise = filteredExercises[randomIndex];
+      usedExerciseIds.push(selectedExercise.id);
+
+      // Determine sets based on level
+      const sets = userLevel === 'beginner' ? slot.beginner_sets :
+                   userLevel === 'intermediate' ? slot.intermediate_sets : slot.advanced_sets;
+
+      exercises.push({
+        id: `temp-${slot.id}`,
+        dayLetter: slot.day_letter,
+        slotOrder: slot.slot_order,
+        roleId: slot.role_id,
+        exerciseId: selectedExercise.id,
+        exerciseName: selectedExercise.name,
+        equipment: selectedExercise.equipment || [],
+        machineName: null,
+        sets: sets,
+        repMin: slot.rep_min || 8,
+        repMax: slot.rep_max || 12,
+        isFallback: false,
+        fallbackReason: null
+      });
+    }
+
+    return exercises;
+  };
+
+  const handleStartWorkout = () => {
+    // Check if we have pre-generated exercises from the plan
+    const currentExercises = getCurrentDayExercises();
+    
+    if (currentExercises.length > 0 && plan?.gymId) {
+      // Plan already has exercises, use them
+      setGeneratedExercises(currentExercises);
+      setSelectedWorkoutGymId(plan.gymId);
+      setIsWorkoutActive(true);
+    } else {
+      // Need to select gym and generate exercises
+      setShowGymSelector(true);
+    }
+  };
+
+  const handleGymSelected = (gymId: string) => {
+    handleGenerateDayExercises(gymId);
   };
 
   const handleCompleteWorkout = async (results: any) => {
     console.log('Workout completed:', results);
     await advanceToNextDay();
     setIsWorkoutActive(false);
+    setGeneratedExercises([]);
+    setSelectedWorkoutGymId(null);
   };
 
   const handleCancelWorkout = () => {
     setIsWorkoutActive(false);
+    setGeneratedExercises([]);
+    setSelectedWorkoutGymId(null);
   };
 
   const handleCancelPlan = async () => {
@@ -145,10 +334,6 @@ const Training = () => {
     // Reset selection and refetch
     setSelectedGoalId(null);
     refetchPlan();
-  };
-
-  const handleSelectGym = () => {
-    navigate('/map');
   };
 
   // Loading state
@@ -197,51 +382,12 @@ const Training = () => {
     );
   }
 
-  // No gym selected
-  if (!profile?.selected_gym_id) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-background p-4">
-          <h1 className="text-2xl font-bold mb-6">Trénink</h1>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <MapPin className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-xl font-bold mb-2">Vyber si posilovnu</h2>
-            <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
-              Pro vygenerování tréninku potřebujeme vědět, kde budeš cvičit
-            </p>
-            <Button onClick={handleSelectGym} size="lg" className="gap-2">
-              <MapPin className="w-5 h-5" />
-              Vybrat posilovnu
-            </Button>
-          </motion.div>
-        </div>
-      </PageTransition>
-    );
-  }
-
-  // No plan yet - show goal selection
+  // No plan yet - show goal selection (no gym required)
   if (!plan && !planLoading && !isGenerating) {
     return (
       <PageTransition>
         <div className="min-h-screen bg-background p-4 pb-24">
-          <h1 className="text-2xl font-bold mb-2">Trénink</h1>
-          
-          {/* Gym info */}
-          <button 
-            onClick={handleSelectGym}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
-          >
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm">{selectedGym?.name || 'Vyber posilovnu'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <h1 className="text-2xl font-bold mb-6">Trénink</h1>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -307,22 +453,13 @@ const Training = () => {
             </div>
 
             <Button 
-              onClick={handleGeneratePlan} 
+              onClick={handleCreatePlanSchedule} 
               size="lg" 
               className="w-full gap-2"
-              disabled={!selectedGoalId || isGenerating}
+              disabled={!selectedGoalId}
             >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Generuji plán...
-                </>
-              ) : (
-                <>
-                  <Dumbbell className="w-5 h-5" />
-                  Vygenerovat plán
-                </>
-              )}
+              <Dumbbell className="w-5 h-5" />
+              Vytvořit plán
             </Button>
           </motion.div>
         </div>
@@ -330,8 +467,8 @@ const Training = () => {
     );
   }
 
-  // Plan loading or generating
-  if (planLoading || isGenerating) {
+  // Plan loading
+  if (planLoading) {
     return (
       <PageTransition>
         <div className="min-h-screen bg-background p-4">
@@ -345,10 +482,7 @@ const Training = () => {
             >
               <RefreshCw className="w-16 h-16 text-primary" />
             </motion.div>
-            <h2 className="text-lg font-medium mb-2">Generuji tréninkový plán...</h2>
-            <p className="text-muted-foreground text-sm">
-              Vybíráme nejlepší cviky pro {selectedGym?.name}
-            </p>
+            <h2 className="text-lg font-medium mb-2">Načítám tréninkový plán...</h2>
           </div>
         </div>
       </PageTransition>
@@ -368,9 +502,6 @@ const Training = () => {
             </div>
             <h2 className="text-lg font-medium mb-2">Chyba při generování plánu</h2>
             <p className="text-muted-foreground text-sm mb-4">{generatorError}</p>
-            <Button onClick={handleRegeneratePlan} variant="outline">
-              Zkusit znovu
-            </Button>
           </div>
         </div>
       </PageTransition>
@@ -382,6 +513,7 @@ const Training = () => {
   // Get training schedule based on user's frequency
   const schedule = getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex);
   const currentDayLetter = getCurrentDayLetter(plan.dayCount, plan.currentDayIndex);
+  const currentExercises = getCurrentDayExercises();
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
@@ -410,21 +542,8 @@ const Training = () => {
               <Button variant="ghost" size="icon" onClick={handleCancelPlan} title="Změnit cíl">
                 <X className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleRegeneratePlan} disabled={isGenerating} title="Přegenerovat plán">
-                <RefreshCw className={cn("w-5 h-5", isGenerating && "animate-spin")} />
-              </Button>
             </div>
           </div>
-          
-          {/* Gym info */}
-          <button 
-            onClick={handleSelectGym}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm">{selectedGym?.name || 'Vyber posilovnu'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Weekly Schedule */}
@@ -485,22 +604,33 @@ const Training = () => {
                 Den {currentDayLetter} {dayTypeName && `• ${dayTypeName}`}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {currentExercises.length} cviků
+                {currentExercises.length > 0 
+                  ? `${currentExercises.length} cviků`
+                  : 'Cviky se vygenerují po výběru posilovny'
+                }
               </p>
             </div>
           );
         })()}
 
-        {/* Exercises List */}
+        {/* Exercises List or Placeholder */}
         <div className="px-4 space-y-3">
           <AnimatePresence mode="wait">
             {currentExercises.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center py-8 text-muted-foreground"
+                className="text-center py-8"
               >
-                Žádné cviky pro tento den
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground mb-2">
+                  Vyber posilovnu a cviky se vygenerují
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Cviky budou přizpůsobeny vybavení posilovny
+                </p>
               </motion.div>
             ) : (
               currentExercises.map((exercise, index) => (
@@ -559,29 +689,52 @@ const Training = () => {
         </div>
 
         {/* Action Button */}
-        {currentExercises.length > 0 && (
-          <div className="fixed bottom-24 left-4 right-4">
-            <Button 
-              size="lg" 
-              className="w-full gap-2 shadow-lg"
-              onClick={() => setIsWorkoutActive(true)}
-            >
-              <Play className="w-5 h-5" />
-              Začít trénink
-            </Button>
-          </div>
-        )}
+        <div className="fixed bottom-24 left-4 right-4">
+          <Button 
+            size="lg" 
+            className="w-full gap-2 shadow-lg"
+            onClick={handleStartWorkout}
+            disabled={isGeneratingDayExercises}
+          >
+            {isGeneratingDayExercises ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                Generuji cviky...
+              </>
+            ) : (
+              <>
+                <Play className="w-5 h-5" />
+                Začít trénink
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Gym Selector */}
+        <AnimatePresence>
+          {showGymSelector && (
+            <GymSelector
+              onSelect={handleGymSelected}
+              onCancel={() => setShowGymSelector(false)}
+              selectedGymId={profile?.selected_gym_id}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Workout Session */}
-        {isWorkoutActive && plan && (
-          <WorkoutSession
-            exercises={currentExercises}
-            dayLetter={currentDayLetter}
-            goalId={plan.goalId}
-            onComplete={handleCompleteWorkout}
-            onCancel={handleCancelWorkout}
-          />
-        )}
+        <AnimatePresence>
+          {isWorkoutActive && selectedWorkoutGymId && generatedExercises.length > 0 && (
+            <WorkoutSession
+              exercises={generatedExercises}
+              dayLetter={currentDayLetter}
+              goalId={plan.goalId}
+              planId={plan.id}
+              gymId={selectedWorkoutGymId}
+              onComplete={handleCompleteWorkout}
+              onCancel={handleCancelWorkout}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );
