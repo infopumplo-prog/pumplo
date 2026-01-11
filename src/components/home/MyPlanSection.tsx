@@ -30,7 +30,7 @@ const MyPlanSection = () => {
   const [goalInfo, setGoalInfo] = useState<TrainingGoalWithDuration | null>(null);
   
   // Check if workout was completed today
-  const completedTodayDayLetter = stats.today.totalWorkouts > 0 
+  const todaySession = stats.today.totalWorkouts > 0 
     ? stats.lastDays.find(d => {
         const sessionDate = new Date(d.date);
         const today = new Date();
@@ -38,8 +38,11 @@ const MyPlanSection = () => {
                sessionDate.getMonth() === today.getMonth() &&
                sessionDate.getDate() === today.getDate() &&
                d.completed;
-      })?.dayLetter || null
+      }) || null
     : null;
+  
+  const completedTodayDayLetter = todaySession?.dayLetter || null;
+  const wasCompletedToday = completedTodayDayLetter !== null;
 
   // Fetch all available goals
   useEffect(() => {
@@ -87,8 +90,21 @@ const MyPlanSection = () => {
   // Get training days from profile
   const trainingDays = profile?.training_days || [];
   
-  // Get schedule with proper day rotation
-  const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex) : [];
+  // If workout was completed today, we need to show the schedule as it was BEFORE the index was advanced
+  // This means using currentDayIndex - 1 for display purposes when workout is done today
+  const displayDayIndex = wasCompletedToday 
+    ? Math.max(0, (plan?.currentDayIndex || 0) - 1) 
+    : (plan?.currentDayIndex || 0);
+  
+  // Wrap around if we went negative (edge case: was at 0, completed, now at dayCount-1... wait, that's not right)
+  // Actually after completing day 0, index becomes 1. So to show "as it was", we use index - 1 = 0. Correct.
+  // But if index was 0 and we subtract 1, we get -1. We need to wrap: (index - 1 + dayCount) % dayCount
+  const adjustedDisplayIndex = wasCompletedToday && plan
+    ? (plan.currentDayIndex - 1 + plan.dayCount) % plan.dayCount
+    : (plan?.currentDayIndex || 0);
+  
+  // Get schedule with proper day rotation (use adjusted index if completed today)
+  const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, adjustedDisplayIndex) : [];
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {

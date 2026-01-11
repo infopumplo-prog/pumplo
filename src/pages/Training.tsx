@@ -537,14 +537,8 @@ const Training = () => {
 
   if (!plan) return null;
 
-  // Get training schedule based on user's frequency
-  const schedule = getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex);
-  const currentDayLetter = getCurrentDayLetter(plan.dayCount, plan.currentDayIndex);
-  const today = getCurrentWeekday();
-  // currentExercises is defined above in useEffect section
-
-  // Check if workout was completed today
-  const completedTodayDayLetter = stats.today.totalWorkouts > 0 
+  // Check if workout was completed today - we need this BEFORE calculating schedule
+  const todaySession = stats.today.totalWorkouts > 0 
     ? stats.lastDays.find(d => {
         const sessionDate = new Date(d.date);
         const now = new Date();
@@ -552,8 +546,22 @@ const Training = () => {
                sessionDate.getMonth() === now.getMonth() &&
                sessionDate.getDate() === now.getDate() &&
                d.completed;
-      })?.dayLetter || null
+      }) || null
     : null;
+  
+  const completedTodayDayLetter = todaySession?.dayLetter || null;
+  const wasCompletedToday = completedTodayDayLetter !== null;
+  
+  // If workout was completed today, we need to show the schedule as it was BEFORE the index was advanced
+  // After completing, current_day_index is incremented. To show original mapping, use (index - 1 + dayCount) % dayCount
+  const adjustedDisplayIndex = wasCompletedToday 
+    ? (plan.currentDayIndex - 1 + plan.dayCount) % plan.dayCount
+    : plan.currentDayIndex;
+
+  // Get training schedule based on user's frequency (use adjusted index if completed today)
+  const schedule = getTrainingSchedule(trainingDays, plan.dayCount, adjustedDisplayIndex);
+  const currentDayLetter = getCurrentDayLetter(plan.dayCount, adjustedDisplayIndex);
+  const today = getCurrentWeekday();
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
