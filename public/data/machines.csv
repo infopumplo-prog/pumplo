@@ -1,0 +1,122 @@
+id;name;description;target_muscles;equipment_type;image_url;created_at;updated_at
+8bd08108-0605-4128-8752-340c7617a305;Deadlift/weightlifting platforma;Platforma pro mrtvý tah a olympijské zdvihy;"[""back"",""legs"",""glutes""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+889434bf-83f8-4342-906f-b412c58c3240;Multipress kotoučový;Kotoučový multipress pro bezpečný trénink;"[""chest"",""shoulders"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+acbf79b8-1e77-48cb-bc57-9e0f34cbbfcd;Bench press rovný;Lavice pro bench press s rovnou opěrkou;"[""chest"",""triceps"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+02c89a57-6259-4711-9499-5f08369a8e33;Polohovatelná lavice;Univerzální polohovatelná lavice;"[""chest"",""shoulders"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+6e1bf6bf-fa0f-4d48-acc2-3f9dae9e2398;Speciální osa rovná;Olympijská rovná osa;"[""chest"",""back"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+707fff68-f0ad-48c5-95b8-112aa9203c2a;Medicimbaly;Sada medicinbalů;"[""core"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+f5cdf22c-80f9-4706-86e3-3f314d9e7d65;Fitbag stanoviště;Fitbag pro funkční trénink;"[""core"",""shoulders"",""legs""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+5c2ded42-36d7-437c-8816-c5cb94957175;Leg Press 45°;Leg press pod úhlem 45°;"[""legs"",""glutes""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+5fe558c0-6769-498c-b510-1d2aa6744dd8;Hack Squat;Hack squat stroj;"[""legs"",""glutes""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+db76ff4e-9868-4e18-84c6-bb4ffe782d48;Standing Calf Raise;Stroj na lýtka ve stoje;"[""calves""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+aa061de5-74ea-4158-b2ad-126810df6fa2;Leg Extension;Leg extension stroj;"[""quadriceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+d778e379-c426-40e6-b60c-c78d8aaff94e;Leg Curl;Leg curl stroj;"[""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+4e7d121d-e68b-4991-b829-00508a846116;Seated Row plate-loaded;Kotoučový seated row;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+882e2de0-d2ea-4577-b022-a3e37a77d7ad;Vodorovná kladka;Vodorovná kladka;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+4df1b9a3-5048-4ca0-90c7-9216756153e1;Chest Press plate-loaded;Kotoučový chest press;"[""chest"",""triceps"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+a19bd60e-600a-4c2c-a608-606cce859335;Shoulder Press plate-loaded;Kotoučový shoulder press;"[""shoulders"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+295bc762-5b84-441d-a520-b13e4ce7c617;Pec Deck + Rear Delt;Kombinovaný pec deck a rear delt;"[""chest"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+509c63eb-fc99-4d64-bdeb-6cc2b9e7f579;Shoulder machine;Stroj na ramena;"[""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+81f999aa-99c0-413c-b339-5eca43fb5e0b;Biceps Scott machine;Scott lavice pro biceps;"[""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+e761502f-1ae7-4be0-82bc-f793d6d3ceb9;Booty Builder;Booty builder stroj;"[""glutes""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+01889cb3-0b81-4825-9afc-c1f9541d210a;Hyperextenze lavice;Lavice pro hyperextenzi;"[""back"",""glutes"",""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+cc9d82d7-9430-4292-bfd9-8efa47670758;Sissy squat;;"[""quadriceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+35457449-ff84-4238-9f12-3d9b42ccfc61;Boxovací pytel;;"[""cardio"",""core"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+79820aad-81bf-4502-a439-937d5a2a54f6;Abductor machine;;"[""glutes"",""legs""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+477a7b77-6cfc-42b3-93ed-782ee39187ca;Shoulder Press kablový;;"[""shoulders"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+f917f482-1861-4703-b691-3eabbb9d64a8;Chest Press kablový;;"[""chest"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+2b5bc392-246f-4604-ae11-b57b712d1666;Prone Leg Curl;;"[""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+198e3fd8-c548-4fa0-98cf-d41c6d64064e;Leg curl seated;;"[""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+d7b7ce34-71f3-4595-be96-60bc72483383;Leg curl lying;;"[""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+bfcdddfb-67a1-4164-8303-18c9d8a0203d;Adductor machine;;"[""legs"",""glutes""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+3d843cb4-317c-42bf-89c1-ff1739051bf4;Glute kickback machine;;"[""glutes"",""hamstrings""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+76108608-4c52-43c4-8909-bc0923683a19;Standing calf raise;;"[""calves""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+03d1286b-0485-4943-a568-a7496a8a2b5d;Seated calf raise;;"[""calves""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+46d6ab05-6709-488e-9699-f8c3d5da795b;Lat pulldown wide;;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+ef04d432-bf4a-4d31-8eb1-5ae4cc61376a;Lat pulldown narrow;;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+1cbca8ee-c0c4-4662-94a1-2d468fc1a690;Seated row machine;;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+cb0fb3b2-42b5-4c70-afb8-7986a255d969;T-bar row machine;;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+af709af7-7edf-4e55-ad6a-4dc73cf692de;Pullover machine;;"[""back"",""chest""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+d3687a68-5567-4327-bfc4-be9805c53a98;Chest press machine;;"[""chest"",""triceps"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+98262be8-2459-49d0-9155-fad338e839e2;Incline chest press;;"[""chest"",""triceps"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+76eeb9cf-8eda-4b73-b384-d6376daeb8b1;Lateral raise machine;;"[""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+a402464f-fea2-4317-9d68-540e65bce938;Biceps curl machine;;"[""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+74e3ec1a-c5a2-40fb-b348-b475b7860648;Triceps extension machine;;"[""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+8bd18c92-8ff1-4ce7-a4d8-6cd62061d9bd;Cable crossover;;"[""chest"",""shoulders""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+c399b7aa-50dc-4c11-abf9-3ffba685a557;Dual adjustable pulley;;"[""back"",""chest"",""shoulders"",""triceps"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+f6eaa930-ad79-4351-8bd5-88f2962d4d74;High pulley;;"[""back"",""triceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+a4c19c60-01c5-4b48-b590-a1a8bd1170a0;Low pulley;;"[""back"",""biceps"",""core""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+fdde3b28-422d-41b1-8579-1cbb13d3ad57;Women bar 15kg;;"[""chest"",""back"",""shoulders"",""legs""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+8128eefe-7ddc-4a03-923a-0dbf25f6005a;Pulldown;Lat pulldown PureStrength;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+4248564e-a0e0-452d-9cb1-225ca42cdee4;Low Row;Low row PureStrength;"[""back"",""biceps""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+eec2c338-3e1e-46bd-b39b-c690856b7fd5;cable station;;"[""back"",""chest"",""shoulders"",""biceps"",""triceps"",""core""]";machine;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+79ad3be7-f6b4-4ff6-a2cf-7cd03e2e5a27;Power rack + hrazda;Power rack s integrovanou hrazdou pro komplexní trénink;"[""chest"",""back"",""shoulders"",""legs""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+e3d108fc-4f4b-44e0-a813-f744a1f871bc;Gymnastické kruhy;Gymnastické kruhy;"[""chest"",""back"",""shoulders"",""core""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+9ac1e991-1e55-4de8-9da2-4955933234ac;Monkey bar konstrukce;Monkey bars pro climbing;"[""back"",""biceps"",""forearms"",""core""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+21950af8-ecea-487f-b70d-69298ab13651;Plyo box / step lavice;Plyo box a step lavice;"[""legs"",""cardio""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+3aeba610-75de-44ae-b3a3-c60a778e771b;Assisted pull-up/dip;Asistovaný pull-up a dip stroj;"[""back"",""chest"",""triceps""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+92f6b14d-6d26-424e-ae56-235f3aa9c85c;Dips machine plate-loaded;;"[""chest"",""triceps"",""shoulders""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+2ec02d7f-d2e7-4931-8c51-d7f41dd67734;Rebriny (wall bars);;"[""core"",""back""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+fcc76e5a-671c-4b9b-bc6e-eadf762d0e67;Front lever tyčky;;"[""back"",""core""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+623edf0f-de8a-402c-8aba-8f3c772ab1b7;Ab roller;;"[""core""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+5b7377d9-7482-4447-8f14-f1784d581cfe;Bosu balance;;"[""core"",""legs""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+325db881-25b8-4e21-b90b-8c000fc552fa;Ab mat;;"[""core""]";bodyweight;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+d5ac0d94-e80d-4720-8c85-a058927314c9;TRX provazy;TRX závěsný systém;"[""core"",""back"",""chest"",""shoulders""]";accessory;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+093acbd9-9db1-4efc-ac37-6b8a41f56650;Battle rope;Battle rope pro kardio a sílu;"[""shoulders"",""core"",""cardio""]";accessory;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+c8bd8d7f-9317-49d2-8269-bda31339616a;odporové gumy;;"[""core"",""shoulders"",""back"",""legs""]";accessory;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+210616a7-34b7-4c8e-a801-a310cbd6db4b;StairMaster;Schodolez pro kardio trénink;"[""legs"",""glutes"",""cardio""]";cardio;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+51b22572-7392-4d77-9a02-ca9987da4fcc;Eliptical;Eliptický trenažér;"[""legs"",""cardio""]";cardio;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+411e0586-f11c-4d0a-a88d-074a12fad236;Běžecký pás;Běžecký pás;"[""legs"",""cardio""]";cardio;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+2e92abcb-ae5d-430b-925b-0e066a409027;Spinning kolo;Spinning kolo;"[""legs"",""cardio""]";cardio;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+81c65528-122f-41e2-9bb8-ea209d323558;vesla;Veslařský trenažér Concept2;"[""back"",""legs"",""core"",""cardio""]";cardio;;2026-01-07 18:04:54.79247+00;2026-01-07 18:04:54.79247+00
+24cbe076-b8b8-402b-b3f8-3de49048c8f0;Powersystem band lvl 1-5;Odporové gumy s rôznymi úrovňami odporu pre posilovanie a rehabilitáciu;"[""full_body"",""arms"",""legs""]";resistance_bands;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+18c769f0-d509-428e-9a54-d7785cb9d0be;Squat rack;Stojan na drepy s bezpečnostnými zarážkami;"[""quadriceps"",""glutes"",""hamstrings""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+782678e3-5f66-4703-b3cf-777a27ae5d8a;Deadlift platforma;Platforma pre deadlift a olympijské zdvihy;"[""back"",""glutes"",""hamstrings""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+a6581a44-9c0c-4482-89ab-1e4c8aca56e3;Barbell 20kg;Olympijská osa 20kg;"[""full_body""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+c9ec7862-0dce-413d-8fbc-4c0d5df4f7b0;Barbell 10kg;Kratšia osa 10kg pre ľahšie cviky;"[""full_body""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+016f4f75-f58b-4549-90f0-fd20b271c81e;EZ bar;Zakrivená osa pre bicepsové a tricepsové cviky;"[""biceps"",""triceps""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+4c080b55-ae86-4884-b911-b20481bf6969;Dumbbells 1-50kg;Kompletná sada jednoručiek od 1 do 50kg;"[""full_body"",""arms"",""chest"",""shoulders""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+093d9d65-101f-495f-b885-ccf387989e8b;Bradla (Parallel bars);Bradla pre dipy a rôzne cviky s vlastnou váhou;"[""chest"",""triceps"",""shoulders""]";bodyweight;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+f5f59e23-52cb-4e5c-9091-4f1c7a2617a6;Pull-up bar (Hrazda);Hrazda pre zhyby a visy;"[""back"",""biceps"",""core""]";bodyweight;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+73508b45-f359-4827-a32e-313463dd2ed6;Incline bench;Šikmá lavica pre tlaky v incline pozícii;"[""upper_chest"",""shoulders""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+60e0370b-3b3d-4d27-9232-6339d2ccd4d4;Decline bench;Šikmá lavica hlavou dolu pre spodný hrudník;"[""lower_chest"",""triceps""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+57d02253-1d9e-4f9c-97a1-a88cd7cf2df1;Stationary bike;Stacionárny bicykel pre kardio;"[""quadriceps"",""hamstrings"",""cardio""]";cardio;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+dc6509cf-68c6-46b3-9f7f-f3b26e9c45d6;Rowing machine;Veslovací trenažér pre celé telo;"[""back"",""arms"",""legs"",""cardio""]";cardio;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+e9f50243-167c-4ae1-9fd8-d3b019a1441d;TRX suspension trainer;Závesný systém pre funkčný tréning;"[""full_body"",""core""]";functional;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+bd47b69c-e341-4327-b52d-22ae56c360d3;Preacher curl bench;Scott lavica pre izolované bicepsové cviky;"[""biceps""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+366191de-2100-45e3-80d2-31276a73dd6c;Shoulder press cable;Kablový tlak na ramená;"[""shoulders"",""triceps""]";cable;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+b599010a-a765-4304-99a5-56c434ba7cc4;Chest press cable;Kablový tlak na hrudník;"[""chest"",""triceps""]";cable;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+8464a0c1-5cb4-41d6-b1e1-0af24c393e81;Outdoor bars (vonkajšie hrazdy);Vonkajšia zostava hrazdy a bradiel;"[""back"",""chest"",""arms"",""core""]";bodyweight;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+8da87e0d-592f-40bc-9088-ef17e07dc35e;Kettlebells 4-22kg;Sada kettlebellov od 4 do 22kg;"[""full_body"",""core"",""shoulders""]";free_weights;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+560e4744-5b87-4ef0-a2d5-92ac88e39971;Medicine balls 4-9kg;Medicinbaly pre funkčný tréning;"[""core"",""full_body""]";functional;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+1c99ee8a-0a3f-4d26-8b15-fc211bdd3339;Technogym cable station;Prémiová kablová stanica Technogym;"[""full_body""]";cable;;2026-01-10 17:34:29.938671+00;2026-01-10 17:34:29.938671+00
+b354187c-f3b2-40af-b33b-aa4d280d1a0e;TRX suspension trainer;Závesný systém pre funkčný tréning;"[""full_body"",""core""]";functional;;2026-01-10 17:37:05.81241+00;2026-01-10 17:37:05.81241+00
+83686ef0-3374-4c2e-9ec6-104d459e0804;Rowing machine;Veslovací trenažér pre celé telo;"[""back"",""arms"",""legs"",""cardio""]";cardio;;2026-01-10 17:37:05.81241+00;2026-01-10 17:37:05.81241+00
+dfb20984-570b-49ca-a506-e5e70ccbddd0;Squat rack;Stojan na drepy s bezpečnostnými zarážkami;"[""quadriceps"",""glutes"",""hamstrings""]";free_weights;;2026-01-10 17:37:05.81241+00;2026-01-10 17:37:05.81241+00
+7ae1cd4b-fa38-4deb-9b87-3d14e01a4cbf;Smith machine;Vedená osa pre bezpečné posilování;"[""chest"",""shoulders"",""legs""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+7ad2691a-9372-49ef-ad3e-e165e82499ca;Abductor machine;Stroj na vonkajšie stehenné svaly;"[""abductors"",""glutes""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+597d27f0-d9a3-4d36-a289-4daacbe036aa;Vertical traction;Vertikálna ťahová stanica;"[""back"",""biceps""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+347058ff-b179-4485-9473-e3322c93a76e;Pec deck / Reverse fly;Stroj pre hrudník a zadné deltové svaly;"[""chest"",""rear_delts""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+19826615-f141-40d4-aefd-761db4425316;Leg extension / Leg curl combo;Kombinovaný stroj pre prednú a zadnú stranu stehien;"[""quadriceps"",""hamstrings""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+67b704ab-5857-4f2c-aef2-a163fc2b81e8;Prone leg curl;Stroj na zadné stehenné svaly v ľahu;"[""hamstrings""]";machine;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+45bd579e-ea00-4a2c-b5cc-3f68d65f658d;Speciální osa EZ;EZ osa pro izolované cviky;"[""biceps"",""triceps"",""forearms""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+f6680452-ffb3-44f1-994b-1c3126b10e80;Speciální osa wavy;Wavy osa pro variabilní úchop;"[""biceps"",""triceps"",""forearms""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+83e4295a-ec0e-41d6-b26a-a0ab8be2d4d7;Kettlebell zóna 4–40 kg;Sada kettlebellů 4-40 kg;"[""shoulders"",""back"",""legs"",""core""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+4878769a-195e-4954-8c4a-e2741a7e6123;Dumbbell zóna;Sada jednoruček;"[""chest"",""back"",""shoulders"",""biceps"",""triceps""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+a1335e46-be2f-4217-b2c5-6fcf2f3c71d4;Hex bar;;"[""back"",""legs"",""glutes""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+bfa1656b-df67-4c7d-943a-d6722675ef40;Olympic bar 20kg;;"[""chest"",""back"",""shoulders"",""legs""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+21888498-a99a-4033-9573-71ea7d5d5793;Short bar;;"[""biceps"",""triceps""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+14cd86e4-5262-43b4-87e7-c85893d56438;Slam ball;;"[""core"",""shoulders"",""cardio""]";free_weights;;2026-01-07 18:04:54.79247+00;2026-01-10 18:03:15.353195+00
+9e6dcffc-6fae-4a5e-8f5f-83739ba5efb2;Ab roller;Koliesko na posilňovanie brušných svalov;"[""core"",""abs""]";accessory;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+e0e89bec-de4d-4b74-a4b4-3bd4d6a585b4;Shoulder press plate-loaded;Kotúčový tlak na ramená;"[""shoulders"",""triceps""]";plate_loaded;;2026-01-10 17:34:29.938671+00;2026-01-10 18:03:15.353195+00
+28320a17-e45b-4303-900a-3c81c8285c1f;Back extension machine;Stroj na hyperextenziu chrbta;"[""lower_back"",""glutes""]";machine;;2026-01-11 02:16:54.592424+00;2026-01-11 02:16:54.592424+00
+dbc1bd12-10de-4f87-a212-12185781a5a0;Stepmill / StairMaster;Schodový trenažér;"[""legs"",""cardio"",""glutes""]";cardio;;2026-01-11 02:16:54.592424+00;2026-01-11 02:16:54.592424+00
+89f01869-70a0-4a80-a76e-984d6ec1ddcf;Generic machine station;Auto-generated machine for exercises like: Gym Elliptical Machine Fast Speed;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+02308cef-17a8-4786-ade4-9998340c9388;Generic machine station;Auto-generated machine for exercises like: Gym Elliptical Machine Normal Speed;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+d28d2a5d-9035-4ca9-b14b-dd542d1c23ed;Generic plate_loaded station;Auto-generated machine for exercises like: Weighted Standing Shoulder Press With Plate;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+c30f3d8e-75d5-45ad-861c-e3446ba0425c;Generic machine station;Auto-generated machine for exercises like: Stepmill Machine Steps;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+23e1e71b-8000-4b52-b2e6-9352a13205c2;Generic machine station;Auto-generated machine for exercises like: Gym Elliptical Machine Sprint Speed;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+02b20507-0c76-4280-86a2-f56569d87ec7;Generic machine station;Auto-generated machine for exercises like: Chest Dip Machine;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+7ad3b181-0344-4964-9e54-97428f2eaa1e;Generic machine station;Auto-generated machine for exercises like: Tricep Extension Machine;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+4101350d-85cd-451c-ab1e-147f1467d66a;Generic machine station;Auto-generated machine for exercises like: Machine Lateral Raise;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00
+bed3c0dc-0db9-4927-aa0a-e6800fbd5da1;Generic plate_loaded station;Auto-generated machine for exercises like: Plate Front Raise;[];machine;;2026-01-07 18:44:27.959931+00;2026-01-11 02:30:37.243166+00

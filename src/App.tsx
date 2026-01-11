@@ -19,6 +19,7 @@ import UsersManagement from "@/pages/admin/UsersManagement";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
 import ImportExercises from "@/pages/admin/ImportExercises";
+import ImportMachines from "@/pages/admin/ImportMachines";
 import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
@@ -121,6 +122,7 @@ const AppRoutes = () => (
     <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
     <Route path="/admin/import" element={<AdminRoute><ImportExercises /></AdminRoute>} />
+    <Route path="/admin/import-machines" element={<AdminRoute><ImportMachines /></AdminRoute>} />
     
     {/* Business Routes - share GymProvider via BusinessLayout */}
     <Route element={<BusinessLayout />}>
