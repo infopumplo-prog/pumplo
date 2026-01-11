@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
-import { getAllDayLetters } from '@/lib/workoutRotation';
+import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 
 interface TrainingGoalWithDuration {
@@ -70,7 +70,24 @@ const MyPlanSection = () => {
     ? Math.floor((plan.currentDayIndex || 0) / (goalInfo?.day_count || 2)) + 1
     : 1;
 
-  const dayLetters = plan ? getAllDayLetters(plan.dayCount) : [];
+  // Get training days from profile
+  const trainingDays = profile?.training_days || [];
+  
+  // Get schedule with proper day rotation
+  const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex) : [];
+
+  // Day names in Czech
+  const dayNamesCz: Record<string, string> = {
+    monday: 'Pondělí',
+    tuesday: 'Úterý',
+    wednesday: 'Středa',
+    thursday: 'Čtvrtek',
+    friday: 'Pátek',
+    saturday: 'Sobota',
+    sunday: 'Neděle'
+  };
+  
+  const today = getCurrentWeekday();
 
   // Loading state
   if (planLoading) {
@@ -152,92 +169,104 @@ const MyPlanSection = () => {
 
   // Active plan display
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden bg-gradient-to-br from-card to-muted/30">
       {/* Header with week progress */}
-      <div className="p-6 pb-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-foreground">Týden {currentWeek}</span>
-            <span className="text-lg text-muted-foreground">z {goalInfo?.duration_weeks || 8}</span>
+      <div className="p-5 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold text-foreground">Týden {currentWeek}</span>
+                <span className="text-sm text-muted-foreground">z {goalInfo?.duration_weeks || 8}</span>
+              </div>
+              <button 
+                onClick={handleGoToTraining}
+                className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <span className="text-xs font-medium">{goalInfo?.name || 'Tréninkový plán'}</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
-          <button 
-            onClick={handleSelectPlan}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {/* Chat icon placeholder */}
-          </button>
         </div>
-        
-        <button 
-          onClick={handleGoToTraining}
-          className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors mb-4"
-        >
-          <span className="text-sm font-medium">{goalInfo?.name || 'Tréninkový plán'}</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
 
         {/* Progress bar */}
-        <Progress value={weekProgress} className="h-2" />
+        <div className="mb-1">
+          <Progress value={weekProgress} className="h-1.5" />
+        </div>
+        <p className="text-xs text-muted-foreground text-right">
+          {Math.round(weekProgress)}% dokončeno
+        </p>
       </div>
 
-      {/* Day cards */}
+      {/* Day cards - using training schedule */}
       <div className="px-4 pb-4 space-y-2">
-        {dayLetters.map((letter, index) => {
-          const isCurrentDay = letter === plan.currentDayLetter;
-          const isDayCompleted = index < plan.currentDayIndex % plan.dayCount;
-          
-          // Get day name from allDays if available
-          const dayTemplate = plan.allDays?.find(d => d.dayLetter === letter);
-          const dayName = dayTemplate?.dayName || `Den ${letter}`;
-          
-          return (
-            <motion.button
-              key={letter}
-              onClick={handleGoToTraining}
-              className={cn(
-                "w-full p-4 rounded-xl border-2 text-left transition-all",
-                isCurrentDay 
-                  ? "border-primary bg-primary/5 shadow-md" 
-                  : "border-border bg-card hover:border-muted-foreground/30"
-              )}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center border-2",
-                  isDayCompleted 
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : isCurrentDay
-                    ? "border-primary text-primary"
-                    : "border-muted-foreground/30 text-muted-foreground"
-                )}>
-                  {isDayCompleted ? (
-                    <CheckCircle2 className="w-5 h-5" />
-                  ) : (
-                    <Circle className="w-5 h-5" />
+        {schedule.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Nastav si tréningové dni v profile
+          </p>
+        ) : (
+          schedule.map((day, index) => {
+            const isCurrentDay = index === 0 && day.dayOfWeek === today;
+            const isNextUp = index === 0;
+            
+            // Get day name from allDays if available
+            const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
+            const dayTypeName = dayTemplate?.dayName || '';
+            
+            return (
+              <motion.button
+                key={`${day.dayOfWeek}-${index}`}
+                onClick={handleGoToTraining}
+                className={cn(
+                  "w-full p-4 rounded-xl border text-left transition-all",
+                  isNextUp 
+                    ? "border-primary bg-primary/5 shadow-sm" 
+                    : "border-border/50 bg-card/50 hover:border-border"
+                )}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm",
+                      isNextUp 
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {day.dayLetter}
+                    </div>
+                    
+                    <div>
+                      <h4 className={cn(
+                        "font-semibold text-sm",
+                        isNextUp ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
+                      </h4>
+                      {dayTypeName && (
+                        <p className="text-xs text-muted-foreground">
+                          {dayTypeName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {isCurrentDay && (
+                    <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      Dnes
+                    </span>
                   )}
                 </div>
-                
-                <div>
-                  <h4 className={cn(
-                    "font-semibold",
-                    isCurrentDay ? "text-foreground" : "text-muted-foreground"
-                  )}>
-                    Den {index + 1}
-                  </h4>
-                  <p className={cn(
-                    "text-sm",
-                    isCurrentDay ? "text-muted-foreground" : "text-muted-foreground/70"
-                  )}>
-                    {dayName}
-                  </p>
-                </div>
-              </div>
-            </motion.button>
-          );
-        })}
+              </motion.button>
+            );
+          })
+        )}
       </div>
     </Card>
   );
