@@ -5,6 +5,7 @@ import { ArrowLeft, Dumbbell, Clock, Flame, TrendingUp, Calendar } from 'lucide-
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistoryDetails';
 import PageTransition from '@/components/PageTransition';
+import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -274,45 +275,7 @@ const WorkoutHistory = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
                     >
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                                <span className="text-lg font-bold text-primary">
-                                  {session.day_letter.includes('_EXT') 
-                                    ? `${session.day_letter.replace('_EXT', '')}+` 
-                                    : session.day_letter}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">
-                                  {format(new Date(session.started_at), 'EEEE d. MMMM', { locale: cs })}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(session.started_at), 'HH:mm')}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-sm mt-3">
-                            <div className="text-center">
-                              <p className="font-semibold text-foreground">
-                                {Math.round((session.duration_seconds || 0) / 60)} min
-                              </p>
-                              <p className="text-xs text-muted-foreground">Čas</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="font-semibold text-foreground">{session.total_sets || 0}</p>
-                              <p className="text-xs text-muted-foreground">Série</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="font-semibold text-foreground">{session.total_weight_kg || 0} kg</p>
-                              <p className="text-xs text-muted-foreground">Váha</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <WorkoutSessionCard session={session} variant="full" />
                     </motion.div>
                   ))
                 )}
