@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell, Sparkles } from 'lucide-react';
+import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
+import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 
@@ -23,9 +24,22 @@ const MyPlanSection = () => {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { plan, isLoading: planLoading } = useWorkoutPlan();
+  const { stats } = useWorkoutStats();
   const [goals, setGoals] = useState<TrainingGoalWithDuration[]>([]);
   const [isSelectingPlan, setIsSelectingPlan] = useState(false);
   const [goalInfo, setGoalInfo] = useState<TrainingGoalWithDuration | null>(null);
+  
+  // Check if workout was completed today
+  const completedTodayDayLetter = stats.today.totalWorkouts > 0 
+    ? stats.lastDays.find(d => {
+        const sessionDate = new Date(d.date);
+        const today = new Date();
+        return sessionDate.getFullYear() === today.getFullYear() &&
+               sessionDate.getMonth() === today.getMonth() &&
+               sessionDate.getDate() === today.getDate() &&
+               d.completed;
+      })?.dayLetter || null
+    : null;
 
   // Fetch all available goals
   useEffect(() => {
@@ -212,6 +226,7 @@ const MyPlanSection = () => {
           schedule.map((day, index) => {
             const isCurrentDay = index === 0 && day.dayOfWeek === today;
             const isNextUp = index === 0;
+            const isCompletedToday = isCurrentDay && completedTodayDayLetter === day.dayLetter;
             
             // Get day name from allDays if available
             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
@@ -223,9 +238,11 @@ const MyPlanSection = () => {
                 onClick={handleGoToTraining}
                 className={cn(
                   "w-full p-4 rounded-xl border text-left transition-all",
-                  isNextUp 
-                    ? "border-primary bg-primary/5 shadow-sm" 
-                    : "border-border/50 bg-card/50 hover:border-border"
+                  isCompletedToday
+                    ? "border-green-500 bg-green-500/10"
+                    : isNextUp 
+                      ? "border-primary bg-primary/5 shadow-sm" 
+                      : "border-border/50 bg-card/50 hover:border-border"
                 )}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -235,33 +252,50 @@ const MyPlanSection = () => {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm",
-                      isNextUp 
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                      isCompletedToday
+                        ? "bg-green-500 text-white"
+                        : isNextUp 
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
                     )}>
-                      {day.dayLetter}
+                      {isCompletedToday ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        day.dayLetter
+                      )}
                     </div>
                     
                     <div>
                       <h4 className={cn(
                         "font-semibold text-sm",
-                        isNextUp ? "text-foreground" : "text-muted-foreground"
+                        isCompletedToday ? "text-green-600" : isNextUp ? "text-foreground" : "text-muted-foreground"
                       )}>
                         {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
                       </h4>
                       {dayTypeName && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className={cn(
+                          "text-xs",
+                          isCompletedToday ? "text-green-600/70" : "text-muted-foreground"
+                        )}>
                           {dayTypeName}
                         </p>
                       )}
                     </div>
                   </div>
                   
-                  {isCurrentDay && (
-                    <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                      Dnes
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isCompletedToday && (
+                      <span className="text-xs font-medium text-green-600 bg-green-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Hotovo
+                      </span>
+                    )}
+                    {isCurrentDay && !isCompletedToday && (
+                      <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        Dnes
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.button>
             );
