@@ -94,12 +94,13 @@ export const getTrainingSchedule = (
   const rotatedDays = [...sortedDays.slice(startIndex), ...sortedDays.slice(0, startIndex)];
   
   const schedule: { dayOfWeek: string; dayLetter: string }[] = [];
-  let rotationIndex = currentDayIndex;
   
-  rotatedDays.forEach(dayOfWeek => {
-    const { letter, nextIndex } = getNextDayLetter(dayCount, rotationIndex);
-    schedule.push({ dayOfWeek, dayLetter: letter });
-    rotationIndex = nextIndex;
+  // Use getCurrentDayLetter for the first day (current position in rotation)
+  // Then calculate subsequent days based on position in sequence
+  rotatedDays.forEach((dayOfWeek, index) => {
+    // Current day letter is at currentDayIndex, next ones follow in sequence
+    const dayLetter = getCurrentDayLetter(dayCount, currentDayIndex + index);
+    schedule.push({ dayOfWeek, dayLetter });
   });
   
   return schedule;
