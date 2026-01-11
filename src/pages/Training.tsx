@@ -121,8 +121,8 @@ const Training = () => {
     }
   };
 
-  // Generate exercises for current day based on selected gym
-  const handleGenerateDayExercises = useCallback(async (gymId: string) => {
+  // Generate exercises for current day based on selected gym (without starting workout)
+  const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
     if (!plan || !profile?.user_level) return;
 
     setIsGeneratingDayExercises(true);
@@ -141,7 +141,11 @@ const Training = () => {
       setGeneratedExercises(exercises);
       setSelectedWorkoutGymId(gymId);
       setShowGymSelector(false);
-      setIsWorkoutActive(true);
+      
+      // Only start workout if explicitly requested (from button click)
+      if (startWorkoutAfter) {
+        setIsWorkoutActive(true);
+      }
     } catch (err) {
       console.error('Error generating day exercises:', err);
     } finally {
@@ -308,11 +312,11 @@ const Training = () => {
       setSelectedWorkoutGymId(plan.gymId);
       setIsWorkoutActive(true);
     } else if (generatedExercises.length > 0 && selectedWorkoutGymId) {
-      // We have dynamically generated exercises
+      // We have dynamically generated exercises ready - start workout
       setIsWorkoutActive(true);
     } else if (profile?.selected_gym_id) {
-      // Generate exercises for the selected gym
-      handleGenerateDayExercises(profile.selected_gym_id);
+      // Generate exercises AND start workout after
+      handleGenerateDayExercises(profile.selected_gym_id, true);
     } else {
       // Need to select gym first
       setShowGymSelector(true);
@@ -320,7 +324,8 @@ const Training = () => {
   };
 
   const handleGymSelected = (gymId: string) => {
-    handleGenerateDayExercises(gymId);
+    // When user selects gym from selector, generate exercises AND start workout
+    handleGenerateDayExercises(gymId, true);
   };
 
   const handleCompleteWorkout = async (results: any) => {
