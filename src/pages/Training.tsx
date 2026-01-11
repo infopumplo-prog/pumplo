@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check } from 'lucide-react';
+import { ChevronRight, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
-import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { TRAINING_ROLE_NAMES, TrainingRoleId, TRAINING_ROLE_IDS } from '@/lib/trainingRoles';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { GymSelector } from '@/components/workout/GymSelector';
+import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { cn } from '@/lib/utils';
 
 interface TrainingGoalOption {
@@ -45,6 +46,9 @@ const Training = () => {
   const [availableGoals, setAvailableGoals] = useState<TrainingGoalOption[]>([]);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [isLoadingGoals, setIsLoadingGoals] = useState(true);
+  const [extendedExercises, setExtendedExercises] = useState<WorkoutExercise[]>([]);
+  const [isGeneratingExtension, setIsGeneratingExtension] = useState(false);
+  const [showExtendWorkout, setShowExtendWorkout] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -335,12 +339,14 @@ const Training = () => {
     await advanceToNextDay();
     setIsWorkoutActive(false);
     setGeneratedExercises([]);
+    setExtendedExercises([]);
     setSelectedWorkoutGymId(null);
   };
 
   const handleCancelWorkout = () => {
     setIsWorkoutActive(false);
     setGeneratedExercises([]);
+    setExtendedExercises([]);
     setSelectedWorkoutGymId(null);
   };
 
@@ -361,6 +367,154 @@ const Training = () => {
     // Reset selection and refetch
     setSelectedGoalId(null);
     refetchPlan();
+  };
+
+  // Generate extension exercises (extra exercises for today)
+  const generateExtensionExercises = async (count: number) => {
+    if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
+    
+    setIsGeneratingExtension(true);
+    
+    try {
+      const gymId = profile.selected_gym_id;
+      
+      // Get gym equipment
+      const { data: gymMachines } = await supabase
+        .from('gym_machines')
+        .select('machine_id, machines(id, equipment_type)')
+        .eq('gym_id', gymId);
+
+      const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+      
+      // Expand equipment types
+      const expandedEquipment = new Set<string>(rawEquipmentTypes);
+      if (rawEquipmentTypes.includes('free_weights')) {
+        expandedEquipment.add('barbell');
+        expandedEquipment.add('dumbbell');
+        expandedEquipment.add('kettlebell');
+      }
+      if (rawEquipmentTypes.includes('machine')) {
+        expandedEquipment.add('machine');
+        expandedEquipment.add('cable');
+        expandedEquipment.add('plate_loaded');
+      }
+      expandedEquipment.add('bodyweight');
+
+      const availableEquipmentTypes = Array.from(expandedEquipment);
+      
+      // Get all available roles to pick from
+      const availableRoles = [...TRAINING_ROLE_IDS];
+      
+      // Shuffle roles for variety
+      const shuffledRoles = availableRoles.sort(() => Math.random() - 0.5);
+      
+      const exercises: WorkoutExercise[] = [];
+      const usedExerciseIds: string[] = [];
+      const userLevel = profile.user_level;
+      const userInjuries = profile.injuries || [];
+      const equipmentPreference = profile.equipment_preference || null;
+      const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
+      const activeInjuries = userInjuries.filter(i => i && i !== 'none');
+
+      for (let i = 0; i < count && i < shuffledRoles.length; i++) {
+        const roleId = shuffledRoles[i];
+        
+        // Fetch exercises for this role
+        const { data: roleExercises } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('primary_role', roleId);
+
+        if (!roleExercises || roleExercises.length === 0) continue;
+
+        // Filter exercises
+        let filteredExercises = roleExercises.filter(ex => {
+          if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
+          if (usedExerciseIds.includes(ex.id)) return false;
+          
+          // Injury filter
+          if (activeInjuries.length > 0 && ex.contraindicated_injuries?.length > 0) {
+            const hasContraindication = ex.contraindicated_injuries.some((injury: string) =>
+              activeInjuries.some(userInjury => 
+                injury.toLowerCase().includes(userInjury.toLowerCase()) ||
+                userInjury.toLowerCase().includes(injury.toLowerCase())
+              )
+            );
+            if (hasContraindication) return false;
+          }
+
+          // Equipment filter
+          const exEquipment = ex.equipment || [];
+          if (exEquipment.includes('bodyweight')) return true;
+          if (exEquipment.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))) {
+            return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.some(t => exEquipment.includes(t));
+          }
+          if (exEquipment.includes('cable')) {
+            return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
+          }
+          if (exEquipment.some((eq: string) => ['machine', 'plate_loaded'].includes(eq))) {
+            return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
+          }
+          return exEquipment.some((eq: string) => availableEquipmentTypes.includes(eq));
+        });
+
+        // Apply preference sorting
+        if (equipmentPreference === 'machines') {
+          const machineExercises = filteredExercises.filter(ex =>
+            ex.equipment?.some((eq: string) => ['machine', 'cable', 'plate_loaded'].includes(eq))
+          );
+          if (machineExercises.length > 0) filteredExercises = machineExercises;
+        } else if (equipmentPreference === 'free_weights') {
+          const fwExercises = filteredExercises.filter(ex =>
+            ex.equipment?.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
+          );
+          if (fwExercises.length > 0) filteredExercises = fwExercises;
+        } else if (equipmentPreference === 'bodyweight') {
+          const bwExercises = filteredExercises.filter(ex => ex.equipment?.includes('bodyweight'));
+          if (bwExercises.length > 0) filteredExercises = bwExercises;
+        }
+
+        if (filteredExercises.length === 0) continue;
+
+        // Pick random exercise
+        const randomIndex = Math.floor(Math.random() * Math.min(3, filteredExercises.length));
+        const selectedExercise = filteredExercises[randomIndex];
+        usedExerciseIds.push(selectedExercise.id);
+
+        // Determine sets based on level (3 sets default for extensions)
+        const sets = userLevel === 'beginner' ? 2 : userLevel === 'intermediate' ? 3 : 4;
+
+        exercises.push({
+          id: `ext-${roleId}-${i}`,
+          dayLetter: 'EXT',
+          slotOrder: i + 1,
+          roleId: roleId,
+          exerciseId: selectedExercise.id,
+          exerciseName: selectedExercise.name,
+          equipment: selectedExercise.equipment || [],
+          machineName: null,
+          sets: sets,
+          repMin: 8,
+          repMax: 12,
+          isFallback: false,
+          fallbackReason: null
+        });
+      }
+
+      setExtendedExercises(exercises);
+      setShowExtendWorkout(false);
+      
+      // Start extended workout
+      if (exercises.length > 0) {
+        setGeneratedExercises(exercises);
+        setSelectedWorkoutGymId(gymId);
+        setIsWorkoutActive(true);
+      }
+    } catch (err) {
+      console.error('Error generating extension exercises:', err);
+    } finally {
+      setIsGeneratingExtension(false);
+    }
   };
 
   // Loading state
@@ -649,8 +803,18 @@ const Training = () => {
           </div>
         </div>
 
-        {/* Current Day Info */}
-        {(() => {
+        {/* Show extend workout option if workout is completed today */}
+        {wasCompletedToday && !isWorkoutActive && (
+          <div className="px-4 mb-4">
+            <ExtendWorkoutSelector 
+              onConfirm={generateExtensionExercises}
+              isLoading={isGeneratingExtension}
+            />
+          </div>
+        )}
+
+        {/* Current Day Info - only show if not completed today or showing extension */}
+        {!wasCompletedToday && (() => {
           const currentDayInfo = plan.allDays.find(d => d.dayLetter === currentDayLetter);
           const dayTypeName = currentDayInfo?.dayName || '';
           // Use generated exercises if available, otherwise from plan
@@ -676,135 +840,139 @@ const Training = () => {
           );
         })()}
 
-        {/* Exercises List or Placeholder */}
-        <div className="px-4 space-y-3">
-          <AnimatePresence mode="wait">
-            {(() => {
-              const displayExercises = generatedExercises.length > 0 ? generatedExercises : currentExercises;
-              const hasGymSelected = !!profile?.selected_gym_id;
-              
-              if (displayExercises.length === 0) {
-                return (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-8"
-                  >
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MapPin className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    {hasGymSelected ? (
-                      <>
-                        <p className="text-muted-foreground mb-2">
-                          {isGeneratingDayExercises ? 'Generuji cviky...' : 'Klikni na Začít trénink'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Cviky budú prispôsobené vybaveniu posilne
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-muted-foreground mb-2">
-                          Najprv vyber posilnu na mape
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Cviky sa prispôsobia vybaveniu posilne
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          className="mt-4"
-                          onClick={() => navigate('/map')}
-                        >
-                          <MapPin className="w-4 h-4 mr-2" />
-                          Ísť na mapu
-                        </Button>
-                      </>
-                    )}
-                  </motion.div>
-                );
-              }
-              
-              return displayExercises.map((exercise, index) => (
-                <motion.div
-                  key={exercise.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-base font-bold text-primary">{index + 1}</span>
+        {/* Exercises List or Placeholder - only show if not completed today */}
+        {!wasCompletedToday && (
+          <div className="px-4 space-y-3">
+            <AnimatePresence mode="wait">
+              {(() => {
+                const displayExercises = generatedExercises.length > 0 ? generatedExercises : currentExercises;
+                const hasGymSelected = !!profile?.selected_gym_id;
+                
+                if (displayExercises.length === 0) {
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-8"
+                    >
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <MapPin className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">
-                          {exercise.exerciseName}
-                        </h3>
-                        
-                        {/* Equipment info */}
-                        {(exercise.equipment && exercise.equipment.length > 0) && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {exercise.machineName || exercise.equipment.map(eq => {
-                              const eqNames: Record<string, string> = {
-                                'barbell': 'Velká činka',
-                                'dumbbell': 'Jednoručky',
-                                'kettlebell': 'Kettlebell',
-                                'cable': 'Kabel',
-                                'machine': 'Stroj',
-                                'bodyweight': 'Vlastní váha',
-                                'free_weights': 'Volné váhy',
-                              };
-                              return eqNames[eq] || eq;
-                            }).join(', ')}
+                      {hasGymSelected ? (
+                        <>
+                          <p className="text-muted-foreground mb-2">
+                            {isGeneratingDayExercises ? 'Generuji cviky...' : 'Klikni na Začít trénink'}
                           </p>
-                        )}
-                        
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">
-                            {TRAINING_ROLE_NAMES[exercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || exercise.roleId}
-                          </Badge>
+                          <p className="text-xs text-muted-foreground">
+                            Cviky budú prispôsobené vybaveniu posilne
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-muted-foreground mb-2">
+                            Najprv vyber posilnu na mape
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Cviky sa prispôsobia vybaveniu posilne
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-4"
+                            onClick={() => navigate('/map')}
+                          >
+                            <MapPin className="w-4 h-4 mr-2" />
+                            Ísť na mapu
+                          </Button>
+                        </>
+                      )}
+                    </motion.div>
+                  );
+                }
+                
+                return displayExercises.map((exercise, index) => (
+                  <motion.div
+                    key={exercise.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-base font-bold text-primary">{index + 1}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {exercise.sets} sérií × {exercise.repMin}-{exercise.repMax} opakování
-                        </p>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium truncate">
+                            {exercise.exerciseName}
+                          </h3>
+                          
+                          {/* Equipment info */}
+                          {(exercise.equipment && exercise.equipment.length > 0) && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {exercise.machineName || exercise.equipment.map(eq => {
+                                const eqNames: Record<string, string> = {
+                                  'barbell': 'Velká činka',
+                                  'dumbbell': 'Jednoručky',
+                                  'kettlebell': 'Kettlebell',
+                                  'cable': 'Kabel',
+                                  'machine': 'Stroj',
+                                  'bodyweight': 'Vlastní váha',
+                                  'free_weights': 'Volné váhy',
+                                };
+                                return eqNames[eq] || eq;
+                              }).join(', ')}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <Badge variant="secondary" className="text-xs">
+                              {TRAINING_ROLE_NAMES[exercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || exercise.roleId}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {exercise.sets} sérií × {exercise.repMin}-{exercise.repMax} opakování
+                          </p>
+                        </div>
+
+                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-2" />
                       </div>
+                    </Card>
+                  </motion.div>
+                ));
+              })()}
+            </AnimatePresence>
+          </div>
+        )}
 
-                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-2" />
-                    </div>
-                  </Card>
-                </motion.div>
-              ));
-            })()}
-          </AnimatePresence>
-        </div>
-
-        {/* Action Button */}
-        <div className="fixed bottom-24 left-4 right-4">
-          <Button 
-            size="lg" 
-            className="w-full gap-2 shadow-lg"
-            onClick={handleStartWorkout}
-            disabled={isGeneratingDayExercises || !profile?.selected_gym_id}
-          >
-            {isGeneratingDayExercises ? (
-              <>
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                Generujem cviky...
-              </>
-            ) : !profile?.selected_gym_id ? (
-              <>
-                <MapPin className="w-5 h-5" />
-                Vyber posilňu
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                Začať tréning
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Action Button - hide when workout completed today (ExtendWorkoutSelector is shown instead) */}
+        {!wasCompletedToday && (
+          <div className="fixed bottom-24 left-4 right-4">
+            <Button 
+              size="lg" 
+              className="w-full gap-2 shadow-lg"
+              onClick={handleStartWorkout}
+              disabled={isGeneratingDayExercises || !profile?.selected_gym_id}
+            >
+              {isGeneratingDayExercises ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Generujem cviky...
+                </>
+              ) : !profile?.selected_gym_id ? (
+                <>
+                  <MapPin className="w-5 h-5" />
+                  Vyber posilňu
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" />
+                  Začať tréning
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Gym Selector */}
         <AnimatePresence>
@@ -822,7 +990,7 @@ const Training = () => {
           {isWorkoutActive && selectedWorkoutGymId && generatedExercises.length > 0 && (
             <WorkoutSession
               exercises={generatedExercises}
-              dayLetter={currentDayLetter}
+              dayLetter={extendedExercises.length > 0 ? 'EXT' : currentDayLetter}
               goalId={plan.goalId}
               planId={plan.id}
               gymId={selectedWorkoutGymId}
