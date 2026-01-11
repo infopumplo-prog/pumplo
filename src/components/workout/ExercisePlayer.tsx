@@ -59,6 +59,7 @@ export const ExercisePlayer = ({
     Array.from({ length: totalSets }, () => ({ completed: false }))
   );
   const [showDescription, setShowDescription] = useState(false);
+  const [showFullName, setShowFullName] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
 
   useEffect(() => {
@@ -211,7 +212,20 @@ export const ExercisePlayer = ({
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold text-foreground truncate">{exerciseName}</h2>
+                <h2 
+                  className={cn(
+                    "text-xl font-bold text-foreground cursor-pointer",
+                    !showFullName && "truncate"
+                  )}
+                  onClick={() => setShowFullName(!showFullName)}
+                >
+                  {exerciseName}
+                </h2>
+                {machineName && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Stroj: {machineName}
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <Badge variant="outline" className="text-xs">
                     {TRAINING_ROLE_NAMES[roleId as keyof typeof TRAINING_ROLE_NAMES] || roleId}
