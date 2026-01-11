@@ -147,7 +147,8 @@ const Training = () => {
         profile.user_level,
         profile.injuries || [],
         profile.equipment_preference || null,
-        trainingSplit
+        trainingSplit,
+        profile.training_duration_minutes || 60
       );
       
       setGeneratedExercises(exercises);
@@ -165,6 +166,50 @@ const Training = () => {
     }
   }, [plan, profile]);
 
+  // Calculate estimated workout duration based on exercises
+  const calculateWorkoutDuration = (exercises: WorkoutExercise[]): number => {
+    let totalMinutes = 0;
+    
+    for (const ex of exercises) {
+      const sets = ex.sets || 3;
+      const avgReps = ((ex.repMin || 8) + (ex.repMax || 12)) / 2;
+      
+      // Time per set: ~30-60 sec depending on equipment
+      const isCompound = ['knee_dominant', 'hip_dominant', 'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull'].includes(ex.roleId);
+      const timePerSet = isCompound ? 50 : 35; // seconds
+      
+      // Rest time between sets: 60-120 sec for compounds, 45-60 for isolation
+      const restBetweenSets = isCompound ? 90 : 50; // seconds
+      
+      // Total time for this exercise
+      const exerciseTime = sets * timePerSet + (sets - 1) * restBetweenSets;
+      totalMinutes += exerciseTime / 60;
+      
+      // Add transition time between exercises
+      totalMinutes += 1;
+    }
+    
+    return Math.round(totalMinutes);
+  };
+
+  // Determine target exercise count based on training duration
+  const getTargetExerciseCount = (trainingDurationMinutes: number | null, userLevel: string): number => {
+    const duration = trainingDurationMinutes || 60;
+    
+    // Estimate: each exercise takes ~8-12 min depending on sets/rest
+    // Beginner: more rest, fewer exercises
+    // Advanced: less rest, more exercises
+    const avgTimePerExercise = userLevel === 'beginner' ? 12 : userLevel === 'intermediate' ? 10 : 8;
+    
+    // Account for warm-up (~5 min) and cool-down (~5 min)
+    const effectiveTime = duration - 10;
+    
+    const count = Math.floor(effectiveTime / avgTimePerExercise);
+    
+    // Clamp between 3 and 10 exercises
+    return Math.max(3, Math.min(10, count));
+  };
+
   // Generate exercises for a specific day
   const generateExercisesForDay = async (
     gymId: string,
@@ -173,8 +218,12 @@ const Training = () => {
     userLevel: string,
     userInjuries: string[],
     equipmentPreference: string | null,
-    trainingSplit: string = 'ppl' // 'ppl', 'full_body', 'upper_lower'
+    trainingSplit: string = 'ppl',
+    trainingDurationMinutes: number | null = null
   ): Promise<WorkoutExercise[]> => {
+    // Determine target exercise count based on duration
+    const targetExerciseCount = getTargetExerciseCount(trainingDurationMinutes, userLevel);
+    
     // Get day template for this day
     const { data: templates } = await supabase
       .from('day_templates')
@@ -211,7 +260,35 @@ const Training = () => {
     const usedExerciseIds: string[] = [];
     const exercises: WorkoutExercise[] = [];
 
-    for (const slot of templates) {
+    // Build a list of roles to fill - repeat templates if we need more exercises
+    const rolesToFill: typeof templates = [];
+    const templatesCopy = [...templates];
+    
+    while (rolesToFill.length < targetExerciseCount && templatesCopy.length > 0) {
+      // First pass: add all template slots
+      for (const slot of templates) {
+        if (rolesToFill.length >= targetExerciseCount) break;
+        rolesToFill.push(slot);
+      }
+      
+      // If we need more, shuffle and add variations
+      if (rolesToFill.length < targetExerciseCount) {
+        const shuffled = [...templates].sort(() => Math.random() - 0.5);
+        for (const slot of shuffled) {
+          if (rolesToFill.length >= targetExerciseCount) break;
+          // Don't add the same role more than twice
+          const roleCount = rolesToFill.filter(r => r.role_id === slot.role_id).length;
+          if (roleCount < 2) {
+            rolesToFill.push(slot);
+          }
+        }
+        break; // Prevent infinite loop
+      }
+    }
+
+    for (let slotIndex = 0; slotIndex < rolesToFill.length; slotIndex++) {
+      const slot = rolesToFill[slotIndex];
+      
       // Fetch exercises for this role
       const { data: roleExercises } = await supabase
         .from('exercises')
@@ -225,12 +302,6 @@ const Training = () => {
       const activeInjuries = userInjuries.filter(i => i && i !== 'none');
 
       let filteredExercises = roleExercises.filter(ex => {
-        // Filter by workout_split - CRITICAL: only include exercises matching the user's split
-        const exerciseSplits = ex.workout_split || [];
-        if (exerciseSplits.length > 0 && !exerciseSplits.includes(trainingSplit)) {
-          return false;
-        }
-        
         if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
         if (usedExerciseIds.includes(ex.id)) return false;
         
@@ -260,6 +331,17 @@ const Training = () => {
         return exEquipment.some((eq: string) => availableEquipmentTypes.includes(eq));
       });
 
+      // Prefer exercises matching the training split, but don't require it
+      const splitMatching = filteredExercises.filter(ex => {
+        const exerciseSplits = ex.workout_split || [];
+        return exerciseSplits.length === 0 || exerciseSplits.includes(trainingSplit);
+      });
+      
+      if (splitMatching.length > 0) {
+        filteredExercises = splitMatching;
+      }
+      // If no split-matching exercises, use all filtered (fallback)
+
       // Apply preference sorting
       if (equipmentPreference === 'machines') {
         const machineExercises = filteredExercises.filter(ex =>
@@ -288,9 +370,9 @@ const Training = () => {
                    userLevel === 'intermediate' ? slot.intermediate_sets : slot.advanced_sets;
 
       exercises.push({
-        id: `temp-${slot.id}`,
+        id: `temp-${slot.id}-${slotIndex}`,
         dayLetter: slot.day_letter,
-        slotOrder: slot.slot_order,
+        slotOrder: slotIndex + 1,
         roleId: slot.role_id,
         exerciseId: selectedExercise.id,
         exerciseName: selectedExercise.name,
@@ -890,6 +972,7 @@ const Training = () => {
           // Use generated exercises if available, otherwise from plan
           const displayExercises = generatedExercises.length > 0 ? generatedExercises : currentExercises;
           const hasGymSelected = !!profile?.selected_gym_id;
+          const estimatedDuration = displayExercises.length > 0 ? calculateWorkoutDuration(displayExercises) : 0;
           
           return (
             <div className="px-4 mb-3">
@@ -900,7 +983,16 @@ const Training = () => {
                 {isGeneratingDayExercises 
                   ? 'Generuji cviky...'
                   : displayExercises.length > 0 
-                    ? `${displayExercises.length} cviků`
+                    ? (
+                      <>
+                        {displayExercises.length} cviků
+                        {estimatedDuration > 0 && (
+                          <span className="ml-2 text-primary font-medium">
+                            • ~{estimatedDuration} min
+                          </span>
+                        )}
+                      </>
+                    )
                     : hasGymSelected
                       ? 'Cviky sa generujú...'
                       : 'Vyber posilovnu na mape'
