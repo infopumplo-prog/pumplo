@@ -164,16 +164,19 @@ export const useWorkoutGenerator = () => {
         return false;
       }
       
-      // Cable exercises
+      // Cable exercises - DON'T check specific machine_id, just check if gym has ANY cable/machine equipment
       const isCableExercise = exerciseEquipment.includes('cable');
       if (isCableExercise) {
-        return availableEquipmentTypes.includes('cable') || 
-               rawEquipmentTypes.includes('machine'); // cable stations often counted as machines
+        // Cable station, High pulley, Low row, etc. are all interchangeable for cable exercises
+        return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
       }
       
-      // Actual machine exercises that REQUIRE a specific machine - check machine_id
-      if (ex.requires_machine && ex.machine_id) {
-        return availableMachineIds.includes(ex.machine_id);
+      // Machine exercises (equipment includes 'machine' or 'plate_loaded')
+      const isMachineExercise = exerciseEquipment.some(eq => ['machine', 'plate_loaded'].includes(eq));
+      if (isMachineExercise) {
+        // For machine exercises, check if gym has machine equipment type
+        // Don't require specific machine_id match - gyms often have equivalent machines
+        return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
       }
       
       // Default: check if any equipment matches
@@ -454,20 +457,23 @@ export const useWorkoutGenerator = () => {
           
           if (exercise) {
             usedExerciseIds.push(exercise.id);
+            
+            exerciseInserts.push({
+              plan_id: newPlan.id,
+              day_letter: day.dayLetter,
+              slot_order: slot.slotOrder,
+              role_id: slot.roleId,
+              exercise_id: exercise.id,
+              sets: getSetsForLevel(slot, userLevel),
+              rep_min: slot.repMin,
+              rep_max: slot.repMax,
+              is_fallback: isFallback,
+              fallback_reason: fallbackReason
+            });
+          } else {
+            // NEVER insert a row without exercise - skip this slot instead
+            console.warn(`[WorkoutGenerator] Skipping slot ${slot.slotOrder} for role ${slot.roleId} - no exercise found`);
           }
-
-          exerciseInserts.push({
-            plan_id: newPlan.id,
-            day_letter: day.dayLetter,
-            slot_order: slot.slotOrder,
-            role_id: slot.roleId,
-            exercise_id: exercise?.id || null,
-            sets: getSetsForLevel(slot, userLevel),
-            rep_min: slot.repMin,
-            rep_max: slot.repMax,
-            is_fallback: isFallback,
-            fallback_reason: fallbackReason
-          });
         }
       }
 
