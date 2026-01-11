@@ -64,15 +64,31 @@ const Training = () => {
     fetchGoals();
   }, []);
 
-  // Set default goal from profile
+  // Set default goal from profile - prioritize training_split, then primary_goal
   useEffect(() => {
-    if (profile?.primary_goal && availableGoals.length > 0) {
-      const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal];
-      if (mappedGoalId && !selectedGoalId) {
-        setSelectedGoalId(mappedGoalId);
+    if (availableGoals.length > 0 && !selectedGoalId) {
+      // First check training_split (ppl = muscle_gain, full_body = fat_loss/general_fitness)
+      if (profile?.training_split) {
+        if (profile.training_split === 'ppl') {
+          setSelectedGoalId('muscle_gain');
+          return;
+        } else if (profile.training_split === 'full_body') {
+          // For full_body, use primary_goal to determine, default to general_fitness
+          const mappedGoalId = profile.primary_goal ? PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal] : 'general_fitness';
+          setSelectedGoalId(mappedGoalId || 'general_fitness');
+          return;
+        }
+      }
+      
+      // Fallback to primary_goal mapping
+      if (profile?.primary_goal) {
+        const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal];
+        if (mappedGoalId) {
+          setSelectedGoalId(mappedGoalId);
+        }
       }
     }
-  }, [profile?.primary_goal, availableGoals, selectedGoalId]);
+  }, [profile?.primary_goal, profile?.training_split, availableGoals, selectedGoalId]);
 
   const handleGeneratePlan = async () => {
     if (!profile?.selected_gym_id || !selectedGoalId || !profile?.user_level) return;
