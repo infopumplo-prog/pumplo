@@ -279,7 +279,11 @@ const WorkoutHistory = () => {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                                <span className="text-lg font-bold text-primary">{session.day_letter}</span>
+                                <span className="text-lg font-bold text-primary">
+                                  {session.day_letter.includes('_EXT') 
+                                    ? `${session.day_letter.replace('_EXT', '')}+` 
+                                    : session.day_letter}
+                                </span>
                               </div>
                               <div>
                                 <p className="font-medium text-foreground">

@@ -10,7 +10,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
-import { TRAINING_ROLE_NAMES, TrainingRoleId, TRAINING_ROLE_IDS } from '@/lib/trainingRoles';
+import { TRAINING_ROLE_NAMES, TrainingRoleId, TRAINING_ROLE_IDS, TRAINING_ROLE_CATEGORIES } from '@/lib/trainingRoles';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
@@ -370,6 +370,7 @@ const Training = () => {
   };
 
   // Generate extension exercises (extra exercises for today)
+  // For Full Body workouts, ensures balanced coverage across upper/lower/core
   const generateExtensionExercises = async (count: number) => {
     if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
     
@@ -377,6 +378,7 @@ const Training = () => {
     
     try {
       const gymId = profile.selected_gym_id;
+      const isFullBody = profile.training_split === 'full_body';
       
       // Get gym equipment
       const { data: gymMachines } = await supabase
@@ -402,11 +404,46 @@ const Training = () => {
 
       const availableEquipmentTypes = Array.from(expandedEquipment);
       
-      // Get all available roles to pick from
-      const availableRoles = [...TRAINING_ROLE_IDS];
+      // Build balanced role selection for Full Body - ensure all categories are covered
+      let rolesToUse: TrainingRoleId[] = [];
       
-      // Shuffle roles for variety
-      const shuffledRoles = availableRoles.sort(() => Math.random() - 0.5);
+      if (isFullBody) {
+        // Categorize roles
+        const upperRoles = TRAINING_ROLE_IDS.filter(r => TRAINING_ROLE_CATEGORIES[r] === 'upper');
+        const lowerRoles = TRAINING_ROLE_IDS.filter(r => TRAINING_ROLE_CATEGORIES[r] === 'lower');
+        const coreRoles = TRAINING_ROLE_IDS.filter(r => TRAINING_ROLE_CATEGORIES[r] === 'core');
+        
+        // Shuffle each category
+        const shuffledUpper = [...upperRoles].sort(() => Math.random() - 0.5);
+        const shuffledLower = [...lowerRoles].sort(() => Math.random() - 0.5);
+        const shuffledCore = [...coreRoles].sort(() => Math.random() - 0.5);
+        
+        // Distribute roles to ensure coverage: upper, lower, core, upper, lower, core...
+        const categories = [shuffledUpper, shuffledLower, shuffledCore];
+        const indices = [0, 0, 0];
+        
+        for (let i = 0; i < count; i++) {
+          const categoryIndex = i % 3; // Rotate through upper, lower, core
+          const category = categories[categoryIndex];
+          if (indices[categoryIndex] < category.length) {
+            rolesToUse.push(category[indices[categoryIndex]]);
+            indices[categoryIndex]++;
+          } else {
+            // Fallback: pick from any available
+            for (let j = 0; j < 3; j++) {
+              const fallbackCat = categories[(categoryIndex + j) % 3];
+              if (indices[(categoryIndex + j) % 3] < fallbackCat.length) {
+                rolesToUse.push(fallbackCat[indices[(categoryIndex + j) % 3]]);
+                indices[(categoryIndex + j) % 3]++;
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        // For non-Full Body, just shuffle all roles
+        rolesToUse = [...TRAINING_ROLE_IDS].sort(() => Math.random() - 0.5).slice(0, count);
+      }
       
       const exercises: WorkoutExercise[] = [];
       const usedExerciseIds: string[] = [];
@@ -416,8 +453,15 @@ const Training = () => {
       const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
       const activeInjuries = userInjuries.filter(i => i && i !== 'none');
 
-      for (let i = 0; i < count && i < shuffledRoles.length; i++) {
-        const roleId = shuffledRoles[i];
+      // Get the current day's exercises to find max slot_order
+      const currentMaxSlot = generatedExercises.length > 0 
+        ? Math.max(...generatedExercises.map(e => e.slotOrder || 0))
+        : currentExercises.length > 0 
+          ? Math.max(...currentExercises.map(e => e.slotOrder || 0))
+          : 0;
+
+      for (let i = 0; i < rolesToUse.length; i++) {
+        const roleId = rolesToUse[i];
         
         // Fetch exercises for this role
         const { data: roleExercises } = await supabase
@@ -484,10 +528,11 @@ const Training = () => {
         // Determine sets based on level (3 sets default for extensions)
         const sets = userLevel === 'beginner' ? 2 : userLevel === 'intermediate' ? 3 : 4;
 
+        // Use the current day letter (not 'EXT') and mark as extension with isExtension flag
         exercises.push({
           id: `ext-${roleId}-${i}`,
-          dayLetter: 'EXT',
-          slotOrder: i + 1,
+          dayLetter: currentDayLetter, // Same day, not 'EXT'
+          slotOrder: currentMaxSlot + i + 1, // Continue numbering from last exercise
           roleId: roleId,
           exerciseId: selectedExercise.id,
           exerciseName: selectedExercise.name,
@@ -497,7 +542,8 @@ const Training = () => {
           repMin: 8,
           repMax: 12,
           isFallback: false,
-          fallbackReason: null
+          fallbackReason: null,
+          isExtension: true // Flag for identifying extension exercises
         });
       }
 
@@ -990,7 +1036,7 @@ const Training = () => {
           {isWorkoutActive && selectedWorkoutGymId && generatedExercises.length > 0 && (
             <WorkoutSession
               exercises={generatedExercises}
-              dayLetter={extendedExercises.length > 0 ? 'EXT' : currentDayLetter}
+              dayLetter={extendedExercises.length > 0 ? `${currentDayLetter}_EXT` : currentDayLetter}
               goalId={plan.goalId}
               planId={plan.id}
               gymId={selectedWorkoutGymId}
