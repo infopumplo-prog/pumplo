@@ -263,11 +263,17 @@ const Home = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <span className="text-lg font-bold text-primary">{session.day_letter}</span>
+                        <span className="text-lg font-bold text-primary">
+                          {session.day_letter.includes('_EXT') 
+                            ? `${session.day_letter.replace('_EXT', '')}+` 
+                            : session.day_letter}
+                        </span>
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">
-                          Den {session.day_letter}
+                          {session.day_letter.includes('_EXT') 
+                            ? `Den ${session.day_letter.replace('_EXT', '')} (rozšírenie)` 
+                            : `Den ${session.day_letter}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {formatFullDate(session.started_at)} • {formatDate(session.started_at)}

@@ -77,4 +77,5 @@ export interface WorkoutExercise {
   repMax: number;
   isFallback: boolean;
   fallbackReason: string | null;
+  isExtension?: boolean; // Flag for extension exercises added after workout completion
 }
