@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { cn } from '@/lib/utils';
 
 interface TrainingGoalOption {
@@ -35,7 +36,7 @@ const Training = () => {
   const { gyms } = usePublishedGyms();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [isStartingWorkout, setIsStartingWorkout] = useState(false);
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [availableGoals, setAvailableGoals] = useState<TrainingGoalOption[]>([]);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [isLoadingGoals, setIsLoadingGoals] = useState(true);
@@ -117,9 +118,14 @@ const Training = () => {
     refetchPlan();
   };
 
-  const handleCompleteDay = async () => {
+  const handleCompleteWorkout = async (results: any) => {
+    console.log('Workout completed:', results);
     await advanceToNextDay();
-    setIsStartingWorkout(false);
+    setIsWorkoutActive(false);
+  };
+
+  const handleCancelWorkout = () => {
+    setIsWorkoutActive(false);
   };
 
   const handleCancelPlan = async () => {
@@ -558,7 +564,7 @@ const Training = () => {
             <Button 
               size="lg" 
               className="w-full gap-2 shadow-lg"
-              onClick={() => setIsStartingWorkout(true)}
+              onClick={() => setIsWorkoutActive(true)}
             >
               <Play className="w-5 h-5" />
               Začít trénink
@@ -566,34 +572,15 @@ const Training = () => {
           </div>
         )}
 
-        {/* Simple completion modal for now */}
-        {isStartingWorkout && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-card rounded-2xl p-6 max-w-sm w-full"
-            >
-              <div className="text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Dumbbell className="w-8 h-8 text-primary" />
-                </div>
-                <h2 className="text-xl font-bold mb-2">Trénink Den {currentDayLetter}</h2>
-                <p className="text-muted-foreground text-sm mb-6">
-                  {currentExercises.length} cviků připraveno
-                </p>
-                <div className="space-y-3">
-                  <Button className="w-full gap-2" onClick={handleCompleteDay}>
-                    <CheckCircle2 className="w-5 h-5" />
-                    Dokončit trénink
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={() => setIsStartingWorkout(false)}>
-                    Zrušit
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+        {/* Workout Session */}
+        {isWorkoutActive && plan && (
+          <WorkoutSession
+            exercises={currentExercises}
+            dayLetter={currentDayLetter}
+            goalId={plan.goalId}
+            onComplete={handleCompleteWorkout}
+            onCancel={handleCancelWorkout}
+          />
         )}
       </div>
     </PageTransition>
