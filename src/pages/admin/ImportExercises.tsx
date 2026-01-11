@@ -21,7 +21,13 @@ const ImportExercises = () => {
       
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        if (char === '"') {
+        const nextChar = line[i + 1];
+        
+        if (char === '"' && nextChar === '"') {
+          // Escaped quote inside quoted field
+          current += '"';
+          i++; // Skip next quote
+        } else if (char === '"') {
           inQuotes = !inQuotes;
         } else if (char === ";" && !inQuotes) {
           values.push(current);
@@ -36,12 +42,16 @@ const ImportExercises = () => {
       headers.forEach((header, i) => {
         const value = values[i] || "";
         
-        // Array fields
+        // Array fields - parse JSON arrays
         if (["primary_muscles", "secondary_muscles", "contraindicated_injuries", "workout_split", "equipment"].includes(header)) {
           try {
-            const cleaned = value.replace(/\\/g, "").replace(/""/g, '"');
-            obj[header] = JSON.parse(cleaned || "[]");
-          } catch {
+            if (value && value.startsWith("[")) {
+              obj[header] = JSON.parse(value);
+            } else {
+              obj[header] = [];
+            }
+          } catch (e) {
+            console.warn(`Failed to parse ${header}:`, value);
             obj[header] = [];
           }
         } 
