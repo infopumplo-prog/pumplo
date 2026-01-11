@@ -44,8 +44,28 @@ export const getAllDayLetters = (dayCount: number): string[] => {
   return ALPHABET.slice(0, safeDayCount).split('');
 };
 
+// Day order for sorting
+const DAY_ORDER: Record<string, number> = {
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6
+};
+
+/**
+ * Získá aktuální den v týdnu jako string
+ */
+export const getCurrentWeekday = (): string => {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return days[new Date().getDay()];
+};
+
 /**
  * Vypočítá, který den v týdnu bude další trénink
+ * Dni jsou seřazeny tak, že první je nejbližší aktuálnímu dni
  * @param trainingDays - pole dnů kdy uživatel trénuje ['monday', 'wednesday', 'friday']
  * @param dayCount - počet unikátních dní v rotaci
  * @param currentDayIndex - aktuální index rotace
@@ -57,10 +77,26 @@ export const getTrainingSchedule = (
 ): { dayOfWeek: string; dayLetter: string }[] => {
   if (trainingDays.length === 0) return [];
   
+  // Sort training days by their order in the week
+  const sortedDays = [...trainingDays].sort((a, b) => 
+    (DAY_ORDER[a] ?? 0) - (DAY_ORDER[b] ?? 0)
+  );
+  
+  // Find today and rotate the array so nearest day comes first
+  const today = getCurrentWeekday();
+  const todayIndex = DAY_ORDER[today] ?? 0;
+  
+  // Find the first training day that is >= today
+  let startIndex = sortedDays.findIndex(day => (DAY_ORDER[day] ?? 0) >= todayIndex);
+  if (startIndex === -1) startIndex = 0; // All days are before today, wrap to next week
+  
+  // Rotate array so the nearest upcoming day is first
+  const rotatedDays = [...sortedDays.slice(startIndex), ...sortedDays.slice(0, startIndex)];
+  
   const schedule: { dayOfWeek: string; dayLetter: string }[] = [];
   let rotationIndex = currentDayIndex;
   
-  trainingDays.forEach(dayOfWeek => {
+  rotatedDays.forEach(dayOfWeek => {
     const { letter, nextIndex } = getNextDayLetter(dayCount, rotationIndex);
     schedule.push({ dayOfWeek, dayLetter: letter });
     rotationIndex = nextIndex;
