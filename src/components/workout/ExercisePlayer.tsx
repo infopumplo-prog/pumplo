@@ -22,6 +22,7 @@ interface ExercisePlayerProps {
   roleId: string;
   equipment: string[];
   machineName?: string | null;
+  difficulty?: number;
   totalSets: number;
   repMin: number;
   repMax: number;
@@ -40,6 +41,7 @@ export const ExercisePlayer = ({
   roleId,
   equipment,
   machineName,
+  difficulty,
   totalSets,
   repMin,
   repMax,
@@ -117,10 +119,20 @@ export const ExercisePlayer = ({
     );
   }
 
+  // Get difficulty label and color
+  const getDifficultyInfo = (diff?: number) => {
+    if (!diff) return null;
+    if (diff <= 2) return { label: 'Lehké', color: 'bg-green-500/10 text-green-600' };
+    if (diff <= 4) return { label: 'Střední', color: 'bg-yellow-500/10 text-yellow-600' };
+    return { label: 'Těžké', color: 'bg-red-500/10 text-red-600' };
+  };
+  
+  const difficultyInfo = getDifficultyInfo(difficulty);
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
+      {/* Header - with left padding for X button */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border pl-14 pr-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-primary/10 text-primary font-semibold">
@@ -200,6 +212,11 @@ export const ExercisePlayer = ({
                   {equipmentDisplay && (
                     <Badge variant="secondary" className="text-xs">
                       {equipmentDisplay}
+                    </Badge>
+                  )}
+                  {difficultyInfo && (
+                    <Badge className={cn("text-xs", difficultyInfo.color)}>
+                      {difficultyInfo.label}
                     </Badge>
                   )}
                 </div>
