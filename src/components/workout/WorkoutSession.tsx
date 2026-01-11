@@ -204,14 +204,14 @@ export const WorkoutSession = ({
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Cancel button */}
+      {/* Cancel button - positioned for card layout */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 left-4 z-[60] text-white hover:bg-white/20"
+        className="absolute top-3 left-4 z-[60] text-foreground hover:bg-muted"
         onClick={onCancel}
       >
-        <X className="w-6 h-6" />
+        <X className="w-5 h-5" />
       </Button>
 
       <ExercisePlayerWithVideo
