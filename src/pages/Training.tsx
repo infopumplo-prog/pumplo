@@ -284,17 +284,37 @@ const Training = () => {
     return exercises;
   };
 
+  // Get current exercises from plan
+  const currentExercises = plan ? getCurrentDayExercises() : [];
+
+  // Auto-generate exercises when gym is selected and plan exists but no exercises
+  useEffect(() => {
+    const autoGenerateExercises = async () => {
+      const exercisesFromPlan = getCurrentDayExercises();
+      if (plan && profile?.selected_gym_id && profile?.user_level && exercisesFromPlan.length === 0 && !isGeneratingDayExercises && generatedExercises.length === 0) {
+        // Only auto-generate if we have a plan, gym selected, but no exercises yet
+        handleGenerateDayExercises(profile.selected_gym_id);
+      }
+    };
+    
+    autoGenerateExercises();
+  }, [plan?.id, profile?.selected_gym_id, profile?.user_level, generatedExercises.length]);
+
   const handleStartWorkout = () => {
     // Check if we have pre-generated exercises from the plan
-    const currentExercises = getCurrentDayExercises();
-    
     if (currentExercises.length > 0 && plan?.gymId) {
       // Plan already has exercises, use them
       setGeneratedExercises(currentExercises);
       setSelectedWorkoutGymId(plan.gymId);
       setIsWorkoutActive(true);
+    } else if (generatedExercises.length > 0 && selectedWorkoutGymId) {
+      // We have dynamically generated exercises
+      setIsWorkoutActive(true);
+    } else if (profile?.selected_gym_id) {
+      // Generate exercises for the selected gym
+      handleGenerateDayExercises(profile.selected_gym_id);
     } else {
-      // Need to select gym and generate exercises
+      // Need to select gym first
       setShowGymSelector(true);
     }
   };
@@ -513,7 +533,7 @@ const Training = () => {
   // Get training schedule based on user's frequency
   const schedule = getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex);
   const currentDayLetter = getCurrentDayLetter(plan.dayCount, plan.currentDayIndex);
-  const currentExercises = getCurrentDayExercises();
+  // currentExercises is defined above in useEffect section
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
@@ -598,15 +618,23 @@ const Training = () => {
         {(() => {
           const currentDayInfo = plan.allDays.find(d => d.dayLetter === currentDayLetter);
           const dayTypeName = currentDayInfo?.dayName || '';
+          // Use generated exercises if available, otherwise from plan
+          const displayExercises = generatedExercises.length > 0 ? generatedExercises : currentExercises;
+          const hasGymSelected = !!profile?.selected_gym_id;
+          
           return (
             <div className="px-4 mb-3">
               <h2 className="text-lg font-bold">
                 Den {currentDayLetter} {dayTypeName && `• ${dayTypeName}`}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {currentExercises.length > 0 
-                  ? `${currentExercises.length} cviků`
-                  : 'Cviky se vygenerují po výběru posilovny'
+                {isGeneratingDayExercises 
+                  ? 'Generuji cviky...'
+                  : displayExercises.length > 0 
+                    ? `${displayExercises.length} cviků`
+                    : hasGymSelected
+                      ? 'Cviky sa generujú...'
+                      : 'Vyber posilovnu na mape'
                 }
               </p>
             </div>
@@ -616,24 +644,52 @@ const Training = () => {
         {/* Exercises List or Placeholder */}
         <div className="px-4 space-y-3">
           <AnimatePresence mode="wait">
-            {currentExercises.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-8"
-              >
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground mb-2">
-                  Vyber posilovnu a cviky se vygenerují
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Cviky budou přizpůsobeny vybavení posilovny
-                </p>
-              </motion.div>
-            ) : (
-              currentExercises.map((exercise, index) => (
+            {(() => {
+              const displayExercises = generatedExercises.length > 0 ? generatedExercises : currentExercises;
+              const hasGymSelected = !!profile?.selected_gym_id;
+              
+              if (displayExercises.length === 0) {
+                return (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-8"
+                  >
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MapPin className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    {hasGymSelected ? (
+                      <>
+                        <p className="text-muted-foreground mb-2">
+                          {isGeneratingDayExercises ? 'Generuji cviky...' : 'Klikni na Začít trénink'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Cviky budú prispôsobené vybaveniu posilne
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground mb-2">
+                          Najprv vyber posilnu na mape
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Cviky sa prispôsobia vybaveniu posilne
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          className="mt-4"
+                          onClick={() => navigate('/map')}
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Ísť na mapu
+                        </Button>
+                      </>
+                    )}
+                  </motion.div>
+                );
+              }
+              
+              return displayExercises.map((exercise, index) => (
                 <motion.div
                   key={exercise.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -683,8 +739,8 @@ const Training = () => {
                     </div>
                   </Card>
                 </motion.div>
-              ))
-            )}
+              ));
+            })()}
           </AnimatePresence>
         </div>
 
@@ -694,17 +750,22 @@ const Training = () => {
             size="lg" 
             className="w-full gap-2 shadow-lg"
             onClick={handleStartWorkout}
-            disabled={isGeneratingDayExercises}
+            disabled={isGeneratingDayExercises || !profile?.selected_gym_id}
           >
             {isGeneratingDayExercises ? (
               <>
                 <RefreshCw className="w-5 h-5 animate-spin" />
-                Generuji cviky...
+                Generujem cviky...
+              </>
+            ) : !profile?.selected_gym_id ? (
+              <>
+                <MapPin className="w-5 h-5" />
+                Vyber posilňu
               </>
             ) : (
               <>
                 <Play className="w-5 h-5" />
-                Začít trénink
+                Začať tréning
               </>
             )}
           </Button>
