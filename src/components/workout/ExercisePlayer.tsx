@@ -119,15 +119,13 @@ export const ExercisePlayer = ({
     );
   }
 
-  // Get difficulty label and color
-  const getDifficultyInfo = (diff?: number) => {
-    if (!diff) return null;
-    if (diff <= 2) return { label: 'Lehké', color: 'bg-green-500/10 text-green-600' };
-    if (diff <= 4) return { label: 'Střední', color: 'bg-yellow-500/10 text-yellow-600' };
-    return { label: 'Těžké', color: 'bg-red-500/10 text-red-600' };
+  // Get difficulty color based on value (1-10 scale)
+  const getDifficultyColor = (diff?: number) => {
+    if (!diff) return 'bg-muted text-muted-foreground';
+    if (diff <= 3) return 'bg-green-500/10 text-green-600';
+    if (diff <= 6) return 'bg-yellow-500/10 text-yellow-600';
+    return 'bg-red-500/10 text-red-600';
   };
-  
-  const difficultyInfo = getDifficultyInfo(difficulty);
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-y-auto">
@@ -214,9 +212,9 @@ export const ExercisePlayer = ({
                       {equipmentDisplay}
                     </Badge>
                   )}
-                  {difficultyInfo && (
-                    <Badge className={cn("text-xs", difficultyInfo.color)}>
-                      {difficultyInfo.label}
+                  {difficulty && (
+                    <Badge className={cn("text-xs", getDifficultyColor(difficulty))}>
+                      Obtížnost: {difficulty}/10
                     </Badge>
                   )}
                 </div>
