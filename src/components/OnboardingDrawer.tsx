@@ -421,19 +421,16 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
                 <Slider
                   value={[trainingDuration]}
                   onValueChange={(value) => setTrainingDuration(value[0])}
-                  min={15}
+                  min={30}
                   max={120}
                   step={5}
                   className="w-full"
                 />
-                <div className="relative w-full mt-2 h-5">
-                  {/* Labels positioned at actual slider percentages */}
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: '0%', transform: 'translateX(0%)' }}>15 min</span>
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: `${((30-15)/(120-15))*100}%`, transform: 'translateX(-50%)' }}>30</span>
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: `${((45-15)/(120-15))*100}%`, transform: 'translateX(-50%)' }}>45</span>
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: `${((60-15)/(120-15))*100}%`, transform: 'translateX(-50%)' }}>60</span>
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: `${((90-15)/(120-15))*100}%`, transform: 'translateX(-50%)' }}>90</span>
-                  <span className="absolute text-sm text-muted-foreground" style={{ left: '100%', transform: 'translateX(-100%)' }}>120 min</span>
+                <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                  <span>30</span>
+                  <span>60</span>
+                  <span>90</span>
+                  <span>120 min</span>
                 </div>
               </div>
             </div>
