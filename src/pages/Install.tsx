@@ -25,6 +25,16 @@ const Install = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  const handleBack = () => {
+    // Check if there's history to go back to
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      // Fallback to home page
+      navigate('/');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -33,7 +43,7 @@ const Install = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />

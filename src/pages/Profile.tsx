@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
+import { useIsPWA } from '@/hooks/useIsPWA';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
@@ -28,6 +29,7 @@ const Profile = () => {
   const { profile, isLoading } = useUserProfile();
   const { role, isLoading: roleLoading } = useUserRole();
   const { stats, isLoading: statsLoading } = useWorkoutStats();
+  const isPWA = useIsPWA();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   if (isLoading || roleLoading || statsLoading) {
@@ -37,7 +39,8 @@ const Profile = () => {
   const menuItems = [
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
-    { icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') },
+    // Only show install option if not already running as PWA
+    ...(!isPWA ? [{ icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') }] : []),
     { icon: Settings, label: 'Nastavení', onClick: () => {} },
     { icon: Bell, label: 'Oznámení', onClick: () => {} },
     { icon: HelpCircle, label: 'Nápověda', onClick: () => {} },
