@@ -26,7 +26,14 @@ import GymSettings from "@/pages/business/GymSettings";
 import Training from "@/pages/Training";
 import WorkoutHistory from "@/pages/WorkoutHistory";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
