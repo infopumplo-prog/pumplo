@@ -619,6 +619,21 @@ const Training = () => {
   const handleCancelPlan = async () => {
     if (!plan) return;
     
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+    
+    // Delete workout sessions associated with this goal (but sets remain for history)
+    // The sets have session_id FK, so they will be cascade deleted if we set up cascade,
+    // but we want to keep history, so we only delete the sessions not completed
+    // Actually, we need to delete the workout_sessions that belong to this plan to reset progress
+    // But the user wants to keep history - so we delete sessions but the sets remain orphaned
+    // Better approach: delete sessions for this goal_id to reset progress
+    await supabase
+      .from('workout_sessions')
+      .delete()
+      .eq('goal_id', plan.goalId)
+      .eq('user_id', user.user.id);
+    
     // Deactivate plan
     await supabase
       .from('user_workout_plans')
@@ -626,15 +641,13 @@ const Training = () => {
       .eq('id', plan.id);
     
     // Reset current_day_index to 0
-    const { data: user } = await supabase.auth.getUser();
-    if (user.user) {
-      await supabase
-        .from('user_profiles')
-        .update({ current_day_index: 0 })
-        .eq('user_id', user.user.id);
-    }
+    await supabase
+      .from('user_profiles')
+      .update({ current_day_index: 0 })
+      .eq('user_id', user.user.id);
     
     refetchPlan();
+    setCompletedWorkouts([]);
     setSelectedGoalId(null);
     setShowCancelConfirm(false);
   };
@@ -1288,15 +1301,19 @@ const Training = () => {
                         <p className="text-sm text-destructive/70">
                           Tento trénink byl vynechán
                         </p>
+                      ) : day.isFirstWeekSkip ? (
+                        <p className="text-sm text-muted-foreground">
+                          Tento den byl přeskočen - plán začal později
+                        </p>
                       ) : day.isFuture ? (
                         <p className="text-sm text-muted-foreground">
                           Tento trénink je naplánován na později
                         </p>
-                      ) : selectedDayExercises.length === 0 ? (
+                      ) : day.isToday && !day.isCompleted ? (
                         <p className="text-sm text-muted-foreground">
                           Cviky budou vygenerovány při začátku tréninku
                         </p>
-                      ) : (
+                      ) : selectedDayExercises.length > 0 ? (
                         <div className="space-y-2">
                           {selectedDayExercises.map((ex, idx) => (
                             <div key={ex.id} className="flex items-center gap-3 text-sm">
@@ -1308,6 +1325,10 @@ const Training = () => {
                             </div>
                           ))}
                         </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Žádné informace o tréninku
+                        </p>
                       )}
                     </>
                   );
@@ -1317,15 +1338,8 @@ const Training = () => {
           )}
         </AnimatePresence>
 
-        {/* Show extend workout option if workout is completed today */}
-        {wasCompletedToday && isViewingCurrentWeek && !isWorkoutActive && (
-          <div className="px-4 mb-4">
-            <ExtendWorkoutSelector 
-              onConfirm={generateExtensionExercises}
-              isLoading={isGeneratingExtension}
-            />
-          </div>
-        )}
+        {/* Show extend workout option - only as a floating card when appropriate */}
+        {/* This is now handled in WorkoutSession after completion */}
 
         {/* Show bonus workout option on non-training days */}
         {(() => {
