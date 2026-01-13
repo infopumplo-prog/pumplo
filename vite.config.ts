@@ -48,6 +48,109 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         runtimeCaching: [
+          // Cache workout plans and exercises - critical for offline
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "workout-plans-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_exercises.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "workout-exercises-cache",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          // Cache workout history
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_sessions.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "workout-history-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_session_sets.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "workout-sets-cache",
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          // Cache day templates and exercises catalog
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/day_templates.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "day-templates-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "exercises-catalog-cache",
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          // Cache user profile
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "user-profile-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          // Fallback for other Supabase requests
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
