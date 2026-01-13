@@ -35,7 +35,16 @@ interface TrainingGoalOption {
 interface CompletedWorkout {
   date: string;
   dayLetter: string;
-  globalIndex: number;
+  dayOfWeek: string; // monday, tuesday, etc.
+  sessionId: string;
+  week: number;
+}
+
+interface HistoryExercise {
+  exerciseName: string;
+  sets: number;
+  reps: number | null;
+  weight: number | null;
 }
 
 // Day names in Czech
@@ -84,6 +93,8 @@ const Training = () => {
   const [viewingWeek, setViewingWeek] = useState<number>(1);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [completedWorkouts, setCompletedWorkouts] = useState<CompletedWorkout[]>([]);
+  const [historyExercises, setHistoryExercises] = useState<HistoryExercise[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -127,6 +138,13 @@ const Training = () => {
     }
   }, [currentWeek]);
 
+  // Get plan started date for week calculations
+  const planStartedAt = useMemo(() => {
+    if (!plan) return null;
+    // We need to fetch plan started_at - for now use first completed workout or current date
+    return new Date();
+  }, [plan]);
+
   // Fetch completed workouts from workout_sessions
   useEffect(() => {
     const fetchCompletedWorkouts = async () => {
@@ -134,27 +152,40 @@ const Training = () => {
       
       const { data } = await supabase
         .from('workout_sessions')
-        .select('started_at, day_letter')
+        .select('id, started_at, day_letter')
         .eq('goal_id', plan.goalId)
         .not('completed_at', 'is', null)
         .order('started_at', { ascending: true });
       
       if (data) {
-        const completed: CompletedWorkout[] = data.map((session, index) => ({
-          date: session.started_at,
-          dayLetter: session.day_letter,
-          globalIndex: index
-        }));
+        const completed: CompletedWorkout[] = data.map((session, index) => {
+          const sessionDate = new Date(session.started_at);
+          const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][sessionDate.getDay()];
+          // Calculate week based on index in training frequency
+          const week = Math.floor(index / trainingFrequency) + 1;
+          
+          return {
+            date: session.started_at,
+            dayLetter: session.day_letter,
+            dayOfWeek: dayOfWeek,
+            sessionId: session.id,
+            week
+          };
+        });
         setCompletedWorkouts(completed);
       }
     };
     
     fetchCompletedWorkouts();
-  }, [plan]);
+  }, [plan, trainingFrequency]);
 
   // Calculate total completed days
   const totalCompletedDays = completedWorkouts.length;
   const progressPercentage = Math.min((totalCompletedDays / totalDaysInPlan) * 100, 100);
+
+  // Get today's weekday
+  const todayWeekday = getCurrentWeekday();
+  const todayDayOrder = DAY_ORDER.indexOf(todayWeekday);
 
   // Get days for viewing week with proper workout letter rotation
   const daysInViewingWeek = useMemo(() => {
@@ -168,17 +199,31 @@ const Training = () => {
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
       const workoutLetter = workoutLetters[globalDayIndex % workoutTypes];
       
-      // Check if this day is completed
-      const isCompleted = completedWorkouts.some(w => w.globalIndex === globalDayIndex);
+      // Check if this day is completed - match by week and dayOfWeek
+      const completedSession = completedWorkouts.find(w => 
+        w.week === viewingWeek && w.dayOfWeek === dayOfWeek
+      );
+      const isCompleted = !!completedSession;
       
-      // Check if this is the current day
-      const isCurrentDay = viewingWeek === currentWeek && indexInWeek === currentDayInWeek;
+      // Is this the actual "today" - check if day of week matches today's day
+      const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
+      const isToday = dayOfWeek === todayWeekday && viewingWeek === currentWeek;
+      
+      // Is this day in the past within the current week?
+      const isPastThisWeek = viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
+      
+      // Is the entire viewing week in the past?
+      const isWeekInPast = viewingWeek < currentWeek;
       
       // Is this day in the future?
-      const isFuture = globalDayIndex > (plan.currentDayIndex || 0);
+      const isFuture = viewingWeek > currentWeek || 
+        (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Is this day in the past?
-      const isPast = globalDayIndex < (plan.currentDayIndex || 0);
+      // Is this day missed? (past, not completed, and not skipped due to being first week before start)
+      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted;
+      
+      // Is this the current day to train (next up)?
+      const isCurrentDay = isToday && !isCompleted;
       
       // Get day template info
       const dayInfo = plan.allDays?.find(d => d.dayLetter === workoutLetter);
@@ -191,12 +236,15 @@ const Training = () => {
         workoutName: dayInfo?.dayName || `Den ${workoutLetter}`,
         isCompleted,
         isCurrentDay,
+        isToday,
         isFuture,
-        isPast,
-        globalDayIndex
+        isPast: isPastThisWeek || isWeekInPast,
+        isMissed,
+        globalDayIndex,
+        sessionId: completedSession?.sessionId || null
       };
     });
-  }, [plan, viewingWeek, currentWeek, currentDayInWeek, trainingDays, trainingFrequency, workoutTypes, completedWorkouts]);
+  }, [plan, viewingWeek, currentWeek, trainingDays, trainingFrequency, workoutTypes, completedWorkouts, todayWeekday, todayDayOrder]);
 
   // Fetch available goals
   useEffect(() => {
@@ -612,6 +660,56 @@ const Training = () => {
     return getExercisesForDay(day.workoutLetter);
   }, [selectedDayIndex, plan, daysInViewingWeek, getExercisesForDay]);
 
+  // Fetch history exercises when selecting a completed day
+  useEffect(() => {
+    const fetchHistoryExercises = async () => {
+      if (selectedDayIndex === null) {
+        setHistoryExercises([]);
+        return;
+      }
+      
+      const day = daysInViewingWeek[selectedDayIndex];
+      if (!day || !day.isCompleted || !day.sessionId) {
+        setHistoryExercises([]);
+        return;
+      }
+      
+      setIsLoadingHistory(true);
+      
+      const { data } = await supabase
+        .from('workout_session_sets')
+        .select('exercise_name, set_number, reps, weight_kg')
+        .eq('session_id', day.sessionId)
+        .order('exercise_name')
+        .order('set_number');
+      
+      if (data) {
+        // Group by exercise name
+        const grouped: Record<string, { reps: number[], weights: number[] }> = {};
+        data.forEach(set => {
+          if (!grouped[set.exercise_name]) {
+            grouped[set.exercise_name] = { reps: [], weights: [] };
+          }
+          grouped[set.exercise_name].reps.push(set.reps || 0);
+          grouped[set.exercise_name].weights.push(set.weight_kg || 0);
+        });
+        
+        const exercises: HistoryExercise[] = Object.entries(grouped).map(([name, data]) => ({
+          exerciseName: name,
+          sets: data.reps.length,
+          reps: data.reps.length > 0 ? Math.round(data.reps.reduce((a, b) => a + b, 0) / data.reps.length) : null,
+          weight: data.weights.some(w => w > 0) ? Math.max(...data.weights) : null
+        }));
+        
+        setHistoryExercises(exercises);
+      }
+      
+      setIsLoadingHistory(false);
+    };
+    
+    fetchHistoryExercises();
+  }, [selectedDayIndex, daysInViewingWeek]);
+
   // Active workout view
   if (isWorkoutActive && (generatedExercises.length > 0 || extendedExercises.length > 0)) {
     const workoutExercises = extendedExercises.length > 0 ? extendedExercises : generatedExercises;
@@ -886,83 +984,81 @@ const Training = () => {
           </div>
         </div>
 
-        {/* Week Navigation */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              disabled={viewingWeek <= 1}
-              onClick={() => {
-                setViewingWeek(w => w - 1);
-                setSelectedDayIndex(null);
-              }}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2">
-                <h2 className="text-lg font-bold">
-                  Týden {viewingWeek}
-                </h2>
-                {isViewingCurrentWeek && (
-                  <Badge variant="secondary" className="text-xs">aktuální</Badge>
-                )}
-                {isViewingPastWeek && (
-                  <Badge variant="outline" className="text-xs">minulý</Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                z {totalWeeks}
-              </p>
-            </div>
-            
-            <Button 
-              variant="ghost" 
-              size="icon"
-              disabled={viewingWeek >= totalWeeks}
-              onClick={() => {
-                setViewingWeek(w => w + 1);
-                setSelectedDayIndex(null);
-              }}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
+        {/* Week Navigation - Compact */}
+        <div className="px-4 py-3 flex items-center justify-between bg-muted/30">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            disabled={viewingWeek <= 1}
+            onClick={() => {
+              setViewingWeek(w => w - 1);
+              setSelectedDayIndex(null);
+            }}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">
+              Týden {viewingWeek}/{totalWeeks}
+            </span>
+            {isViewingCurrentWeek && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">teď</Badge>
+            )}
           </div>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            disabled={viewingWeek >= totalWeeks}
+            onClick={() => {
+              setViewingWeek(w => w + 1);
+              setSelectedDayIndex(null);
+            }}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Days in Week - Clear layout with day names */}
-        <div className="p-4 space-y-3">
+        {/* Days in Week */}
+        <div className="p-4 space-y-2">
           {daysInViewingWeek.map((day, index) => (
             <motion.button
               key={`${viewingWeek}-${day.dayOfWeek}`}
               onClick={() => setSelectedDayIndex(selectedDayIndex === index ? null : index)}
               className={cn(
-                "w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4",
+                "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
                 day.isCompleted
-                  ? "bg-green-500/10 border-green-500"
-                  : day.isCurrentDay && isViewingCurrentWeek
-                    ? "bg-primary/10 border-primary"
-                    : day.isFuture
-                      ? "bg-muted/30 border-border/50"
-                      : "bg-card border-border hover:border-primary/50"
+                  ? "bg-green-500/10 border-green-500/50"
+                  : day.isMissed
+                    ? "bg-destructive/10 border-destructive/50"
+                    : day.isToday && isViewingCurrentWeek
+                      ? "bg-primary/10 border-primary"
+                      : day.isFuture
+                        ? "bg-muted/30 border-border/50"
+                        : "bg-card border-border hover:border-primary/50"
               )}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: index * 0.03 }}
             >
-              {/* Day letter badge */}
+              {/* Status icon */}
               <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shrink-0",
+                "w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold shrink-0",
                 day.isCompleted
                   ? "bg-green-500 text-white"
-                  : day.isCurrentDay && isViewingCurrentWeek
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                  : day.isMissed
+                    ? "bg-destructive text-destructive-foreground"
+                    : day.isToday && isViewingCurrentWeek
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
               )}>
                 {day.isCompleted ? (
-                  <Check className="w-6 h-6" />
+                  <Check className="w-5 h-5" />
+                ) : day.isMissed ? (
+                  <X className="w-5 h-5" />
                 ) : (
                   day.workoutLetter
                 )}
@@ -972,33 +1068,41 @@ const Training = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className={cn(
-                    "font-semibold",
-                    day.isCompleted ? "text-green-600" : day.isCurrentDay && isViewingCurrentWeek ? "text-primary" : "text-foreground"
+                    "font-semibold text-sm",
+                    day.isCompleted 
+                      ? "text-green-600" 
+                      : day.isMissed 
+                        ? "text-destructive" 
+                        : day.isToday && isViewingCurrentWeek 
+                          ? "text-primary" 
+                          : "text-foreground"
                   )}>
                     {day.dayName}
                   </h3>
-                  {day.isCurrentDay && isViewingCurrentWeek && !day.isCompleted && (
-                    <Badge variant="default" className="text-xs">Dnes</Badge>
+                  {day.isToday && isViewingCurrentWeek && !day.isCompleted && !day.isMissed && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">Dnes</Badge>
                   )}
                 </div>
                 <p className={cn(
-                  "text-sm",
-                  day.isCompleted ? "text-green-600/70" : "text-muted-foreground"
+                  "text-xs",
+                  day.isCompleted 
+                    ? "text-green-600/70" 
+                    : day.isMissed 
+                      ? "text-destructive/70" 
+                      : "text-muted-foreground"
                 )}>
                   {day.workoutName}
                 </p>
               </div>
 
-              {/* Status */}
+              {/* Status label */}
               <div className="shrink-0">
                 {day.isCompleted ? (
-                  <span className="text-xs font-medium text-green-600 bg-green-500/20 px-2 py-1 rounded-full">
-                    Hotovo
-                  </span>
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                ) : day.isMissed ? (
+                  <span className="text-[10px] font-medium text-destructive">Vynecháno</span>
                 ) : day.isFuture ? (
-                  <span className="text-xs text-muted-foreground">
-                    Naplánováno
-                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 ) : null}
               </div>
             </motion.button>
@@ -1021,15 +1125,47 @@ const Training = () => {
                   
                   return (
                     <>
-                      <h3 className="font-bold mb-3">
+                      <h3 className="font-bold mb-3 flex items-center gap-2">
                         {day.dayName} - {day.workoutName}
+                        {day.isCompleted && (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        )}
+                        {day.isMissed && (
+                          <X className="w-4 h-4 text-destructive" />
+                        )}
                       </h3>
                       
                       {day.isCompleted ? (
-                        <div className="flex items-center gap-2 text-green-600">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="text-sm font-medium">Trénink byl dokončen</span>
-                        </div>
+                        isLoadingHistory ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                          </div>
+                        ) : historyExercises.length > 0 ? (
+                          <div className="space-y-2">
+                            {historyExercises.map((ex, idx) => (
+                              <div key={idx} className="flex items-center gap-3 text-sm">
+                                <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-[10px] font-bold text-green-600">
+                                  {idx + 1}
+                                </span>
+                                <span className="flex-1 truncate">{ex.exerciseName}</span>
+                                <span className="text-muted-foreground text-xs">
+                                  {ex.sets}×{ex.reps || '?'}
+                                  {ex.weight ? ` • ${ex.weight}kg` : ''}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Žádné záznamy cviků
+                          </p>
+                        )
+                      ) : day.isMissed ? (
+                        <p className="text-sm text-destructive/70">
+                          Tento trénink byl vynechán
+                        </p>
                       ) : day.isFuture ? (
                         <p className="text-sm text-muted-foreground">
                           Tento trénink je naplánován na později
@@ -1042,11 +1178,11 @@ const Training = () => {
                         <div className="space-y-2">
                           {selectedDayExercises.map((ex, idx) => (
                             <div key={ex.id} className="flex items-center gap-3 text-sm">
-                              <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
                                 {idx + 1}
                               </span>
-                              <span className="flex-1">{ex.exerciseName}</span>
-                              <span className="text-muted-foreground">{ex.sets}×{ex.repMin}-{ex.repMax}</span>
+                              <span className="flex-1 truncate">{ex.exerciseName}</span>
+                              <span className="text-muted-foreground text-xs">{ex.sets}×{ex.repMin}-{ex.repMax}</span>
                             </div>
                           ))}
                         </div>
@@ -1069,80 +1205,101 @@ const Training = () => {
           </div>
         )}
 
-        {/* Current Day Preview - only for current week when not completed */}
-        {isViewingCurrentWeek && !wasCompletedToday && selectedDayIndex === null && (
-          <div className="px-4">
-            <Card className="p-4 border-primary/30 bg-primary/5">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-bold">
-                    Dnešní trénink
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Den {plan.currentDayLetter} • {plan.allDays?.find(d => d.dayLetter === plan.currentDayLetter)?.dayName}
-                  </p>
-                </div>
-                {generatedExercises.length > 0 && (
-                  <Badge variant="secondary">
-                    ~{calculateWorkoutDuration(generatedExercises)} min
-                  </Badge>
-                )}
-              </div>
-              
-              {isGeneratingDayExercises ? (
-                <p className="text-sm text-muted-foreground">Generuji cviky...</p>
-              ) : generatedExercises.length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {generatedExercises.slice(0, 3).map((ex, idx) => (
-                    <div key={ex.id} className="flex items-center gap-3 text-sm">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                        {idx + 1}
-                      </span>
-                      <span className="flex-1 truncate">{ex.exerciseName}</span>
-                    </div>
-                  ))}
-                  {generatedExercises.length > 3 && (
-                    <p className="text-xs text-muted-foreground pl-9">
-                      +{generatedExercises.length - 3} dalších cviků
+        {/* Current Day Preview - only when today is a training day, viewing current week, and not completed */}
+        {(() => {
+          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
+          const showPreview = isViewingCurrentWeek && 
+            todayTrainingDay && 
+            !todayTrainingDay.isCompleted && 
+            !todayTrainingDay.isMissed &&
+            selectedDayIndex === null;
+          
+          if (!showPreview || !todayTrainingDay) return null;
+          
+          return (
+            <div className="px-4">
+              <Card className="p-4 border-primary/30 bg-primary/5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-bold">
+                      Dnešní trénink
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {todayTrainingDay.dayName} • {todayTrainingDay.workoutName}
                     </p>
+                  </div>
+                  {generatedExercises.length > 0 && (
+                    <Badge variant="secondary">
+                      ~{calculateWorkoutDuration(generatedExercises)} min
+                    </Badge>
                   )}
                 </div>
-              ) : !profile?.selected_gym_id ? (
-                <p className="text-sm text-muted-foreground mb-4">
-                  Vyber posilovnu pro vygenerování cviků
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground mb-4">
-                  Klikni na Začít pro vygenerování cviků
-                </p>
-              )}
-            </Card>
-          </div>
-        )}
+                
+                {isGeneratingDayExercises ? (
+                  <p className="text-sm text-muted-foreground">Generuji cviky...</p>
+                ) : generatedExercises.length > 0 ? (
+                  <div className="space-y-2 mb-4">
+                    {generatedExercises.slice(0, 3).map((ex, idx) => (
+                      <div key={ex.id} className="flex items-center gap-3 text-sm">
+                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                          {idx + 1}
+                        </span>
+                        <span className="flex-1 truncate">{ex.exerciseName}</span>
+                      </div>
+                    ))}
+                    {generatedExercises.length > 3 && (
+                      <p className="text-xs text-muted-foreground pl-9">
+                        +{generatedExercises.length - 3} dalších cviků
+                      </p>
+                    )}
+                  </div>
+                ) : !profile?.selected_gym_id ? (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Vyber posilovnu pro vygenerování cviků
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Klikni na Začít pro vygenerování cviků
+                  </p>
+                )}
+              </Card>
+            </div>
+          );
+        })()}
 
-        {/* Action Button - only for current week and not completed */}
-        {isViewingCurrentWeek && !wasCompletedToday && (
-          <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
-            <Button 
-              size="lg" 
-              className="w-full gap-2 shadow-lg"
-              onClick={handleStartWorkout}
-              disabled={isGeneratingDayExercises}
-            >
-              {isGeneratingDayExercises ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Generuji...
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  Začít trénink
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+        {/* Action Button - only when today is a training day and not completed */}
+        {(() => {
+          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
+          const showButton = isViewingCurrentWeek && 
+            todayTrainingDay && 
+            !todayTrainingDay.isCompleted && 
+            !todayTrainingDay.isMissed;
+          
+          if (!showButton) return null;
+          
+          return (
+            <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
+              <Button 
+                size="lg" 
+                className="w-full gap-2 shadow-lg"
+                onClick={handleStartWorkout}
+                disabled={isGeneratingDayExercises}
+              >
+                {isGeneratingDayExercises ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    Generuji...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-5 h-5" />
+                    Začít trénink
+                  </>
+                )}
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Cancel Plan Confirmation Dialog */}
         <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
