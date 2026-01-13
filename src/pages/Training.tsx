@@ -128,18 +128,14 @@ const Training = () => {
   };
 
   // Generate exercises for current day based on selected gym (without starting workout)
+  // PUMPLO logic: BEZ workout_split filtrovania
   const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
     if (!plan || !profile?.user_level) return;
 
     setIsGeneratingDayExercises(true);
     
     try {
-      // Determine training split from profile
-      const trainingSplit = profile?.training_split === 'ppl' ? 'ppl' : 
-                            profile?.training_split === 'full_body' ? 'full_body' : 
-                            profile?.training_split === 'upper_lower' ? 'upper_lower' : 'ppl';
-      
-      // Generate exercises using the workout generator for just this day
+      // Generate exercises using simplified PUMPLO logic
       const exercises = await generateExercisesForDay(
         gymId,
         plan.goalId,
@@ -147,7 +143,6 @@ const Training = () => {
         profile.user_level,
         profile.injuries || [],
         profile.equipment_preference || null,
-        trainingSplit,
         profile.training_duration_minutes || 60
       );
       
@@ -210,7 +205,17 @@ const Training = () => {
     return Math.max(3, Math.min(10, count));
   };
 
-  // Generate exercises for a specific day
+  /**
+   * Generate exercises for a specific day - PUMPLO logic
+   * BEZ workout_split filtrovania - podľa dokumentu kapitola 5.3
+   * 
+   * Výber cviku:
+   * 1. Všetky cviky s odpovídajúcou primary_role
+   * 2. Filter podľa vybavenia dostupného vo fitku
+   * 3. Filter podľa difficulty_level ≤ max pre user_level
+   * 4. Filter podľa zranení (contraindicated_injuries)
+   * 5. Ak je viac možností → vyber náhodne z top kandidátov
+   */
   const generateExercisesForDay = async (
     gymId: string,
     goalId: TrainingGoalId,
@@ -218,7 +223,6 @@ const Training = () => {
     userLevel: string,
     userInjuries: string[],
     equipmentPreference: string | null,
-    trainingSplit: string = 'ppl',
     trainingDurationMinutes: number | null = null
   ): Promise<WorkoutExercise[]> => {
     // Determine target exercise count based on duration
@@ -260,31 +264,32 @@ const Training = () => {
     const usedExerciseIds: string[] = [];
     const exercises: WorkoutExercise[] = [];
 
+    // Max difficulty based on user level (podľa dokumentu)
+    const maxDifficulty = userLevel === 'beginner' ? 3 : userLevel === 'intermediate' ? 6 : 10;
+    const activeInjuries = userInjuries.filter(i => i && i !== 'none');
+
     // Build a list of roles to fill - repeat templates if we need more exercises
     const rolesToFill: typeof templates = [];
-    const templatesCopy = [...templates];
     
-    while (rolesToFill.length < targetExerciseCount && templatesCopy.length > 0) {
-      // First pass: add all template slots
-      for (const slot of templates) {
+    // First pass: add all template slots
+    for (const slot of templates) {
+      if (rolesToFill.length >= targetExerciseCount) break;
+      rolesToFill.push(slot);
+    }
+    
+    // If we need more, shuffle and add variations (max 2x per role)
+    if (rolesToFill.length < targetExerciseCount) {
+      const shuffled = [...templates].sort(() => Math.random() - 0.5);
+      for (const slot of shuffled) {
         if (rolesToFill.length >= targetExerciseCount) break;
-        rolesToFill.push(slot);
-      }
-      
-      // If we need more, shuffle and add variations
-      if (rolesToFill.length < targetExerciseCount) {
-        const shuffled = [...templates].sort(() => Math.random() - 0.5);
-        for (const slot of shuffled) {
-          if (rolesToFill.length >= targetExerciseCount) break;
-          // Don't add the same role more than twice
-          const roleCount = rolesToFill.filter(r => r.role_id === slot.role_id).length;
-          if (roleCount < 2) {
-            rolesToFill.push(slot);
-          }
+        const roleCount = rolesToFill.filter(r => r.role_id === slot.role_id).length;
+        if (roleCount < 2) {
+          rolesToFill.push(slot);
         }
-        break; // Prevent infinite loop
       }
     }
+
+    console.log(`[Training] Generating ${targetExerciseCount} exercises for day ${dayLetter}, roles: ${rolesToFill.length}`);
 
     for (let slotIndex = 0; slotIndex < rolesToFill.length; slotIndex++) {
       const slot = rolesToFill[slotIndex];
@@ -297,12 +302,12 @@ const Training = () => {
 
       if (!roleExercises || roleExercises.length === 0) continue;
 
-      // Filter exercises
-      const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
-      const activeInjuries = userInjuries.filter(i => i && i !== 'none');
-
+      // Filter exercises - PUMPLO logic (BEZ workout_split)
       let filteredExercises = roleExercises.filter(ex => {
-        if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
+        // Difficulty filter
+        if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
+        
+        // Already used filter
         if (usedExerciseIds.includes(ex.id)) return false;
         
         // Injury filter
@@ -318,31 +323,27 @@ const Training = () => {
 
         // Equipment filter
         const exEquipment = ex.equipment || [];
-        if (exEquipment.includes('bodyweight')) return true;
+        if (exEquipment.includes('bodyweight') || exEquipment.length === 0) return true;
+        
+        // Free weights
         if (exEquipment.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))) {
           return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.some(t => exEquipment.includes(t));
         }
+        
+        // Cable
         if (exEquipment.includes('cable')) {
           return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
         }
+        
+        // Machine
         if (exEquipment.some((eq: string) => ['machine', 'plate_loaded'].includes(eq))) {
           return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
         }
+        
         return exEquipment.some((eq: string) => availableEquipmentTypes.includes(eq));
       });
 
-      // Prefer exercises matching the training split, but don't require it
-      const splitMatching = filteredExercises.filter(ex => {
-        const exerciseSplits = ex.workout_split || [];
-        return exerciseSplits.length === 0 || exerciseSplits.includes(trainingSplit);
-      });
-      
-      if (splitMatching.length > 0) {
-        filteredExercises = splitMatching;
-      }
-      // If no split-matching exercises, use all filtered (fallback)
-
-      // Apply preference sorting
+      // Apply equipment preference sorting
       if (equipmentPreference === 'machines') {
         const machineExercises = filteredExercises.filter(ex =>
           ex.equipment?.some((eq: string) => ['machine', 'cable', 'plate_loaded'].includes(eq))
@@ -358,11 +359,14 @@ const Training = () => {
         if (bwExercises.length > 0) filteredExercises = bwExercises;
       }
 
+      console.log(`[Training] Role ${slot.role_id}: ${filteredExercises.length} exercises after filter`);
+
       if (filteredExercises.length === 0) continue;
 
-      // Pick random exercise
-      const randomIndex = Math.floor(Math.random() * Math.min(3, filteredExercises.length));
-      const selectedExercise = filteredExercises[randomIndex];
+      // Pick random exercise from top candidates
+      const topCandidates = filteredExercises.slice(0, Math.min(5, filteredExercises.length));
+      const randomIndex = Math.floor(Math.random() * topCandidates.length);
+      const selectedExercise = topCandidates[randomIndex];
       usedExerciseIds.push(selectedExercise.id);
 
       // Determine sets based on level
@@ -386,6 +390,7 @@ const Training = () => {
       });
     }
 
+    console.log(`[Training] Generated ${exercises.length} exercises for day ${dayLetter}`);
     return exercises;
   };
 
@@ -464,8 +469,11 @@ const Training = () => {
     refetchPlan();
   };
 
-  // Generate extension exercises (extra exercises for today)
-  // For Full Body workouts, ensures balanced coverage across upper/lower/core
+  /**
+   * Generate extension exercises (extra exercises for today) - PUMPLO logic
+   * BEZ workout_split filtrovania
+   * For Full Body workouts, ensures balanced coverage across upper/lower/core
+   */
   const generateExtensionExercises = async (count: number) => {
     if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
     
@@ -518,13 +526,12 @@ const Training = () => {
         const indices = [0, 0, 0];
         
         for (let i = 0; i < count; i++) {
-          const categoryIndex = i % 3; // Rotate through upper, lower, core
+          const categoryIndex = i % 3;
           const category = categories[categoryIndex];
           if (indices[categoryIndex] < category.length) {
             rolesToUse.push(category[indices[categoryIndex]]);
             indices[categoryIndex]++;
           } else {
-            // Fallback: pick from any available
             for (let j = 0; j < 3; j++) {
               const fallbackCat = categories[(categoryIndex + j) % 3];
               if (indices[(categoryIndex + j) % 3] < fallbackCat.length) {
@@ -536,7 +543,6 @@ const Training = () => {
           }
         }
       } else {
-        // For non-Full Body, just shuffle all roles
         rolesToUse = [...TRAINING_ROLE_IDS].sort(() => Math.random() - 0.5).slice(0, count);
       }
       
@@ -545,13 +551,8 @@ const Training = () => {
       const userLevel = profile.user_level;
       const userInjuries = profile.injuries || [];
       const equipmentPreference = profile.equipment_preference || null;
-      const levelNumber = userLevel === 'beginner' ? 1 : userLevel === 'intermediate' ? 2 : 3;
+      const maxDifficulty = userLevel === 'beginner' ? 3 : userLevel === 'intermediate' ? 6 : 10;
       const activeInjuries = userInjuries.filter(i => i && i !== 'none');
-      
-      // Determine training split for filtering
-      const trainingSplit = profile?.training_split === 'ppl' ? 'ppl' : 
-                            profile?.training_split === 'full_body' ? 'full_body' : 
-                            profile?.training_split === 'upper_lower' ? 'upper_lower' : 'ppl';
 
       // Get the current day's exercises to find max slot_order
       const currentMaxSlot = generatedExercises.length > 0 
@@ -571,15 +572,10 @@ const Training = () => {
 
         if (!roleExercises || roleExercises.length === 0) continue;
 
-        // Filter exercises
+        // Filter exercises - PUMPLO logic (BEZ workout_split)
         let filteredExercises = roleExercises.filter(ex => {
-          // Filter by workout_split - CRITICAL: only include exercises matching the user's split
-          const exerciseSplits = ex.workout_split || [];
-          if (exerciseSplits.length > 0 && !exerciseSplits.includes(trainingSplit)) {
-            return false;
-          }
-          
-          if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
+          // Difficulty filter
+          if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
           if (usedExerciseIds.includes(ex.id)) return false;
           
           // Injury filter
@@ -595,7 +591,8 @@ const Training = () => {
 
           // Equipment filter
           const exEquipment = ex.equipment || [];
-          if (exEquipment.includes('bodyweight')) return true;
+          if (exEquipment.includes('bodyweight') || exEquipment.length === 0) return true;
+          
           if (exEquipment.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))) {
             return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.some(t => exEquipment.includes(t));
           }
@@ -627,18 +624,18 @@ const Training = () => {
         if (filteredExercises.length === 0) continue;
 
         // Pick random exercise
-        const randomIndex = Math.floor(Math.random() * Math.min(3, filteredExercises.length));
-        const selectedExercise = filteredExercises[randomIndex];
+        const topCandidates = filteredExercises.slice(0, Math.min(5, filteredExercises.length));
+        const randomIndex = Math.floor(Math.random() * topCandidates.length);
+        const selectedExercise = topCandidates[randomIndex];
         usedExerciseIds.push(selectedExercise.id);
 
-        // Determine sets based on level (3 sets default for extensions)
+        // Determine sets based on level
         const sets = userLevel === 'beginner' ? 2 : userLevel === 'intermediate' ? 3 : 4;
 
-        // Use the current day letter (not 'EXT') and mark as extension with isExtension flag
         exercises.push({
           id: `ext-${roleId}-${i}`,
-          dayLetter: currentDayLetter, // Same day, not 'EXT'
-          slotOrder: currentMaxSlot + i + 1, // Continue numbering from last exercise
+          dayLetter: currentDayLetter,
+          slotOrder: currentMaxSlot + i + 1,
           roleId: roleId,
           exerciseId: selectedExercise.id,
           exerciseName: selectedExercise.name,
@@ -649,14 +646,13 @@ const Training = () => {
           repMax: 12,
           isFallback: false,
           fallbackReason: null,
-          isExtension: true // Flag for identifying extension exercises
+          isExtension: true
         });
       }
 
       setExtendedExercises(exercises);
       setShowExtendWorkout(false);
       
-      // Start extended workout
       if (exercises.length > 0) {
         setGeneratedExercises(exercises);
         setSelectedWorkoutGymId(gymId);
