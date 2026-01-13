@@ -426,11 +426,11 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
                   step={5}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                  <span>30</span>
-                  <span>60</span>
-                  <span>90</span>
-                  <span>120 min</span>
+                <div className="relative w-full mt-2 h-5 text-sm text-muted-foreground">
+                  <span className="absolute left-0">30</span>
+                  <span className="absolute left-1/3 -translate-x-1/2">60</span>
+                  <span className="absolute left-2/3 -translate-x-1/2">90</span>
+                  <span className="absolute right-0">120 min</span>
                 </div>
               </div>
             </div>
