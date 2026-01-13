@@ -839,6 +839,7 @@ const Training = () => {
           setExtendedExercises([]);
           setIsBonusWorkout(false);
         }}
+        onExtend={!isBonusWorkout && !isExtensionWorkout ? generateExtensionExercises : undefined}
       />
     );
   }
@@ -1323,6 +1324,66 @@ const Training = () => {
               onConfirm={generateExtensionExercises}
               isLoading={isGeneratingExtension}
             />
+          </div>
+        )}
+
+        {/* Show bonus workout option on non-training days */}
+        {(() => {
+          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
+          const isNonTrainingDay = isViewingCurrentWeek && !todayTrainingDay;
+          
+          if (!isNonTrainingDay || isWorkoutActive) return null;
+          
+          return (
+            <div className="px-4 mb-4">
+              <Card className="p-6 bg-gradient-to-br from-amber-500/10 via-background to-amber-500/5 border-amber-500/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center">
+                    <Star className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">Bonusový trénink</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Dnes nemáš naplánovaný trénink
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-4">
+                  Chceš přesto zacvičit? Vygeneruj si bonusový trénink, který se nepočítá do tvého plánu.
+                </p>
+
+                <ExtendWorkoutSelector 
+                  onConfirm={generateBonusWorkout}
+                  isLoading={isGeneratingBonusWorkout}
+                />
+              </Card>
+            </div>
+          );
+        })()}
+
+        {/* Bonus workouts completed today */}
+        {todayBonusWorkouts.length > 0 && isViewingCurrentWeek && (
+          <div className="px-4 mb-4">
+            <Card className="p-4 bg-amber-500/5 border-amber-500/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-amber-500" />
+                <h3 className="font-semibold text-sm">Bonusové tréninky dnes</h3>
+              </div>
+              <div className="space-y-2">
+                {todayBonusWorkouts.map((workout, idx) => (
+                  <div key={workout.sessionId} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Bonus #{idx + 1}
+                    </span>
+                    <Badge variant="outline" className="text-amber-600 border-amber-500/50">
+                      <Check className="w-3 h-3 mr-1" />
+                      Dokončeno
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
