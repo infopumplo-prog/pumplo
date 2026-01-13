@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import pumploLogo from '@/assets/pumplo-logo.png';
 
 const Install = () => {
   const navigate = useNavigate();
@@ -51,11 +50,11 @@ const Install = () => {
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants} className="text-center space-y-4">
-          <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden shadow-lg bg-[#0D1B2A]">
+          <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden shadow-lg">
             <img 
-              src={pumploLogo} 
+              src="/pwa-512x512.png" 
               alt="Pumplo" 
-              className="w-full h-full object-contain p-2"
+              className="w-full h-full object-cover"
             />
           </div>
           <div>
