@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,7 +22,9 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
+import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface TrainingGoalOption {
   id: string;
@@ -77,6 +79,7 @@ const Training = () => {
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan, getExercisesForDay } = useWorkoutPlan();
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
   const { stats } = useWorkoutStats();
+  const { isSupported: notificationsSupported, notificationPermission, requestPermission } = useTrainingNotifications();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -206,14 +209,16 @@ const Training = () => {
   });
   
   // Get plan start date to determine first week skipped days
+  // If no workouts completed yet, use today as the effective start date
   const planStartDate = useMemo(() => {
     if (!plan) return null;
-    // Use the first completed workout date or plan creation date
+    // Use the first completed workout date, or today if no workouts yet
     const firstWorkout = regularCompletedWorkouts[0];
     if (firstWorkout) {
       return new Date(firstWorkout.date);
     }
-    return null;
+    // No workouts yet - use today as the start date
+    return new Date();
   }, [plan, regularCompletedWorkouts]);
 
   // Get today's weekday
@@ -255,9 +260,12 @@ const Training = () => {
       // Check if this day is in the first week and before the plan started
       // (e.g., user started on Tuesday but Monday was a training day)
       const isFirstWeekSkip = viewingWeek === 1 && planStartDate && (() => {
-        const planStartDayOrder = DAY_ORDER.indexOf(
-          ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][planStartDate.getDay()]
-        );
+        // Convert JS getDay() (0=Sunday) to our DAY_ORDER (monday-first)
+        const jsDay = planStartDate.getDay();
+        const planStartWeekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][jsDay];
+        const planStartDayOrder = DAY_ORDER.indexOf(planStartWeekday);
+        // If plan started on Sunday (not in DAY_ORDER as first), handle edge case
+        if (planStartDayOrder === -1) return false;
         return dayOrderIndex < planStartDayOrder;
       })();
       
@@ -1096,9 +1104,42 @@ const Training = () => {
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title="Zrušit plán">
-              <X className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {/* Notification toggle */}
+              {notificationsSupported && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={async () => {
+                    if (notificationPermission === 'granted') {
+                      toast.info('Notifikace jsou již povoleny');
+                    } else if (notificationPermission === 'denied') {
+                      toast.error('Notifikace jsou zablokované v prohlížeči. Povol je v nastavení.');
+                    } else {
+                      const granted = await requestPermission();
+                      if (granted) {
+                        toast.success('Notifikace povoleny! Budeme ti připomínat tréninky.');
+                      } else {
+                        toast.error('Notifikace nebyly povoleny');
+                      }
+                    }
+                  }}
+                  title={notificationPermission === 'granted' ? 'Notifikace povoleny' : 'Povolit notifikace'}
+                  className={cn(
+                    notificationPermission === 'granted' && "text-primary"
+                  )}
+                >
+                  {notificationPermission === 'granted' ? (
+                    <Bell className="w-5 h-5" />
+                  ) : (
+                    <BellOff className="w-5 h-5" />
+                  )}
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title="Zrušit plán">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Progress bar */}
