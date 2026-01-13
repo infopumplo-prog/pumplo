@@ -231,7 +231,8 @@ const Training = () => {
     
     const workoutLetters = getAllDayLetters(workoutTypes);
     
-    return trainingDays.map((dayOfWeek, indexInWeek) => {
+    // First pass: calculate base properties
+    const daysWithBaseProps = trainingDays.map((dayOfWeek, indexInWeek) => {
       const globalDayIndex = (viewingWeek - 1) * trainingFrequency + indexInWeek;
       
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
@@ -280,6 +281,7 @@ const Training = () => {
       
       return {
         dayOfWeek,
+        dayOrderIndex,
         dayName: DAY_NAMES_CZ[dayOfWeek] || dayOfWeek,
         dayNameShort: DAY_NAMES_SHORT_CZ[dayOfWeek] || dayOfWeek.slice(0, 2),
         workoutLetter,
@@ -292,9 +294,23 @@ const Training = () => {
         isMissed,
         isFirstWeekSkip: isFirstWeekSkip || false,
         globalDayIndex,
-        sessionId: completedSession?.sessionId || null
+        sessionId: completedSession?.sessionId || null,
+        isUpcoming: false // Will be set in second pass
       };
     });
+    
+    // Second pass: find the first upcoming day (future, not completed, not skipped)
+    // Only mark upcoming if we're viewing the current week
+    if (viewingWeek === currentWeek) {
+      const upcomingIndex = daysWithBaseProps.findIndex(day => 
+        day.isFuture && !day.isCompleted && !day.isFirstWeekSkip
+      );
+      if (upcomingIndex !== -1) {
+        daysWithBaseProps[upcomingIndex].isUpcoming = true;
+      }
+    }
+    
+    return daysWithBaseProps;
   }, [plan, viewingWeek, currentWeek, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, planStartDate]);
 
   // Fetch available goals
@@ -1206,9 +1222,11 @@ const Training = () => {
                       ? "bg-destructive/10 border-destructive/50"
                       : day.isToday && isViewingCurrentWeek
                         ? "bg-primary/10 border-primary"
-                        : day.isFuture
-                          ? "bg-muted/30 border-border/50"
-                          : "bg-card border-border hover:border-primary/50"
+                        : day.isUpcoming
+                          ? "bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30"
+                          : day.isFuture
+                            ? "bg-muted/30 border-border/50"
+                            : "bg-card border-border hover:border-primary/50"
               )}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1225,7 +1243,9 @@ const Training = () => {
                       ? "bg-destructive text-destructive-foreground"
                       : day.isToday && isViewingCurrentWeek
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        : day.isUpcoming
+                          ? "bg-amber-500 text-white"
+                          : "bg-muted text-muted-foreground"
               )}>
                 {day.isCompleted ? (
                   <Check className="w-5 h-5" />
@@ -1249,12 +1269,17 @@ const Training = () => {
                         ? "text-destructive" 
                         : day.isToday && isViewingCurrentWeek 
                           ? "text-primary" 
-                          : "text-foreground"
+                          : day.isUpcoming
+                            ? "text-amber-600"
+                            : "text-foreground"
                   )}>
                     {day.dayName}
                   </h3>
                   {day.isToday && isViewingCurrentWeek && !day.isCompleted && !day.isMissed && (
                     <Badge variant="default" className="text-[10px] px-1.5 py-0">Dnes</Badge>
+                  )}
+                  {day.isUpcoming && !day.isToday && (
+                    <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">Ďalší</Badge>
                   )}
                 </div>
                 <p className={cn(
