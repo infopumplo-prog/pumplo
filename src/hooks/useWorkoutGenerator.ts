@@ -1,7 +1,14 @@
+// useWorkoutGenerator - PUMPLO implementácia podľa dokumentu
+// Cviky sa vyberajú na základe:
+// 1. Training Role (primary_role)
+// 2. Vybavenia fitka (equipment matching)
+// 3. Difficulty level (podľa user_level)
+// 4. Contraindicated injuries
+// BEZ workout_split filtrovania
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TrainingRoleId } from '@/lib/trainingRoles';
 import { TrainingGoalId, UserLevel, DayTemplate, DayTemplateSlot } from '@/lib/trainingGoals';
 
 interface Exercise {
@@ -14,6 +21,7 @@ interface Exercise {
   machine_id: string | null;
   contraindicated_injuries: string[] | null;
   equipment: string[] | null;
+  equipment_type: string | null;
 }
 
 interface AssignedExercise {
@@ -27,17 +35,17 @@ export const useWorkoutGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Map user level to difficulty number
-  const getLevelNumber = (level: UserLevel): number => {
+  // Map user level to max difficulty (podľa dokumentu: beginner=1-3, intermediate=4-6, advanced=7-10)
+  const getMaxDifficulty = (level: UserLevel): number => {
     switch (level) {
-      case 'beginner': return 1;
-      case 'intermediate': return 2;
-      case 'advanced': return 3;
-      default: return 1;
+      case 'beginner': return 3;
+      case 'intermediate': return 6;
+      case 'advanced': return 10;
+      default: return 3;
     }
   };
 
-  // Get sets for user level
+  // Get sets for user level from slot template
   const getSetsForLevel = (slot: DayTemplateSlot, level: UserLevel): number => {
     switch (level) {
       case 'beginner': return slot.beginnerSets;
@@ -47,17 +55,148 @@ export const useWorkoutGenerator = () => {
     }
   };
 
-  // Assign exercise for a specific role
+  // Expand gym equipment types to match exercise equipment
+  const expandEquipmentTypes = (rawTypes: string[]): Set<string> => {
+    const expanded = new Set<string>(rawTypes);
+    
+    // Always include bodyweight
+    expanded.add('bodyweight');
+    
+    // Free weights expansion
+    if (rawTypes.includes('free_weights')) {
+      expanded.add('barbell');
+      expanded.add('dumbbell');
+      expanded.add('kettlebell');
+    }
+    
+    // Machine types expansion
+    if (rawTypes.includes('machine')) {
+      expanded.add('machine');
+      expanded.add('cable');
+      expanded.add('plate_loaded');
+    }
+    if (rawTypes.includes('plate_loaded')) {
+      expanded.add('plate_loaded');
+    }
+    if (rawTypes.includes('cable')) {
+      expanded.add('cable');
+    }
+    
+    return expanded;
+  };
+
+  // Check if exercise equipment matches gym equipment
+  const exerciseMatchesGymEquipment = (
+    exercise: Exercise,
+    gymEquipmentTypes: string[],
+    expandedEquipment: Set<string>
+  ): boolean => {
+    const exEquipment = exercise.equipment || [];
+    
+    // Bodyweight exercises are always available
+    if (exEquipment.includes('bodyweight') || exEquipment.length === 0) {
+      return true;
+    }
+    
+    // Free weights (barbell, dumbbell, kettlebell)
+    const isFreeWeights = exEquipment.some(eq => 
+      ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq)
+    );
+    if (isFreeWeights) {
+      return gymEquipmentTypes.includes('free_weights') || 
+             exEquipment.some(eq => expandedEquipment.has(eq));
+    }
+    
+    // Cable exercises
+    if (exEquipment.includes('cable')) {
+      return expandedEquipment.has('cable') || gymEquipmentTypes.includes('machine');
+    }
+    
+    // Machine/plate_loaded exercises
+    const isMachine = exEquipment.some(eq => ['machine', 'plate_loaded'].includes(eq));
+    if (isMachine) {
+      return gymEquipmentTypes.includes('machine') || gymEquipmentTypes.includes('plate_loaded');
+    }
+    
+    // Default: check if any equipment matches
+    return exEquipment.some(eq => expandedEquipment.has(eq));
+  };
+
+  // Filter by injuries
+  const exerciseContraindicatedForInjuries = (
+    exercise: Exercise,
+    userInjuries: string[]
+  ): boolean => {
+    const activeInjuries = userInjuries.filter(i => i && i !== 'none');
+    if (activeInjuries.length === 0) return false;
+    
+    const contraindications = exercise.contraindicated_injuries || [];
+    if (contraindications.length === 0) return false;
+    
+    return contraindications.some(injury => {
+      const lowerInjury = injury.toLowerCase();
+      return activeInjuries.some(userInjury => {
+        const lowerUserInjury = userInjury.toLowerCase();
+        return lowerInjury.includes(lowerUserInjury) || 
+               lowerUserInjury.includes(lowerInjury) ||
+               lowerInjury === lowerUserInjury.replace(/s$/, '') ||
+               lowerInjury + 's' === lowerUserInjury;
+      });
+    });
+  };
+
+  // Apply equipment preference sorting
+  const sortByEquipmentPreference = (
+    exercises: Exercise[],
+    preference: string | null
+  ): Exercise[] => {
+    if (!preference || exercises.length === 0) return exercises;
+    
+    const sorted = [...exercises];
+    
+    if (preference === 'machines') {
+      const machineExercises = sorted.filter(ex =>
+        ex.equipment?.some(eq => ['machine', 'cable', 'plate_loaded'].includes(eq))
+      );
+      if (machineExercises.length > 0) return machineExercises;
+    } else if (preference === 'free_weights') {
+      const fwExercises = sorted.filter(ex =>
+        ex.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
+      );
+      if (fwExercises.length > 0) return fwExercises;
+    } else if (preference === 'bodyweight') {
+      const bwExercises = sorted.filter(ex => ex.equipment?.includes('bodyweight'));
+      if (bwExercises.length > 0) return bwExercises;
+    }
+    
+    return sorted;
+  };
+
+  /**
+   * Assign exercise for a specific role - PUMPLO logic (kapitola 5.3 + 5.4)
+   * 
+   * Výber cviku:
+   * 1. Všetky cviky s odpovídajúcou primary_role
+   * 2. Filter podľa vybavenia dostupného vo fitku
+   * 3. Filter podľa difficulty_level ≤ max pre user_level
+   * 4. Filter podľa zranení (contraindicated_injuries)
+   * 5. Ak je viac možností → vyber náhodne z top kandidátov
+   * 
+   * Fallback (kapitola 5.4):
+   * 1. Rovnaká primary_role, iné vybavenie
+   * 2. Cviky so secondary_role
+   * 3. Bodyweight varianta
+   * 4. Ak nič nie je dostupné → vráť null (slot sa vynechá)
+   */
   const assignExerciseForRole = useCallback(async (
     role: string,
     gymId: string,
     userLevel: UserLevel,
     userInjuries: string[],
     usedExerciseIds: string[],
-    equipmentPreference: string | null,
-    workoutSplit: string // 'ppl', 'full_body', 'upper_lower'
+    equipmentPreference: string | null
   ): Promise<AssignedExercise> => {
-    const levelNumber = getLevelNumber(userLevel);
+    const maxDifficulty = getMaxDifficulty(userLevel);
     
     // 1. Get gym equipment
     const { data: gymMachines } = await supabase
@@ -65,208 +204,49 @@ export const useWorkoutGenerator = () => {
       .select('machine_id, machines(id, equipment_type)')
       .eq('gym_id', gymId);
     
-    const availableMachineIds = gymMachines?.map(m => m.machine_id).filter(Boolean) || [];
-    const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+    const gymEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
+    const expandedEquipment = expandEquipmentTypes(gymEquipmentTypes);
     
-    console.log('[WorkoutGenerator] Gym equipment types:', rawEquipmentTypes);
-    console.log('[WorkoutGenerator] Equipment preference:', equipmentPreference);
+    console.log(`[WorkoutGenerator] Role: ${role}, Gym equipment:`, gymEquipmentTypes);
     
-    // Expand equipment types to include sub-types
-    const expandedEquipment = new Set<string>(rawEquipmentTypes);
-    
-    // Free weights expansion
-    if (rawEquipmentTypes.includes('free_weights')) {
-      expandedEquipment.add('barbell');
-      expandedEquipment.add('dumbbell');
-      expandedEquipment.add('kettlebell');
-    }
-    
-    // Machine types - CRITICAL: 'machine' in gym means 'cable', 'machine', 'plate_loaded' in exercises
-    if (rawEquipmentTypes.includes('machine')) {
-      expandedEquipment.add('machine');
-      expandedEquipment.add('cable');
-      expandedEquipment.add('plate_loaded');
-    }
-    if (rawEquipmentTypes.includes('plate_loaded')) {
-      expandedEquipment.add('machine');
-      expandedEquipment.add('plate_loaded');
-    }
-    if (rawEquipmentTypes.includes('cable')) {
-      expandedEquipment.add('cable');
-    }
-    
-    // Always include bodyweight as available
-    expandedEquipment.add('bodyweight');
-    
-    const availableEquipmentTypes = Array.from(expandedEquipment);
-    console.log('[WorkoutGenerator] Expanded equipment:', availableEquipmentTypes);
-    
-    // 2. Get exercises with primary_role
-    const { data: exercises, error: exError } = await supabase
+    // 2. Get ALL exercises with primary_role
+    const { data: allExercises, error: exError } = await supabase
       .from('exercises')
       .select('*')
       .eq('primary_role', role);
     
-    if (exError || !exercises) {
+    if (exError || !allExercises) {
       console.error('Error fetching exercises:', exError);
       return { exercise: null, isFallback: false, fallbackReason: 'db_error' };
     }
 
-    // 3. Filter exercises
-    const activeInjuries = userInjuries.filter(i => i && i !== 'none');
-    
-    let filteredExercises = exercises.filter(ex => {
-      // Filter by workout_split - CRITICAL: only include exercises matching the user's split
-      const exerciseSplits = ex.workout_split || [];
-      if (exerciseSplits.length > 0 && !exerciseSplits.includes(workoutSplit)) {
-        return false;
-      }
+    // 3. Filter exercises - podľa dokumentu (equipment, difficulty, injuries, not used)
+    let filteredExercises = allExercises.filter(ex => {
+      // Difficulty filter
+      if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
       
-      // Filter by difficulty
-      if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
-      
-      // Filter by injuries - check both singular and plural forms
-      if (activeInjuries.length > 0 && ex.contraindicated_injuries && ex.contraindicated_injuries.length > 0) {
-        const normalizedInjuries = activeInjuries.map(i => i.toLowerCase());
-        const hasContraindication = ex.contraindicated_injuries.some((injury: string) => {
-          const normalizedInjury = injury.toLowerCase();
-          return normalizedInjuries.some(userInjury => 
-            normalizedInjury.includes(userInjury) || 
-            userInjury.includes(normalizedInjury) ||
-            // Check singular/plural variants
-            normalizedInjury === userInjury.replace(/s$/, '') ||
-            normalizedInjury + 's' === userInjury
-          );
-        });
-        if (hasContraindication) return false;
-      }
-      
-      // Filter by already used
+      // Already used filter
       if (usedExerciseIds.includes(ex.id)) return false;
       
-      // Filter by equipment availability
-      const exerciseEquipment = ex.equipment || [];
+      // Injury filter
+      if (exerciseContraindicatedForInjuries(ex, userInjuries)) return false;
       
-      // Bodyweight exercises are always available
-      if (exerciseEquipment.includes('bodyweight')) {
-        return true;
-      }
-      
-      // Free weights (barbell, dumbbell, kettlebell) - check equipment array, IGNORE machine_id
-      const isFreeWeightsExercise = exerciseEquipment.some(eq => 
-        ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq)
-      );
-      
-      if (isFreeWeightsExercise) {
-        // Check if gym has free_weights equipment type - expand to specific types
-        const hasBarbell = availableEquipmentTypes.includes('barbell') || rawEquipmentTypes.includes('free_weights');
-        const hasDumbbell = availableEquipmentTypes.includes('dumbbell') || rawEquipmentTypes.includes('free_weights');
-        const hasKettlebell = availableEquipmentTypes.includes('kettlebell') || rawEquipmentTypes.includes('free_weights');
-        
-        if (exerciseEquipment.includes('barbell') && hasBarbell) return true;
-        if (exerciseEquipment.includes('dumbbell') && hasDumbbell) return true;
-        if (exerciseEquipment.includes('kettlebell') && hasKettlebell) return true;
-        if (exerciseEquipment.includes('free_weights') && (hasBarbell || hasDumbbell || hasKettlebell)) return true;
-        
-        return false;
-      }
-      
-      // Cable exercises - DON'T check specific machine_id, just check if gym has ANY cable/machine equipment
-      const isCableExercise = exerciseEquipment.includes('cable');
-      if (isCableExercise) {
-        // Cable station, High pulley, Low row, etc. are all interchangeable for cable exercises
-        return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
-      }
-      
-      // Machine exercises (equipment includes 'machine' or 'plate_loaded')
-      const isMachineExercise = exerciseEquipment.some(eq => ['machine', 'plate_loaded'].includes(eq));
-      if (isMachineExercise) {
-        // For machine exercises, check if gym has machine equipment type
-        // Don't require specific machine_id match - gyms often have equivalent machines
-        return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
-      }
-      
-      // Default: check if any equipment matches
-      if (exerciseEquipment.length > 0) {
-        return exerciseEquipment.some(eq => availableEquipmentTypes.includes(eq));
-      }
+      // Equipment filter
+      if (!exerciseMatchesGymEquipment(ex, gymEquipmentTypes, expandedEquipment)) return false;
       
       return true;
     });
 
-    // 4. Sort/prioritize based on equipment preference
-    console.log(`[WorkoutGenerator] Role ${role}: ${filteredExercises.length} exercises after filter, preference: ${equipmentPreference}`);
-    
+    console.log(`[WorkoutGenerator] Role ${role}: ${filteredExercises.length} exercises after filter`);
+
+    // 4. Apply equipment preference
     if (filteredExercises.length > 0) {
-      let sortedExercises = [...filteredExercises];
+      const preferredExercises = sortByEquipmentPreference(filteredExercises, equipmentPreference);
       
-      if (equipmentPreference === 'machines') {
-        // Prefer ACTUAL machine exercises - check equipment array for 'machine', 'cable', 'plate_loaded'
-        // Score: machine/cable/plate_loaded = 100, everything else = 0
-        sortedExercises.sort((a, b) => {
-          const machineTypes = ['machine', 'cable', 'plate_loaded'];
-          const bodyweightType = 'bodyweight';
-          
-          const aIsMachine = a.equipment?.some(eq => machineTypes.includes(eq));
-          const bIsMachine = b.equipment?.some(eq => machineTypes.includes(eq));
-          const aIsBodyweight = a.equipment?.includes(bodyweightType);
-          const bIsBodyweight = b.equipment?.includes(bodyweightType);
-          
-          // Machines first, then free weights, then bodyweight last
-          const aScore = aIsMachine ? 100 : (aIsBodyweight ? 0 : 50);
-          const bScore = bIsMachine ? 100 : (bIsBodyweight ? 0 : 50);
-          
-          return bScore - aScore;
-        });
-        
-        // Filter to ONLY machine exercises if available
-        const machineOnly = sortedExercises.filter(ex => 
-          ex.equipment?.some(eq => ['machine', 'cable', 'plate_loaded'].includes(eq))
-        );
-        
-        if (machineOnly.length > 0) {
-          console.log(`[WorkoutGenerator] Found ${machineOnly.length} machine exercises for ${role}`);
-          const randomIndex = Math.floor(Math.random() * Math.min(3, machineOnly.length));
-          return { 
-            exercise: machineOnly[randomIndex], 
-            isFallback: false, 
-            fallbackReason: null 
-          };
-        }
-        
-        // Fallback to sorted list if no pure machine exercises
-        console.log(`[WorkoutGenerator] No machine exercises for ${role}, using best available`);
-      } else if (equipmentPreference === 'bodyweight') {
-        // Prefer bodyweight exercises - ONLY select bodyweight if available
-        const bodyweightOnly = sortedExercises.filter(ex => ex.equipment?.includes('bodyweight'));
-        
-        if (bodyweightOnly.length > 0) {
-          const randomIndex = Math.floor(Math.random() * Math.min(3, bodyweightOnly.length));
-          return { 
-            exercise: bodyweightOnly[randomIndex], 
-            isFallback: false, 
-            fallbackReason: null 
-          };
-        }
-      } else if (equipmentPreference === 'free_weights') {
-        // Prefer free weights - ONLY select free weights if available
-        const freeWeightsOnly = sortedExercises.filter(ex => 
-          ex.equipment?.some(eq => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
-        );
-        
-        if (freeWeightsOnly.length > 0) {
-          const randomIndex = Math.floor(Math.random() * Math.min(3, freeWeightsOnly.length));
-          return { 
-            exercise: freeWeightsOnly[randomIndex], 
-            isFallback: false, 
-            fallbackReason: null 
-          };
-        }
-      }
-      
-      // Pick from top candidates if preference filter didn't return
-      const topCandidates = sortedExercises.slice(0, Math.min(5, sortedExercises.length));
+      // Pick random from top candidates
+      const topCandidates = preferredExercises.slice(0, Math.min(5, preferredExercises.length));
       const randomIndex = Math.floor(Math.random() * topCandidates.length);
+      
       return { 
         exercise: topCandidates[randomIndex], 
         isFallback: false,
@@ -274,7 +254,28 @@ export const useWorkoutGenerator = () => {
       };
     }
 
-    // 5. Fallback: try secondary_role exercises
+    // === FALLBACK 1: Same role, different equipment (ignore gym equipment) ===
+    console.log(`[WorkoutGenerator] Fallback 1: Trying different equipment for ${role}`);
+    
+    const fallback1 = allExercises.filter(ex => {
+      if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
+      if (usedExerciseIds.includes(ex.id)) return false;
+      if (exerciseContraindicatedForInjuries(ex, userInjuries)) return false;
+      return true;
+    });
+    
+    if (fallback1.length > 0) {
+      const randomIndex = Math.floor(Math.random() * Math.min(3, fallback1.length));
+      return { 
+        exercise: fallback1[randomIndex], 
+        isFallback: true, 
+        fallbackReason: 'different_equipment' 
+      };
+    }
+
+    // === FALLBACK 2: Secondary role exercises ===
+    console.log(`[WorkoutGenerator] Fallback 2: Trying secondary_role for ${role}`);
+    
     const { data: secondaryExercises } = await supabase
       .from('exercises')
       .select('*')
@@ -282,11 +283,9 @@ export const useWorkoutGenerator = () => {
     
     if (secondaryExercises && secondaryExercises.length > 0) {
       const validSecondary = secondaryExercises.filter(ex => {
-        if (ex.difficulty && ex.difficulty > levelNumber * 2) return false;
+        if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
         if (usedExerciseIds.includes(ex.id)) return false;
-        if (activeInjuries.length > 0 && ex.contraindicated_injuries) {
-          if (ex.contraindicated_injuries.some((i: string) => activeInjuries.includes(i))) return false;
-        }
+        if (exerciseContraindicatedForInjuries(ex, userInjuries)) return false;
         return true;
       });
       
@@ -300,23 +299,20 @@ export const useWorkoutGenerator = () => {
       }
     }
 
-    // 6. Fallback: try bodyweight exercises for this role
+    // === FALLBACK 3: Bodyweight variant ===
+    console.log(`[WorkoutGenerator] Fallback 3: Trying bodyweight for ${role}`);
+    
     const { data: bodyweightExercises } = await supabase
       .from('exercises')
       .select('*')
       .eq('primary_role', role)
-      .eq('requires_machine', false);
+      .contains('equipment', ['bodyweight']);
     
     if (bodyweightExercises && bodyweightExercises.length > 0) {
-      // Filter for bodyweight or exercises without equipment requirements
       const validBodyweight = bodyweightExercises.filter(ex => {
         if (usedExerciseIds.includes(ex.id)) return false;
-        if (activeInjuries.length > 0 && ex.contraindicated_injuries) {
-          if (ex.contraindicated_injuries.some((i: string) => activeInjuries.includes(i))) return false;
-        }
-        // Accept if equipment includes bodyweight or is empty (fallback)
-        const hasBodyweight = ex.equipment?.includes('bodyweight') || ex.equipment?.length === 0;
-        return hasBodyweight;
+        if (exerciseContraindicatedForInjuries(ex, userInjuries)) return false;
+        return true;
       });
       
       if (validBodyweight.length > 0) {
@@ -329,35 +325,8 @@ export const useWorkoutGenerator = () => {
       }
     }
 
-    // 7. LAST RESORT: Pick ANY exercise for this role (never return null)
-    const { data: anyExercises } = await supabase
-      .from('exercises')
-      .select('*')
-      .eq('primary_role', role)
-      .limit(20);
-    
-    if (anyExercises && anyExercises.length > 0) {
-      // Filter out only used exercises
-      const available = anyExercises.filter(ex => !usedExerciseIds.includes(ex.id));
-      if (available.length > 0) {
-        const randomIndex = Math.floor(Math.random() * available.length);
-        return { 
-          exercise: available[randomIndex], 
-          isFallback: true, 
-          fallbackReason: 'any_available' 
-        };
-      }
-      // Even if all are used, still return one
-      const randomIndex = Math.floor(Math.random() * anyExercises.length);
-      return { 
-        exercise: anyExercises[randomIndex], 
-        isFallback: true, 
-        fallbackReason: 'any_available' 
-      };
-    }
-
-    // 8. Absolute fallback - should never happen but just in case
-    console.warn(`No exercises found for role: ${role}`);
+    // === FALLBACK 4: No exercise available - slot will be skipped ===
+    console.warn(`[WorkoutGenerator] No exercises found for role: ${role}`);
     return { exercise: null, isFallback: true, fallbackReason: 'no_exercises_in_db' };
   }, []);
 
@@ -387,7 +356,7 @@ export const useWorkoutGenerator = () => {
       acc[row.day_letter].slots.push({
         id: row.id,
         slotOrder: row.slot_order,
-        roleId: row.role_id as TrainingRoleId,
+        roleId: row.role_id,
         beginnerSets: row.beginner_sets,
         intermediateSets: row.intermediate_sets,
         advancedSets: row.advanced_sets,
@@ -400,14 +369,16 @@ export const useWorkoutGenerator = () => {
     return Object.values(grouped);
   };
 
-  // Generate complete workout plan
+  /**
+   * Generate complete workout plan - PUMPLO logic
+   * Vytvorí plán a priradí cviky pre všetky dni podľa day_templates
+   */
   const generateWorkoutPlan = useCallback(async (
     gymId: string,
     goalId: TrainingGoalId,
     userLevel: UserLevel,
     userInjuries: string[],
-    equipmentPreference: string | null,
-    trainingSplit: string = 'ppl' // 'ppl', 'full_body', 'upper_lower'
+    equipmentPreference: string | null
   ): Promise<string | null> => {
     if (!user) {
       setError('Uživatel není přihlášen');
@@ -460,8 +431,7 @@ export const useWorkoutGenerator = () => {
             userLevel,
             userInjuries,
             usedExerciseIds,
-            equipmentPreference,
-            trainingSplit
+            equipmentPreference
           );
           
           if (exercise) {
@@ -479,27 +449,28 @@ export const useWorkoutGenerator = () => {
               is_fallback: isFallback,
               fallback_reason: fallbackReason
             });
-          } else {
-            // NEVER insert a row without exercise - skip this slot instead
-            console.warn(`[WorkoutGenerator] Skipping slot ${slot.slotOrder} for role ${slot.roleId} - no exercise found`);
           }
         }
       }
 
-      // 5. Insert all exercises
-      const { error: insertError } = await supabase
-        .from('user_workout_exercises')
-        .insert(exerciseInserts);
-
-      if (insertError) {
-        throw new Error('Nepodařilo se uložit cviky');
+      // 5. Insert exercises
+      if (exerciseInserts.length > 0) {
+        const { error: insertError } = await supabase
+          .from('user_workout_exercises')
+          .insert(exerciseInserts);
+        
+        if (insertError) {
+          console.error('Error inserting exercises:', insertError);
+          throw new Error('Nepodařilo se uložit cviky');
+        }
       }
 
+      console.log(`[WorkoutGenerator] Plan created with ${exerciseInserts.length} exercises`);
       return newPlan.id;
+
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Neznámá chyba';
-      setError(message);
       console.error('Error generating workout plan:', err);
+      setError(err instanceof Error ? err.message : 'Neznámá chyba');
       return null;
     } finally {
       setIsGenerating(false);
@@ -508,6 +479,7 @@ export const useWorkoutGenerator = () => {
 
   return {
     generateWorkoutPlan,
+    assignExerciseForRole,
     isGenerating,
     error
   };

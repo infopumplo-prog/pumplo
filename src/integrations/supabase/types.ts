@@ -82,6 +82,7 @@ export type Database = {
           description: string | null
           difficulty: number
           equipment: string[]
+          equipment_type: string | null
           exercise_with_weights: boolean | null
           id: string
           machine_id: string | null
@@ -103,6 +104,7 @@ export type Database = {
           description?: string | null
           difficulty?: number
           equipment?: string[]
+          equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
           machine_id?: string | null
@@ -124,6 +126,7 @@ export type Database = {
           description?: string | null
           difficulty?: number
           equipment?: string[]
+          equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
           machine_id?: string | null
