@@ -191,18 +191,21 @@ const Training = () => {
   const getTargetExerciseCount = (trainingDurationMinutes: number | null, userLevel: string): number => {
     const duration = trainingDurationMinutes || 60;
     
-    // Estimate: each exercise takes ~8-12 min depending on sets/rest
-    // Beginner: more rest, fewer exercises
-    // Advanced: less rest, more exercises
-    const avgTimePerExercise = userLevel === 'beginner' ? 12 : userLevel === 'intermediate' ? 10 : 8;
+    // More accurate estimate: 
+    // Compound exercise: ~6-8 min (including 90s rest between sets, 3-4 sets)
+    // Isolation exercise: ~4-5 min (45-60s rest, 3 sets)
+    // Average: ~6 min per exercise for intermediate
+    const avgTimePerExercise = userLevel === 'beginner' ? 7 : userLevel === 'intermediate' ? 6 : 5;
     
-    // Account for warm-up (~5 min) and cool-down (~5 min)
-    const effectiveTime = duration - 10;
+    // Account for warm-up (~3 min) and transitions between exercises
+    const effectiveTime = duration - 3;
     
     const count = Math.floor(effectiveTime / avgTimePerExercise);
     
-    // Clamp between 3 and 10 exercises
-    return Math.max(3, Math.min(10, count));
+    console.log(`[Training] Duration: ${duration}min, level: ${userLevel}, avgTime: ${avgTimePerExercise}min, target: ${count} exercises`);
+    
+    // Clamp between 3 and 12 exercises
+    return Math.max(3, Math.min(12, count));
   };
 
   /**
