@@ -7,7 +7,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3 } from 'lucide-react';
+import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -37,6 +37,7 @@ const Profile = () => {
   const menuItems = [
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
+    { icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') },
     { icon: Settings, label: 'Nastavení', onClick: () => {} },
     { icon: Bell, label: 'Oznámení', onClick: () => {} },
     { icon: HelpCircle, label: 'Nápověda', onClick: () => {} },
