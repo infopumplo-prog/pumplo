@@ -21,6 +21,7 @@ interface WorkoutSessionData {
   goalId: string;
   startedAt: Date;
   results: ExerciseResult[];
+  isBonus?: boolean;
 }
 
 export const useWorkoutHistory = () => {
@@ -70,7 +71,8 @@ export const useWorkoutHistory = () => {
           duration_seconds: durationSeconds,
           total_sets: totalSets,
           total_reps: totalReps,
-          total_weight_kg: totalWeight
+          total_weight_kg: totalWeight,
+          is_bonus: data.isBonus || false
         })
         .select()
         .single();
