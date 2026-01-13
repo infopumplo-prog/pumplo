@@ -654,6 +654,7 @@ export type Database = {
           goal_id: string
           gym_id: string | null
           id: string
+          is_bonus: boolean
           plan_id: string | null
           started_at: string
           total_reps: number | null
@@ -669,6 +670,7 @@ export type Database = {
           goal_id: string
           gym_id?: string | null
           id?: string
+          is_bonus?: boolean
           plan_id?: string | null
           started_at?: string
           total_reps?: number | null
@@ -684,6 +686,7 @@ export type Database = {
           goal_id?: string
           gym_id?: string | null
           id?: string
+          is_bonus?: boolean
           plan_id?: string | null
           started_at?: string
           total_reps?: number | null

@@ -26,6 +26,7 @@ interface WorkoutSessionProps {
   goalId: TrainingGoalId;
   planId: string | null;
   gymId: string;
+  isBonus?: boolean;
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
 }
@@ -54,6 +55,7 @@ export const WorkoutSession = ({
   goalId,
   planId,
   gymId,
+  isBonus = false,
   onComplete,
   onCancel
 }: WorkoutSessionProps) => {
@@ -119,11 +121,12 @@ export const WorkoutSession = ({
       dayLetter,
       goalId,
       startedAt: workoutStartTime,
-      results
+      results,
+      isBonus
     });
     
     onComplete(results);
-  }, [onComplete, results, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime]);
+  }, [onComplete, results, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);

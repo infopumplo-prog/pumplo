@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,6 +38,7 @@ interface CompletedWorkout {
   dayOfWeek: string; // monday, tuesday, etc.
   sessionId: string;
   week: number;
+  isBonus: boolean;
 }
 
 interface HistoryExercise {
@@ -96,6 +97,10 @@ const Training = () => {
   const [historyExercises, setHistoryExercises] = useState<HistoryExercise[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
+  // Bonus workout state
+  const [isBonusWorkout, setIsBonusWorkout] = useState(false);
+  const [isGeneratingBonusWorkout, setIsGeneratingBonusWorkout] = useState(false);
+  
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -152,24 +157,30 @@ const Training = () => {
       
       const { data } = await supabase
         .from('workout_sessions')
-        .select('id, started_at, day_letter')
+        .select('id, started_at, day_letter, is_bonus')
         .eq('goal_id', plan.goalId)
         .not('completed_at', 'is', null)
         .order('started_at', { ascending: true });
       
       if (data) {
-        const completed: CompletedWorkout[] = data.map((session, index) => {
+        // Filter out bonus workouts for week calculation
+        const regularWorkouts = data.filter(s => !s.is_bonus);
+        const completed: CompletedWorkout[] = data.map((session) => {
           const sessionDate = new Date(session.started_at);
           const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][sessionDate.getDay()];
-          // Calculate week based on index in training frequency
-          const week = Math.floor(index / trainingFrequency) + 1;
+          // Calculate week based on index in regular workouts only
+          const regularIndex = regularWorkouts.findIndex(r => r.id === session.id);
+          const week = session.is_bonus 
+            ? Math.floor(regularWorkouts.filter(r => new Date(r.started_at) < sessionDate).length / trainingFrequency) + 1
+            : Math.floor(regularIndex / trainingFrequency) + 1;
           
           return {
             date: session.started_at,
             dayLetter: session.day_letter,
             dayOfWeek: dayOfWeek,
             sessionId: session.id,
-            week
+            week,
+            isBonus: session.is_bonus || false
           };
         });
         setCompletedWorkouts(completed);
@@ -179,9 +190,31 @@ const Training = () => {
     fetchCompletedWorkouts();
   }, [plan, trainingFrequency]);
 
-  // Calculate total completed days
-  const totalCompletedDays = completedWorkouts.length;
+  // Calculate total completed days (exclude bonus workouts from progress)
+  const regularCompletedWorkouts = completedWorkouts.filter(w => !w.isBonus);
+  const totalCompletedDays = regularCompletedWorkouts.length;
   const progressPercentage = Math.min((totalCompletedDays / totalDaysInPlan) * 100, 100);
+  
+  // Bonus workouts for today
+  const todayBonusWorkouts = completedWorkouts.filter(w => {
+    const sessionDate = new Date(w.date);
+    const now = new Date();
+    return w.isBonus && 
+      sessionDate.getFullYear() === now.getFullYear() &&
+      sessionDate.getMonth() === now.getMonth() &&
+      sessionDate.getDate() === now.getDate();
+  });
+  
+  // Get plan start date to determine first week skipped days
+  const planStartDate = useMemo(() => {
+    if (!plan) return null;
+    // Use the first completed workout date or plan creation date
+    const firstWorkout = regularCompletedWorkouts[0];
+    if (firstWorkout) {
+      return new Date(firstWorkout.date);
+    }
+    return null;
+  }, [plan, regularCompletedWorkouts]);
 
   // Get today's weekday
   const todayWeekday = getCurrentWeekday();
@@ -199,9 +232,9 @@ const Training = () => {
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
       const workoutLetter = workoutLetters[globalDayIndex % workoutTypes];
       
-      // Check if this day is completed - match by week and dayOfWeek
-      const completedSession = completedWorkouts.find(w => 
-        w.week === viewingWeek && w.dayOfWeek === dayOfWeek
+      // Check if this day is completed (non-bonus) - match by week and dayOfWeek
+      const completedSession = regularCompletedWorkouts.find(w => 
+        w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
       );
       const isCompleted = !!completedSession;
       
@@ -219,8 +252,17 @@ const Training = () => {
       const isFuture = viewingWeek > currentWeek || 
         (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Is this day missed? (past, not completed, and not skipped due to being first week before start)
-      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted;
+      // Check if this day is in the first week and before the plan started
+      // (e.g., user started on Tuesday but Monday was a training day)
+      const isFirstWeekSkip = viewingWeek === 1 && planStartDate && (() => {
+        const planStartDayOrder = DAY_ORDER.indexOf(
+          ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][planStartDate.getDay()]
+        );
+        return dayOrderIndex < planStartDayOrder;
+      })();
+      
+      // Is this day missed? (past, not completed, but NOT a first-week skip)
+      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted && !isFirstWeekSkip;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
@@ -240,11 +282,12 @@ const Training = () => {
         isFuture,
         isPast: isPastThisWeek || isWeekInPast,
         isMissed,
+        isFirstWeekSkip: isFirstWeekSkip || false,
         globalDayIndex,
         sessionId: completedSession?.sessionId || null
       };
     });
-  }, [plan, viewingWeek, currentWeek, trainingDays, trainingFrequency, workoutTypes, completedWorkouts, todayWeekday, todayDayOrder]);
+  }, [plan, viewingWeek, currentWeek, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, planStartDate]);
 
   // Fetch available goals
   useEffect(() => {
@@ -563,7 +606,13 @@ const Training = () => {
     setIsWorkoutActive(false);
     setGeneratedExercises([]);
     setExtendedExercises([]);
-    await advanceToNextDay();
+    
+    // Only advance day if not a bonus workout
+    if (!isBonusWorkout) {
+      await advanceToNextDay();
+    }
+    
+    setIsBonusWorkout(false);
     refetchPlan();
   };
 
@@ -652,7 +701,68 @@ const Training = () => {
     }
   }, [plan, profile]);
 
-  // Get exercises for selected day (only makes sense for current week's current day)
+  // Bonus workout generation for non-training days
+  const generateBonusWorkout = useCallback(async (count: number) => {
+    if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
+    
+    setIsGeneratingBonusWorkout(true);
+    setIsBonusWorkout(true);
+    
+    try {
+      const categories = ['upper', 'lower', 'core'];
+      const bonusExercises: WorkoutExercise[] = [];
+      const usedIds = new Set<string>();
+      
+      for (let i = 0; i < count; i++) {
+        const category = categories[i % categories.length];
+        const rolesForCategory = TRAINING_ROLE_IDS.filter(roleId => 
+          TRAINING_ROLE_CATEGORIES[roleId] === category
+        );
+        
+        if (rolesForCategory.length === 0) continue;
+        
+        const randomRole = rolesForCategory[Math.floor(Math.random() * rolesForCategory.length)];
+        
+        const { data: exercises } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('primary_role', randomRole);
+        
+        if (!exercises || exercises.length === 0) continue;
+        
+        const available = exercises.filter(ex => !usedIds.has(ex.id));
+        if (available.length === 0) continue;
+        
+        const selected = available[Math.floor(Math.random() * available.length)];
+        usedIds.add(selected.id);
+        
+        bonusExercises.push({
+          id: `bonus-${i}`,
+          dayLetter: 'BONUS',
+          slotOrder: i + 1,
+          roleId: randomRole,
+          exerciseId: selected.id,
+          exerciseName: selected.name,
+          equipment: selected.equipment || [],
+          machineName: null,
+          sets: profile.user_level === 'beginner' ? 2 : 3,
+          repMin: 10,
+          repMax: 15,
+          isFallback: false,
+          fallbackReason: null,
+          isExtension: false
+        });
+      }
+      
+      setGeneratedExercises(bonusExercises);
+      setSelectedWorkoutGymId(profile.selected_gym_id);
+      setIsWorkoutActive(true);
+    } catch (err) {
+      console.error('Error generating bonus exercises:', err);
+    } finally {
+      setIsGeneratingBonusWorkout(false);
+    }
+  }, [plan, profile]);
   const selectedDayExercises = useMemo(() => {
     if (selectedDayIndex === null || !plan) return [];
     const day = daysInViewingWeek[selectedDayIndex];
@@ -713,18 +823,21 @@ const Training = () => {
   // Active workout view
   if (isWorkoutActive && (generatedExercises.length > 0 || extendedExercises.length > 0)) {
     const workoutExercises = extendedExercises.length > 0 ? extendedExercises : generatedExercises;
+    const isExtensionWorkout = extendedExercises.length > 0;
     
     return (
       <WorkoutSession
         exercises={workoutExercises}
-        dayLetter={extendedExercises.length > 0 ? `${plan?.currentDayLetter || 'A'}_EXT` : (plan?.currentDayLetter || 'A')}
+        dayLetter={isBonusWorkout ? 'BONUS' : isExtensionWorkout ? `${plan?.currentDayLetter || 'A'}_EXT` : (plan?.currentDayLetter || 'A')}
         goalId={plan?.goalId || 'general_fitness'}
         gymId={selectedWorkoutGymId || profile?.selected_gym_id || ''}
         planId={plan?.id || null}
+        isBonus={isBonusWorkout}
         onComplete={handleWorkoutComplete}
         onCancel={() => {
           setIsWorkoutActive(false);
           setExtendedExercises([]);
+          setIsBonusWorkout(false);
         }}
       />
     );
@@ -1032,13 +1145,15 @@ const Training = () => {
                 "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
                 day.isCompleted
                   ? "bg-green-500/10 border-green-500/50"
-                  : day.isMissed
-                    ? "bg-destructive/10 border-destructive/50"
-                    : day.isToday && isViewingCurrentWeek
-                      ? "bg-primary/10 border-primary"
-                      : day.isFuture
-                        ? "bg-muted/30 border-border/50"
-                        : "bg-card border-border hover:border-primary/50"
+                  : day.isFirstWeekSkip
+                    ? "bg-muted/20 border-border/30"
+                    : day.isMissed
+                      ? "bg-destructive/10 border-destructive/50"
+                      : day.isToday && isViewingCurrentWeek
+                        ? "bg-primary/10 border-primary"
+                        : day.isFuture
+                          ? "bg-muted/30 border-border/50"
+                          : "bg-card border-border hover:border-primary/50"
               )}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1049,14 +1164,18 @@ const Training = () => {
                 "w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold shrink-0",
                 day.isCompleted
                   ? "bg-green-500 text-white"
-                  : day.isMissed
-                    ? "bg-destructive text-destructive-foreground"
-                    : day.isToday && isViewingCurrentWeek
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
+                  : day.isFirstWeekSkip
+                    ? "bg-muted text-muted-foreground"
+                    : day.isMissed
+                      ? "bg-destructive text-destructive-foreground"
+                      : day.isToday && isViewingCurrentWeek
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
               )}>
                 {day.isCompleted ? (
                   <Check className="w-5 h-5" />
+                ) : day.isFirstWeekSkip ? (
+                  <Minus className="w-5 h-5" />
                 ) : day.isMissed ? (
                   <X className="w-5 h-5" />
                 ) : (
@@ -1099,6 +1218,8 @@ const Training = () => {
               <div className="shrink-0">
                 {day.isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
+                ) : day.isFirstWeekSkip ? (
+                  <span className="text-[10px] font-medium text-muted-foreground">Přeskočeno</span>
                 ) : day.isMissed ? (
                   <span className="text-[10px] font-medium text-destructive">Vynecháno</span>
                 ) : day.isFuture ? (
