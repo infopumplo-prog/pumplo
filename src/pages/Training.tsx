@@ -209,17 +209,16 @@ const Training = () => {
   });
   
   // Get plan start date to determine first week skipped days
-  // If no workouts completed yet, use today as the effective start date
+  // Use the plan's started_at date from the database
   const planStartDate = useMemo(() => {
     if (!plan) return null;
-    // Use the first completed workout date, or today if no workouts yet
-    const firstWorkout = regularCompletedWorkouts[0];
-    if (firstWorkout) {
-      return new Date(firstWorkout.date);
+    // Use the plan's official start date from database
+    if (plan.startedAt) {
+      return new Date(plan.startedAt);
     }
-    // No workouts yet - use today as the start date
+    // Fallback: use today if no started_at (shouldn't happen)
     return new Date();
-  }, [plan, regularCompletedWorkouts]);
+  }, [plan]);
 
   // Get today's weekday
   const todayWeekday = getCurrentWeekday();
