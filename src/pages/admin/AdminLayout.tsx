@@ -58,26 +58,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       </motion.main>
 
       {/* Bottom Navigation - Apple-style */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg mx-auto max-w-md">
-          <div className="flex items-center justify-around py-2">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-4">
+        <div className="bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg mx-auto max-w-lg overflow-x-auto">
+          <div className="flex items-center justify-between py-2 px-1 min-w-max">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex flex-col items-center gap-1 px-4 py-2 relative rounded-xl transition-colors ${
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 relative rounded-xl transition-colors flex-shrink-0 ${
                     isActive ? 'bg-primary/10' : ''
                   }`}
                 >
                   <item.icon 
-                    className={`w-5 h-5 transition-colors ${
+                    className={`w-4 h-4 transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`} 
                   />
                   <span 
-                    className={`text-xs font-medium transition-colors ${
+                    className={`text-[10px] font-medium transition-colors whitespace-nowrap ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`}
                   >
