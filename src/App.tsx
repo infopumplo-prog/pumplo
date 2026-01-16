@@ -28,6 +28,7 @@ import GymSettings from "@/pages/business/GymSettings";
 import Training from "@/pages/Training";
 import WorkoutHistory from "@/pages/WorkoutHistory";
 import Install from "@/pages/Install";
+import Settings from "@/pages/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +126,7 @@ const AppRoutes = () => (
       <Route path="/training" element={<Training />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/history" element={<WorkoutHistory />} />
+      <Route path="/settings" element={<Settings />} />
     </Route>
     
     {/* Admin Routes */}

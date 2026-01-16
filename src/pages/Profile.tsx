@@ -8,7 +8,7 @@ import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useIsPWA } from '@/hooks/useIsPWA';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, Bell, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
+import { User, Settings, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -41,8 +41,7 @@ const Profile = () => {
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
     // Only show install option if not already running as PWA
     ...(!isPWA ? [{ icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') }] : []),
-    { icon: Settings, label: 'Nastavení', onClick: () => {} },
-    { icon: Bell, label: 'Oznámení', onClick: () => {} },
+    { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
     { icon: HelpCircle, label: 'Nápověda', onClick: () => {} },
   ];
 
