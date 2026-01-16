@@ -139,6 +139,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const userMarkerRef = useRef<L.Marker | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [hasCenteredOnUser, setHasCenteredOnUser] = useState(false);
 
   // Function to center on user location
   const centerOnUser = () => {
@@ -241,7 +242,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
     }
   }, [gyms, isMapReady, onGymSelect]);
 
-  // Add/update user location marker
+  // Add/update user location marker and auto-center on first load
   useEffect(() => {
     if (!mapRef.current || !isMapReady) return;
 
@@ -254,8 +255,14 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
         }).addTo(mapRef.current);
         userMarkerRef.current.bindTooltip('Vaše poloha', { direction: 'top' });
       }
+      
+      // Auto-center on user location on first load
+      if (!hasCenteredOnUser) {
+        mapRef.current.setView([userLocation.lat, userLocation.lng], 14, { animate: true });
+        setHasCenteredOnUser(true);
+      }
     }
-  }, [userLocation, isMapReady]);
+  }, [userLocation, isMapReady, hasCenteredOnUser]);
 
   // Center on selected gym
   useEffect(() => {
