@@ -41,14 +41,19 @@ const REST_TIMES = {
   general_fitness: { betweenSets: 60, betweenExercises: 120 },
 };
 
-const getVideoUrl = (videoPath: string | null): string | null => {
+const getSignedVideoUrl = async (videoPath: string | null): Promise<string | null> => {
   if (!videoPath) return null;
   
-  const { data } = supabase.storage
+  const { data, error } = await supabase.storage
     .from('exercise-videos')
-    .getPublicUrl(videoPath);
+    .createSignedUrl(videoPath, 3600); // 1 hour expiry
   
-  return data?.publicUrl || null;
+  if (error) {
+    console.error('Error getting signed video URL:', error);
+    return null;
+  }
+  
+  return data?.signedUrl || null;
 };
 
 export const WorkoutSession = ({
@@ -331,10 +336,14 @@ const ExercisePlayerWithVideo = ({
       if (data) {
         let url = null;
         if (data.video_path) {
-          const { data: urlData } = supabase.storage
+          // Use signed URL for private bucket
+          const { data: signedData, error } = await supabase.storage
             .from('exercise-videos')
-            .getPublicUrl(data.video_path);
-          url = urlData?.publicUrl || null;
+            .createSignedUrl(data.video_path, 3600); // 1 hour expiry
+          
+          if (!error && signedData) {
+            url = signedData.signedUrl;
+          }
         }
         
         setVideoData({ 
