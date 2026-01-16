@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Users, Dumbbell, ArrowLeft, Loader2, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, Dumbbell, ArrowLeft, Loader2, Activity, Building2 } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -27,6 +27,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/users', icon: Users, label: 'Používatelia' },
+    { path: '/admin/gyms', icon: Building2, label: 'Posilovne' },
     { path: '/admin/machines', icon: Dumbbell, label: 'Stroje' },
     { path: '/admin/exercises', icon: Activity, label: 'Cviky' },
   ];

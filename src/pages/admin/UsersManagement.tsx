@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { KeyRound, Pencil, Loader2, Search, ChevronRight } from 'lucide-react';
+import { KeyRound, Pencil, Loader2, Search, ChevronRight, Plus, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -44,9 +44,12 @@ const UsersManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | null>(null);
+  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'create' | null>(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '', role: 'user', gym_license_count: '0' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [createForm, setCreateForm] = useState({ email: '', password: '', first_name: '', last_name: '', role: 'user', gym_license_count: '1' });
+  const [isCreating, setIsCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -177,6 +180,51 @@ const UsersManagement = () => {
   const closeDrawer = () => {
     setDrawerMode(null);
     setSelectedUser(null);
+    setCreateForm({ email: '', password: '', first_name: '', last_name: '', role: 'user', gym_license_count: '1' });
+    setShowPassword(false);
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.email || !createForm.password) {
+      toast.error('Email a heslo sú povinné');
+      return;
+    }
+
+    if (createForm.password.length < 6) {
+      toast.error('Heslo musí mať aspoň 6 znakov');
+      return;
+    }
+
+    setIsCreating(true);
+    
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    const response = await supabase.functions.invoke('admin-create-user', {
+      body: {
+        email: createForm.email,
+        password: createForm.password,
+        first_name: createForm.first_name || null,
+        last_name: createForm.last_name || null,
+        role: createForm.role,
+        gym_license_count: createForm.role === 'business' ? parseInt(createForm.gym_license_count) : 0,
+      },
+    });
+
+    setIsCreating(false);
+
+    if (response.error) {
+      toast.error(response.error.message || 'Nepodarilo sa vytvoriť používateľa');
+      return;
+    }
+
+    if (response.data?.error) {
+      toast.error(response.data.error);
+      return;
+    }
+
+    toast.success('Používateľ bol vytvorený');
+    closeDrawer();
+    fetchUsers();
   };
 
   const getRoleBadgeClass = (role: string) => {
@@ -192,11 +240,17 @@ const UsersManagement = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Používatelia</h2>
-          <span className="text-sm text-muted-foreground">{users.length} celkom</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{users.length} celkom</span>
+            <Button size="sm" onClick={() => setDrawerMode('create')}>
+              <Plus className="w-4 h-4 mr-1" />
+              Pridať
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -390,6 +444,94 @@ const UsersManagement = () => {
             </div>
             <DrawerFooter>
               <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Zrušiť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Create User Drawer */}
+        <Drawer open={drawerMode === 'create'} onOpenChange={closeDrawer}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Nový používateľ</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4 space-y-4">
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <Label>Heslo *</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    placeholder="Min. 6 znakov"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label>Meno</Label>
+                <Input
+                  value={createForm.first_name}
+                  onChange={(e) => setCreateForm({ ...createForm, first_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Priezvisko</Label>
+                <Input
+                  value={createForm.last_name}
+                  onChange={(e) => setCreateForm({ ...createForm, last_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Rola</Label>
+                <Select value={createForm.role} onValueChange={(value) => setCreateForm({ ...createForm, role: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {createForm.role === 'business' && (
+                <div>
+                  <Label>Počet licencií na posilovne</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={createForm.gym_license_count}
+                    onChange={(e) => setCreateForm({ ...createForm, gym_license_count: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+            <DrawerFooter>
+              <Button onClick={handleCreateUser} className="w-full" disabled={isCreating}>
+                {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Vytvoriť používateľa
+              </Button>
               <DrawerClose asChild>
                 <Button variant="outline">Zrušiť</Button>
               </DrawerClose>
