@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
@@ -30,20 +30,38 @@ const Settings = () => {
   const { isSupported, notificationPermission, requestPermission } = useTrainingNotifications();
   const { toast } = useToast();
 
-  const [firstName, setFirstName] = useState(profile?.first_name || '');
-  const [lastName, setLastName] = useState(profile?.last_name || '');
+  // Profile state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Email change state
+  const [newEmail, setNewEmail] = useState('');
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Other state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(notificationPermission === 'granted');
 
-  // Update local state when profile loads
-  useState(() => {
+  // Sync profile data when loaded
+  useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || '');
       setLastName(profile.last_name || '');
     }
-  });
+  }, [profile]);
+
+  // Sync notification permission
+  useEffect(() => {
+    setNotificationsEnabled(notificationPermission === 'granted');
+  }, [notificationPermission]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -69,6 +87,122 @@ const Settings = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim()) {
+      toast({
+        title: 'Chyba',
+        description: 'Zadejte nový e-mail.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newEmail === user?.email) {
+      toast({
+        title: 'Chyba',
+        description: 'Nový e-mail je stejný jako současný.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsChangingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail.trim(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Ověřovací e-mail odeslán',
+        description: 'Zkontrolujte svou novou e-mailovou schránku a potvrďte změnu.',
+      });
+      setNewEmail('');
+    } catch (error: any) {
+      toast({
+        title: 'Chyba',
+        description: error.message || 'Nepodařilo se změnit e-mail.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingEmail(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    // Validation
+    if (!currentPassword) {
+      toast({
+        title: 'Chyba',
+        description: 'Zadejte aktuální heslo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Chyba',
+        description: 'Nové heslo musí mít alespoň 6 znaků.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Chyba',
+        description: 'Hesla se neshodují.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // Verify current password by signing in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        toast({
+          title: 'Chyba',
+          description: 'Nesprávné aktuální heslo.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Change password
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Heslo změněno',
+        description: 'Vaše heslo bylo úspěšně aktualizováno.',
+      });
+      
+      // Clear form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast({
+        title: 'Chyba',
+        description: error.message || 'Nepodařilo se změnit heslo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -149,6 +283,11 @@ const Settings = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  // Check if profile data has changed
+  const hasProfileChanges = 
+    firstName !== (profile?.first_name || '') || 
+    lastName !== (profile?.last_name || '');
+
   return (
     <PageTransition>
       <div className="min-h-screen bg-background safe-top">
@@ -198,18 +337,9 @@ const Settings = () => {
                   placeholder="Zadejte příjmení"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>E-mail</Label>
-                <Input
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">E-mail nelze změnit</p>
-              </div>
               <Button
                 onClick={handleSaveProfile}
-                disabled={isSaving}
+                disabled={isSaving || !hasProfileChanges}
                 className="w-full"
               >
                 {isSaving ? (
@@ -221,6 +351,117 @@ const Settings = () => {
                   <>
                     <Save className="w-4 h-4 mr-2" />
                     Uložit změny
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Email Section */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                <Mail className="w-5 h-5 text-blue-500" />
+              </div>
+              <h2 className="text-lg font-semibold">E-mail</h2>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Aktuální e-mail</Label>
+                <Input
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newEmail">Nový e-mail</Label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="Zadejte nový e-mail"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Na novou adresu bude odeslán ověřovací e-mail
+                </p>
+              </div>
+              <Button
+                onClick={handleChangeEmail}
+                disabled={isChangingEmail || !newEmail.trim()}
+                variant="outline"
+                className="w-full"
+              >
+                {isChangingEmail ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                    Odesílám...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Změnit e-mail
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Password Section */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                <Lock className="w-5 h-5 text-orange-500" />
+              </div>
+              <h2 className="text-lg font-semibold">Změna hesla</h2>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Aktuální heslo</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Zadejte aktuální heslo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Nové heslo</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimálně 6 znaků"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Potvrdit nové heslo</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Zopakujte nové heslo"
+                />
+              </div>
+              <Button
+                onClick={handleChangePassword}
+                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                variant="outline"
+                className="w-full"
+              >
+                {isChangingPassword ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                    Měním heslo...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Změnit heslo
                   </>
                 )}
               </Button>
