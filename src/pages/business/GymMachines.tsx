@@ -31,8 +31,6 @@ interface Machine {
   id: string;
   name: string;
   description: string | null;
-  target_muscles: string[];
-  equipment_type: string;
 }
 
 const GymMachines = () => {
@@ -53,7 +51,7 @@ const GymMachines = () => {
     const fetchMachines = async () => {
       const { data } = await supabase
         .from('machines')
-        .select('id, name, description, target_muscles, equipment_type')
+        .select('id, name, description')
         .order('name');
       
       if (data) {
@@ -250,14 +248,10 @@ const GymMachines = () => {
                       >
                         <CardContent className="py-3 px-4">
                           <h4 className="font-medium">{machine.name}</h4>
-                          {machine.target_muscles.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {machine.target_muscles.slice(0, 3).map((m) => (
-                                <Badge key={m} variant="secondary" className="text-xs">
-                                  {m}
-                                </Badge>
-                              ))}
-                            </div>
+                          {machine.description && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {machine.description}
+                            </p>
                           )}
                         </CardContent>
                       </Card>

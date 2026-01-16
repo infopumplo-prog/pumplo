@@ -54,9 +54,9 @@ const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymPr
 
   const isDrawer = variant === 'drawer';
 
-  // Group machines by equipment type
+  // Group machines - now without equipment_type
   const groupedMachines = machines.reduce((acc, gm) => {
-    const type = gm.machine?.equipment_type || 'Ostatní';
+    const type = 'Vybavení';
     if (!acc[type]) acc[type] = [];
     acc[type].push(gm);
     return acc;
