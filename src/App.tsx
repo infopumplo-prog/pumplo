@@ -16,6 +16,7 @@ import NotFound from "@/pages/NotFound";
 import Forbidden from "@/pages/Forbidden";
 import Dashboard from "@/pages/admin/Dashboard";
 import UsersManagement from "@/pages/admin/UsersManagement";
+import GymsManagement from "@/pages/admin/GymsManagement";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
 import ImportExercises from "@/pages/admin/ImportExercises";
@@ -128,6 +129,7 @@ const AppRoutes = () => (
     {/* Admin Routes */}
     <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
     <Route path="/admin/users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
+    <Route path="/admin/gyms" element={<AdminRoute><GymsManagement /></AdminRoute>} />
     <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
     <Route path="/admin/import" element={<AdminRoute><ImportExercises /></AdminRoute>} />
