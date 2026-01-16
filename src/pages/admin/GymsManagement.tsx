@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   Drawer,
   DrawerContent,
@@ -50,11 +50,12 @@ interface GymData {
 const ITEMS_PER_PAGE = 100;
 
 const GymsManagement = () => {
+  const navigate = useNavigate();
   const [gyms, setGyms] = useState<GymData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGym, setSelectedGym] = useState<GymData | null>(null);
-  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'create' | null>(null);
+  const [drawerMode, setDrawerMode] = useState<'view' | 'create' | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteGym, setDeleteGym] = useState<GymData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -122,14 +123,13 @@ const GymsManagement = () => {
   }, [searchTerm]);
 
   const handleViewGym = (gym: GymData) => {
-    setSelectedGym(gym);
-    setDrawerMode('view');
+    // Navigate to detail page instead of opening drawer
+    navigate(`/admin/gym/${gym.id}`);
   };
 
   const handleEditGym = (gym: GymData, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedGym(gym);
-    setDrawerMode('edit');
+    navigate(`/admin/gym/${gym.id}`);
   };
 
   const handleDeleteGym = (gym: GymData, e: React.MouseEvent) => {
@@ -367,48 +367,6 @@ const GymsManagement = () => {
             </div>
           </DrawerContent>
         </Drawer>
-
-        {/* Edit Drawer - simplified, just toggle publish for now */}
-        <Drawer open={drawerMode === 'edit'} onOpenChange={closeDrawer}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Upraviť posilovňu</DrawerTitle>
-            </DrawerHeader>
-            {selectedGym && (
-              <div className="px-4 pb-4 space-y-4">
-                <div className="flex items-center justify-between py-3 border-b">
-                  <div>
-                    <p className="font-medium">Zverejnená</p>
-                    <p className="text-sm text-muted-foreground">
-                      Posilovňa bude viditeľná na mape
-                    </p>
-                  </div>
-                  <Switch
-                    checked={selectedGym.is_published}
-                    onCheckedChange={async (checked) => {
-                      const { error } = await supabase
-                        .from('gyms')
-                        .update({ is_published: checked })
-                        .eq('id', selectedGym.id);
-                      
-                      if (!error) {
-                        toast.success(checked ? 'Posilovňa zverejnená' : 'Posilovňa skrytá');
-                        fetchGyms();
-                        closeDrawer();
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            <DrawerFooter>
-              <DrawerClose asChild>
-                <Button variant="outline">Zavrieť</Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-
         {/* Delete Confirmation */}
         <AlertDialog open={!!deleteGym} onOpenChange={() => setDeleteGym(null)}>
           <AlertDialogContent>
