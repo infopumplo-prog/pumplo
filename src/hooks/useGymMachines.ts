@@ -18,7 +18,7 @@ export const useGymMachines = (gymId: string | null) => {
         .from('gym_machines')
         .select(`
           *,
-          machine:machines(id, name, description, target_muscles, image_url, equipment_type)
+          machine:machines(id, name, description, image_url)
         `)
         .eq('gym_id', gymId);
 

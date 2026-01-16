@@ -29,24 +29,9 @@ interface Machine {
   id: string;
   name: string;
   description: string | null;
-  target_muscles: string[];
-  equipment_type: string;
   image_url: string | null;
   created_at: string;
 }
-
-const EQUIPMENT_TYPES = [
-  { value: 'machine', label: 'Stroj' },
-  { value: 'free_weight', label: 'Voľné váhy' },
-  { value: 'bodyweight', label: 'Vlastná váha' },
-  { value: 'cardio', label: 'Kardio' },
-  { value: 'accessory', label: 'Príslušenstvo' },
-];
-
-const MUSCLE_GROUPS = [
-  'chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms',
-  'core', 'legs', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'cardio',
-];
 
 const ITEMS_PER_PAGE = 100;
 
@@ -54,15 +39,12 @@ const MachinesManagement = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     name: '',
     description: '',
-    equipment_type: 'machine',
-    target_muscles: [] as string[],
   });
 
   const fetchMachines = async () => {
@@ -84,14 +66,12 @@ const MachinesManagement = () => {
     fetchMachines();
   }, []);
 
-  // Filter machines based on search and type
+  // Filter machines based on search
   const filteredMachines = useMemo(() => {
     return machines.filter((machine) => {
-      const matchesSearch = machine.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = filterType === 'all' || machine.equipment_type === filterType;
-      return matchesSearch && matchesType;
+      return machine.name.toLowerCase().includes(searchTerm.toLowerCase());
     });
-  }, [machines, searchTerm, filterType]);
+  }, [machines, searchTerm]);
 
   // Paginate filtered results
   const totalPages = Math.ceil(filteredMachines.length / ITEMS_PER_PAGE);
@@ -103,15 +83,13 @@ const MachinesManagement = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterType]);
+  }, [searchTerm]);
 
   const openAddDrawer = () => {
     setEditingMachine(null);
     setForm({
       name: '',
       description: '',
-      equipment_type: 'machine',
-      target_muscles: [],
     });
     setDrawerOpen(true);
   };
@@ -121,8 +99,6 @@ const MachinesManagement = () => {
     setForm({
       name: machine.name,
       description: machine.description || '',
-      equipment_type: machine.equipment_type,
-      target_muscles: machine.target_muscles || [],
     });
     setDrawerOpen(true);
   };
@@ -139,8 +115,6 @@ const MachinesManagement = () => {
         .update({
           name: form.name,
           description: form.description || null,
-          equipment_type: form.equipment_type,
-          target_muscles: form.target_muscles,
         })
         .eq('id', editingMachine.id);
 
@@ -153,8 +127,6 @@ const MachinesManagement = () => {
       const { error } = await supabase.from('machines').insert({
         name: form.name,
         description: form.description || null,
-        equipment_type: form.equipment_type,
-        target_muscles: form.target_muscles,
       });
 
       if (error) {
@@ -181,15 +153,6 @@ const MachinesManagement = () => {
     fetchMachines();
   };
 
-  const toggleMuscle = (muscle: string) => {
-    setForm((prev) => ({
-      ...prev,
-      target_muscles: prev.target_muscles.includes(muscle)
-        ? prev.target_muscles.filter((m) => m !== muscle)
-        : [...prev.target_muscles, muscle],
-    }));
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-4">
@@ -213,19 +176,6 @@ const MachinesManagement = () => {
               className="pl-10"
             />
           </div>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Typ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Všetky typy</SelectItem>
-              {EQUIPMENT_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Mobile Card List */}
@@ -240,16 +190,11 @@ const MachinesManagement = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{machine.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-muted">
-                        {EQUIPMENT_TYPES.find((t) => t.value === machine.equipment_type)?.label}
-                      </span>
-                      {machine.target_muscles.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {machine.target_muscles.length} sval(ov)
-                        </span>
-                      )}
-                    </div>
+                    {machine.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {machine.description}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -300,43 +245,6 @@ const MachinesManagement = () => {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                 />
-              </div>
-              <div>
-                <Label>Typ vybavenia</Label>
-                <Select
-                  value={form.equipment_type}
-                  onValueChange={(value) => setForm({ ...form, equipment_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EQUIPMENT_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Cieľové svaly</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {MUSCLE_GROUPS.map((muscle) => (
-                    <button
-                      key={muscle}
-                      type="button"
-                      onClick={() => toggleMuscle(muscle)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        form.target_muscles.includes(muscle)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      {muscle}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
             <DrawerFooter>

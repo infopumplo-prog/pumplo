@@ -65,8 +65,6 @@ interface GymMachine {
     id: string;
     name: string;
     description: string | null;
-    target_muscles: string[];
-    equipment_type: string;
   };
 }
 
@@ -74,8 +72,6 @@ interface Machine {
   id: string;
   name: string;
   description: string | null;
-  target_muscles: string[];
-  equipment_type: string;
 }
 
 const formSchema = z.object({
@@ -189,7 +185,7 @@ const AdminGymDetail = () => {
       // Fetch machines
       const { data: machinesData } = await supabase
         .from('gym_machines')
-        .select(`*, machine:machines(id, name, description, target_muscles, equipment_type)`)
+        .select(`*, machine:machines(id, name, description)`)
         .eq('gym_id', id);
 
       setGymMachines(machinesData as GymMachine[] || []);
@@ -197,7 +193,7 @@ const AdminGymDetail = () => {
       // Fetch all machines for selection
       const { data: allMachinesData } = await supabase
         .from('machines')
-        .select('id, name, description, target_muscles, equipment_type')
+        .select('id, name, description')
         .order('name');
 
       setAllMachines(allMachinesData || []);
@@ -358,7 +354,7 @@ const AdminGymDetail = () => {
     // Refresh machines
     const { data: machinesData } = await supabase
       .from('gym_machines')
-      .select(`*, machine:machines(id, name, description, target_muscles, equipment_type)`)
+      .select(`*, machine:machines(id, name, description)`)
       .eq('gym_id', gym.id);
 
     setGymMachines(machinesData as GymMachine[] || []);
@@ -391,7 +387,7 @@ const AdminGymDetail = () => {
     // Refresh machines
     const { data: machinesData } = await supabase
       .from('gym_machines')
-      .select(`*, machine:machines(id, name, description, target_muscles, equipment_type)`)
+      .select(`*, machine:machines(id, name, description)`)
       .eq('gym_id', gym!.id);
 
     setGymMachines(machinesData as GymMachine[] || []);
@@ -747,12 +743,10 @@ const AdminGymDetail = () => {
                       >
                         <CardContent className="py-3 px-4">
                           <h4 className="font-medium">{machine.name}</h4>
-                          {machine.target_muscles.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {machine.target_muscles.slice(0, 3).map((m) => (
-                                <Badge key={m} variant="secondary" className="text-xs">{m}</Badge>
-                              ))}
-                            </div>
+                          {machine.description && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {machine.description}
+                            </p>
                           )}
                         </CardContent>
                       </Card>
