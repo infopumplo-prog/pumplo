@@ -17,6 +17,9 @@ const ImportExercises = () => {
     const worksheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
     
+    console.log("Raw data sample:", rawData[0]);
+    console.log("Total raw rows:", rawData.length);
+    
     // Only accept known exercise columns
     const validColumns = [
       'name', 'category', 'primary_muscles', 'secondary_muscles', 
@@ -24,7 +27,7 @@ const ImportExercises = () => {
       'exercise_with_weights', 'video_path', 'allowed_phase'
     ];
     
-    return rawData
+    const parsed = rawData
       .map((row) => {
         const obj: Record<string, unknown> = {};
         
@@ -34,13 +37,15 @@ const ImportExercises = () => {
             return;
           }
           
-          const strValue = String(value || "");
+          const strValue = String(value ?? "");
           
-          // Array fields - parse JSON arrays
+          // Array fields - parse JSON arrays (handle escaped quotes)
           if (["primary_muscles", "secondary_muscles"].includes(header)) {
             try {
-              if (strValue && strValue.startsWith("[")) {
-                obj[header] = JSON.parse(strValue);
+              // Clean up the string - remove backslashes from escaped underscores
+              const cleanValue = strValue.replace(/\\_/g, '_');
+              if (cleanValue && (cleanValue.startsWith("[") || cleanValue.startsWith("["))) {
+                obj[header] = JSON.parse(cleanValue);
               } else {
                 obj[header] = [];
               }
@@ -51,7 +56,7 @@ const ImportExercises = () => {
           } 
           // Boolean fields
           else if (header === "exercise_with_weights") {
-            obj[header] = strValue.toLowerCase() === "true";
+            obj[header] = strValue.toUpperCase() === "TRUE";
           }
           // Number fields
           else if (header === "difficulty") {
@@ -77,7 +82,7 @@ const ImportExercises = () => {
           else if (header === "video_path") {
             obj[header] = strValue ? strValue.toLowerCase() : null;
           }
-          // Other string fields
+          // Other string fields (name, category)
           else {
             obj[header] = strValue || null;
           }
@@ -87,6 +92,11 @@ const ImportExercises = () => {
       })
       // Filter out rows without a valid name (empty rows)
       .filter((row) => row.name && String(row.name).trim().length > 0);
+    
+    console.log("Parsed exercises sample:", parsed[0]);
+    console.log("Total parsed exercises:", parsed.length);
+    
+    return parsed;
   };
 
   const handleImport = async () => {
