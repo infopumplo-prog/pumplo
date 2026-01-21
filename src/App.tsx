@@ -20,8 +20,8 @@ import GymsManagement from "@/pages/admin/GymsManagement";
 import AdminGymDetail from "@/pages/admin/AdminGymDetail";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
-import ImportExercises from "@/pages/admin/ImportExercises";
-import ImportMachines from "@/pages/admin/ImportMachines";
+import ExerciseSkipFeedback from "@/pages/admin/ExerciseSkipFeedback";
+import AppFeedbackList from "@/pages/admin/AppFeedbackList";
 import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
@@ -137,8 +137,8 @@ const AppRoutes = () => (
     <Route path="/admin/gym/:id" element={<AdminRoute><AdminGymDetail /></AdminRoute>} />
     <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
-    <Route path="/admin/import-exercises" element={<AdminRoute><ImportExercises /></AdminRoute>} />
-    <Route path="/admin/import-machines" element={<AdminRoute><ImportMachines /></AdminRoute>} />
+    <Route path="/admin/feedback/skipped" element={<AdminRoute><ExerciseSkipFeedback /></AdminRoute>} />
+    <Route path="/admin/feedback/app" element={<AdminRoute><AppFeedbackList /></AdminRoute>} />
     
     {/* Business Routes - share GymProvider via BusinessLayout */}
     <Route element={<BusinessLayout />}>
