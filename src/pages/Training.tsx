@@ -117,12 +117,18 @@ const Training = () => {
   
   // User's training days - use plan's stored training_days if available, otherwise fall back to profile
   // This ensures that changing onboarding settings won't affect the current active plan
+  // CRITICAL: Only use profile.training_days if there's NO active plan
   const trainingDays = useMemo(() => {
-    // First priority: use training_days stored in the plan at creation time
-    const days = plan?.trainingDays || profile?.training_days || [];
-    // Sort by day order
+    // If we have an active plan, ALWAYS use its snapshotted training_days
+    // Only fall back to profile when there's no plan at all
+    if (plan) {
+      const planDays = plan.trainingDays || [];
+      return [...planDays].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+    }
+    // No plan - use profile training days (for goal selection screen, etc.)
+    const days = profile?.training_days || [];
     return [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
-  }, [plan?.trainingDays, profile?.training_days]);
+  }, [plan, profile?.training_days]);
   
   const trainingFrequency = trainingDays.length || 3;
 
