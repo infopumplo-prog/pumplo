@@ -123,9 +123,9 @@ const ImportExercises = () => {
           else if (header === "equipment_type") {
             obj[header] = strValue && strValue.length > 0 ? strValue : "bodyweight";
           }
-          // Video path - lowercase
+          // Video path - keep as-is
           else if (header === "video_path") {
-            obj[header] = strValue ? strValue.toLowerCase() : null;
+            obj[header] = strValue || null;
           }
           // Other string fields (name, category)
           else {
