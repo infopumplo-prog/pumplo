@@ -72,7 +72,7 @@ export const useWorkoutPlan = () => {
         .from('user_workout_exercises')
         .select(`
           *,
-          exercises (id, name, description, video_path, equipment, machine_id, machines (name))
+          exercises (id, name, video_path, machine_id, machines (name))
         `)
         .eq('plan_id', planData.id)
         .order('day_letter')
