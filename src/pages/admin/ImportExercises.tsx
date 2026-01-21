@@ -27,7 +27,7 @@ const ImportExercises = () => {
     'cyclical_pull', 'cyclical_push', 'full_body_pull'
   ];
 
-  const parseXLSX = async (arrayBuffer: ArrayBuffer) => {
+  const parseXLSX = async (arrayBuffer: ArrayBuffer, validMachineIds: Set<string>) => {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
@@ -88,10 +88,15 @@ const ImportExercises = () => {
           else if (header === "difficulty") {
             obj[header] = parseInt(strValue) || 5;
           } 
-          // Nullable UUID fields - validate UUID format
+          // Nullable UUID fields - validate UUID format AND existence in machines table
           else if (header === "machine_id") {
             if (strValue && strValue.length > 0 && isValidUUID(strValue)) {
-              obj[header] = strValue;
+              if (validMachineIds.has(strValue)) {
+                obj[header] = strValue;
+              } else {
+                console.warn(`Machine ID not found in database: ${strValue}`);
+                obj[header] = null;
+              }
             } else {
               if (strValue && strValue.length > 0) {
                 console.warn(`Invalid UUID for machine_id: ${strValue}`);
@@ -182,10 +187,23 @@ const ImportExercises = () => {
         throw new Error(`Failed to fetch: ${response.status}`);
       }
       
+      // Fetch valid machine IDs from database
+      console.log("Fetching valid machine IDs...");
+      const { data: machines, error: machinesError } = await supabase
+        .from('machines')
+        .select('id');
+      
+      if (machinesError) {
+        throw new Error(`Failed to fetch machines: ${machinesError.message}`);
+      }
+      
+      const validMachineIds = new Set(machines?.map(m => m.id) || []);
+      console.log(`Found ${validMachineIds.size} valid machine IDs`);
+      
       const arrayBuffer = await response.arrayBuffer();
       console.log("ArrayBuffer size:", arrayBuffer.byteLength);
       
-      const exercises = await parseXLSX(arrayBuffer);
+      const exercises = await parseXLSX(arrayBuffer, validMachineIds);
       
       console.log(`Sending ${exercises.length} exercises to edge function`);
       
