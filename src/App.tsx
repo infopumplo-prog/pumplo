@@ -25,6 +25,7 @@ import ImportMachines from "@/pages/admin/ImportMachines";
 import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
+import GymStats from "@/pages/business/GymStats";
 import Training from "@/pages/Training";
 import WorkoutHistory from "@/pages/WorkoutHistory";
 import Install from "@/pages/Install";
@@ -143,6 +144,7 @@ const AppRoutes = () => (
     <Route element={<BusinessLayout />}>
       <Route path="/business" element={<GymDashboard />} />
       <Route path="/business/machines" element={<GymMachines />} />
+      <Route path="/business/stats" element={<GymStats />} />
       <Route path="/business/settings" element={<GymSettings />} />
     </Route>
     

@@ -79,16 +79,20 @@ const MyPlanSection = () => {
     navigate('/training');
   };
 
-  const weekProgress = goalInfo 
-    ? ((plan?.currentDayIndex || 0) / (goalInfo.duration_weeks * goalInfo.day_count)) * 100
+  // Use snapshotted training_days from the plan (stable, not affected by profile changes)
+  const trainingDays = plan?.trainingDays || [];
+
+  // Week progress calculation - use actual training days per week (not day_count which is workout types)
+  const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
+  const totalPlanDays = (goalInfo?.duration_weeks || 8) * trainingDaysCount;
+  
+  const weekProgress = plan 
+    ? ((plan.currentDayIndex || 0) / totalPlanDays) * 100
     : 0;
 
   const currentWeek = plan 
     ? Math.floor((plan.currentDayIndex || 0) / (goalInfo?.day_count || 2)) + 1
     : 1;
-
-  // Use snapshotted training_days from the plan (stable, not affected by profile changes)
-  const trainingDays = plan?.trainingDays || [];
   
   // Adjust display index if workout was completed today
   const adjustedDisplayIndex = wasCompletedToday && plan

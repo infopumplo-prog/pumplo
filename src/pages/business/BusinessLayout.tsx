@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Building2, Dumbbell, ArrowLeft, Loader2, Settings } from 'lucide-react';
+import { Building2, Dumbbell, ArrowLeft, Loader2, Settings, BarChart3 } from 'lucide-react';
 
 interface BusinessLayoutProps {
   children: ReactNode;
@@ -25,9 +25,10 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
   }
 
   const navItems = [
-    { path: '/business', icon: Building2, label: 'Posilňovňa' },
+    { path: '/business', icon: Building2, label: 'Posilovna' },
     { path: '/business/machines', icon: Dumbbell, label: 'Stroje' },
-    { path: '/business/settings', icon: Settings, label: 'Nastavenia' },
+    { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
+    { path: '/business/settings', icon: Settings, label: 'Nastavení' },
   ];
 
   return (

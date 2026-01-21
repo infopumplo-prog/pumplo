@@ -77,14 +77,13 @@ const Home = () => {
 
   const today = getCurrentWeekday();
 
-  // Week progress calculation
-  const goalInfo = plan ? {
-    duration_weeks: 8, // default
-    day_count: plan.dayCount
-  } : null;
-
-  const weekProgress = goalInfo 
-    ? ((plan?.currentDayIndex || 0) / (goalInfo.duration_weeks * goalInfo.day_count)) * 100
+  // Week progress calculation - use actual training days per week
+  const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
+  const goalDurationWeeks = 8; // default
+  const totalPlanDays = goalDurationWeeks * trainingDaysCount;
+  
+  const weekProgress = plan 
+    ? ((plan.currentDayIndex || 0) / totalPlanDays) * 100
     : 0;
 
   const currentWeek = plan 

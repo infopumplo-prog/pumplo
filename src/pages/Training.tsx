@@ -28,6 +28,8 @@ import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer'
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { isGymCurrentlyOpen } from '@/lib/gymUtils';
+import { OpeningHours } from '@/hooks/useGym';
 
 interface TrainingGoalOption {
   id: string;
@@ -788,8 +790,30 @@ const Training = () => {
     autoGenerateExercises();
   }, [plan?.id, profile?.selected_gym_id, profile?.user_level, generatedExercises.length]);
 
+  // State for gym closed warning
+  const [showGymClosedWarning, setShowGymClosedWarning] = useState(false);
+  const [closedGymName, setClosedGymName] = useState<string>('');
+
   // Open workout preview instead of directly starting
-  const handleStartWorkout = () => {
+  const handleStartWorkout = async () => {
+    // Check if selected gym is open before starting
+    if (profile?.selected_gym_id) {
+      const { data: gymData } = await supabase
+        .from('gyms')
+        .select('opening_hours, name')
+        .eq('id', profile.selected_gym_id)
+        .single();
+      
+      if (gymData?.opening_hours) {
+        const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
+        if (!isOpen) {
+          setClosedGymName(gymData.name || 'Vybraná posilovna');
+          setShowGymClosedWarning(true);
+          return;
+        }
+      }
+    }
+
     if (currentExercises.length > 0 && plan?.gymId) {
       setGeneratedExercises(currentExercises);
       setSelectedWorkoutGymId(plan.gymId);
@@ -2045,6 +2069,39 @@ const Training = () => {
                     Pokračovat v tréninku
                   </>
                 )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Gym Closed Warning Dialog */}
+        <AlertDialog open={showGymClosedWarning} onOpenChange={setShowGymClosedWarning}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Posilovna je zavřená
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  <strong>{closedGymName}</strong> je momentálně zavřená. Nemůžeš začít trénink.
+                </p>
+                <p className="text-sm">
+                  Můžeš vybrat jinou posilovnu nebo počkat na otevírací dobu.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel>Zavřít</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  setShowGymClosedWarning(false);
+                  navigate('/map');
+                }}
+                className="gap-2"
+              >
+                <MapPin className="w-4 h-4" />
+                Vybrat jinou posilovnu
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
