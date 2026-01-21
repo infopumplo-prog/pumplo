@@ -19,9 +19,12 @@ const ImportExercises = () => {
 
   // Valid training roles from database
   const validRoles = [
-    'biceps_isolation', 'calf_isolation', 'core_anti_extension', 'core_rotation',
-    'hip_dominant', 'horizontal_pull', 'horizontal_push', 'knee_dominant',
-    'single_leg_lower', 'triceps_isolation', 'vertical_pull', 'vertical_push'
+    'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull',
+    'elbow_flexion', 'elbow_extension', 'shoulder_abduction', 'shoulder_adduction',
+    'shoulder_external_rotation', 'shoulder_internal_rotation',
+    'squat', 'hinge', 'lunge', 'step', 'jump',
+    'anti_extension', 'anti_flexion', 'anti_rotation', 'rotation', 'lateral_flexion',
+    'cyclical_pull', 'cyclical_push', 'full_body_pull'
   ];
 
   const parseXLSX = async (arrayBuffer: ArrayBuffer) => {
@@ -129,6 +132,37 @@ const ImportExercises = () => {
       })
       // Filter out rows without a valid name (empty rows)
       .filter((row) => row.name && String(row.name).trim().length > 0);
+    
+    // Log validation issues
+    const invalidRows = dataRows.filter((row: unknown[], index: number) => {
+      const nameIndex = headers.indexOf('name');
+      const name = row[nameIndex];
+      return !name || String(name).trim().length === 0;
+    });
+    
+    if (invalidRows.length > 0) {
+      console.warn(`Skipped ${invalidRows.length} rows without valid name`);
+    }
+    
+    // Log invalid primary_roles
+    const roleIndex = headers.indexOf('primary_role');
+    const invalidRoles = dataRows
+      .map((row: unknown[]) => row[roleIndex])
+      .filter((role) => role && !validRoles.includes(String(role)));
+    const uniqueInvalidRoles = [...new Set(invalidRoles.map(String))];
+    if (uniqueInvalidRoles.length > 0) {
+      console.warn(`Invalid primary_role values found (will be set to null):`, uniqueInvalidRoles);
+    }
+    
+    // Log invalid UUIDs
+    const machineIdIndex = headers.indexOf('machine_id');
+    const invalidUUIDs = dataRows
+      .map((row: unknown[]) => row[machineIdIndex])
+      .filter((id) => id && String(id).length > 0 && !isValidUUID(String(id)));
+    const uniqueInvalidUUIDs = [...new Set(invalidUUIDs.map(String))];
+    if (uniqueInvalidUUIDs.length > 0) {
+      console.warn(`Invalid machine_id UUIDs found (will be set to null):`, uniqueInvalidUUIDs);
+    }
     
     console.log("Parsed exercises sample:", parsed[0]);
     console.log("Total parsed exercises:", parsed.length);
