@@ -130,20 +130,74 @@ const Training = () => {
     return availableGoals.find(g => g.id === plan.goalId) || null;
   }, [plan, availableGoals]);
 
-  const totalWeeks = goalInfo?.duration_weeks || 8;
   const workoutTypes = plan?.dayCount || 2; // A, B or A, B, C
-  const totalDaysInPlan = totalWeeks * trainingFrequency;
+
+  // Get plan start date to determine first week skipped days
+  const planStartDate = useMemo(() => {
+    if (!plan) return null;
+    if (plan.startedAt) {
+      return new Date(plan.startedAt);
+    }
+    return new Date();
+  }, [plan]);
+
+  // Calculate which training days were skipped in first week (before plan start)
+  const firstWeekSkippedDays = useMemo(() => {
+    if (!planStartDate || trainingDays.length === 0) return [];
+    
+    const jsDay = planStartDate.getDay();
+    const planStartWeekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][jsDay];
+    const planStartDayOrder = DAY_ORDER.indexOf(planStartWeekday);
+    
+    // Get training days that fall BEFORE the plan start day
+    return trainingDays.filter(day => {
+      const dayOrder = DAY_ORDER.indexOf(day);
+      return dayOrder < planStartDayOrder;
+    });
+  }, [planStartDate, trainingDays]);
+
+  // Effective training days in first week (excluding skipped days)
+  const firstWeekEffectiveDays = useMemo(() => {
+    return trainingDays.filter(day => !firstWeekSkippedDays.includes(day));
+  }, [trainingDays, firstWeekSkippedDays]);
+
+  // Calculate total weeks with shifted days logic
+  // First week has fewer days, last week has additional days from first week
+  const effectiveFirstWeekDayCount = firstWeekEffectiveDays.length;
+  const skippedDaysCount = firstWeekSkippedDays.length;
+  
+  // Total training days = (totalWeeks - 1) * full weeks + first week effective + last week additional
+  // But since skipped days move to last week, total training days stay the same
+  const totalDaysInPlan = (goalInfo?.duration_weeks || 8) * trainingFrequency;
+  
+  // Calculate total weeks - if first week is partial and last week gets extra days
+  // For display: totalWeeks stays same but last week shows extra days
+  const totalWeeks = goalInfo?.duration_weeks || 8;
 
   // Current week and day based on current_day_index
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
-    return Math.floor((plan.currentDayIndex || 0) / trainingFrequency) + 1;
-  }, [plan, trainingFrequency]);
+    const completedDays = plan.currentDayIndex || 0;
+    
+    // Week 1 has effectiveFirstWeekDayCount days
+    if (completedDays < effectiveFirstWeekDayCount) return 1;
+    
+    // Remaining weeks have trainingFrequency days each
+    const daysAfterFirstWeek = completedDays - effectiveFirstWeekDayCount;
+    return 2 + Math.floor(daysAfterFirstWeek / trainingFrequency);
+  }, [plan, effectiveFirstWeekDayCount, trainingFrequency]);
 
   const currentDayInWeek = useMemo(() => {
     if (!plan) return 0;
-    return (plan.currentDayIndex || 0) % trainingFrequency;
-  }, [plan, trainingFrequency]);
+    const completedDays = plan.currentDayIndex || 0;
+    
+    if (completedDays < effectiveFirstWeekDayCount) {
+      return completedDays;
+    }
+    
+    const daysAfterFirstWeek = completedDays - effectiveFirstWeekDayCount;
+    return daysAfterFirstWeek % trainingFrequency;
+  }, [plan, effectiveFirstWeekDayCount, trainingFrequency]);
 
   // Initialize viewing week to current week
   useEffect(() => {
@@ -217,17 +271,7 @@ const Training = () => {
       sessionDate.getDate() === now.getDate();
   });
   
-  // Get plan start date to determine first week skipped days
-  // Use the plan's started_at date from the database
-  const planStartDate = useMemo(() => {
-    if (!plan) return null;
-    // Use the plan's official start date from database
-    if (plan.startedAt) {
-      return new Date(plan.startedAt);
-    }
-    // Fallback: use today if no started_at (shouldn't happen)
-    return new Date();
-  }, [plan]);
+  // planStartDate is already defined above in the shifted-week logic section
   
   // Check streak on page load (only once)
   useEffect(() => {
@@ -304,17 +348,52 @@ const Training = () => {
   const todayDayOrder = DAY_ORDER.indexOf(todayWeekday);
 
   // Get days for viewing week with proper workout letter rotation
+  // Implements shifted week logic: 
+  // - Week 1: Only show days from plan start onwards (skip days before)
+  // - Last week: Add the skipped days from week 1
   const daysInViewingWeek = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
     
     const workoutLetters = getAllDayLetters(workoutTypes);
+    const isFirstWeek = viewingWeek === 1;
+    const isLastWeek = viewingWeek === totalWeeks;
     
-    // First pass: calculate base properties
-    const daysWithBaseProps = trainingDays.map((dayOfWeek, indexInWeek) => {
-      const globalDayIndex = (viewingWeek - 1) * trainingFrequency + indexInWeek;
+    // Determine which days to show in this week
+    let daysToShow: string[];
+    
+    if (isFirstWeek) {
+      // Week 1: Only show days from plan start onwards (hide skipped days)
+      daysToShow = firstWeekEffectiveDays;
+    } else if (isLastWeek && skippedDaysCount > 0) {
+      // Last week: Show regular training days + skipped days from first week
+      daysToShow = [...trainingDays, ...firstWeekSkippedDays];
+    } else {
+      // Normal weeks: Show all training days
+      daysToShow = trainingDays;
+    }
+    
+    // Calculate base properties for each day
+    const daysWithBaseProps = daysToShow.map((dayOfWeek, indexInWeek) => {
+      // For split calculation, we need the EFFECTIVE global day index
+      // Week 1 starts at 0, week 2 starts at firstWeekEffectiveDays, etc.
+      let effectiveGlobalIndex: number;
+      
+      if (isFirstWeek) {
+        effectiveGlobalIndex = indexInWeek;
+      } else if (isLastWeek && firstWeekSkippedDays.includes(dayOfWeek)) {
+        // Skipped days in last week: these are the LAST days of the entire plan
+        const regularDaysBeforeLastWeek = effectiveFirstWeekDayCount + (totalWeeks - 2) * trainingFrequency;
+        const regularDaysInLastWeek = trainingFrequency;
+        const skippedDayIndex = firstWeekSkippedDays.indexOf(dayOfWeek);
+        effectiveGlobalIndex = regularDaysBeforeLastWeek + regularDaysInLastWeek + skippedDayIndex;
+      } else {
+        // Normal calculation for other weeks
+        const daysBeforeThisWeek = effectiveFirstWeekDayCount + (viewingWeek - 2) * trainingFrequency;
+        effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
+      }
       
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
-      const workoutLetter = workoutLetters[globalDayIndex % workoutTypes];
+      const workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
       
       // Check if this day is completed (non-bonus) - match by week and dayOfWeek
       const completedSession = regularCompletedWorkouts.find(w => 
@@ -336,25 +415,16 @@ const Training = () => {
       const isFuture = viewingWeek > currentWeek || 
         (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Check if this day is in the first week and before the plan started
-      // (e.g., user started on Tuesday but Monday was a training day)
-      const isFirstWeekSkip = viewingWeek === 1 && planStartDate && (() => {
-        // Convert JS getDay() (0=Sunday) to our DAY_ORDER (monday-first)
-        const jsDay = planStartDate.getDay();
-        const planStartWeekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][jsDay];
-        const planStartDayOrder = DAY_ORDER.indexOf(planStartWeekday);
-        // If plan started on Sunday (not in DAY_ORDER as first), handle edge case
-        if (planStartDayOrder === -1) return false;
-        return dayOrderIndex < planStartDayOrder;
-      })();
+      // Is this a "shifted" day (one of the days from first week that appears in last week)?
+      const isShiftedDay = isLastWeek && firstWeekSkippedDays.includes(dayOfWeek);
       
-      // Is this day missed? (past, not completed, but NOT a first-week skip)
-      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted && !isFirstWeekSkip;
+      // Is this day missed? (past, not completed, not shifted)
+      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted && !isShiftedDay;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
       
-      // Get day template info
+      // Get day template info - shows split name (e.g., "Push", "Pull & Ramena")
       const dayInfo = plan.allDays?.find(d => d.dayLetter === workoutLetter);
       
       return {
@@ -363,25 +433,27 @@ const Training = () => {
         dayName: DAY_NAMES_CZ[dayOfWeek] || dayOfWeek,
         dayNameShort: DAY_NAMES_SHORT_CZ[dayOfWeek] || dayOfWeek.slice(0, 2),
         workoutLetter,
-        workoutName: dayInfo?.dayName || `Den ${workoutLetter}`,
+        // Show split name, NOT "Den A" - use dayName from template
+        workoutName: dayInfo?.dayName || `Trénink ${workoutLetter}`,
         isCompleted,
         isCurrentDay,
         isToday,
         isFuture,
         isPast: isPastThisWeek || isWeekInPast,
         isMissed,
-        isFirstWeekSkip: isFirstWeekSkip || false,
-        globalDayIndex,
+        isFirstWeekSkip: false, // No longer used - days are hidden, not shown as skipped
+        isShiftedDay,
+        globalDayIndex: effectiveGlobalIndex,
         sessionId: completedSession?.sessionId || null,
         isUpcoming: false // Will be set in second pass
       };
     });
     
-    // Second pass: find the first upcoming day (future, not completed, not skipped)
+    // Second pass: find the first upcoming day (future, not completed)
     // Only mark upcoming if we're viewing the current week
     if (viewingWeek === currentWeek) {
       const upcomingIndex = daysWithBaseProps.findIndex(day => 
-        day.isFuture && !day.isCompleted && !day.isFirstWeekSkip
+        day.isFuture && !day.isCompleted
       );
       if (upcomingIndex !== -1) {
         daysWithBaseProps[upcomingIndex].isUpcoming = true;
@@ -389,7 +461,7 @@ const Training = () => {
     }
     
     return daysWithBaseProps;
-  }, [plan, viewingWeek, currentWeek, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, planStartDate]);
+  }, [plan, viewingWeek, currentWeek, totalWeeks, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, firstWeekEffectiveDays, firstWeekSkippedDays, skippedDaysCount, effectiveFirstWeekDayCount]);
 
   // Fetch available goals
   useEffect(() => {
@@ -894,24 +966,32 @@ const Training = () => {
 
   // Fetch history exercises when selecting a completed day
   useEffect(() => {
+    // Early exit to prevent unnecessary re-renders
+    if (selectedDayIndex === null) {
+      if (historyExercises.length > 0) {
+        setHistoryExercises([]);
+      }
+      return;
+    }
+    
+    const day = daysInViewingWeek[selectedDayIndex];
+    if (!day || !day.isCompleted || !day.sessionId) {
+      if (historyExercises.length > 0) {
+        setHistoryExercises([]);
+      }
+      return;
+    }
+    
+    // Use sessionId as stable identifier to prevent re-fetching
+    const sessionId = day.sessionId;
+    
     const fetchHistoryExercises = async () => {
-      if (selectedDayIndex === null) {
-        setHistoryExercises([]);
-        return;
-      }
-      
-      const day = daysInViewingWeek[selectedDayIndex];
-      if (!day || !day.isCompleted || !day.sessionId) {
-        setHistoryExercises([]);
-        return;
-      }
-      
       setIsLoadingHistory(true);
       
       const { data } = await supabase
         .from('workout_session_sets')
         .select('exercise_name, set_number, reps, weight_kg')
-        .eq('session_id', day.sessionId)
+        .eq('session_id', sessionId)
         .order('exercise_name')
         .order('set_number');
       
@@ -940,7 +1020,9 @@ const Training = () => {
     };
     
     fetchHistoryExercises();
-  }, [selectedDayIndex, daysInViewingWeek]);
+  // Only depend on selectedDayIndex and the sessionId of the selected day
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDayIndex, daysInViewingWeek[selectedDayIndex]?.sessionId]);
 
   // Active workout view
   if (isWorkoutActive && (generatedExercises.length > 0 || extendedExercises.length > 0)) {
@@ -1320,8 +1402,8 @@ const Training = () => {
                 "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
                 day.isCompleted
                   ? "bg-green-500/10 border-green-500/50"
-                  : day.isFirstWeekSkip
-                    ? "bg-muted/20 border-border/30"
+                  : day.isShiftedDay && day.isFuture
+                    ? "bg-blue-500/10 border-blue-500/30"
                     : day.isMissed
                       ? "bg-destructive/10 border-destructive/50"
                       : day.isToday && isViewingCurrentWeek
@@ -1341,8 +1423,8 @@ const Training = () => {
                 "w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold shrink-0",
                 day.isCompleted
                   ? "bg-green-500 text-white"
-                  : day.isFirstWeekSkip
-                    ? "bg-muted text-muted-foreground"
+                  : day.isShiftedDay && day.isFuture
+                    ? "bg-blue-500 text-white"
                     : day.isMissed
                       ? "bg-destructive text-destructive-foreground"
                       : day.isToday && isViewingCurrentWeek
@@ -1353,8 +1435,6 @@ const Training = () => {
               )}>
                 {day.isCompleted ? (
                   <Check className="w-5 h-5" />
-                ) : day.isFirstWeekSkip ? (
-                  <Minus className="w-5 h-5" />
                 ) : day.isMissed ? (
                   <X className="w-5 h-5" />
                 ) : (
@@ -1402,8 +1482,8 @@ const Training = () => {
               <div className="shrink-0">
                 {day.isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
-                ) : day.isFirstWeekSkip ? (
-                  <span className="text-[10px] font-medium text-muted-foreground">Přeskočeno</span>
+                ) : day.isShiftedDay && day.isFuture ? (
+                  <span className="text-[10px] font-medium text-blue-500">Dopl.</span>
                 ) : day.isMissed ? (
                   <span className="text-[10px] font-medium text-destructive">Vynecháno</span>
                 ) : day.isFuture ? (
@@ -1471,9 +1551,9 @@ const Training = () => {
                         <p className="text-sm text-destructive/70">
                           Tento trénink byl vynechán
                         </p>
-                      ) : day.isFirstWeekSkip ? (
-                        <p className="text-sm text-muted-foreground">
-                          Tento den byl přeskočen - plán začal později
+                      ) : day.isShiftedDay && day.isFuture ? (
+                        <p className="text-sm text-blue-500/70">
+                          Doplnkový trénink z prvého týždňa
                         </p>
                       ) : day.isFuture ? (
                         <p className="text-sm text-muted-foreground">

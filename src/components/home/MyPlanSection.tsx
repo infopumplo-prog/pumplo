@@ -90,21 +90,19 @@ const MyPlanSection = () => {
   // Get training days from profile
   const trainingDays = profile?.training_days || [];
   
-  // If workout was completed today, we need to show the schedule as it was BEFORE the index was advanced
-  // This means using currentDayIndex - 1 for display purposes when workout is done today
-  const displayDayIndex = wasCompletedToday 
-    ? Math.max(0, (plan?.currentDayIndex || 0) - 1) 
-    : (plan?.currentDayIndex || 0);
-  
-  // Wrap around if we went negative (edge case: was at 0, completed, now at dayCount-1... wait, that's not right)
-  // Actually after completing day 0, index becomes 1. So to show "as it was", we use index - 1 = 0. Correct.
-  // But if index was 0 and we subtract 1, we get -1. We need to wrap: (index - 1 + dayCount) % dayCount
+  // Adjust display index if workout was completed today
   const adjustedDisplayIndex = wasCompletedToday && plan
     ? (plan.currentDayIndex - 1 + plan.dayCount) % plan.dayCount
     : (plan?.currentDayIndex || 0);
   
   // Get schedule with proper day rotation (use adjusted index if completed today)
   const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, adjustedDisplayIndex) : [];
+  
+  // Map day letters to day names from allDays (shows split name, e.g., "Push", "Pull & Ramena")
+  const getDayName = (dayLetter: string) => {
+    const dayTemplate = plan?.allDays?.find(d => d.dayLetter === dayLetter);
+    return dayTemplate?.dayName || `Trénink ${dayLetter}`;
+  };
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
@@ -244,9 +242,8 @@ const MyPlanSection = () => {
             const isNextUp = index === 0;
             const isCompletedToday = isCurrentDay && completedTodayDayLetter === day.dayLetter;
             
-            // Get day name from allDays if available
-            const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
-            const dayTypeName = dayTemplate?.dayName || '';
+            // Get split name from allDays - use getDayName helper
+            const splitName = getDayName(day.dayLetter);
             
             return (
               <motion.button
@@ -288,12 +285,12 @@ const MyPlanSection = () => {
                       )}>
                         {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
                       </h4>
-                      {dayTypeName && (
+                      {splitName && (
                         <p className={cn(
                           "text-xs",
                           isCompletedToday ? "text-green-600/70" : "text-muted-foreground"
                         )}>
-                          {dayTypeName}
+                          {splitName}
                         </p>
                       )}
                     </div>
