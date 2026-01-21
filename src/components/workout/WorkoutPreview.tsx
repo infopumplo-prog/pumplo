@@ -61,21 +61,21 @@ export const WorkoutPreview = ({
 
       {/* Exercise list */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-2">
+        <div className="px-4 py-4 space-y-2 overflow-hidden">
           {exercises.map((ex, idx) => (
             <motion.div
               key={ex.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="flex items-center gap-3 py-3 px-4 rounded-xl bg-muted/50 border border-border/50"
+              className="flex items-center gap-3 py-3 px-3 rounded-xl bg-muted/50 border border-border/50 overflow-hidden"
             >
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                 <span className="font-bold text-sm text-primary">{idx + 1}</span>
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="font-medium text-sm truncate">{ex.exerciseName}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground truncate">
                   {ex.sets} sérií × {ex.repMin}-{ex.repMax} opak.
                 </p>
               </div>
