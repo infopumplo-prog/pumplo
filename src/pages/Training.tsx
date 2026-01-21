@@ -350,71 +350,53 @@ const Training = () => {
   // Get days for viewing week with proper workout letter rotation
   // Implements shifted week logic: 
   // - Week 1: Only show days from plan start onwards (skip days before)
-  // - Last week: Add the skipped days from week 1
+  // - Week after last (totalWeeks + 1): Add the skipped days from week 1
   const daysInViewingWeek = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
     
     const workoutLetters = getAllDayLetters(workoutTypes);
     const isFirstWeek = viewingWeek === 1;
-    const isLastWeek = viewingWeek === totalWeeks;
+    // Extra week only exists if there are skipped days from week 1
+    const isExtraWeek = skippedDaysCount > 0 && viewingWeek === totalWeeks + 1;
     
     // Build the list of days to show in this week
-    // IMPORTANT: Use a structure that tracks whether each day is a "shifted" day
-    interface DayToShow {
-      dayOfWeek: string;
-      isShiftedDay: boolean;
-    }
-    
-    let daysToShow: DayToShow[] = [];
+    let daysToShow: string[] = [];
     
     if (isFirstWeek) {
       // Week 1: Only show days from plan start onwards (hide skipped days)
-      daysToShow = firstWeekEffectiveDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
-    } else if (isLastWeek && skippedDaysCount > 0) {
-      // Last week: Show regular training days + skipped days from first week
-      // Regular days first
-      daysToShow = trainingDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
-      // Then add shifted days (from first week that were skipped)
-      firstWeekSkippedDays.forEach(d => {
-        daysToShow.push({ dayOfWeek: d, isShiftedDay: true });
-      });
+      daysToShow = firstWeekEffectiveDays;
+    } else if (isExtraWeek) {
+      // Extra week (after last regular week): Show only the skipped days from first week
+      daysToShow = firstWeekSkippedDays;
     } else {
-      // Normal weeks: Show all training days (none are shifted)
-      daysToShow = trainingDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
+      // Normal weeks (including last regular week): Show all training days
+      daysToShow = trainingDays;
     }
     
     // Calculate base properties for each day
-    const daysWithBaseProps = daysToShow.map((dayData, indexInWeek) => {
-      const { dayOfWeek, isShiftedDay } = dayData;
-      
+    const daysWithBaseProps = daysToShow.map((dayOfWeek, indexInWeek) => {
       // For split calculation, we need the EFFECTIVE global day index
       // Week 1 starts at 0, week 2 starts at firstWeekEffectiveDays, etc.
       let effectiveGlobalIndex: number;
       
       if (isFirstWeek) {
         effectiveGlobalIndex = indexInWeek;
-      } else if (isShiftedDay) {
-        // Shifted days in last week: these are the LAST days of the entire plan
-        const regularDaysBeforeLastWeek = effectiveFirstWeekDayCount + (totalWeeks - 2) * trainingFrequency;
-        const regularDaysInLastWeek = trainingFrequency;
-        const skippedDayIndex = firstWeekSkippedDays.indexOf(dayOfWeek);
-        effectiveGlobalIndex = regularDaysBeforeLastWeek + regularDaysInLastWeek + skippedDayIndex;
+      } else if (isExtraWeek) {
+        // Extra week days: these are the LAST days of the entire plan
+        const regularDaysInPlan = effectiveFirstWeekDayCount + (totalWeeks - 1) * trainingFrequency;
+        effectiveGlobalIndex = regularDaysInPlan + indexInWeek;
       } else {
         // Normal calculation for other weeks
         const daysBeforeThisWeek = effectiveFirstWeekDayCount + (viewingWeek - 2) * trainingFrequency;
-        // For last week, we need to use the position among non-shifted days only
-        const nonShiftedIndex = isLastWeek 
-          ? trainingDays.indexOf(dayOfWeek)
-          : indexInWeek;
-        effectiveGlobalIndex = daysBeforeThisWeek + nonShiftedIndex;
+        effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
       }
       
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
       const workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
       
       // Check if this day is completed (non-bonus) - match by week and dayOfWeek
-      // For shifted days, they don't have completions since they're future
-      const completedSession = isShiftedDay 
+      // For extra week days, they are always in the future
+      const completedSession = isExtraWeek 
         ? null 
         : regularCompletedWorkouts.find(w => 
             w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
@@ -423,21 +405,21 @@ const Training = () => {
       
       // Is this the actual "today" - check if day of week matches today's day
       const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
-      const isToday = !isShiftedDay && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
+      const isToday = !isExtraWeek && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
       
       // Is this day in the past within the current week?
-      const isPastThisWeek = !isShiftedDay && viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
+      const isPastThisWeek = !isExtraWeek && viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
       
       // Is the entire viewing week in the past?
       const isWeekInPast = viewingWeek < currentWeek;
       
       // Is this day in the future?
-      // Shifted days are always considered "future" since they're at the end of the plan
-      const isFuture = isShiftedDay || viewingWeek > currentWeek || 
+      // Extra week days are always considered "future" since they're at the end of the plan
+      const isFuture = isExtraWeek || viewingWeek > currentWeek || 
         (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Is this day missed? (past, not completed, not shifted)
-      const isMissed = !isShiftedDay && (isPastThisWeek || isWeekInPast) && !isCompleted;
+      // Is this day missed? (past, not completed, not in extra week)
+      const isMissed = !isExtraWeek && (isPastThisWeek || isWeekInPast) && !isCompleted;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
@@ -459,8 +441,8 @@ const Training = () => {
         isFuture,
         isPast: isPastThisWeek || isWeekInPast,
         isMissed,
-        isFirstWeekSkip: false, // No longer used - days are hidden, not shown as skipped
-        isShiftedDay,
+        isFirstWeekSkip: false, // No longer used
+        isShiftedDay: false, // No longer highlighted
         globalDayIndex: effectiveGlobalIndex,
         sessionId: completedSession?.sessionId || null,
         isUpcoming: false // Will be set in second pass
@@ -471,7 +453,7 @@ const Training = () => {
     // Only mark upcoming if we're viewing the current week
     if (viewingWeek === currentWeek) {
       const upcomingIndex = daysWithBaseProps.findIndex(day => 
-        !day.isShiftedDay && day.isFuture && !day.isCompleted
+        day.isFuture && !day.isCompleted
       );
       if (upcomingIndex !== -1) {
         daysWithBaseProps[upcomingIndex].isUpcoming = true;
@@ -1389,7 +1371,7 @@ const Training = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">
-              Týden {viewingWeek}/{totalWeeks}
+              Týden {viewingWeek}/{skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks}
             </span>
             {isViewingCurrentWeek && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">teď</Badge>
@@ -1399,7 +1381,7 @@ const Training = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            disabled={viewingWeek >= totalWeeks}
+            disabled={viewingWeek >= (skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks)}
             onClick={() => {
               setViewingWeek(w => w + 1);
               setSelectedDayIndex(null);
@@ -1420,17 +1402,15 @@ const Training = () => {
                 "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
                 day.isCompleted
                   ? "bg-green-500/10 border-green-500/50"
-                  : day.isShiftedDay && day.isFuture
-                    ? "bg-blue-500/10 border-blue-500/30"
-                    : day.isMissed
-                      ? "bg-destructive/10 border-destructive/50"
-                      : day.isToday && isViewingCurrentWeek
-                        ? "bg-primary/10 border-primary"
-                        : day.isUpcoming
-                          ? "bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30"
-                          : day.isFuture
-                            ? "bg-muted/30 border-border/50"
-                            : "bg-card border-border hover:border-primary/50"
+                  : day.isMissed
+                    ? "bg-destructive/10 border-destructive/50"
+                    : day.isToday && isViewingCurrentWeek
+                      ? "bg-primary/10 border-primary"
+                      : day.isUpcoming
+                        ? "bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30"
+                        : day.isFuture
+                          ? "bg-muted/30 border-border/50"
+                          : "bg-card border-border hover:border-primary/50"
               )}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1441,15 +1421,13 @@ const Training = () => {
                 "w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold shrink-0",
                 day.isCompleted
                   ? "bg-green-500 text-white"
-                  : day.isShiftedDay && day.isFuture
-                    ? "bg-blue-500 text-white"
-                    : day.isMissed
-                      ? "bg-destructive text-destructive-foreground"
-                      : day.isToday && isViewingCurrentWeek
-                        ? "bg-primary text-primary-foreground"
-                        : day.isUpcoming
-                          ? "bg-amber-500 text-white"
-                          : "bg-muted text-muted-foreground"
+                  : day.isMissed
+                    ? "bg-destructive text-destructive-foreground"
+                    : day.isToday && isViewingCurrentWeek
+                      ? "bg-primary text-primary-foreground"
+                      : day.isUpcoming
+                        ? "bg-amber-500 text-white"
+                        : "bg-muted text-muted-foreground"
               )}>
                 {day.isCompleted ? (
                   <Check className="w-5 h-5" />
@@ -1500,8 +1478,6 @@ const Training = () => {
               <div className="shrink-0">
                 {day.isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
-                ) : day.isShiftedDay && day.isFuture ? (
-                  <span className="text-[10px] font-medium text-blue-500">Dopl.</span>
                 ) : day.isMissed ? (
                   <span className="text-[10px] font-medium text-destructive">Vynecháno</span>
                 ) : day.isFuture ? (
