@@ -23,6 +23,8 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
+import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
+import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -112,6 +114,12 @@ const Training = () => {
   // Plan completion confirmation
   const [showPlanCompleteDialog, setShowPlanCompleteDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
+  
+  // Workout preview and warmup state
+  const [showWorkoutPreview, setShowWorkoutPreview] = useState(false);
+  const [warmupExercises, setWarmupExercises] = useState<WarmupExercise[]>([]);
+  const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false);
+  const [showWarmup, setShowWarmup] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -599,21 +607,23 @@ const Training = () => {
     }
   }, [plan, profile]);
 
-  // Calculate workout duration
+  // Calculate workout duration - more realistic estimate
   const calculateWorkoutDuration = (exercises: WorkoutExercise[]): number => {
-    let totalMinutes = 0;
+    let totalSeconds = 0;
     
     for (const ex of exercises) {
       const sets = ex.sets || 3;
       const isCompound = ['knee_dominant', 'hip_dominant', 'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull'].includes(ex.roleId);
-      const timePerSet = isCompound ? 50 : 35;
-      const restBetweenSets = isCompound ? 90 : 50;
+      const timePerSet = isCompound ? 50 : 35; // seconds
+      const restBetweenSets = isCompound ? 90 : 60; // seconds
       const exerciseTime = sets * timePerSet + (sets - 1) * restBetweenSets;
-      totalMinutes += exerciseTime / 60;
-      totalMinutes += 1;
+      totalSeconds += exerciseTime;
+      totalSeconds += 60; // transition overhead
     }
     
-    return Math.round(totalMinutes);
+    // Add warmup time (5-7 min)
+    const warmupMinutes = 6;
+    return Math.ceil(totalSeconds / 60) + warmupMinutes;
   };
 
   const getTargetExerciseCount = (trainingDurationMinutes: number | null, userLevel: string): number => {
@@ -783,19 +793,145 @@ const Training = () => {
     autoGenerateExercises();
   }, [plan?.id, profile?.selected_gym_id, profile?.user_level, generatedExercises.length]);
 
+  // Open workout preview instead of directly starting
   const handleStartWorkout = () => {
     if (currentExercises.length > 0 && plan?.gymId) {
       setGeneratedExercises(currentExercises);
       setSelectedWorkoutGymId(plan.gymId);
-      setIsWorkoutActive(true);
+      setShowWorkoutPreview(true);
     } else if (generatedExercises.length > 0 && selectedWorkoutGymId) {
-      setIsWorkoutActive(true);
+      setShowWorkoutPreview(true);
     } else if (profile?.selected_gym_id) {
-      handleGenerateDayExercises(profile.selected_gym_id, true);
+      handleGenerateDayExercises(profile.selected_gym_id, false);
+      // Will show preview after generation completes
+      setShowWorkoutPreview(true);
     } else {
       setShowGymSelector(true);
     }
   };
+  
+  // Generate warmup exercises based on main workout's target muscles
+  const generateWarmupExercises = useCallback(async (mainExercises: WorkoutExercise[]): Promise<WarmupExercise[]> => {
+    // 1. Collect target muscles from main exercises
+    const targetMuscles = new Set<string>();
+    
+    for (const ex of mainExercises) {
+      if (ex.exerciseId) {
+        const { data } = await supabase
+          .from('exercises')
+          .select('primary_muscles')
+          .eq('id', ex.exerciseId)
+          .single();
+        
+        if (data?.primary_muscles) {
+          data.primary_muscles.forEach((m: string) => targetMuscles.add(m));
+        }
+      }
+    }
+    
+    // 2. Fetch warmup exercises
+    const { data: warmupExercisesData } = await supabase
+      .from('exercises')
+      .select('id, name, primary_muscles, video_path')
+      .eq('allowed_phase', 'warmup');
+    
+    if (!warmupExercisesData || warmupExercisesData.length === 0) {
+      // Fallback: no warmup exercises in DB
+      return [];
+    }
+    
+    // 3. Select warmups that cover target muscles
+    const selectedWarmups: WarmupExercise[] = [];
+    const coveredMuscles = new Set<string>();
+    
+    // Sort by how many target muscles each warmup covers
+    const sorted = [...warmupExercisesData].sort((a, b) => {
+      const aScore = a.primary_muscles?.filter((m: string) => targetMuscles.has(m)).length || 0;
+      const bScore = b.primary_muscles?.filter((m: string) => targetMuscles.has(m)).length || 0;
+      return bScore - aScore;
+    });
+    
+    for (const warmup of sorted) {
+      if (selectedWarmups.length >= 6) break;
+      
+      const coversNewMuscle = warmup.primary_muscles?.some((m: string) => 
+        targetMuscles.has(m) && !coveredMuscles.has(m)
+      );
+      
+      // Add if covers new muscle OR we don't have enough warmups yet
+      if (coversNewMuscle || selectedWarmups.length < 4) {
+        selectedWarmups.push({
+          id: warmup.id,
+          name: warmup.name,
+          duration: 30, // 30 seconds per warmup
+          videoPath: warmup.video_path,
+          primaryMuscles: warmup.primary_muscles || []
+        });
+        warmup.primary_muscles?.forEach((m: string) => coveredMuscles.add(m));
+      }
+    }
+    
+    // 4. Fallback: if less than 4, add random warmups
+    if (selectedWarmups.length < 4) {
+      const remaining = warmupExercisesData.filter(w => 
+        !selectedWarmups.find(s => s.id === w.id)
+      );
+      const shuffled = remaining.sort(() => Math.random() - 0.5);
+      
+      while (selectedWarmups.length < 4 && shuffled.length > 0) {
+        const w = shuffled.pop()!;
+        selectedWarmups.push({
+          id: w.id,
+          name: w.name,
+          duration: 30,
+          videoPath: w.video_path,
+          primaryMuscles: w.primary_muscles || []
+        });
+      }
+    }
+    
+    return selectedWarmups;
+  }, []);
+  
+  // Handle starting warmup from preview
+  const handleStartWarmup = useCallback(async () => {
+    setIsGeneratingWarmup(true);
+    
+    try {
+      const warmups = await generateWarmupExercises(generatedExercises);
+      
+      if (warmups.length === 0) {
+        // No warmup exercises available, go straight to workout
+        setShowWorkoutPreview(false);
+        setIsWorkoutActive(true);
+        toast.info('Žádné rozcvičkové cviky nejsou k dispozici');
+      } else {
+        setWarmupExercises(warmups);
+        setShowWorkoutPreview(false);
+        setShowWarmup(true);
+      }
+    } catch (err) {
+      console.error('Error generating warmup:', err);
+      toast.error('Nepodařilo se vygenerovat rozcvičku');
+      setShowWorkoutPreview(false);
+      setIsWorkoutActive(true);
+    } finally {
+      setIsGeneratingWarmup(false);
+    }
+  }, [generatedExercises, generateWarmupExercises]);
+  
+  // Handle warmup completion
+  const handleWarmupComplete = useCallback(() => {
+    setShowWarmup(false);
+    setIsWorkoutActive(true);
+  }, []);
+  
+  // Handle warmup skip
+  const handleWarmupSkip = useCallback(() => {
+    setShowWarmup(false);
+    setIsWorkoutActive(true);
+    toast.info('Rozcvička přeskočena');
+  }, []);
 
   const handleGymSelect = async (gymId: string) => {
     await updateProfile({ selected_gym_id: gymId });
@@ -1089,6 +1225,38 @@ const Training = () => {
   // Only depend on selectedDayIndex and the sessionId of the selected day
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDayIndex, daysInViewingWeek[selectedDayIndex]?.sessionId]);
+
+  // Get day name for preview
+  const getTodayDayName = useCallback(() => {
+    const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
+    return todayTrainingDay?.workoutName || 'Trénink';
+  }, [daysInViewingWeek]);
+
+  // Workout preview screen
+  if (showWorkoutPreview && generatedExercises.length > 0) {
+    return (
+      <WorkoutPreview
+        exercises={generatedExercises}
+        dayLetter={plan?.currentDayLetter || 'A'}
+        dayName={getTodayDayName()}
+        estimatedDuration={calculateWorkoutDuration(generatedExercises)}
+        onStartWarmup={handleStartWarmup}
+        onClose={() => setShowWorkoutPreview(false)}
+        isLoading={isGeneratingWarmup}
+      />
+    );
+  }
+  
+  // Warmup phase
+  if (showWarmup && warmupExercises.length > 0) {
+    return (
+      <WarmupPlayer
+        exercises={warmupExercises}
+        onComplete={handleWarmupComplete}
+        onSkipAll={handleWarmupSkip}
+      />
+    );
+  }
 
   // Active workout view
   if (isWorkoutActive && (generatedExercises.length > 0 || extendedExercises.length > 0)) {
@@ -1745,19 +1913,15 @@ const Training = () => {
                   <p className="text-sm text-muted-foreground">Generuji cviky...</p>
                 ) : generatedExercises.length > 0 ? (
                   <div className="space-y-2 mb-4">
-                    {generatedExercises.slice(0, 3).map((ex, idx) => (
+                    {generatedExercises.map((ex, idx) => (
                       <div key={ex.id} className="flex items-center gap-3 text-sm">
                         <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
                           {idx + 1}
                         </span>
                         <span className="flex-1 truncate">{ex.exerciseName}</span>
+                        <span className="text-xs text-muted-foreground">{ex.sets}×</span>
                       </div>
                     ))}
-                    {generatedExercises.length > 3 && (
-                      <p className="text-xs text-muted-foreground pl-9">
-                        +{generatedExercises.length - 3} dalších cviků
-                      </p>
-                    )}
                   </div>
                 ) : !profile?.selected_gym_id ? (
                   <p className="text-sm text-muted-foreground mb-4">
