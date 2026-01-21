@@ -11,6 +11,12 @@ const ImportExercises = () => {
   const [imported, setImported] = useState(false);
   const [count, setCount] = useState(0);
 
+  // UUID validation regex
+  const isValidUUID = (str: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
   const parseXLSX = async (arrayBuffer: ArrayBuffer) => {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
@@ -72,9 +78,16 @@ const ImportExercises = () => {
           else if (header === "difficulty") {
             obj[header] = parseInt(strValue) || 5;
           } 
-          // Nullable UUID fields
+          // Nullable UUID fields - validate UUID format
           else if (header === "machine_id") {
-            obj[header] = strValue && strValue.length > 0 ? strValue : null;
+            if (strValue && strValue.length > 0 && isValidUUID(strValue)) {
+              obj[header] = strValue;
+            } else {
+              if (strValue && strValue.length > 0) {
+                console.warn(`Invalid UUID for machine_id: ${strValue}`);
+              }
+              obj[header] = null;
+            }
           }
           // Nullable string fields
           else if (header === "primary_role") {
