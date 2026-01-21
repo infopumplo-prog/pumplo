@@ -492,16 +492,76 @@ export const useWorkoutGenerator = () => {
   };
 
   /**
+   * Vypočíta počet cvikov podľa trvania tréningu
+   * 
+   * Predpoklady:
+   * - Rozcvička: 10 min
+   * - Záver: 5 min
+   * - Jeden cvik (vrátane prestávok): ~8 min
+   * 
+   * Príklady:
+   * - 30 min = (30 - 15) / 8 = ~2 cviky (minimum 3)
+   * - 45 min = (45 - 15) / 8 = ~4 cviky
+   * - 60 min = (60 - 15) / 8 = ~5-6 cvikov
+   * - 90 min = (90 - 15) / 8 = ~9 cvikov
+   * - 120 min = (120 - 15) / 8 = ~13 cvikov
+   */
+  const calculateSlotsForDuration = (
+    durationMinutes: number,
+    templateSlots: DayTemplateSlot[],
+    userLevel: UserLevel
+  ): DayTemplateSlot[] => {
+    const WARMUP_MINUTES = 10;
+    const COOLDOWN_MINUTES = 5;
+    const MINUTES_PER_EXERCISE = 8;
+    
+    const effectiveMinutes = durationMinutes - WARMUP_MINUTES - COOLDOWN_MINUTES;
+    let targetExerciseCount = Math.floor(effectiveMinutes / MINUTES_PER_EXERCISE);
+    
+    // Minimum 3 cviky, maximum rozumne na základe šablóny
+    const MIN_EXERCISES = 3;
+    const MAX_EXERCISES = Math.max(templateSlots.length + 4, 10); // max +4 nad šablónu
+    
+    targetExerciseCount = Math.max(MIN_EXERCISES, Math.min(targetExerciseCount, MAX_EXERCISES));
+    
+    console.log(`[WorkoutGenerator] Duration: ${durationMinutes}min -> Target: ${targetExerciseCount} exercises`);
+    
+    // Ak template má dosť slotov, použiť toľko koľko treba
+    if (targetExerciseCount <= templateSlots.length) {
+      // Prioritne zachovať compound cviky (prvé sloty)
+      return templateSlots.slice(0, targetExerciseCount);
+    }
+    
+    // Ak potrebujeme VIAC slotov, roztiahnuť šablónu
+    const extended = [...templateSlots];
+    let i = 0;
+    while (extended.length < targetExerciseCount) {
+      // Opakovať role z template (cyklicky)
+      const originalSlot = templateSlots[i % templateSlots.length];
+      extended.push({
+        ...originalSlot,
+        id: `${originalSlot.id}_ext_${extended.length}`,
+        slotOrder: extended.length + 1
+      });
+      i++;
+    }
+    
+    return extended;
+  };
+
+  /**
    * Generate complete workout plan - PUMPLO logic
    * Vytvorí plán a priradí cviky pre všetky dni podľa day_templates
    * Sleduje pokrytie svalov naprieč celým dňom
+   * Dynamicky upravuje počet cvikov podľa training_duration_minutes
    */
   const generateWorkoutPlan = useCallback(async (
     gymId: string,
     goalId: TrainingGoalId,
     userLevel: UserLevel,
     userInjuries: string[],
-    equipmentPreference: string | null
+    equipmentPreference: string | null,
+    durationMinutes: number = 60 // NEW: Duration parameter for slot calculation
   ): Promise<string | null> => {
     if (!user) {
       setError('Uživatel není přihlášen');
@@ -557,10 +617,14 @@ export const useWorkoutGenerator = () => {
       for (const day of templates) {
         console.log(`\n[WorkoutGenerator] === Processing day: ${day.dayLetter} (${day.dayName}) ===`);
 
+        // NEW: Adjust slots based on training duration
+        const adjustedSlots = calculateSlotsForDuration(durationMinutes, day.slots, userLevel);
+        console.log(`[WorkoutGenerator] Adjusted to ${adjustedSlots.length} slots (was ${day.slots.length}) for ${durationMinutes}min duration`);
+
         const usedExerciseIds: string[] = [];
         const coveredMuscles = new Set<string>(); // Track covered muscles per day
 
-        for (const slot of day.slots) {
+        for (const slot of adjustedSlots) {
           console.log(`[WorkoutGenerator] Slot ${slot.slotOrder}: Role = ${slot.roleId}`);
 
           const result = await assignExerciseForRole(
