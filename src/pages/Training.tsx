@@ -520,46 +520,39 @@ const Training = () => {
         if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
         if (usedExerciseIds.includes(ex.id)) return false;
         
-        if (activeInjuries.length > 0 && ex.contraindicated_injuries?.length > 0) {
-          const hasContraindication = ex.contraindicated_injuries.some((injury: string) =>
-            activeInjuries.some(userInjury => 
-              injury.toLowerCase().includes(userInjury.toLowerCase()) ||
-              userInjury.toLowerCase().includes(injury.toLowerCase())
-            )
-          );
-          if (hasContraindication) return false;
-        }
+        // Filter by allowed_phase = 'main'
+        if (ex.allowed_phase !== 'main') return false;
 
-        const exEquipment = ex.equipment || [];
-        if (exEquipment.includes('bodyweight') || exEquipment.length === 0) return true;
+        const exEquipmentType = ex.equipment_type || 'bodyweight';
+        if (exEquipmentType === 'bodyweight') return true;
         
-        if (exEquipment.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))) {
-          return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.some(t => exEquipment.includes(t));
+        if (['barbell', 'dumbbell', 'kettlebell'].includes(exEquipmentType)) {
+          return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.includes(exEquipmentType);
         }
         
-        if (exEquipment.includes('cable')) {
+        if (exEquipmentType === 'cable') {
           return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
         }
         
-        if (exEquipment.some((eq: string) => ['machine', 'plate_loaded'].includes(eq))) {
+        if (['machine', 'plate_loaded'].includes(exEquipmentType)) {
           return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
         }
         
-        return exEquipment.some((eq: string) => availableEquipmentTypes.includes(eq));
+        return availableEquipmentTypes.includes(exEquipmentType);
       });
 
       if (equipmentPreference === 'machines') {
         const machineExercises = filteredExercises.filter(ex =>
-          ex.equipment?.some((eq: string) => ['machine', 'cable', 'plate_loaded'].includes(eq))
+          ['machine', 'cable', 'plate_loaded'].includes(ex.equipment_type || '')
         );
         if (machineExercises.length > 0) filteredExercises = machineExercises;
       } else if (equipmentPreference === 'free_weights') {
         const fwExercises = filteredExercises.filter(ex =>
-          ex.equipment?.some((eq: string) => ['barbell', 'dumbbell', 'kettlebell', 'free_weights'].includes(eq))
+          ['barbell', 'dumbbell', 'kettlebell'].includes(ex.equipment_type || '')
         );
         if (fwExercises.length > 0) filteredExercises = fwExercises;
       } else if (equipmentPreference === 'bodyweight') {
-        const bwExercises = filteredExercises.filter(ex => ex.equipment?.includes('bodyweight'));
+        const bwExercises = filteredExercises.filter(ex => ex.equipment_type === 'bodyweight');
         if (bwExercises.length > 0) filteredExercises = bwExercises;
       }
 
@@ -580,7 +573,7 @@ const Training = () => {
         roleId: slot.role_id,
         exerciseId: selectedExercise.id,
         exerciseName: selectedExercise.name,
-        equipment: selectedExercise.equipment || [],
+        equipment: [], // deprecated, kept for interface compatibility
         machineName: null,
         sets: sets,
         repMin: slot.rep_min || 8,
@@ -716,7 +709,7 @@ const Training = () => {
           roleId: randomRole,
           exerciseId: selected.id,
           exerciseName: selected.name,
-          equipment: selected.equipment || [],
+          equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
           sets: profile.user_level === 'beginner' ? 2 : 3,
           repMin: 10,
@@ -779,7 +772,7 @@ const Training = () => {
           roleId: randomRole,
           exerciseId: selected.id,
           exerciseName: selected.name,
-          equipment: selected.equipment || [],
+          equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
           sets: profile.user_level === 'beginner' ? 2 : 3,
           repMin: 10,

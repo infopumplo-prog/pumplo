@@ -329,7 +329,7 @@ const ExercisePlayerWithVideo = ({
       
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, description, difficulty, exercise_with_weights')
+        .select('video_path, difficulty, exercise_with_weights')
         .eq('id', exercise.exerciseId)
         .single();
       
@@ -348,7 +348,7 @@ const ExercisePlayerWithVideo = ({
         
         setVideoData({ 
           url,
-          description: data.description,
+          description: null, // description column was removed
           difficulty: data.difficulty,
           exerciseWithWeights: data.exercise_with_weights ?? true
         });

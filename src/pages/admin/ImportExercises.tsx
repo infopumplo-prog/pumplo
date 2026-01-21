@@ -4,75 +4,61 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle } from "lucide-react";
 import AdminLayout from "./AdminLayout";
+import * as XLSX from "xlsx";
 
 const ImportExercises = () => {
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(false);
   const [count, setCount] = useState(0);
 
-  const parseCSV = (text: string) => {
-    const lines = text.trim().split("\n");
-    const headers = lines[0].split(";");
+  const parseXLSX = async (arrayBuffer: ArrayBuffer) => {
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
     
-    return lines.slice(1).map((line) => {
-      const values: string[] = [];
-      let current = "";
-      let inQuotes = false;
-      
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        const nextChar = line[i + 1];
-        
-        if (char === '"' && nextChar === '"') {
-          // Escaped quote inside quoted field
-          current += '"';
-          i++; // Skip next quote
-        } else if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ";" && !inQuotes) {
-          values.push(current);
-          current = "";
-        } else {
-          current += char;
-        }
-      }
-      values.push(current);
-      
+    return rawData.map((row) => {
       const obj: Record<string, unknown> = {};
-      headers.forEach((header, i) => {
-        const value = values[i] || "";
+      
+      Object.entries(row).forEach(([header, value]) => {
+        const strValue = String(value || "");
         
         // Array fields - parse JSON arrays
-        if (["primary_muscles", "secondary_muscles", "contraindicated_injuries", "workout_split", "equipment"].includes(header)) {
+        if (["primary_muscles", "secondary_muscles"].includes(header)) {
           try {
-            if (value && value.startsWith("[")) {
-              obj[header] = JSON.parse(value);
+            if (strValue && strValue.startsWith("[")) {
+              obj[header] = JSON.parse(strValue);
             } else {
               obj[header] = [];
             }
           } catch (e) {
-            console.warn(`Failed to parse ${header}:`, value);
+            console.warn(`Failed to parse ${header}:`, strValue);
             obj[header] = [];
           }
         } 
         // Boolean fields
-        else if (header === "requires_machine") {
-          obj[header] = value.toLowerCase() === "true";
-        }
         else if (header === "exercise_with_weights") {
-          obj[header] = value.toLowerCase() === "true";
+          obj[header] = strValue.toLowerCase() === "true";
         }
         // Number fields
         else if (header === "difficulty") {
-          obj[header] = parseInt(value) || 5;
+          obj[header] = parseInt(strValue) || 5;
         } 
         // Nullable UUID fields
         else if (header === "machine_id") {
-          obj[header] = value && value.length > 0 ? value : null;
+          obj[header] = strValue && strValue.length > 0 ? strValue : null;
         }
         // Nullable string fields
-        else if (header === "primary_role" || header === "secondary_role") {
-          obj[header] = value && value.length > 0 ? value : null;
+        else if (header === "primary_role") {
+          obj[header] = strValue && strValue.length > 0 ? strValue : null;
+        }
+        // Allowed phase with default
+        else if (header === "allowed_phase") {
+          obj[header] = strValue && strValue.length > 0 ? strValue : "main";
+        }
+        // Equipment type with default
+        else if (header === "equipment_type") {
+          obj[header] = strValue && strValue.length > 0 ? strValue : "bodyweight";
         }
         // Skip timestamps
         else if (header === "created_at" || header === "updated_at") {
@@ -80,7 +66,7 @@ const ImportExercises = () => {
         } 
         // Other string fields
         else {
-          obj[header] = value || null;
+          obj[header] = strValue || null;
         }
       });
       
@@ -92,9 +78,9 @@ const ImportExercises = () => {
     setImporting(true);
     
     try {
-      const response = await fetch("/data/exercises.csv");
-      const text = await response.text();
-      const exercises = parseCSV(text);
+      const response = await fetch("/data/exercises.xlsx");
+      const arrayBuffer = await response.arrayBuffer();
+      const exercises = await parseXLSX(arrayBuffer);
       
       console.log(`Parsed ${exercises.length} exercises`);
       
@@ -122,7 +108,7 @@ const ImportExercises = () => {
         
         {imported ? (
           <div className="flex flex-col items-center gap-4">
-            <CheckCircle className="w-16 h-16 text-green-500" />
+            <CheckCircle className="w-16 h-16 text-primary" />
             <p className="text-lg">Importovaných {count} cvikov</p>
           </div>
         ) : (

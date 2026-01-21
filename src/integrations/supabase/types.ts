@@ -76,70 +76,52 @@ export type Database = {
       }
       exercises: {
         Row: {
+          allowed_phase: string | null
           category: string
-          contraindicated_injuries: string[]
           created_at: string
-          description: string | null
           difficulty: number
-          equipment: string[]
           equipment_type: string | null
           exercise_with_weights: boolean | null
           id: string
           machine_id: string | null
-          movement_pattern: string | null
           name: string
           primary_muscles: string[]
           primary_role: string | null
-          requires_machine: boolean
           secondary_muscles: string[]
-          secondary_role: string | null
           updated_at: string
           video_path: string | null
-          workout_split: string[]
         }
         Insert: {
+          allowed_phase?: string | null
           category: string
-          contraindicated_injuries?: string[]
           created_at?: string
-          description?: string | null
           difficulty?: number
-          equipment?: string[]
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
           machine_id?: string | null
-          movement_pattern?: string | null
           name: string
           primary_muscles?: string[]
           primary_role?: string | null
-          requires_machine?: boolean
           secondary_muscles?: string[]
-          secondary_role?: string | null
           updated_at?: string
           video_path?: string | null
-          workout_split?: string[]
         }
         Update: {
+          allowed_phase?: string | null
           category?: string
-          contraindicated_injuries?: string[]
           created_at?: string
-          description?: string | null
           difficulty?: number
-          equipment?: string[]
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
           machine_id?: string | null
-          movement_pattern?: string | null
           name?: string
           primary_muscles?: string[]
           primary_role?: string | null
-          requires_machine?: boolean
           secondary_muscles?: string[]
-          secondary_role?: string | null
           updated_at?: string
           video_path?: string | null
-          workout_split?: string[]
         }
         Relationships: [
           {
@@ -152,13 +134,6 @@ export type Database = {
           {
             foreignKeyName: "exercises_primary_role_fkey"
             columns: ["primary_role"]
-            isOneToOne: false
-            referencedRelation: "training_roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exercises_secondary_role_fkey"
-            columns: ["secondary_role"]
             isOneToOne: false
             referencedRelation: "training_roles"
             referencedColumns: ["id"]

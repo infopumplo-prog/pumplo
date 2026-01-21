@@ -32,15 +32,13 @@ interface Exercise {
   category: string;
   difficulty: number;
   machine_id: string | null;
-  requires_machine: boolean;
   primary_muscles: string[];
   secondary_muscles: string[];
-  contraindicated_injuries: string[];
   video_path: string | null;
-  description: string | null;
-  workout_split: string[];
-  movement_pattern: string | null;
-  equipment: string[];
+  primary_role: string | null;
+  equipment_type: string | null;
+  allowed_phase: string | null;
+  exercise_with_weights: boolean | null;
   created_at: string;
 }
 
@@ -58,6 +56,7 @@ const CATEGORIES = [
   { value: 'core', label: 'Core' },
   { value: 'cardio', label: 'Kardio' },
   { value: 'full_body', label: 'Celé telo' },
+  { value: 'abdominals', label: 'Brušné svaly' },
 ];
 
 const MUSCLE_GROUPS = [
@@ -65,9 +64,20 @@ const MUSCLE_GROUPS = [
   'core', 'nohy', 'quadriceps', 'hamstrings', 'gluteus', 'lýtka',
 ];
 
-const MOVEMENT_PATTERNS = [
-  'HORIZONTAL_PUSH', 'HORIZONTAL_PULL', 'VERTICAL_PUSH', 'VERTICAL_PULL',
-  'SQUAT', 'HINGE', 'LUNGE', 'CARRY', 'ROTATION', 'ISOLATION',
+const EQUIPMENT_TYPES = [
+  { value: 'bodyweight', label: 'Vlastná váha' },
+  { value: 'barbell', label: 'Činka' },
+  { value: 'dumbbell', label: 'Jednoručky' },
+  { value: 'kettlebell', label: 'Kettlebell' },
+  { value: 'machine', label: 'Stroj' },
+  { value: 'cable', label: 'Kladka' },
+  { value: 'plate_loaded', label: 'Kotúče' },
+  { value: 'other', label: 'Iné' },
+];
+
+const ALLOWED_PHASES = [
+  { value: 'main', label: 'Hlavný tréning' },
+  { value: 'warmup', label: 'Rozcvička' },
 ];
 
 const ITEMS_PER_PAGE = 100;
@@ -86,12 +96,13 @@ const ExercisesManagement = () => {
     category: 'chest',
     difficulty: 5,
     machine_id: '',
-    requires_machine: false,
     primary_muscles: [] as string[],
     secondary_muscles: [] as string[],
     video_path: '',
-    description: '',
-    movement_pattern: '',
+    primary_role: '',
+    equipment_type: 'bodyweight',
+    allowed_phase: 'main',
+    exercise_with_weights: true,
   });
 
   const fetchData = async () => {
@@ -163,12 +174,13 @@ const ExercisesManagement = () => {
       category: 'chest',
       difficulty: 5,
       machine_id: '',
-      requires_machine: false,
       primary_muscles: [],
       secondary_muscles: [],
       video_path: '',
-      description: '',
-      movement_pattern: '',
+      primary_role: '',
+      equipment_type: 'bodyweight',
+      allowed_phase: 'main',
+      exercise_with_weights: true,
     });
     setDrawerOpen(true);
   };
@@ -180,12 +192,13 @@ const ExercisesManagement = () => {
       category: exercise.category,
       difficulty: exercise.difficulty,
       machine_id: exercise.machine_id || '',
-      requires_machine: exercise.requires_machine,
       primary_muscles: exercise.primary_muscles || [],
       secondary_muscles: exercise.secondary_muscles || [],
       video_path: exercise.video_path || '',
-      description: exercise.description || '',
-      movement_pattern: exercise.movement_pattern || '',
+      primary_role: exercise.primary_role || '',
+      equipment_type: exercise.equipment_type || 'bodyweight',
+      allowed_phase: exercise.allowed_phase || 'main',
+      exercise_with_weights: exercise.exercise_with_weights ?? true,
     });
     setDrawerOpen(true);
   };
@@ -201,12 +214,13 @@ const ExercisesManagement = () => {
       category: form.category,
       difficulty: form.difficulty,
       machine_id: form.machine_id || null,
-      requires_machine: form.requires_machine,
       primary_muscles: form.primary_muscles,
       secondary_muscles: form.secondary_muscles,
       video_path: form.video_path || null,
-      description: form.description || null,
-      movement_pattern: form.movement_pattern || null,
+      primary_role: form.primary_role || null,
+      equipment_type: form.equipment_type,
+      allowed_phase: form.allowed_phase,
+      exercise_with_weights: form.exercise_with_weights,
     };
 
     if (editingExercise) {
@@ -323,9 +337,14 @@ const ExercisesManagement = () => {
                       <span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
                         Úroveň {exercise.difficulty}
                       </span>
-                      {exercise.requires_machine && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/10 text-orange-600">
-                          Stroj
+                      {exercise.equipment_type && exercise.equipment_type !== 'bodyweight' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-accent/10 text-accent-foreground">
+                          {EQUIPMENT_TYPES.find(e => e.value === exercise.equipment_type)?.label || exercise.equipment_type}
+                        </span>
+                      )}
+                      {exercise.allowed_phase === 'warmup' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground">
+                          Rozcvička
                         </span>
                       )}
                     </div>
@@ -404,15 +423,45 @@ const ExercisesManagement = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label>Vyžaduje stroj</Label>
-                <Switch
-                  checked={form.requires_machine}
-                  onCheckedChange={(checked) => setForm({ ...form, requires_machine: checked })}
-                />
+              <div>
+                <Label>Typ vybavenia</Label>
+                <Select
+                  value={form.equipment_type}
+                  onValueChange={(value) => setForm({ ...form, equipment_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber typ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EQUIPMENT_TYPES.map((eq) => (
+                      <SelectItem key={eq.value} value={eq.value}>
+                        {eq.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {form.requires_machine && (
+              <div>
+                <Label>Fáza tréningu</Label>
+                <Select
+                  value={form.allowed_phase}
+                  onValueChange={(value) => setForm({ ...form, allowed_phase: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber fázu" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALLOWED_PHASES.map((phase) => (
+                      <SelectItem key={phase.value} value={phase.value}>
+                        {phase.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.equipment_type === 'machine' && (
                 <div>
                   <Label>Stroj</Label>
                   <Select
@@ -433,23 +482,12 @@ const ExercisesManagement = () => {
                 </div>
               )}
 
-              <div>
-                <Label>Pohybový vzor</Label>
-                <Select
-                  value={form.movement_pattern}
-                  onValueChange={(value) => setForm({ ...form, movement_pattern: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Vyber vzor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MOVEMENT_PATTERNS.map((pattern) => (
-                      <SelectItem key={pattern} value={pattern}>
-                        {pattern}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between">
+                <Label>Cvik s váhami</Label>
+                <Switch
+                  checked={form.exercise_with_weights}
+                  onCheckedChange={(checked) => setForm({ ...form, exercise_with_weights: checked })}
+                />
               </div>
 
               <div>
@@ -502,11 +540,11 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Popis</Label>
-                <Textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={3}
+                <Label>Primárna rola</Label>
+                <Input
+                  value={form.primary_role}
+                  onChange={(e) => setForm({ ...form, primary_role: e.target.value })}
+                  placeholder="napr. horizontal_push"
                 />
               </div>
             </div>
