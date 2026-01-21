@@ -8,11 +8,12 @@ import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useIsPWA } from '@/hooks/useIsPWA';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, HelpCircle, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
+import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
+import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
 
 const getRoleLabel = (role: string | null): string => {
   switch (role) {
@@ -31,6 +32,7 @@ const Profile = () => {
   const { stats, isLoading: statsLoading } = useWorkoutStats();
   const isPWA = useIsPWA();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   if (isLoading || roleLoading || statsLoading) {
     return <ProfilePageSkeleton />;
@@ -42,7 +44,7 @@ const Profile = () => {
     // Only show install option if not already running as PWA
     ...(!isPWA ? [{ icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') }] : []),
     { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
-    { icon: HelpCircle, label: 'Nápověda', onClick: () => {} },
+    { icon: MessageSquare, label: 'Spätná väzba', onClick: () => setFeedbackOpen(true) },
   ];
 
   const containerVariants = {
@@ -174,6 +176,9 @@ const Profile = () => {
 
       {/* Onboarding Drawer */}
       <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+      
+      {/* Feedback Dialog */}
+      <AppFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
     </PageTransition>
   );

@@ -1272,7 +1272,7 @@ const Training = () => {
           setExtendedExercises([]);
           setIsBonusWorkout(false);
         }}
-        onExtend={!isBonusWorkout && !isExtensionWorkout ? generateExtensionExercises : undefined}
+        
       />
     );
   }

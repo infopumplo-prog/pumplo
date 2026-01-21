@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_feedback: {
+        Row: {
+          created_at: string | null
+          experience_rating: number | null
+          favorite_feature: string | null
+          id: string
+          improvements: string | null
+          issues: string | null
+          other_comments: string | null
+          satisfaction: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          experience_rating?: number | null
+          favorite_feature?: string | null
+          id?: string
+          improvements?: string | null
+          issues?: string | null
+          other_comments?: string | null
+          satisfaction?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          experience_rating?: number | null
+          favorite_feature?: string | null
+          id?: string
+          improvements?: string | null
+          issues?: string | null
+          other_comments?: string | null
+          satisfaction?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       day_templates: {
         Row: {
           advanced_sets: number
@@ -70,6 +106,74 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_skip_feedback: {
+        Row: {
+          created_at: string | null
+          day_letter: string | null
+          exercise_id: string | null
+          exercise_name: string
+          gym_id: string | null
+          id: string
+          other_reason: string | null
+          plan_id: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_letter?: string | null
+          exercise_id?: string | null
+          exercise_name: string
+          gym_id?: string | null
+          id?: string
+          other_reason?: string | null
+          plan_id?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_letter?: string | null
+          exercise_id?: string | null
+          exercise_name?: string
+          gym_id?: string | null
+          id?: string
+          other_reason?: string | null
+          plan_id?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_skip_feedback_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_skip_feedback_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_skip_feedback_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_skip_feedback_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_workout_plans"
             referencedColumns: ["id"]
           },
         ]
