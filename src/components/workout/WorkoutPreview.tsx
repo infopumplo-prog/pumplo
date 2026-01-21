@@ -86,7 +86,7 @@ export const WorkoutPreview = ({
       </ScrollArea>
 
       {/* Action button */}
-      <div className="p-4 border-t border-border bg-background">
+      <div className="p-4 pb-28 border-t border-border bg-background">
         <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
           <Flame className="w-4 h-4 text-orange-500" />
           <span>Začneme rozcvičkou pro přípravu svalů</span>
