@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Users, Dumbbell, UserCheck, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing } from 'lucide-react';
+import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
+import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 
 interface Stats {
@@ -17,6 +20,13 @@ const Dashboard = () => {
     totalMachines: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  
+  const { 
+    isSupported, 
+    notificationPermission, 
+    requestPermission, 
+    sendTestNotification 
+  } = useTrainingNotifications();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -46,6 +56,24 @@ const Dashboard = () => {
 
     fetchStats();
   }, []);
+
+  const handleRequestPermission = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      toast.success('Notifikace povoleny!');
+    } else {
+      toast.error('Notifikace nebyly povoleny');
+    }
+  };
+
+  const handleTestNotification = (type: 'morning' | 'missed' | 'closing') => {
+    if (notificationPermission !== 'granted') {
+      toast.error('Nejprve povol notifikace');
+      return;
+    }
+    sendTestNotification(type);
+    toast.success('Testovací notifikace odeslána');
+  };
 
   const statCards = [
     {
@@ -102,6 +130,60 @@ const Dashboard = () => {
             </Card>
           ))}
         </div>
+
+        {/* Notification Testing Section */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <BellRing className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Testování notifikací</h3>
+          </div>
+          
+          {!isSupported ? (
+            <p className="text-sm text-muted-foreground">
+              Notifikace nejsou v tomto prohlížeči podporovány.
+            </p>
+          ) : notificationPermission !== 'granted' ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Pro testování notifikací je potřeba povolit oprávnění.
+              </p>
+              <Button onClick={handleRequestPermission} variant="outline" className="w-full">
+                <Bell className="w-4 h-4 mr-2" />
+                Povolit notifikace
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground mb-3">
+                Notifikace povoleny. Klikni pro odeslání testovací notifikace:
+              </p>
+              <Button 
+                onClick={() => handleTestNotification('morning')}
+                variant="outline" 
+                className="w-full justify-start"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Ranní připomínka
+              </Button>
+              <Button 
+                onClick={() => handleTestNotification('missed')}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Zmeškaný trénink
+              </Button>
+              <Button 
+                onClick={() => handleTestNotification('closing')}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Zavírá brzy (se streakem)
+              </Button>
+            </div>
+          )}
+        </Card>
       </div>
     </AdminLayout>
   );
