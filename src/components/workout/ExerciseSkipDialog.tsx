@@ -19,31 +19,31 @@ import { toast } from 'sonner';
 interface ExerciseSkipDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfirmSkip: () => void;
   exerciseId?: string;
   exerciseName: string;
   gymId?: string;
   planId?: string;
   dayLetter?: string;
-  onConfirmSkip: () => void;
 }
 
 const SKIP_REASONS = [
-  { id: 'too_difficult', label: 'Bol cvik príliš náročný?' },
-  { id: 'dont_want', label: 'Cvik sa mi nechce robiť.' },
-  { id: 'health', label: 'Zdravotný dôvod' },
-  { id: 'machine_missing', label: 'Stroj sa v posilke nenachádza' },
-  { id: 'other', label: 'Iné' },
+  { id: 'too_difficult', label: 'Byl cvik příliš náročný?' },
+  { id: 'dont_want', label: 'Cvik se mi nechce dělat.' },
+  { id: 'health', label: 'Zdravotní důvod' },
+  { id: 'machine_missing', label: 'Stroj se v posilovně nenachází' },
+  { id: 'other', label: 'Jiné' },
 ];
 
 export const ExerciseSkipDialog = ({
   open,
   onOpenChange,
+  onConfirmSkip,
   exerciseId,
   exerciseName,
   gymId,
   planId,
   dayLetter,
-  onConfirmSkip,
 }: ExerciseSkipDialogProps) => {
   const { user } = useAuth();
   const [skipReason, setSkipReason] = useState<string>('');
@@ -54,49 +54,60 @@ export const ExerciseSkipDialog = ({
     if (!skipReason || !user) return;
 
     setIsSubmitting(true);
-    
-    const { error } = await supabase.from('exercise_skip_feedback').insert({
-      user_id: user.id,
-      exercise_id: exerciseId || null,
-      exercise_name: exerciseName,
-      gym_id: gymId || null,
-      plan_id: planId || null,
-      day_letter: dayLetter || null,
-      reason: skipReason,
-      other_reason: skipReason === 'other' ? otherReason : null,
-    });
 
-    setIsSubmitting(false);
+    try {
+      const { error } = await supabase.from('exercise_skip_feedback').insert({
+        user_id: user.id,
+        exercise_id: exerciseId || null,
+        exercise_name: exerciseName,
+        gym_id: gymId || null,
+        plan_id: planId || null,
+        day_letter: dayLetter || null,
+        reason: skipReason,
+        other_reason: skipReason === 'other' ? otherReason : null,
+      });
 
-    if (error) {
-      console.error('Error saving skip feedback:', error);
-      toast.error('Chyba pri ukladaní feedbacku');
+      if (error) {
+        console.error('Error saving skip feedback:', error);
+        toast.error('Chyba při ukládání feedbacku');
+      }
+    } catch (err) {
+      console.error('Error saving skip feedback:', err);
     }
 
-    // Reset state
+    setIsSubmitting(false);
     setSkipReason('');
     setOtherReason('');
     onOpenChange(false);
     onConfirmSkip();
   };
 
+  const handleCancel = () => {
+    setSkipReason('');
+    setOtherReason('');
+    onOpenChange(false);
+  };
+
   const isValid = skipReason && (skipReason !== 'other' || otherReason.trim());
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-md">
+      <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle>Prečo preskakuješ cvik?</AlertDialogTitle>
+          <AlertDialogTitle>Proč přeskakuješ cvik?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tvoja spätná väzba nám pomáha zlepšiť tréningy
+            Tvoje zpětná vazba nám pomáhá zlepšit tréninky
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <RadioGroup value={skipReason} onValueChange={setSkipReason} className="space-y-2">
           {SKIP_REASONS.map((reason) => (
-            <div key={reason.id} className="flex items-center space-x-3 py-2">
+            <div
+              key={reason.id}
+              className="flex items-center space-x-3 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors"
+            >
               <RadioGroupItem value={reason.id} id={reason.id} />
-              <Label htmlFor={reason.id} className="cursor-pointer flex-1">
+              <Label htmlFor={reason.id} className="cursor-pointer flex-1 text-sm">
                 {reason.label}
               </Label>
             </div>
@@ -105,20 +116,21 @@ export const ExerciseSkipDialog = ({
 
         {skipReason === 'other' && (
           <Textarea
-            placeholder="Napíš dôvod..."
+            placeholder="Napiš důvod..."
             value={otherReason}
             onChange={(e) => setOtherReason(e.target.value)}
             className="mt-2"
+            rows={3}
           />
         )}
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>Späť</AlertDialogCancel>
+        <AlertDialogFooter className="mt-4">
+          <AlertDialogCancel onClick={handleCancel}>Zpět</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirmSkip}
             disabled={!isValid || isSubmitting}
           >
-            {isSubmitting ? 'Ukladám...' : 'Preskočiť'}
+            {isSubmitting ? 'Ukládám...' : 'Přeskočit'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

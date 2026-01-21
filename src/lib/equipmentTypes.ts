@@ -1,27 +1,27 @@
-// Map of equipment type keys to user-friendly Slovak/Czech labels
+// Map of equipment type keys to user-friendly Czech labels
 export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
   machine: 'Stroje',
-  free_weights: 'Voľné váhy',
-  free_weight: 'Voľné váhy',
-  bodyweight: 'Vlastná váha',
+  free_weights: 'Volné váhy',
+  free_weight: 'Volné váhy',
+  bodyweight: 'Vlastní váha',
   cardio: 'Kardio',
   cable: 'Kladky',
-  functional: 'Funkčný tréning',
-  accessory: 'Príslušenstvo',
-  plate_loaded: 'Kotúčové stroje',
+  functional: 'Funkční trénink',
+  accessory: 'Příslušenství',
+  plate_loaded: 'Kotoučové stroje',
   resistance_bands: 'Odporové gumy',
   resistance_band: 'Odporová guma',
   kettlebell: 'Kettlebell',
-  barbell: 'Veľká činka',
+  barbell: 'Velká činka',
   dumbbell: 'Jednoručky',
   ez_bar: 'EZ činka',
   trx: 'TRX',
-  exercise_ball: 'Fitlopta',
+  exercise_ball: 'Gymnastický míč',
   pull_up_bar: 'Hrazda',
   bench: 'Lavička',
-  smith_machine: 'Smithov stroj',
+  smith_machine: 'Smithův stroj',
   medicine_ball: 'Medicinbal',
-  foam_roller: 'Valec',
+  foam_roller: 'Válec',
 };
 
 export const getEquipmentTypeLabel = (type: string): string => {

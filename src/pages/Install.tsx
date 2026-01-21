@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share, MoreVertical, Plus, Download, Smartphone, Apple, Chrome } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Share, MoreVertical, Plus, Download, Smartphone, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import PageTransition from '@/components/PageTransition';
 
 const Install = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('ios');
+  const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios');
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -26,271 +27,218 @@ const Install = () => {
   };
 
   const handleBack = () => {
-    // Check if there's history to go back to
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      // Fallback to home page
       navigate('/');
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-        <div className="flex items-center gap-3 p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleBack}
-            className="shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">Inštalácia Pumplo</h1>
+    <PageTransition>
+      <div className="min-h-screen bg-background safe-top">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon" onClick={handleBack}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-lg font-semibold">Instalace Pumplo</h1>
+          </div>
         </div>
-      </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="p-4 pb-8 space-y-6"
-      >
-        {/* Hero Section */}
-        <motion.div variants={itemVariants} className="text-center space-y-4">
-          <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden shadow-lg">
-            <img 
-              src="/pwa-512x512.png" 
-              alt="Pumplo" 
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">Nainštaluj si Pumplo</h2>
-            <p className="text-muted-foreground mt-1">
-              Pridaj Pumplo na svoju domovskú obrazovku pre rýchly prístup
+        <motion.div
+          className="px-6 py-6 space-y-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Hero Section */}
+          <motion.div variants={itemVariants} className="text-center py-4">
+            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Smartphone className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Nainstaluj si Pumplo</h2>
+            <p className="text-muted-foreground">
+              Přidej Pumplo na svou domovskou obrazovku pro rychlý přístup k tréninkům
             </p>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Benefits */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-primary" />
-                Výhody inštalácie
-              </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
-                  Rýchly prístup z domovskej obrazovky
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
-                  Funguje offline – tréningy a história
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
-                  Natívny vzhľad bez adresného riadku
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
-                  Automatické aktualizácie
-                </li>
+          {/* Benefits */}
+          <motion.div variants={itemVariants}>
+            <Card className="p-4">
+              <h3 className="font-semibold mb-3">Výhody instalace</h3>
+              <ul className="space-y-2">
+                {[
+                  'Rychlý přístup z domovské obrazovky',
+                  'Funguje offline – tréninky a historie',
+                  'Nativní vzhled bez adresního řádku',
+                  'Automatické aktualizace',
+                ].map((benefit, index) => (
+                  <li key={index} className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2 shrink-0" />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
               </ul>
-            </CardContent>
-          </Card>
+            </Card>
+          </motion.div>
+
+          {/* Platform Tabs */}
+          <motion.div variants={itemVariants}>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ios' | 'android')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="ios">iPhone</TabsTrigger>
+                <TabsTrigger value="android">Android</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="ios" className="mt-4 space-y-4">
+                {/* Step 1 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Otevři Safari</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Ujisti se, že používáš prohlížeč Safari. Instalace z jiných prohlížečů není na iOS možná.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 2 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Klikni na "Sdílet"</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        V dolní liště prohlížeče najdi ikonu sdílení (čtverec se šipkou nahoru).
+                      </p>
+                      <div className="bg-muted rounded-lg p-3 flex justify-center">
+                        <Share className="w-8 h-8 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 3 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">"Přidat na plochu"</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Posuň se níž v menu a najdi možnost "Přidat na plochu".
+                      </p>
+                      <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
+                        <Plus className="w-6 h-6 text-primary" />
+                        <span className="text-sm font-medium">Přidat na plochu</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 4 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      4
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Potvrď instalaci</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Klikni "Přidat" v pravém horním rohu. Pumplo se objeví na tvé ploše!
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="android" className="mt-4 space-y-4">
+                {/* Step 1 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Otevři Chrome</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Pro nejlepší zážitek použij prohlížeč Google Chrome.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 2 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Klikni na menu (⋮)</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        V pravém horním rohu prohlížeče najdi ikonu tří teček.
+                      </p>
+                      <div className="bg-muted rounded-lg p-3 flex justify-center">
+                        <MoreVertical className="w-8 h-8 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 3 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">"Nainstalovat aplikaci"</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        V menu najdi možnost "Nainstalovat aplikaci" nebo "Přidat na plochu".
+                      </p>
+                      <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
+                        <Download className="w-6 h-6 text-primary" />
+                        <span className="text-sm font-medium">Nainstalovat aplikaci</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Step 4 */}
+                <Card className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                      4
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Potvrď instalaci</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Klikni "Instalovat" v dialogovém okně. Pumplo se objeví na tvé ploše!
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+
+          {/* Footer note */}
+          <motion.p variants={itemVariants} className="text-center text-xs text-muted-foreground">
+            Už máš Pumplo nainstalovanou? Otevři ji z domovské obrazovky!
+          </motion.p>
         </motion.div>
-
-        {/* Platform Tabs */}
-        <motion.div variants={itemVariants}>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="ios" className="gap-2">
-                <Apple className="w-4 h-4" />
-                iPhone
-              </TabsTrigger>
-              <TabsTrigger value="android" className="gap-2">
-                <Chrome className="w-4 h-4" />
-                Android
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="ios" className="mt-4 space-y-4">
-              {/* iOS Step 1 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">1</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Otvor Safari</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Uisti sa, že používaš prehliadač Safari. Inštalácia nefunguje v Chrome ani iných prehliadačoch na iOS.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* iOS Step 2 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">2</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Klikni na "Zdieľať"</h4>
-                      <p className="text-sm text-muted-foreground">
-                        V spodnej lište prehliadača nájdi ikonu zdieľania.
-                      </p>
-                      <div className="flex items-center justify-center p-4 bg-muted rounded-lg">
-                        <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                          <Share className="w-6 h-6 text-primary" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* iOS Step 3 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">3</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">"Pridať na plochu"</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Prejdi nižšie v menu a vyber možnosť "Pridať na plochu" (Add to Home Screen).
-                      </p>
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                        <div className="w-8 h-8 rounded bg-background flex items-center justify-center">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium">Pridať na plochu</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* iOS Step 4 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">4</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Potvrď inštaláciu</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Klikni "Pridať" v pravom hornom rohu. Pumplo sa objaví na tvojej domovskej obrazovke!
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="android" className="mt-4 space-y-4">
-              {/* Android Step 1 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">1</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Otvor Chrome</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Pre najlepší zážitok použi prehliadač Google Chrome.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Android Step 2 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">2</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Klikni na menu (⋮)</h4>
-                      <p className="text-sm text-muted-foreground">
-                        V pravom hornom rohu prehliadača nájdi ikonu s tromi bodkami.
-                      </p>
-                      <div className="flex items-center justify-center p-4 bg-muted rounded-lg">
-                        <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                          <MoreVertical className="w-6 h-6 text-primary" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Android Step 3 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">3</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">"Nainštalovať aplikáciu"</h4>
-                      <p className="text-sm text-muted-foreground">
-                        V menu nájdi možnosť "Nainštalovať aplikáciu" alebo "Pridať na plochu".
-                      </p>
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                        <div className="w-8 h-8 rounded bg-background flex items-center justify-center">
-                          <Download className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium">Nainštalovať aplikáciu</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Android Step 4 */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-bold">4</span>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Potvrď inštaláciu</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Klikni "Inštalovať" v dialógovom okne. Pumplo sa nainštaluje ako aplikácia!
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-
-        {/* Footer Note */}
-        <motion.div variants={itemVariants} className="text-center">
-          <p className="text-xs text-muted-foreground">
-            Už máš Pumplo nainštalovanú? Otvor ju z domovskej obrazovky!
-          </p>
-        </motion.div>
-      </motion.div>
-    </div>
+      </div>
+    </PageTransition>
   );
 };
 
