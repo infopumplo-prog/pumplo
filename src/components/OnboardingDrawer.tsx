@@ -309,7 +309,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             .update({ is_active: false })
             .eq('user_id', userData.user.id);
           
-          // Create new plan with started_at = now
+          // Create new plan with started_at = now and training_days snapshot
           await supabase
             .from('user_workout_plans')
             .insert({
@@ -318,7 +318,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               is_active: true,
               started_at: new Date().toISOString(),
               current_week: 1,
-              gym_id: null
+              gym_id: null,
+              training_days: trainingDays // Store training days at plan creation
             });
           
           // Reset day index
@@ -332,7 +333,15 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     
     await refetch();
     
-    toast({ title: 'Hotovo!', description: isEditMode ? 'Změny byly uloženy.' : 'Tvůj profil byl vytvořen a plán připraven!' });
+    // Show different message for edit mode
+    if (isEditMode) {
+      toast({ 
+        title: 'Změny uloženy', 
+        description: 'Změny se projeví až v novém tréninkovém plánu.',
+      });
+    } else {
+      toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen a plán připraven!' });
+    }
     onOpenChange(false);
   };
 

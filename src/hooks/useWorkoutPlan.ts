@@ -15,6 +15,7 @@ interface WorkoutPlanData {
   exercises: WorkoutExercise[];
   allDays: DayTemplate[];
   startedAt: string | null;
+  trainingDays: string[] | null; // Training days stored at plan creation
 }
 
 export const useWorkoutPlan = () => {
@@ -143,7 +144,8 @@ export const useWorkoutPlan = () => {
         currentDayLetter,
         exercises,
         allDays,
-        startedAt: planData.started_at
+        startedAt: planData.started_at,
+        trainingDays: planData.training_days
       });
     } catch (err) {
       console.error('Error fetching workout plan:', err);
