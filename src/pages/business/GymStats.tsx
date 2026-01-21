@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Calendar, TrendingUp, Clock, AlertCircle, UserX, Trophy, ChevronDown } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Clock, AlertCircle, UserX, Trophy, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useGym } from '@/contexts/GymContext';
 import BusinessLayout from './BusinessLayout';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { cs } from 'date-fns/locale';
 
 interface GymStatsData {
   totalMembers: number;
@@ -16,6 +20,8 @@ interface GymStatsData {
   avgDurationMinutes: number;
   missedWorkoutsToday: MissedUser[];
   topUsers: TopUser[];
+  weeklyTrend: WeeklyTrendData[];
+  dayDistribution: DayDistributionData[];
 }
 
 interface MissedUser {
@@ -32,6 +38,25 @@ interface TopUser {
   workoutCount: number;
 }
 
+interface WeeklyTrendData {
+  date: string;
+  label: string;
+  workouts: number;
+}
+
+interface DayDistributionData {
+  day: string;
+  dayKey: string;
+  workouts: number;
+  fill: string;
+}
+
+interface MissedHistoryEntry {
+  date: string;
+  dateLabel: string;
+  users: MissedUser[];
+}
+
 const DAY_NAMES_CZ: Record<string, string> = {
   monday: 'Pondělí',
   tuesday: 'Úterý',
@@ -42,16 +67,107 @@ const DAY_NAMES_CZ: Record<string, string> = {
   sunday: 'Neděle'
 };
 
+const DAY_SHORT_CZ: Record<string, string> = {
+  monday: 'Po',
+  tuesday: 'Út',
+  wednesday: 'St',
+  thursday: 'Čt',
+  friday: 'Pá',
+  saturday: 'So',
+  sunday: 'Ne'
+};
+
+const DAY_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  'hsl(var(--primary))',
+  'hsl(var(--accent))',
+];
+
+const chartConfig = {
+  workouts: {
+    label: 'Tréninky',
+    color: 'hsl(var(--primary))',
+  },
+};
+
 const GymStats = () => {
   const { gyms, gym, selectGym, isLoading: gymsLoading } = useGym();
   const [stats, setStats] = useState<GymStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [missedHistory, setMissedHistory] = useState<MissedHistoryEntry[]>([]);
+  const [showMissedHistory, setShowMissedHistory] = useState(false);
+  const [loadingMissedHistory, setLoadingMissedHistory] = useState(false);
 
   // Get today's weekday
   const todayWeekday = useMemo(() => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     return days[new Date().getDay()];
   }, []);
+
+  // Fetch missed workout history (up to yesterday, last 7 days)
+  const fetchMissedHistory = async () => {
+    if (!gym?.id || loadingMissedHistory) return;
+    
+    setLoadingMissedHistory(true);
+    try {
+      const history: MissedHistoryEntry[] = [];
+      const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      // Check last 7 days (excluding today)
+      for (let i = 1; i <= 7; i++) {
+        const date = subDays(new Date(), i);
+        const dayKey = daysOfWeek[date.getDay()];
+        const dateStart = startOfDay(date).toISOString();
+        const dateEnd = endOfDay(date).toISOString();
+        
+        // Get members who had this day in their training schedule
+        const { data: membersWithSchedule } = await supabase
+          .from('user_profiles')
+          .select('user_id, first_name, last_name, training_days')
+          .eq('selected_gym_id', gym.id)
+          .contains('training_days', [dayKey]);
+        
+        if (!membersWithSchedule?.length) continue;
+        
+        // Get users who worked out on that date
+        const { data: sessionsOnDay } = await supabase
+          .from('workout_sessions')
+          .select('user_id')
+          .eq('gym_id', gym.id)
+          .gte('started_at', dateStart)
+          .lte('started_at', dateEnd);
+        
+        const workedOutUserIds = new Set(sessionsOnDay?.map(s => s.user_id) || []);
+        
+        const missedUsers = membersWithSchedule
+          .filter(m => !workedOutUserIds.has(m.user_id))
+          .map(m => ({
+            id: m.user_id,
+            firstName: m.first_name,
+            lastName: m.last_name,
+            expectedDay: dayKey
+          }));
+        
+        if (missedUsers.length > 0) {
+          history.push({
+            date: date.toISOString(),
+            dateLabel: format(date, 'EEEE d. MMMM', { locale: cs }),
+            users: missedUsers
+          });
+        }
+      }
+      
+      setMissedHistory(history);
+    } catch (err) {
+      console.error('Error fetching missed history:', err);
+    } finally {
+      setLoadingMissedHistory(false);
+    }
+  };
 
   useEffect(() => {
     if (!gym?.id) {
@@ -65,8 +181,8 @@ const GymStats = () => {
       try {
         const gymId = gym.id;
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const todayStart = startOfDay(now).toISOString();
+        const weekAgo = subDays(now, 7).toISOString();
 
         // 1. Total members (users with this gym selected)
         const { count: memberCount } = await supabase
@@ -164,13 +280,61 @@ const GymStats = () => {
           });
         }
 
+        // 7. Weekly trend data (last 7 days)
+        const weeklyTrend: WeeklyTrendData[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = subDays(now, i);
+          const dayStart = startOfDay(date).toISOString();
+          const dayEnd = endOfDay(date).toISOString();
+          
+          const { count } = await supabase
+            .from('workout_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('gym_id', gymId)
+            .gte('started_at', dayStart)
+            .lte('started_at', dayEnd);
+          
+          weeklyTrend.push({
+            date: date.toISOString(),
+            label: format(date, 'EEE', { locale: cs }),
+            workouts: count || 0
+          });
+        }
+
+        // 8. Distribution by day of week (all time)
+        const { data: allSessions } = await supabase
+          .from('workout_sessions')
+          .select('started_at')
+          .eq('gym_id', gymId);
+
+        const dayCountMap: Record<string, number> = {
+          monday: 0, tuesday: 0, wednesday: 0, thursday: 0,
+          friday: 0, saturday: 0, sunday: 0
+        };
+
+        allSessions?.forEach(session => {
+          const dayIndex = new Date(session.started_at).getDay();
+          const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          dayCountMap[days[dayIndex]]++;
+        });
+
+        const orderedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const dayDistribution: DayDistributionData[] = orderedDays.map((day, index) => ({
+          dayKey: day,
+          day: DAY_SHORT_CZ[day],
+          workouts: dayCountMap[day],
+          fill: DAY_COLORS[index]
+        }));
+
         setStats({
           totalMembers: memberCount || 0,
           todayWorkouts: todayCount || 0,
           weeklyWorkouts: weeklyCount || 0,
           avgDurationMinutes: Math.round(avgDuration),
           missedWorkoutsToday: missedUsers,
-          topUsers
+          topUsers,
+          weeklyTrend,
+          dayDistribution
         });
       } catch (err) {
         console.error('Error fetching gym stats:', err);
@@ -181,6 +345,13 @@ const GymStats = () => {
 
     fetchStats();
   }, [gym?.id, todayWeekday]);
+
+  // Load missed history when section is expanded
+  useEffect(() => {
+    if (showMissedHistory && missedHistory.length === 0 && !loadingMissedHistory) {
+      fetchMissedHistory();
+    }
+  }, [showMissedHistory]);
 
   if (gymsLoading) {
     return (
@@ -234,6 +405,7 @@ const GymStats = () => {
               ))}
             </div>
             <Skeleton className="h-64" />
+            <Skeleton className="h-64" />
           </div>
         ) : stats && (
           <motion.div
@@ -284,6 +456,86 @@ const GymStats = () => {
               </Card>
             </div>
 
+            {/* Weekly Trend Chart */}
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Týdenní trend návštěvnosti
+              </h3>
+              <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                <BarChart data={stats.weeklyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis 
+                    dataKey="label" 
+                    tickLine={false} 
+                    axisLine={false}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    tickLine={false} 
+                    axisLine={false}
+                    tick={{ fontSize: 12 }}
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip 
+                    content={<ChartTooltipContent />}
+                    cursor={{ fill: 'hsl(var(--muted))' }}
+                  />
+                  <Bar 
+                    dataKey="workouts" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                    name="Tréninky"
+                  />
+                </BarChart>
+              </ChartContainer>
+            </Card>
+
+            {/* Day Distribution Chart */}
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-chart-2" />
+                Rozložení podle dne v týdnu
+              </h3>
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <ChartContainer config={chartConfig} className="h-[200px] w-full md:w-1/2">
+                  <PieChart>
+                    <Pie
+                      data={stats.dayDistribution.filter(d => d.workouts > 0)}
+                      dataKey="workouts"
+                      nameKey="day"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ day, percent }) => `${day} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {stats.dayDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [`${value} tréninků`, name]}
+                    />
+                  </PieChart>
+                </ChartContainer>
+                <div className="grid grid-cols-2 gap-2 w-full md:w-1/2">
+                  {stats.dayDistribution.map((day) => (
+                    <div 
+                      key={day.dayKey} 
+                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                    >
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: day.fill }}
+                      />
+                      <span className="text-sm">{DAY_NAMES_CZ[day.dayKey]}</span>
+                      <span className="text-sm font-semibold ml-auto">{day.workouts}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
             {/* Missed Workouts Today */}
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4">
@@ -321,6 +573,67 @@ const GymStats = () => {
                     </p>
                   )}
                 </div>
+              )}
+            </Card>
+
+            {/* Missed Workout History */}
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-between p-0 h-auto hover:bg-transparent"
+                onClick={() => setShowMissedHistory(!showMissedHistory)}
+              >
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-muted-foreground" />
+                  <h3 className="font-semibold">Historie zmeškaných tréninků</h3>
+                </div>
+                {showMissedHistory ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </Button>
+              
+              {showMissedHistory && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 space-y-4"
+                >
+                  {loadingMissedHistory ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-16" />
+                      <Skeleton className="h-16" />
+                      <Skeleton className="h-16" />
+                    </div>
+                  ) : missedHistory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      Žádné zmeškané tréninky za posledních 7 dní! 🎉
+                    </p>
+                  ) : (
+                    missedHistory.map((entry) => (
+                      <div key={entry.date} className="border-l-2 border-destructive/30 pl-4">
+                        <p className="text-sm font-medium text-muted-foreground mb-2 capitalize">
+                          {entry.dateLabel}
+                        </p>
+                        <div className="space-y-1">
+                          {entry.users.slice(0, 3).map(user => (
+                            <div key={user.id} className="flex items-center gap-2 text-sm">
+                              <UserX className="w-3 h-3 text-destructive/70" />
+                              <span>{user.firstName || 'Neznámý'} {user.lastName || ''}</span>
+                            </div>
+                          ))}
+                          {entry.users.length > 3 && (
+                            <p className="text-xs text-muted-foreground">
+                              +{entry.users.length - 3} dalších
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </motion.div>
               )}
             </Card>
 
