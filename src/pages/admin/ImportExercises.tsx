@@ -17,14 +17,27 @@ const ImportExercises = () => {
     return uuidRegex.test(str);
   };
 
-  // Valid training roles from database
+  // Valid training roles from database (23 roles)
   const validRoles = [
-    'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull',
-    'elbow_flexion', 'elbow_extension', 'shoulder_abduction', 'shoulder_adduction',
-    'shoulder_external_rotation', 'shoulder_internal_rotation',
-    'squat', 'hinge', 'lunge', 'step', 'jump',
-    'anti_extension', 'anti_flexion', 'anti_rotation', 'rotation', 'lateral_flexion',
-    'cyclical_pull', 'cyclical_push', 'full_body_pull'
+    'horizontal_push', 'vertical_push', 'horizontal_pull', 'vertical_pull',
+    'squat', 'hip_hinge', 'lunge', 'single_leg',
+    'knee_flexion', 'knee_extension', 'hip_abduction', 'hip_adduction',
+    'calf_work', 'glute_isolation',
+    'anti_extension', 'anti_rotation', 'anti_lateral_flexion', 'spinal_flexion', 'hip_flexion',
+    'biceps_isolation', 'triceps_isolation', 'shoulder_isolation',
+    'cyclical_cardio'
+  ];
+
+  // Valid muscles whitelist (31 muscles)
+  const validMuscles = [
+    'abs', 'obliques', 'deep_core_muscles', 'lower_back', 'upper_back',
+    'middle_back', 'wide_back_muscles', 'chest_muscles', 'front_shoulders',
+    'side_shoulders', 'rear_shoulders', 'biceps', 'upper_arm_muscles',
+    'forearms', 'triceps', 'glutes', 'side_glutes', 'hip_flexors',
+    'inner_thighs', 'outer_thighs', 'front_thighs', 'back_thighs',
+    'calves', 'stabilizing_muscles', 'core_stabilizers', 'upper_trapezius',
+    'middle_trapezius', 'lower_trapezius', 'levator_scapulae',
+    'rhomboid_major', 'rhomboid_minor'
   ];
 
   const parseXLSX = async (arrayBuffer: ArrayBuffer, validMachineIds: Set<string>) => {
@@ -71,19 +84,34 @@ const ImportExercises = () => {
           const strValue = String(value ?? "");
           originalValues[header] = value;
           
-          // Array fields - parse JSON arrays
+          // Array fields - parse JSON arrays and validate muscles
           if (["primary_muscles", "secondary_muscles"].includes(header)) {
             try {
+              let muscles: string[] = [];
               if (strValue && strValue.startsWith("[")) {
-                obj[header] = JSON.parse(strValue);
-              } else {
-                obj[header] = [];
+                muscles = JSON.parse(strValue);
               }
+              
+              // Filter to only valid muscles
+              const originalMuscles = [...muscles];
+              const validatedMuscles = muscles.filter(m => validMuscles.includes(m));
+              
+              // Log removed invalid muscles
+              const removedMuscles = originalMuscles.filter(m => !validMuscles.includes(m));
+              if (removedMuscles.length > 0) {
+                changes.push({ 
+                  field: header, 
+                  original: `[${originalMuscles.join(', ')}]`, 
+                  changed: `[${validatedMuscles.join(', ')}] (odstránené: ${removedMuscles.join(', ')})` 
+                });
+              }
+              
+              obj[header] = validatedMuscles;
             } catch (e) {
               obj[header] = [];
               changes.push({ field: header, original: strValue, changed: [] });
             }
-          } 
+          }
           // Boolean fields
           else if (header === "exercise_with_weights") {
             obj[header] = strValue.toUpperCase() === "TRUE";

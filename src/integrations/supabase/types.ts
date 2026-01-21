@@ -267,6 +267,30 @@ export type Database = {
         }
         Relationships: []
       }
+      role_muscles: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          muscle: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          muscle: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          muscle?: string
+          role_id?: string
+        }
+        Relationships: []
+      }
       training_goals: {
         Row: {
           created_at: string | null

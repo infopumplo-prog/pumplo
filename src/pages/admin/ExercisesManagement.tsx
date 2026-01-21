@@ -59,9 +59,16 @@ const CATEGORIES = [
   { value: 'abdominals', label: 'Brušné svaly' },
 ];
 
+// Valid muscles whitelist (31 muscles) - English identifiers
 const MUSCLE_GROUPS = [
-  'prsia', 'chrbát', 'ramená', 'biceps', 'triceps', 'predlaktia',
-  'core', 'nohy', 'quadriceps', 'hamstrings', 'gluteus', 'lýtka',
+  'abs', 'obliques', 'deep_core_muscles', 'lower_back', 'upper_back',
+  'middle_back', 'wide_back_muscles', 'chest_muscles', 'front_shoulders',
+  'side_shoulders', 'rear_shoulders', 'biceps', 'upper_arm_muscles',
+  'forearms', 'triceps', 'glutes', 'side_glutes', 'hip_flexors',
+  'inner_thighs', 'outer_thighs', 'front_thighs', 'back_thighs',
+  'calves', 'stabilizing_muscles', 'core_stabilizers', 'upper_trapezius',
+  'middle_trapezius', 'lower_trapezius', 'levator_scapulae',
+  'rhomboid_major', 'rhomboid_minor'
 ];
 
 const EQUIPMENT_TYPES = [
