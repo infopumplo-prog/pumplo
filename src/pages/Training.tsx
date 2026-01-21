@@ -607,23 +607,18 @@ const Training = () => {
     }
   }, [plan, profile]);
 
-  // Calculate workout duration - more realistic estimate
+  // Calculate workout duration - unified with useWorkoutGenerator's calculateSlotsForDuration
   const calculateWorkoutDuration = (exercises: WorkoutExercise[]): number => {
-    let totalSeconds = 0;
+    const WARMUP_MINUTES = 10;
+    const COOLDOWN_MINUTES = 5;
+    const MINUTES_PER_EXERCISE = 8;
     
-    for (const ex of exercises) {
-      const sets = ex.sets || 3;
-      const isCompound = ['knee_dominant', 'hip_dominant', 'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull'].includes(ex.roleId);
-      const timePerSet = isCompound ? 50 : 35; // seconds
-      const restBetweenSets = isCompound ? 90 : 60; // seconds
-      const exerciseTime = sets * timePerSet + (sets - 1) * restBetweenSets;
-      totalSeconds += exerciseTime;
-      totalSeconds += 60; // transition overhead
-    }
+    // Inverse formula from calculateSlotsForDuration: slots = (duration - 15) / 8
+    // So: duration = (slots × 8) + 15
+    const exerciseCount = exercises.length;
+    const estimatedDuration = (exerciseCount * MINUTES_PER_EXERCISE) + WARMUP_MINUTES + COOLDOWN_MINUTES;
     
-    // Add warmup time (5-7 min)
-    const warmupMinutes = 6;
-    return Math.ceil(totalSeconds / 60) + warmupMinutes;
+    return estimatedDuration;
   };
 
   const getTargetExerciseCount = (trainingDurationMinutes: number | null, userLevel: string): number => {
