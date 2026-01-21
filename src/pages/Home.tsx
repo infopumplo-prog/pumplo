@@ -5,7 +5,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target } from 'lucide-react';
+import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2 } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -27,7 +27,7 @@ interface TrainingGoalWithDuration {
 const Home = () => {
   const navigate = useNavigate();
   const { profile, isLoading } = useUserProfile();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isBusiness, role } = useUserRole();
   const { plan, isLoading: planLoading } = useWorkoutPlan();
   const { stats } = useWorkoutStats();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -124,6 +124,15 @@ const Home = () => {
               />
             </div>
             <div className="flex items-center gap-3">
+              {role === 'business' && (
+                <Link
+                  to="/business"
+                  className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Business
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   to="/admin"
