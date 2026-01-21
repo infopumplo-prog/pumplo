@@ -136,7 +136,7 @@ const AppRoutes = () => (
     <Route path="/admin/gym/:id" element={<AdminRoute><AdminGymDetail /></AdminRoute>} />
     <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
-    <Route path="/admin/import" element={<AdminRoute><ImportExercises /></AdminRoute>} />
+    <Route path="/admin/import-exercises" element={<AdminRoute><ImportExercises /></AdminRoute>} />
     <Route path="/admin/import-machines" element={<AdminRoute><ImportMachines /></AdminRoute>} />
     
     {/* Business Routes - share GymProvider via BusinessLayout */}
