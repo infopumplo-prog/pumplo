@@ -278,6 +278,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       return;
     }
     
+    // 1. Always save profile first
     await updateProfile({
       gender,
       primary_goal: primaryGoal,
@@ -297,51 +298,63 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       current_step: TOTAL_STEPS - 1,
     });
     
-    // Auto-create workout plan after first onboarding completion (not in edit mode)
-    if (!isEditMode && primaryGoal) {
-      const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[primaryGoal];
-      if (mappedGoalId) {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          // Deactivate any existing plans
-          await supabase
-            .from('user_workout_plans')
-            .update({ is_active: false })
-            .eq('user_id', userData.user.id);
-          
-          // Create new plan with started_at = now and training_days snapshot
-          await supabase
-            .from('user_workout_plans')
-            .insert({
-              user_id: userData.user.id,
-              goal_id: mappedGoalId,
-              is_active: true,
-              started_at: new Date().toISOString(),
-              current_week: 1,
-              gym_id: null,
-              training_days: trainingDays // Store training days at plan creation
-            });
-          
-          // Reset day index
-          await supabase
-            .from('user_profiles')
-            .update({ current_day_index: 0 })
-            .eq('user_id', userData.user.id);
-        }
-      }
+    // 2. Check if there's an active workout plan
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      await refetch();
+      onOpenChange(false);
+      return;
     }
     
-    await refetch();
+    const { data: activePlan } = await supabase
+      .from('user_workout_plans')
+      .select('id, training_days')
+      .eq('user_id', userData.user.id)
+      .eq('is_active', true)
+      .maybeSingle();
     
-    // Show different message for edit mode
-    if (isEditMode) {
+    if (!activePlan) {
+      // NO active plan exists -> create new one with training_days snapshot
+      const mappedGoalId = primaryGoal ? PRIMARY_GOAL_TO_TRAINING_GOAL[primaryGoal] : null;
+      if (mappedGoalId) {
+        // Deactivate any leftover plans (shouldn't exist, but just in case)
+        await supabase
+          .from('user_workout_plans')
+          .update({ is_active: false })
+          .eq('user_id', userData.user.id);
+        
+        // Create new plan with snapshotted training_days
+        await supabase
+          .from('user_workout_plans')
+          .insert({
+            user_id: userData.user.id,
+            goal_id: mappedGoalId,
+            is_active: true,
+            started_at: new Date().toISOString(),
+            current_week: 1,
+            gym_id: null,
+            training_days: trainingDays // SNAPSHOT of current training days
+          });
+        
+        // Reset day index
+        await supabase
+          .from('user_profiles')
+          .update({ current_day_index: 0 })
+          .eq('user_id', userData.user.id);
+      }
+      
+      await refetch();
+      toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen a plán připraven!' });
+    } else {
+      // Active plan EXISTS -> DO NOT touch it!
+      // Just save profile and show warning
+      await refetch();
       toast({ 
         title: 'Změny uloženy', 
         description: 'Změny se projeví až v novém tréninkovém plánu.',
       });
-    } else {
-      toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen a plán připraven!' });
     }
+    
     onOpenChange(false);
   };
 
