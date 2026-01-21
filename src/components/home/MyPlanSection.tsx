@@ -87,8 +87,8 @@ const MyPlanSection = () => {
     ? Math.floor((plan.currentDayIndex || 0) / (goalInfo?.day_count || 2)) + 1
     : 1;
 
-  // Get training days from profile
-  const trainingDays = profile?.training_days || [];
+  // Use snapshotted training_days from the plan (stable, not affected by profile changes)
+  const trainingDays = plan?.trainingDays || [];
   
   // Adjust display index if workout was completed today
   const adjustedDisplayIndex = wasCompletedToday && plan
