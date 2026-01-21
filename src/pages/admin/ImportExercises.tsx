@@ -15,10 +15,21 @@ const ImportExercises = () => {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
     
-    console.log("Raw data sample:", rawData[0]);
+    // Get raw data without headers first
+    const rawData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+    
+    console.log("First row (sheet name):", rawData[0]);
+    console.log("Second row (headers):", rawData[1]);
+    console.log("Third row (first data):", rawData[2]);
     console.log("Total raw rows:", rawData.length);
+    
+    // Skip first row (sheet name), use second row as headers
+    const headers = rawData[1] as string[];
+    const dataRows = rawData.slice(2); // Skip first two rows
+    
+    console.log("Headers:", headers);
+    console.log("Data rows count:", dataRows.length);
     
     // Only accept known exercise columns
     const validColumns = [
@@ -27,25 +38,24 @@ const ImportExercises = () => {
       'exercise_with_weights', 'video_path', 'allowed_phase'
     ];
     
-    const parsed = rawData
-      .map((row) => {
+    const parsed = dataRows
+      .map((row: unknown[]) => {
         const obj: Record<string, unknown> = {};
         
-        Object.entries(row).forEach(([header, value]) => {
+        headers.forEach((header, index) => {
           // Skip columns not in our valid list
           if (!validColumns.includes(header)) {
             return;
           }
           
+          const value = row[index];
           const strValue = String(value ?? "");
           
-          // Array fields - parse JSON arrays (handle escaped quotes)
+          // Array fields - parse JSON arrays
           if (["primary_muscles", "secondary_muscles"].includes(header)) {
             try {
-              // Clean up the string - remove backslashes from escaped underscores
-              const cleanValue = strValue.replace(/\\_/g, '_');
-              if (cleanValue && (cleanValue.startsWith("[") || cleanValue.startsWith("["))) {
-                obj[header] = JSON.parse(cleanValue);
+              if (strValue && strValue.startsWith("[")) {
+                obj[header] = JSON.parse(strValue);
               } else {
                 obj[header] = [];
               }
