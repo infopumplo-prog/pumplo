@@ -24,66 +24,69 @@ const ImportExercises = () => {
       'exercise_with_weights', 'video_path', 'allowed_phase'
     ];
     
-    return rawData.map((row) => {
-      const obj: Record<string, unknown> = {};
-      
-      Object.entries(row).forEach(([header, value]) => {
-        // Skip columns not in our valid list
-        if (!validColumns.includes(header)) {
-          return;
-        }
+    return rawData
+      .map((row) => {
+        const obj: Record<string, unknown> = {};
         
-        const strValue = String(value || "");
-        
-        // Array fields - parse JSON arrays
-        if (["primary_muscles", "secondary_muscles"].includes(header)) {
-          try {
-            if (strValue && strValue.startsWith("[")) {
-              obj[header] = JSON.parse(strValue);
-            } else {
+        Object.entries(row).forEach(([header, value]) => {
+          // Skip columns not in our valid list
+          if (!validColumns.includes(header)) {
+            return;
+          }
+          
+          const strValue = String(value || "");
+          
+          // Array fields - parse JSON arrays
+          if (["primary_muscles", "secondary_muscles"].includes(header)) {
+            try {
+              if (strValue && strValue.startsWith("[")) {
+                obj[header] = JSON.parse(strValue);
+              } else {
+                obj[header] = [];
+              }
+            } catch (e) {
+              console.warn(`Failed to parse ${header}:`, strValue);
               obj[header] = [];
             }
-          } catch (e) {
-            console.warn(`Failed to parse ${header}:`, strValue);
-            obj[header] = [];
+          } 
+          // Boolean fields
+          else if (header === "exercise_with_weights") {
+            obj[header] = strValue.toLowerCase() === "true";
           }
-        } 
-        // Boolean fields
-        else if (header === "exercise_with_weights") {
-          obj[header] = strValue.toLowerCase() === "true";
-        }
-        // Number fields
-        else if (header === "difficulty") {
-          obj[header] = parseInt(strValue) || 5;
-        } 
-        // Nullable UUID fields
-        else if (header === "machine_id") {
-          obj[header] = strValue && strValue.length > 0 ? strValue : null;
-        }
-        // Nullable string fields
-        else if (header === "primary_role") {
-          obj[header] = strValue && strValue.length > 0 ? strValue : null;
-        }
-        // Allowed phase with default
-        else if (header === "allowed_phase") {
-          obj[header] = strValue && strValue.length > 0 ? strValue : "main";
-        }
-        // Equipment type with default
-        else if (header === "equipment_type") {
-          obj[header] = strValue && strValue.length > 0 ? strValue : "bodyweight";
-        }
-        // Video path - lowercase
-        else if (header === "video_path") {
-          obj[header] = strValue ? strValue.toLowerCase() : null;
-        }
-        // Other string fields
-        else {
-          obj[header] = strValue || null;
-        }
-      });
-      
-      return obj;
-    });
+          // Number fields
+          else if (header === "difficulty") {
+            obj[header] = parseInt(strValue) || 5;
+          } 
+          // Nullable UUID fields
+          else if (header === "machine_id") {
+            obj[header] = strValue && strValue.length > 0 ? strValue : null;
+          }
+          // Nullable string fields
+          else if (header === "primary_role") {
+            obj[header] = strValue && strValue.length > 0 ? strValue : null;
+          }
+          // Allowed phase with default
+          else if (header === "allowed_phase") {
+            obj[header] = strValue && strValue.length > 0 ? strValue : "main";
+          }
+          // Equipment type with default
+          else if (header === "equipment_type") {
+            obj[header] = strValue && strValue.length > 0 ? strValue : "bodyweight";
+          }
+          // Video path - lowercase
+          else if (header === "video_path") {
+            obj[header] = strValue ? strValue.toLowerCase() : null;
+          }
+          // Other string fields
+          else {
+            obj[header] = strValue || null;
+          }
+        });
+        
+        return obj;
+      })
+      // Filter out rows without a valid name (empty rows)
+      .filter((row) => row.name && String(row.name).trim().length > 0);
   };
 
   const handleImport = async () => {
