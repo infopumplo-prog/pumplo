@@ -103,11 +103,25 @@ const ImportExercises = () => {
     setImporting(true);
     
     try {
+      console.log("Fetching exercises.xlsx...");
       const response = await fetch("/data/exercises.xlsx");
+      console.log("Fetch response status:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+      
       const arrayBuffer = await response.arrayBuffer();
+      console.log("ArrayBuffer size:", arrayBuffer.byteLength);
+      
       const exercises = await parseXLSX(arrayBuffer);
       
-      console.log(`Parsed ${exercises.length} exercises`);
+      console.log(`Sending ${exercises.length} exercises to edge function`);
+      
+      if (exercises.length === 0) {
+        toast.error("Žiadne cviky na import - skontrolujte XLSX súbor");
+        return;
+      }
       
       const { data, error } = await supabase.functions.invoke("import-exercises", {
         body: { exercises },
