@@ -54,18 +54,22 @@ const ImportExercises = () => {
       'exercise_with_weights', 'video_path', 'allowed_phase'
     ];
     
+    const changedExercises: Array<{name: string, field: string, original: unknown, changed: unknown}> = [];
+    
     const parsed = dataRows
       .map((row: unknown[]) => {
         const obj: Record<string, unknown> = {};
+        const originalValues: Record<string, unknown> = {};
+        const changes: Array<{field: string, original: unknown, changed: unknown}> = [];
         
         headers.forEach((header, index) => {
-          // Skip columns not in our valid list
           if (!validColumns.includes(header)) {
             return;
           }
           
           const value = row[index];
           const strValue = String(value ?? "");
+          originalValues[header] = value;
           
           // Array fields - parse JSON arrays
           if (["primary_muscles", "secondary_muscles"].includes(header)) {
@@ -76,8 +80,8 @@ const ImportExercises = () => {
                 obj[header] = [];
               }
             } catch (e) {
-              console.warn(`Failed to parse ${header}:`, strValue);
               obj[header] = [];
+              changes.push({ field: header, original: strValue, changed: [] });
             }
           } 
           // Boolean fields
@@ -94,14 +98,16 @@ const ImportExercises = () => {
               if (validMachineIds.has(strValue)) {
                 obj[header] = strValue;
               } else {
-                console.warn(`Machine ID not found in database: ${strValue}`);
                 obj[header] = null;
+                changes.push({ field: header, original: strValue, changed: null });
               }
             } else {
               if (strValue && strValue.length > 0) {
-                console.warn(`Invalid UUID for machine_id: ${strValue}`);
+                obj[header] = null;
+                changes.push({ field: header, original: strValue, changed: null });
+              } else {
+                obj[header] = null;
               }
-              obj[header] = null;
             }
           }
           // Nullable string fields - validate against training_roles
@@ -110,9 +116,11 @@ const ImportExercises = () => {
               obj[header] = strValue;
             } else {
               if (strValue && strValue.length > 0) {
-                console.warn(`Invalid primary_role: ${strValue}`);
+                obj[header] = null;
+                changes.push({ field: header, original: strValue, changed: null });
+              } else {
+                obj[header] = null;
               }
-              obj[header] = null;
             }
           }
           // Allowed phase with default
@@ -133,40 +141,30 @@ const ImportExercises = () => {
           }
         });
         
+        // Log changes for this exercise
+        if (changes.length > 0) {
+          const exerciseName = String(obj.name || "Unknown");
+          changes.forEach(change => {
+            changedExercises.push({
+              name: exerciseName,
+              ...change
+            });
+          });
+        }
+        
         return obj;
       })
       // Filter out rows without a valid name (empty rows)
       .filter((row) => row.name && String(row.name).trim().length > 0);
     
-    // Log validation issues
-    const invalidRows = dataRows.filter((row: unknown[], index: number) => {
-      const nameIndex = headers.indexOf('name');
-      const name = row[nameIndex];
-      return !name || String(name).trim().length === 0;
-    });
-    
-    if (invalidRows.length > 0) {
-      console.warn(`Skipped ${invalidRows.length} rows without valid name`);
-    }
-    
-    // Log invalid primary_roles
-    const roleIndex = headers.indexOf('primary_role');
-    const invalidRoles = dataRows
-      .map((row: unknown[]) => row[roleIndex])
-      .filter((role) => role && !validRoles.includes(String(role)));
-    const uniqueInvalidRoles = [...new Set(invalidRoles.map(String))];
-    if (uniqueInvalidRoles.length > 0) {
-      console.warn(`Invalid primary_role values found (will be set to null):`, uniqueInvalidRoles);
-    }
-    
-    // Log invalid UUIDs
-    const machineIdIndex = headers.indexOf('machine_id');
-    const invalidUUIDs = dataRows
-      .map((row: unknown[]) => row[machineIdIndex])
-      .filter((id) => id && String(id).length > 0 && !isValidUUID(String(id)));
-    const uniqueInvalidUUIDs = [...new Set(invalidUUIDs.map(String))];
-    if (uniqueInvalidUUIDs.length > 0) {
-      console.warn(`Invalid machine_id UUIDs found (will be set to null):`, uniqueInvalidUUIDs);
+    // Log all changed exercises
+    if (changedExercises.length > 0) {
+      console.group("🔄 ZMENENÉ CVIKY POČAS IMPORTU:");
+      changedExercises.forEach(change => {
+        console.warn(`📝 "${change.name}" - pole "${change.field}": "${change.original}" → ${change.changed === null ? 'NULL' : change.changed}`);
+      });
+      console.groupEnd();
+      console.log(`Celkovo zmenených polí: ${changedExercises.length}`);
     }
     
     console.log("Parsed exercises sample:", parsed[0]);
