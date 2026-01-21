@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getMuscleLabel } from '@/lib/muscleLabels';
 
 export interface WarmupExercise {
   id: string;
@@ -108,12 +109,9 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
 
   if (!currentExercise) return null;
 
-  // Format time as MM:SS
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}`;
-  };
+  // Calculate progress for SVG circle
+  const circumference = 2 * Math.PI * 48;
+  const progressOffset = circumference * (1 - timeRemaining / currentExercise.duration);
 
   return (
     <motion.div
@@ -158,20 +156,60 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           </div>
         )}
 
-        {/* Circular timer overlay */}
+        {/* Circular timer with progress ring */}
         <motion.div
           className="absolute bottom-4 left-1/2 -translate-x-1/2"
           initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
+          animate={{ 
+            scale: timeRemaining <= 5 ? [1, 1.05, 1] : 1 
+          }}
+          transition={{ 
+            duration: 0.5, 
+            repeat: timeRemaining <= 5 ? Infinity : 0 
+          }}
         >
-          <div
-            className={cn(
-              "w-24 h-24 rounded-full flex flex-col items-center justify-center shadow-lg",
-              timeRemaining <= 5 ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
-            )}
-          >
-            <Timer className="w-5 h-5 mb-1 opacity-70" />
-            <span className="text-3xl font-bold">{formatTime(timeRemaining)}</span>
+          <div className="relative w-28 h-28">
+            {/* SVG progress ring */}
+            <svg className="w-full h-full -rotate-90">
+              {/* Background circle */}
+              <circle
+                cx="56"
+                cy="56"
+                r="48"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="6"
+                className="text-muted/30"
+              />
+              {/* Progress circle */}
+              <circle
+                cx="56"
+                cy="56"
+                r="48"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="6"
+                strokeLinecap="round"
+                className={cn(
+                  "transition-colors duration-300",
+                  timeRemaining <= 5 ? "text-destructive" : "text-primary"
+                )}
+                strokeDasharray={circumference}
+                strokeDashoffset={progressOffset}
+                style={{ transition: 'stroke-dashoffset 1s linear' }}
+              />
+            </svg>
+            
+            {/* Center content */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <Timer className="w-4 h-4 mb-1 text-muted-foreground" />
+              <span className={cn(
+                "text-3xl font-bold transition-colors duration-300",
+                timeRemaining <= 5 && "text-destructive"
+              )}>
+                {timeRemaining}
+              </span>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -190,12 +228,12 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           Drž pozici / Provádej {currentExercise.duration} sekund
         </p>
 
-        {/* Muscle tags */}
+        {/* Muscle tags - formatted */}
         {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
           <div className="flex flex-wrap gap-1 justify-center mt-3">
             {currentExercise.primaryMuscles.slice(0, 3).map(muscle => (
               <Badge key={muscle} variant="outline" className="text-xs">
-                {muscle}
+                {getMuscleLabel(muscle)}
               </Badge>
             ))}
           </div>
@@ -203,7 +241,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
       </div>
 
       {/* Action buttons */}
-      <div className="p-4 border-t border-border flex gap-2">
+      <div className="p-4 pb-28 border-t border-border flex gap-2">
         <Button
           variant="outline"
           size="lg"
