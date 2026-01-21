@@ -358,30 +358,43 @@ const Training = () => {
     const isFirstWeek = viewingWeek === 1;
     const isLastWeek = viewingWeek === totalWeeks;
     
-    // Determine which days to show in this week
-    let daysToShow: string[];
+    // Build the list of days to show in this week
+    // IMPORTANT: Use a structure that tracks whether each day is a "shifted" day
+    interface DayToShow {
+      dayOfWeek: string;
+      isShiftedDay: boolean;
+    }
+    
+    let daysToShow: DayToShow[] = [];
     
     if (isFirstWeek) {
       // Week 1: Only show days from plan start onwards (hide skipped days)
-      daysToShow = firstWeekEffectiveDays;
+      daysToShow = firstWeekEffectiveDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
     } else if (isLastWeek && skippedDaysCount > 0) {
       // Last week: Show regular training days + skipped days from first week
-      daysToShow = [...trainingDays, ...firstWeekSkippedDays];
+      // Regular days first
+      daysToShow = trainingDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
+      // Then add shifted days (from first week that were skipped)
+      firstWeekSkippedDays.forEach(d => {
+        daysToShow.push({ dayOfWeek: d, isShiftedDay: true });
+      });
     } else {
-      // Normal weeks: Show all training days
-      daysToShow = trainingDays;
+      // Normal weeks: Show all training days (none are shifted)
+      daysToShow = trainingDays.map(d => ({ dayOfWeek: d, isShiftedDay: false }));
     }
     
     // Calculate base properties for each day
-    const daysWithBaseProps = daysToShow.map((dayOfWeek, indexInWeek) => {
+    const daysWithBaseProps = daysToShow.map((dayData, indexInWeek) => {
+      const { dayOfWeek, isShiftedDay } = dayData;
+      
       // For split calculation, we need the EFFECTIVE global day index
       // Week 1 starts at 0, week 2 starts at firstWeekEffectiveDays, etc.
       let effectiveGlobalIndex: number;
       
       if (isFirstWeek) {
         effectiveGlobalIndex = indexInWeek;
-      } else if (isLastWeek && firstWeekSkippedDays.includes(dayOfWeek)) {
-        // Skipped days in last week: these are the LAST days of the entire plan
+      } else if (isShiftedDay) {
+        // Shifted days in last week: these are the LAST days of the entire plan
         const regularDaysBeforeLastWeek = effectiveFirstWeekDayCount + (totalWeeks - 2) * trainingFrequency;
         const regularDaysInLastWeek = trainingFrequency;
         const skippedDayIndex = firstWeekSkippedDays.indexOf(dayOfWeek);
@@ -389,37 +402,42 @@ const Training = () => {
       } else {
         // Normal calculation for other weeks
         const daysBeforeThisWeek = effectiveFirstWeekDayCount + (viewingWeek - 2) * trainingFrequency;
-        effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
+        // For last week, we need to use the position among non-shifted days only
+        const nonShiftedIndex = isLastWeek 
+          ? trainingDays.indexOf(dayOfWeek)
+          : indexInWeek;
+        effectiveGlobalIndex = daysBeforeThisWeek + nonShiftedIndex;
       }
       
       // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
       const workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
       
       // Check if this day is completed (non-bonus) - match by week and dayOfWeek
-      const completedSession = regularCompletedWorkouts.find(w => 
-        w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
-      );
+      // For shifted days, they don't have completions since they're future
+      const completedSession = isShiftedDay 
+        ? null 
+        : regularCompletedWorkouts.find(w => 
+            w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
+          );
       const isCompleted = !!completedSession;
       
       // Is this the actual "today" - check if day of week matches today's day
       const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
-      const isToday = dayOfWeek === todayWeekday && viewingWeek === currentWeek;
+      const isToday = !isShiftedDay && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
       
       // Is this day in the past within the current week?
-      const isPastThisWeek = viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
+      const isPastThisWeek = !isShiftedDay && viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
       
       // Is the entire viewing week in the past?
       const isWeekInPast = viewingWeek < currentWeek;
       
       // Is this day in the future?
-      const isFuture = viewingWeek > currentWeek || 
+      // Shifted days are always considered "future" since they're at the end of the plan
+      const isFuture = isShiftedDay || viewingWeek > currentWeek || 
         (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Is this a "shifted" day (one of the days from first week that appears in last week)?
-      const isShiftedDay = isLastWeek && firstWeekSkippedDays.includes(dayOfWeek);
-      
       // Is this day missed? (past, not completed, not shifted)
-      const isMissed = (isPastThisWeek || isWeekInPast) && !isCompleted && !isShiftedDay;
+      const isMissed = !isShiftedDay && (isPastThisWeek || isWeekInPast) && !isCompleted;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
@@ -453,7 +471,7 @@ const Training = () => {
     // Only mark upcoming if we're viewing the current week
     if (viewingWeek === currentWeek) {
       const upcomingIndex = daysWithBaseProps.findIndex(day => 
-        day.isFuture && !day.isCompleted
+        !day.isShiftedDay && day.isFuture && !day.isCompleted
       );
       if (upcomingIndex !== -1) {
         daysWithBaseProps[upcomingIndex].isUpcoming = true;
