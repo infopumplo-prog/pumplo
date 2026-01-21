@@ -104,12 +104,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [motivations, setMotivations] = useState<string[]>([]);
   const [userLevel, setUserLevel] = useState<string | null>(null);
+  const [hasJustCompleted, setHasJustCompleted] = useState(false);
 
   const isEditMode = profile?.onboarding_completed ?? false;
 
-  // Load existing profile data
+  // Load existing profile data - skip if we just completed to prevent reset
   useEffect(() => {
-    if (profile) {
+    if (profile && !hasJustCompleted) {
       // For edit mode, always start at step 0 to show all answers
       // For new users, use their saved step
       setCurrentStep(isEditMode ? 0 : Math.min(profile.current_step || 0, TOTAL_STEPS - 1));
@@ -128,7 +129,14 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setMotivations(profile.motivations || []);
       setUserLevel(profile.user_level);
     }
-  }, [profile, open]);
+  }, [profile, open, hasJustCompleted]);
+  
+  // Reset hasJustCompleted when drawer closes (for next open)
+  useEffect(() => {
+    if (!open) {
+      setHasJustCompleted(false);
+    }
+  }, [open]);
 
   const progress = ((currentStep + 1) / TOTAL_STEPS) * 100;
 
@@ -280,6 +288,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       });
       return;
     }
+    
+    // Set flag to prevent useEffect from resetting state during refetch
+    setHasJustCompleted(true);
     
     // 1. Always save profile first
     await updateProfile({

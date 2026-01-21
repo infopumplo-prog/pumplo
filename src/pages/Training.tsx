@@ -860,11 +860,44 @@ const Training = () => {
       .update({ current_day_index: 0 })
       .eq('user_id', user.user.id);
     
-    refetchPlan();
+    // Explicitly refetch to sync with latest data
+    await refetchProfile();
+    await refetchPlan();
+    
     setCompletedWorkouts([]);
     setSelectedGoalId(null);
     setShowCancelConfirm(false);
   };
+  
+  // Regenerate exercises for current day
+  const handleRegenerateExercises = useCallback(async () => {
+    if (!plan || !profile?.selected_gym_id || !profile?.user_level) {
+      toast.error('Nejprve vyber posilovnu');
+      return;
+    }
+    
+    setIsGeneratingDayExercises(true);
+    
+    try {
+      const newExercises = await generateExercisesForDay(
+        profile.selected_gym_id,
+        plan.goalId,
+        plan.currentDayLetter,
+        profile.user_level,
+        profile.injuries || [],
+        profile.equipment_preference,
+        profile.training_duration_minutes || 60
+      );
+      
+      setGeneratedExercises(newExercises);
+      toast.success('Cviky byly regenerovány!');
+    } catch (err) {
+      console.error('Error regenerating exercises:', err);
+      toast.error('Nepodařilo se regenerovat cviky');
+    } finally {
+      setIsGeneratingDayExercises(false);
+    }
+  }, [plan, profile]);
 
   // Extension workout generation
   const generateExtensionExercises = useCallback(async (count: number) => {
@@ -1751,10 +1784,22 @@ const Training = () => {
           if (!showButton) return null;
           
           return (
-            <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
+            <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto flex gap-2">
+              {/* Regenerate exercises button - only show when exercises are already generated */}
+              {generatedExercises.length > 0 && (
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="gap-2 shadow-lg"
+                  onClick={handleRegenerateExercises}
+                  disabled={isGeneratingDayExercises}
+                >
+                  <RefreshCw className={cn("w-5 h-5", isGeneratingDayExercises && "animate-spin")} />
+                </Button>
+              )}
               <Button 
                 size="lg" 
-                className="w-full gap-2 shadow-lg"
+                className="flex-1 gap-2 shadow-lg"
                 onClick={handleStartWorkout}
                 disabled={isGeneratingDayExercises}
               >
