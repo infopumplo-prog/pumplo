@@ -463,9 +463,14 @@ export type Database = {
           last_name: string | null
           max_streak: number | null
           motivations: string[] | null
+          notification_closing_soon: boolean | null
+          notification_missed_workout: boolean | null
+          notification_morning_reminder: boolean | null
+          notification_onboarding_shown: boolean | null
           onboarding_completed: boolean | null
           preferred_time: string | null
           primary_goal: string | null
+          push_subscription: Json | null
           secondary_goals: string[] | null
           selected_gym_id: string | null
           streak_updated_at: string | null
@@ -493,9 +498,14 @@ export type Database = {
           last_name?: string | null
           max_streak?: number | null
           motivations?: string[] | null
+          notification_closing_soon?: boolean | null
+          notification_missed_workout?: boolean | null
+          notification_morning_reminder?: boolean | null
+          notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
           primary_goal?: string | null
+          push_subscription?: Json | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null
@@ -523,9 +533,14 @@ export type Database = {
           last_name?: string | null
           max_streak?: number | null
           motivations?: string[] | null
+          notification_closing_soon?: boolean | null
+          notification_missed_workout?: boolean | null
+          notification_morning_reminder?: boolean | null
+          notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
           primary_goal?: string | null
+          push_subscription?: Json | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null

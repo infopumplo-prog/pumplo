@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,14 @@ const Settings = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { profile, updateProfile, isLoading } = useUserProfile();
-  const { isSupported, notificationPermission, requestPermission } = useTrainingNotifications();
+  const { 
+    isSupported, 
+    isSubscribed, 
+    subscribeToPush, 
+    unsubscribeFromPush,
+    notificationPreferences,
+    updateNotificationPreference 
+  } = usePushNotifications();
   const { toast } = useToast();
 
   // Profile state
@@ -48,7 +55,12 @@ const Settings = () => {
   // Other state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(notificationPermission === 'granted');
+  
+  // Local state for notification toggles
+  const [morningReminder, setMorningReminder] = useState(true);
+  const [missedWorkout, setMissedWorkout] = useState(true);
+  const [closingSoon, setClosingSoon] = useState(true);
+  const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
 
   // Sync profile data when loaded
   useEffect(() => {
@@ -58,10 +70,12 @@ const Settings = () => {
     }
   }, [profile]);
 
-  // Sync notification permission
+  // Sync notification preferences
   useEffect(() => {
-    setNotificationsEnabled(notificationPermission === 'granted');
-  }, [notificationPermission]);
+    setMorningReminder(notificationPreferences.morningReminder);
+    setMissedWorkout(notificationPreferences.missedWorkout);
+    setClosingSoon(notificationPreferences.closingSoon);
+  }, [notificationPreferences]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -206,24 +220,56 @@ const Settings = () => {
     }
   };
 
-  const handleNotificationToggle = async (enabled: boolean) => {
-    if (enabled && notificationPermission !== 'granted') {
-      const granted = await requestPermission();
-      setNotificationsEnabled(granted);
-      if (granted) {
-        toast({
-          title: 'Oznámení povolena',
-          description: 'Budete dostávat připomínky na trénink.',
-        });
+  const handleMasterNotificationToggle = async (enabled: boolean) => {
+    setIsTogglingNotifications(true);
+    try {
+      if (enabled) {
+        const success = await subscribeToPush();
+        if (success) {
+          toast({
+            title: 'Oznámení povolena',
+            description: 'Budete dostávat připomínky na trénink.',
+          });
+        } else {
+          toast({
+            title: 'Oznámení zamítnuta',
+            description: 'Povolte oznámení v nastavení prohlížeče.',
+            variant: 'destructive',
+          });
+        }
       } else {
+        await unsubscribeFromPush();
         toast({
-          title: 'Oznámení zamítnuta',
-          description: 'Povolte oznámení v nastavení prohlížeče.',
-          variant: 'destructive',
+          title: 'Oznámení vypnuta',
+          description: 'Nebudete dostávat žádná oznámení.',
         });
       }
-    } else {
-      setNotificationsEnabled(enabled);
+    } finally {
+      setIsTogglingNotifications(false);
+    }
+  };
+
+  const handleNotificationTypeToggle = async (
+    type: 'morning_reminder' | 'missed_workout' | 'closing_soon',
+    enabled: boolean
+  ) => {
+    // Update local state immediately for responsiveness
+    if (type === 'morning_reminder') setMorningReminder(enabled);
+    if (type === 'missed_workout') setMissedWorkout(enabled);
+    if (type === 'closing_soon') setClosingSoon(enabled);
+    
+    // Persist to database
+    const success = await updateNotificationPreference(type, enabled);
+    if (!success) {
+      // Revert on error
+      if (type === 'morning_reminder') setMorningReminder(!enabled);
+      if (type === 'missed_workout') setMissedWorkout(!enabled);
+      if (type === 'closing_soon') setClosingSoon(!enabled);
+      toast({
+        title: 'Chyba',
+        description: 'Nepodařilo se uložit nastavení.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -287,6 +333,36 @@ const Settings = () => {
   const hasProfileChanges = 
     firstName !== (profile?.first_name || '') || 
     lastName !== (profile?.last_name || '');
+
+  const notificationTypes = [
+    {
+      id: 'morning_reminder' as const,
+      icon: Clock,
+      title: 'Ranní připomínka',
+      description: 'Připomenutí tréninku ráno',
+      enabled: morningReminder,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10'
+    },
+    {
+      id: 'missed_workout' as const,
+      icon: Flame,
+      title: 'Zmeškaný trénink',
+      description: 'Upozornění po vynechaném tréninku',
+      enabled: missedWorkout,
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-500/10'
+    },
+    {
+      id: 'closing_soon' as const,
+      icon: MapPin,
+      title: 'Posilovna zavírá',
+      description: 'Upozornění 2h před zavíračkou',
+      enabled: closingSoon,
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10'
+    }
+  ];
 
   return (
     <PageTransition>
@@ -468,7 +544,7 @@ const Settings = () => {
             </div>
           </motion.div>
 
-          {/* Notifications Section */}
+          {/* Notifications Section - Granular */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-chart-2/10 rounded-xl flex items-center justify-center">
@@ -477,19 +553,44 @@ const Settings = () => {
               <h2 className="text-lg font-semibold">Oznámení</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-              <div className="flex items-center justify-between">
+              {/* Master toggle */}
+              <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div className="space-y-0.5">
-                  <p className="font-medium">Připomínky tréninku</p>
+                  <p className="font-medium">Povolit oznámení</p>
                   <p className="text-sm text-muted-foreground">
-                    Dostávejte upozornění v dny tréninku
+                    {isSubscribed ? 'Oznámení jsou aktivní' : 'Oznámení jsou vypnutá'}
                   </p>
                 </div>
                 <Switch
-                  checked={notificationsEnabled}
-                  onCheckedChange={handleNotificationToggle}
-                  disabled={!isSupported}
+                  checked={isSubscribed}
+                  onCheckedChange={handleMasterNotificationToggle}
+                  disabled={!isSupported || isTogglingNotifications}
                 />
               </div>
+              
+              {/* Individual toggles */}
+              {isSubscribed && (
+                <div className="space-y-3 pt-1">
+                  {notificationTypes.map((notif) => (
+                    <div key={notif.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 ${notif.bgColor} rounded-lg flex items-center justify-center`}>
+                          <notif.icon className={`w-4 h-4 ${notif.color}`} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{notif.title}</p>
+                          <p className="text-xs text-muted-foreground">{notif.description}</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={notif.enabled}
+                        onCheckedChange={(enabled) => handleNotificationTypeToggle(notif.id, enabled)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               {!isSupported && (
                 <p className="text-sm text-muted-foreground">
                   Váš prohlížeč nepodporuje oznámení.
@@ -497,7 +598,6 @@ const Settings = () => {
               )}
             </div>
           </motion.div>
-
           {/* Privacy Section */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-3 mb-4">

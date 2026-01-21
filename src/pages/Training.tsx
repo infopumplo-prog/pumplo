@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useStreak } from '@/hooks/useStreak';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { TRAINING_ROLE_NAMES, TrainingRoleId, TRAINING_ROLE_IDS, TRAINING_ROLE_CATEGORIES } from '@/lib/trainingRoles';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
@@ -20,12 +22,12 @@ import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import NotificationOnboardingDrawer from '@/components/notifications/NotificationOnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
-import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
@@ -85,7 +87,13 @@ const Training = () => {
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
   const { stats } = useWorkoutStats();
   const { currentStreak, maxStreak, isStreakActive, updateStreakOnWorkoutComplete, checkAndResetStreakIfNeeded } = useStreak();
-  const { isSupported: notificationsSupported, notificationPermission, requestPermission } = useTrainingNotifications();
+  const { 
+    isSupported: notificationsSupported, 
+    isSubscribed: notificationsEnabled,
+    subscribeToPush,
+    notificationPreferences,
+    markOnboardingShown 
+  } = usePushNotifications();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -122,6 +130,9 @@ const Training = () => {
   const [warmupExercises, setWarmupExercises] = useState<WarmupExercise[]>([]);
   const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false);
   const [showWarmup, setShowWarmup] = useState(false);
+  
+  // Notification onboarding
+  const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -305,6 +316,23 @@ const Training = () => {
       setShowPlanCompleteDialog(true);
     }
   }, [isPlanCompleted, plan, showPlanCompleteDialog, isRegeneratingPlan]);
+
+  // Show notification onboarding drawer on first visit
+  useEffect(() => {
+    if (
+      profile?.onboarding_completed && 
+      !profileLoading && 
+      notificationsSupported && 
+      !notificationsEnabled && 
+      !notificationPreferences.onboardingShown
+    ) {
+      // Small delay for better UX
+      const timer = setTimeout(() => {
+        setShowNotificationOnboarding(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profile?.onboarding_completed, profileLoading, notificationsSupported, notificationsEnabled, notificationPreferences.onboardingShown]);
   
   // Function to regenerate plan automatically
   const handleRegeneratePlan = useCallback(async () => {
@@ -1541,36 +1569,46 @@ const Training = () => {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {/* Notification toggle */}
+              {/* Notification toggle with tooltip */}
               {notificationsSupported && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={async () => {
-                    if (notificationPermission === 'granted') {
-                      toast.info('Notifikace jsou již povoleny');
-                    } else if (notificationPermission === 'denied') {
-                      toast.error('Notifikace jsou zablokované v prohlížeči. Povol je v nastavení.');
-                    } else {
-                      const granted = await requestPermission();
-                      if (granted) {
-                        toast.success('Notifikace povoleny! Budeme ti připomínat tréninky.');
-                      } else {
-                        toast.error('Notifikace nebyly povoleny');
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={async () => {
+                          if (notificationsEnabled) {
+                            toast.info('Notifikace jsou již povoleny. Uprav je v nastavení.');
+                            navigate('/settings');
+                          } else {
+                            const granted = await subscribeToPush();
+                            if (granted) {
+                              toast.success('Notifikace povoleny! Budeme ti připomínat tréninky.');
+                            } else {
+                              toast.error('Notifikace nebyly povoleny');
+                            }
+                          }
+                        }}
+                        className={cn(
+                          notificationsEnabled && "text-primary"
+                        )}
+                      >
+                        {notificationsEnabled ? (
+                          <Bell className="w-5 h-5" />
+                        ) : (
+                          <BellOff className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {notificationsEnabled 
+                        ? 'Notifikace povoleny - klikni pro nastavení' 
+                        : 'Klikni pro povolení notifikací'
                       }
-                    }
-                  }}
-                  title={notificationPermission === 'granted' ? 'Notifikace povoleny' : 'Povolit notifikace'}
-                  className={cn(
-                    notificationPermission === 'granted' && "text-primary"
-                  )}
-                >
-                  {notificationPermission === 'granted' ? (
-                    <Bell className="w-5 h-5" />
-                  ) : (
-                    <BellOff className="w-5 h-5" />
-                  )}
-                </Button>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title="Zrušit plán">
                 <X className="w-5 h-5" />
@@ -2106,6 +2144,19 @@ const Training = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Notification Onboarding Drawer */}
+        <NotificationOnboardingDrawer
+          open={showNotificationOnboarding}
+          onOpenChange={setShowNotificationOnboarding}
+          onAccept={async () => {
+            await subscribeToPush();
+            await markOnboardingShown();
+          }}
+          onDecline={async () => {
+            await markOnboardingShown();
+          }}
+        />
       </div>
     </PageTransition>
   );
