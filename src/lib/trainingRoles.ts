@@ -27,24 +27,24 @@ export type TrainingRoleId = typeof TRAINING_ROLE_IDS[number];
 
 // Czech names for UI display (fallback if DB not loaded)
 export const TRAINING_ROLE_NAMES: Record<string, string> = {
-  horizontal_push: 'Tlak na prsia',
-  horizontal_pull: 'Ťah chrbta',
+  horizontal_push: 'Tlak na prsa',
+  horizontal_pull: 'Tah zad',
   vertical_push: 'Tlak nad hlavu',
-  vertical_pull: 'Sťahovanie',
+  vertical_pull: 'Stahování',
   knee_dominant: 'Dřepy',
-  hip_dominant: 'Mŕtvy ťah',
+  hip_dominant: 'Mrtvý tah',
   single_leg_lower: 'Výpady',
   calf_isolation: 'Lýtka',
   biceps_isolation: 'Biceps',
   triceps_isolation: 'Triceps',
-  core_anti_extension: 'Brušné svaly',
-  core_rotation: 'Rotácia trupu',
-  chest_isolation: 'Prsia',
-  back_isolation: 'Chrbát',
-  shoulder_isolation: 'Ramená',
-  glute_isolation: 'Zadok',
-  quad_isolation: 'Predné stehno',
-  hamstring_isolation: 'Zadné stehno',
+  core_anti_extension: 'Břišní svaly',
+  core_rotation: 'Rotace trupu',
+  chest_isolation: 'Prsa',
+  back_isolation: 'Záda',
+  shoulder_isolation: 'Ramena',
+  glute_isolation: 'Hýždě',
+  quad_isolation: 'Přední stehno',
+  hamstring_isolation: 'Zadní stehno',
 };
 
 export const TRAINING_ROLE_CATEGORIES: Record<TrainingRoleId, 'upper' | 'lower' | 'core'> = {

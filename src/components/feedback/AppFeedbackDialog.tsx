@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -26,7 +32,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
 
   const handleSubmit = async () => {
     if (!user) return;
-    
+
     setIsSubmitting(true);
     const { error } = await supabase.from('app_feedback').insert({
       user_id: user.id,
@@ -36,11 +42,11 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
       favorite_feature: favoriteFeature,
       issues,
     });
-    
+
     setIsSubmitting(false);
-    
+
     if (error) {
-      toast.error('Chyba pri odosielaní');
+      toast.error('Chyba při odesílání');
     } else {
       setSubmitted(true);
       setTimeout(() => {
@@ -59,11 +65,11 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
   if (submitted) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <div className="text-center py-8">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Ďakujeme!</h2>
-            <p className="text-muted-foreground">Tvoja spätná väzba nám veľmi pomáha.</p>
+            <CheckCircle2 className="w-16 h-16 text-chart-2 mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Děkujeme!</h2>
+            <p className="text-muted-foreground">Tvoje zpětná vazba nám velmi pomáhá.</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -72,18 +78,18 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Spätná väzba</DialogTitle>
+          <DialogTitle>Zpětná vazba</DialogTitle>
           <DialogDescription>
-            Pomôž nám zlepšiť aplikáciu - tvoj názor je pre nás dôležitý!
+            Pomoz nám zlepšit aplikaci - tvůj názor je pro nás důležitý!
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           {/* Star rating */}
           <div>
-            <Label>Ako hodnotíš celkovú skúsenosť?</Label>
+            <Label>Jak hodnotíš celkovou zkušenost?</Label>
             <div className="flex gap-2 mt-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -92,10 +98,12 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
                   onClick={() => setRating(star)}
                   className="p-1"
                 >
-                  <Star 
+                  <Star
                     className={cn(
-                      "w-8 h-8 transition-colors",
-                      star <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
+                      'w-8 h-8 transition-colors',
+                      star <= rating
+                        ? 'fill-chart-4 text-chart-4'
+                        : 'text-muted-foreground'
                     )}
                   />
                 </button>
@@ -105,40 +113,40 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
 
           {/* Open questions */}
           <div>
-            <Label htmlFor="satisfaction">Čo sa ti na aplikácii páči?</Label>
+            <Label htmlFor="satisfaction">Co se ti na aplikaci líbí?</Label>
             <Textarea
               id="satisfaction"
               value={satisfaction}
               onChange={(e) => setSatisfaction(e.target.value)}
-              placeholder="Napr. jednoduchosť, cviky, design..."
+              placeholder="Např. jednoduchost, cviky, design..."
               className="mt-2"
             />
           </div>
 
           <div>
-            <Label htmlFor="improvements">Čo by sme mohli zlepšiť?</Label>
+            <Label htmlFor="improvements">Co bychom mohli zlepšit?</Label>
             <Textarea
               id="improvements"
               value={improvements}
               onChange={(e) => setImprovements(e.target.value)}
-              placeholder="Tvoje návrhy..."
+              placeholder="Tvé návrhy..."
               className="mt-2"
             />
           </div>
 
           <div>
-            <Label htmlFor="favoriteFeature">Aká funkcia ti najviac pomáha?</Label>
+            <Label htmlFor="favoriteFeature">Jaká funkce ti nejvíc pomáhá?</Label>
             <Textarea
               id="favoriteFeature"
               value={favoriteFeature}
               onChange={(e) => setFavoriteFeature(e.target.value)}
-              placeholder="Napr. generované tréningy, videá cvikov..."
+              placeholder="Např. generované tréninky, videa cviků..."
               className="mt-2"
             />
           </div>
 
           <div>
-            <Label htmlFor="issues">Narazil si na nejaké problémy?</Label>
+            <Label htmlFor="issues">Narazil jsi na nějaké problémy?</Label>
             <Textarea
               id="issues"
               value={issues}
@@ -149,13 +157,9 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
           </div>
         </div>
 
-        <Button 
-          onClick={handleSubmit} 
-          disabled={isSubmitting}
-          className="w-full gap-2"
-        >
+        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full gap-2">
           <Send className="w-4 h-4" />
-          {isSubmitting ? 'Odosielam...' : 'Odoslať spätnú väzbu'}
+          {isSubmitting ? 'Odesílám...' : 'Odeslat zpětnou vazbu'}
         </Button>
       </DialogContent>
     </Dialog>

@@ -132,7 +132,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek' }
       </div>
 
       <p className="text-sm text-muted-foreground mt-6">
-        Ťukni pro přeskočení
+        Klikni pro přeskočení
       </p>
     </motion.div>
   );

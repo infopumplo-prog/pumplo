@@ -42,9 +42,9 @@ const Profile = () => {
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
     // Only show install option if not already running as PWA
-    ...(!isPWA ? [{ icon: Smartphone, label: 'Nainštalovať aplikáciu', onClick: () => navigate('/install') }] : []),
+    ...(!isPWA ? [{ icon: Smartphone, label: 'Nainstalovat aplikaci', onClick: () => navigate('/install') }] : []),
     { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
-    { icon: MessageSquare, label: 'Spätná väzba', onClick: () => setFeedbackOpen(true) },
+    { icon: MessageSquare, label: 'Zpětná vazba', onClick: () => setFeedbackOpen(true) },
   ];
 
   const containerVariants = {
