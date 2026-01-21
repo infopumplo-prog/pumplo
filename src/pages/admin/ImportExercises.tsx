@@ -17,12 +17,19 @@ const ImportExercises = () => {
     const worksheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
     
+    // Only accept known exercise columns
+    const validColumns = [
+      'name', 'category', 'primary_muscles', 'secondary_muscles', 
+      'primary_role', 'equipment_type', 'machine_id', 'difficulty',
+      'exercise_with_weights', 'video_path', 'allowed_phase'
+    ];
+    
     return rawData.map((row) => {
       const obj: Record<string, unknown> = {};
       
       Object.entries(row).forEach(([header, value]) => {
-        // Skip empty columns from XLSX
-        if (header.startsWith('__EMPTY') || header.startsWith('_EMPTY')) {
+        // Skip columns not in our valid list
+        if (!validColumns.includes(header)) {
           return;
         }
         
@@ -65,10 +72,10 @@ const ImportExercises = () => {
         else if (header === "equipment_type") {
           obj[header] = strValue && strValue.length > 0 ? strValue : "bodyweight";
         }
-        // Skip timestamps
-        else if (header === "created_at" || header === "updated_at") {
-          // Let DB handle timestamps
-        } 
+        // Video path - lowercase
+        else if (header === "video_path") {
+          obj[header] = strValue ? strValue.toLowerCase() : null;
+        }
         // Other string fields
         else {
           obj[header] = strValue || null;
