@@ -21,6 +21,11 @@ const ImportExercises = () => {
       const obj: Record<string, unknown> = {};
       
       Object.entries(row).forEach(([header, value]) => {
+        // Skip empty columns from XLSX
+        if (header.startsWith('__EMPTY') || header.startsWith('_EMPTY')) {
+          return;
+        }
+        
         const strValue = String(value || "");
         
         // Array fields - parse JSON arrays
