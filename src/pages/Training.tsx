@@ -318,18 +318,42 @@ const Training = () => {
           .eq('id', plan.id);
       }
       
-      // Create new plan with current profile training_days snapshot
-      await supabase
-        .from('user_workout_plans')
-        .insert({
-          user_id: userData.user.id,
-          goal_id: mappedGoalId,
-          is_active: true,
-          started_at: new Date().toISOString(),
-          current_week: 1,
-          gym_id: profile.selected_gym_id,
-          training_days: profile.training_days // Store training days at plan creation
-        });
+      // Create new plan with current profile training_days snapshot and generate exercises
+      const selectedGymId = profile.selected_gym_id;
+      const durationMinutes = profile.training_duration_minutes || 60;
+      
+      if (selectedGymId && profile.user_level) {
+        // Generate full plan with exercises
+        const planId = await generateWorkoutPlan(
+          selectedGymId,
+          mappedGoalId,
+          profile.user_level as any,
+          profile.injuries || [],
+          profile.equipment_preference,
+          durationMinutes
+        );
+        
+        if (planId) {
+          // Update plan with snapshotted training_days
+          await supabase
+            .from('user_workout_plans')
+            .update({ training_days: profile.training_days })
+            .eq('id', planId);
+        }
+      } else {
+        // No gym - create empty plan
+        await supabase
+          .from('user_workout_plans')
+          .insert({
+            user_id: userData.user.id,
+            goal_id: mappedGoalId,
+            is_active: true,
+            started_at: new Date().toISOString(),
+            current_week: 1,
+            gym_id: null,
+            training_days: profile.training_days
+          });
+      }
       
       // Reset day index but KEEP STREAK!
       await supabase

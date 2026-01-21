@@ -7,8 +7,10 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { UserLevel } from '@/lib/trainingGoals';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 const GOALS = [
   { id: 'muscle', label: 'Nabrat svaly', emoji: '💪' },
@@ -84,6 +86,7 @@ interface OnboardingDrawerProps {
 
 const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const { profile, updateProfile, refetch } = useUserProfile();
+  const { generateWorkoutPlan, isGenerating } = useWorkoutGenerator();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -316,31 +319,64 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     if (!activePlan) {
       // NO active plan exists -> create new one with training_days snapshot
       const mappedGoalId = primaryGoal ? PRIMARY_GOAL_TO_TRAINING_GOAL[primaryGoal] : null;
+      const selectedGymId = profile?.selected_gym_id;
+      
       if (mappedGoalId) {
-        // Deactivate any leftover plans (shouldn't exist, but just in case)
-        await supabase
-          .from('user_workout_plans')
-          .update({ is_active: false })
-          .eq('user_id', userData.user.id);
-        
-        // Create new plan with snapshotted training_days
-        await supabase
-          .from('user_workout_plans')
-          .insert({
-            user_id: userData.user.id,
-            goal_id: mappedGoalId,
-            is_active: true,
-            started_at: new Date().toISOString(),
-            current_week: 1,
-            gym_id: null,
-            training_days: trainingDays // SNAPSHOT of current training days
-          });
-        
-        // Reset day index
+        // Reset day index first
         await supabase
           .from('user_profiles')
           .update({ current_day_index: 0 })
           .eq('user_id', userData.user.id);
+        
+        // If user has a gym selected, generate workout plan with exercises
+        if (selectedGymId && userLevel) {
+          console.log('[OnboardingDrawer] Generating workout plan with exercises...');
+          console.log('[OnboardingDrawer] Gym ID:', selectedGymId);
+          console.log('[OnboardingDrawer] Goal ID:', mappedGoalId);
+          console.log('[OnboardingDrawer] Duration:', trainingDuration, 'min');
+          
+          // generateWorkoutPlan creates the plan and assigns exercises
+          const planId = await generateWorkoutPlan(
+            selectedGymId,
+            mappedGoalId,
+            userLevel as UserLevel,
+            injuries || [],
+            equipmentPreference,
+            trainingDuration // Pass duration for dynamic slot calculation
+          );
+          
+          if (planId) {
+            // Update the plan with snapshotted training_days (generator doesn't set this)
+            await supabase
+              .from('user_workout_plans')
+              .update({ training_days: trainingDays })
+              .eq('id', planId);
+            
+            console.log('[OnboardingDrawer] Plan created with exercises, ID:', planId);
+          }
+        } else {
+          // No gym selected - create empty plan (exercises will be generated when gym is selected)
+          console.log('[OnboardingDrawer] No gym selected, creating empty plan...');
+          
+          // Deactivate any leftover plans
+          await supabase
+            .from('user_workout_plans')
+            .update({ is_active: false })
+            .eq('user_id', userData.user.id);
+          
+          // Create plan without exercises
+          await supabase
+            .from('user_workout_plans')
+            .insert({
+              user_id: userData.user.id,
+              goal_id: mappedGoalId,
+              is_active: true,
+              started_at: new Date().toISOString(),
+              current_week: 1,
+              gym_id: null,
+              training_days: trainingDays // SNAPSHOT of current training days
+            });
+        }
       }
       
       await refetch();
