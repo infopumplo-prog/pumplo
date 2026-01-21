@@ -115,12 +115,14 @@ const Training = () => {
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
-  // User's training days from profile (e.g., ["monday", "wednesday", "friday"])
+  // User's training days - use plan's stored training_days if available, otherwise fall back to profile
+  // This ensures that changing onboarding settings won't affect the current active plan
   const trainingDays = useMemo(() => {
-    const days = profile?.training_days || [];
+    // First priority: use training_days stored in the plan at creation time
+    const days = plan?.trainingDays || profile?.training_days || [];
     // Sort by day order
     return [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
-  }, [profile?.training_days]);
+  }, [plan?.trainingDays, profile?.training_days]);
   
   const trainingFrequency = trainingDays.length || 3;
 
@@ -310,7 +312,7 @@ const Training = () => {
           .eq('id', plan.id);
       }
       
-      // Create new plan
+      // Create new plan with current profile training_days snapshot
       await supabase
         .from('user_workout_plans')
         .insert({
@@ -319,7 +321,8 @@ const Training = () => {
           is_active: true,
           started_at: new Date().toISOString(),
           current_week: 1,
-          gym_id: profile.selected_gym_id
+          gym_id: profile.selected_gym_id,
+          training_days: profile.training_days // Store training days at plan creation
         });
       
       // Reset day index but KEEP STREAK!

@@ -547,6 +547,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           started_at: string | null
+          training_days: string[] | null
           updated_at: string | null
           user_id: string
         }
@@ -558,6 +559,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           started_at?: string | null
+          training_days?: string[] | null
           updated_at?: string | null
           user_id: string
         }
@@ -569,6 +571,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           started_at?: string | null
+          training_days?: string[] | null
           updated_at?: string | null
           user_id?: string
         }
