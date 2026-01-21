@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-
+import { supabase } from '@/integrations/supabase/client';
+import { PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 const GOALS = [
   { id: 'muscle', label: 'Nabrat svaly', emoji: '💪' },
   { id: 'fat_loss', label: 'Zhubnout / shodit tuk', emoji: '🔥' },
@@ -296,9 +297,42 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       current_step: TOTAL_STEPS - 1,
     });
     
+    // Auto-create workout plan after first onboarding completion (not in edit mode)
+    if (!isEditMode && primaryGoal) {
+      const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[primaryGoal];
+      if (mappedGoalId) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          // Deactivate any existing plans
+          await supabase
+            .from('user_workout_plans')
+            .update({ is_active: false })
+            .eq('user_id', userData.user.id);
+          
+          // Create new plan with started_at = now
+          await supabase
+            .from('user_workout_plans')
+            .insert({
+              user_id: userData.user.id,
+              goal_id: mappedGoalId,
+              is_active: true,
+              started_at: new Date().toISOString(),
+              current_week: 1,
+              gym_id: null
+            });
+          
+          // Reset day index
+          await supabase
+            .from('user_profiles')
+            .update({ current_day_index: 0 })
+            .eq('user_id', userData.user.id);
+        }
+      }
+    }
+    
     await refetch();
     
-    toast({ title: 'Hotovo!', description: isEditMode ? 'Změny byly uloženy.' : 'Tvůj profil byl vytvořen.' });
+    toast({ title: 'Hotovo!', description: isEditMode ? 'Změny byly uloženy.' : 'Tvůj profil byl vytvořen a plán připraven!' });
     onOpenChange(false);
   };
 

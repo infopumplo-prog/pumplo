@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
+import { useStreak } from '@/hooks/useStreak';
 import { TRAINING_ROLE_NAMES, TrainingRoleId, TRAINING_ROLE_IDS, TRAINING_ROLE_CATEGORIES } from '@/lib/trainingRoles';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
@@ -75,10 +76,11 @@ const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satu
 
 const Training = () => {
   const navigate = useNavigate();
-  const { profile, isLoading: profileLoading, updateProfile } = useUserProfile();
+  const { profile, isLoading: profileLoading, updateProfile, refetch: refetchProfile } = useUserProfile();
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan, getExercisesForDay } = useWorkoutPlan();
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
   const { stats } = useWorkoutStats();
+  const { currentStreak, maxStreak, isStreakActive, updateStreakOnWorkoutComplete, checkAndResetStreakIfNeeded } = useStreak();
   const { isSupported: notificationsSupported, notificationPermission, requestPermission } = useTrainingNotifications();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -106,6 +108,10 @@ const Training = () => {
   
   // Cancel confirmation
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
+  // Plan completion confirmation
+  const [showPlanCompleteDialog, setShowPlanCompleteDialog] = useState(false);
+  const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -198,6 +204,9 @@ const Training = () => {
   const totalCompletedDays = regularCompletedWorkouts.length;
   const progressPercentage = Math.min((totalCompletedDays / totalDaysInPlan) * 100, 100);
   
+  // Check if plan is completed
+  const isPlanCompleted = totalCompletedDays >= totalDaysInPlan && totalDaysInPlan > 0;
+  
   // Bonus workouts for today
   const todayBonusWorkouts = completedWorkouts.filter(w => {
     const sessionDate = new Date(w.date);
@@ -219,6 +228,76 @@ const Training = () => {
     // Fallback: use today if no started_at (shouldn't happen)
     return new Date();
   }, [plan]);
+  
+  // Check streak on page load (only once)
+  useEffect(() => {
+    if (profile?.onboarding_completed && !profileLoading) {
+      checkAndResetStreakIfNeeded();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.onboarding_completed, profileLoading]);
+  
+  // Auto-regenerate plan when completed
+  useEffect(() => {
+    if (isPlanCompleted && plan && !showPlanCompleteDialog && !isRegeneratingPlan) {
+      setShowPlanCompleteDialog(true);
+    }
+  }, [isPlanCompleted, plan, showPlanCompleteDialog, isRegeneratingPlan]);
+  
+  // Function to regenerate plan automatically
+  const handleRegeneratePlan = useCallback(async () => {
+    if (!profile?.primary_goal) return;
+    
+    setIsRegeneratingPlan(true);
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      
+      // Map current profile goal to training goal
+      const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal];
+      if (!mappedGoalId) return;
+      
+      // Deactivate old plan
+      if (plan?.id) {
+        await supabase
+          .from('user_workout_plans')
+          .update({ is_active: false })
+          .eq('id', plan.id);
+      }
+      
+      // Create new plan
+      await supabase
+        .from('user_workout_plans')
+        .insert({
+          user_id: userData.user.id,
+          goal_id: mappedGoalId,
+          is_active: true,
+          started_at: new Date().toISOString(),
+          current_week: 1,
+          gym_id: profile.selected_gym_id
+        });
+      
+      // Reset day index but KEEP STREAK!
+      await supabase
+        .from('user_profiles')
+        .update({ current_day_index: 0 })
+        .eq('user_id', userData.user.id);
+      
+      // Refetch
+      await refetchProfile();
+      await refetchPlan();
+      setCompletedWorkouts([]);
+      setShowPlanCompleteDialog(false);
+      
+      toast.success('Nový plán byl vytvořen! 🎉');
+    } catch (err) {
+      console.error('Error regenerating plan:', err);
+      toast.error('Nepodařilo se vytvořit nový plán');
+    } finally {
+      setIsRegeneratingPlan(false);
+    }
+  }, [profile, plan, refetchProfile, refetchPlan]);
 
   // Get today's weekday
   const todayWeekday = getCurrentWeekday();
@@ -623,12 +702,26 @@ const Training = () => {
     setGeneratedExercises([]);
     setExtendedExercises([]);
     
-    // Only advance day if not a bonus workout
+    // Only advance day and update streak if not a bonus workout
     if (!isBonusWorkout) {
       await advanceToNextDay();
+      
+      // Update streak
+      const { newStreak, isNewRecord, justActivated } = await updateStreakOnWorkoutComplete();
+      
+      if (justActivated) {
+        toast.success('🔥 Streak aktivován! Máš 3 tréninky za sebou!', {
+          duration: 5000
+        });
+      } else if (isNewRecord && newStreak > 3) {
+        toast.success(`🔥 Nový rekord! ${newStreak} dní streak!`, {
+          duration: 5000
+        });
+      }
     }
     
     setIsBonusWorkout(false);
+    await refetchProfile();
     refetchPlan();
   };
 
@@ -1150,6 +1243,25 @@ const Training = () => {
             </div>
           </div>
 
+          {/* Streak Display */}
+          {isStreakActive && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2 mb-3"
+            >
+              <div className="flex items-center gap-2 bg-orange-500/10 text-orange-500 px-3 py-1.5 rounded-full">
+                <Flame className="w-4 h-4" />
+                <span className="font-bold text-sm">{currentStreak} dní streak</span>
+              </div>
+              {maxStreak > currentStreak && (
+                <span className="text-xs text-muted-foreground">
+                  Rekord: {maxStreak}
+                </span>
+              )}
+            </motion.div>
+          )}
+
           {/* Progress bar */}
           <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
@@ -1575,6 +1687,53 @@ const Training = () => {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Ano, zrušit plán
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Plan Completed Dialog - Auto-regenerate */}
+        <AlertDialog open={showPlanCompleteDialog} onOpenChange={setShowPlanCompleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-xl">
+                <CheckCircle2 className="w-6 h-6 text-primary" />
+                Plán dokončen! 🎉
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  Gratulujeme! Dokončil jsi všech <strong>{totalDaysInPlan}</strong> tréninků
+                  v rámci <strong>{totalWeeks}</strong>-týdenního plánu "{goalInfo?.name}".
+                </p>
+                {isStreakActive && (
+                  <div className="flex items-center gap-2 bg-orange-500/10 text-orange-500 px-3 py-2 rounded-lg">
+                    <Flame className="w-5 h-5" />
+                    <span className="font-semibold">Streak: {currentStreak} dní</span>
+                    <span className="text-sm opacity-70">(zůstává zachován!)</span>
+                  </div>
+                )}
+                <p className="text-sm">
+                  Automaticky ti vygenerujeme nový plán podle tvého profilu.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction 
+                onClick={handleRegeneratePlan}
+                disabled={isRegeneratingPlan}
+                className="gap-2"
+              >
+                {isRegeneratingPlan ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Generuji...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Pokračovat v tréninku
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

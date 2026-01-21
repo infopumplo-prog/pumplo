@@ -348,6 +348,7 @@ export type Database = {
           created_at: string
           current_day_index: number | null
           current_step: number | null
+          current_streak: number | null
           equipment_preference: string | null
           first_name: string | null
           gender: string | null
@@ -356,12 +357,14 @@ export type Database = {
           id: string
           injuries: string[] | null
           last_name: string | null
+          max_streak: number | null
           motivations: string[] | null
           onboarding_completed: boolean | null
           preferred_time: string | null
           primary_goal: string | null
           secondary_goals: string[] | null
           selected_gym_id: string | null
+          streak_updated_at: string | null
           training_days: string[] | null
           training_duration_minutes: number | null
           training_split: string | null
@@ -375,6 +378,7 @@ export type Database = {
           created_at?: string
           current_day_index?: number | null
           current_step?: number | null
+          current_streak?: number | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
@@ -383,12 +387,14 @@ export type Database = {
           id?: string
           injuries?: string[] | null
           last_name?: string | null
+          max_streak?: number | null
           motivations?: string[] | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
           primary_goal?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
+          streak_updated_at?: string | null
           training_days?: string[] | null
           training_duration_minutes?: number | null
           training_split?: string | null
@@ -402,6 +408,7 @@ export type Database = {
           created_at?: string
           current_day_index?: number | null
           current_step?: number | null
+          current_streak?: number | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
@@ -410,12 +417,14 @@ export type Database = {
           id?: string
           injuries?: string[] | null
           last_name?: string | null
+          max_streak?: number | null
           motivations?: string[] | null
           onboarding_completed?: boolean | null
           preferred_time?: string | null
           primary_goal?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
+          streak_updated_at?: string | null
           training_days?: string[] | null
           training_duration_minutes?: number | null
           training_split?: string | null
@@ -654,6 +663,7 @@ export type Database = {
           total_sets: number | null
           total_weight_kg: number | null
           user_id: string
+          week_number: number | null
         }
         Insert: {
           completed_at?: string | null
@@ -670,6 +680,7 @@ export type Database = {
           total_sets?: number | null
           total_weight_kg?: number | null
           user_id: string
+          week_number?: number | null
         }
         Update: {
           completed_at?: string | null
@@ -686,6 +697,7 @@ export type Database = {
           total_sets?: number | null
           total_weight_kg?: number | null
           user_id?: string
+          week_number?: number | null
         }
         Relationships: [
           {

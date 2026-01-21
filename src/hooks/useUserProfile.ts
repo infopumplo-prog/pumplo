@@ -26,6 +26,10 @@ export interface UserProfile {
   user_level: 'beginner' | 'intermediate' | 'advanced' | null;
   selected_gym_id: string | null;
   current_day_index: number;
+  // Streak fields
+  current_streak: number;
+  max_streak: number;
+  streak_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
