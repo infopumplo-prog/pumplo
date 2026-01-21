@@ -17,6 +17,13 @@ const ImportExercises = () => {
     return uuidRegex.test(str);
   };
 
+  // Valid training roles from database
+  const validRoles = [
+    'biceps_isolation', 'calf_isolation', 'core_anti_extension', 'core_rotation',
+    'hip_dominant', 'horizontal_pull', 'horizontal_push', 'knee_dominant',
+    'single_leg_lower', 'triceps_isolation', 'vertical_pull', 'vertical_push'
+  ];
+
   const parseXLSX = async (arrayBuffer: ArrayBuffer) => {
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
@@ -89,9 +96,16 @@ const ImportExercises = () => {
               obj[header] = null;
             }
           }
-          // Nullable string fields
+          // Nullable string fields - validate against training_roles
           else if (header === "primary_role") {
-            obj[header] = strValue && strValue.length > 0 ? strValue : null;
+            if (strValue && validRoles.includes(strValue)) {
+              obj[header] = strValue;
+            } else {
+              if (strValue && strValue.length > 0) {
+                console.warn(`Invalid primary_role: ${strValue}`);
+              }
+              obj[header] = null;
+            }
           }
           // Allowed phase with default
           else if (header === "allowed_phase") {
