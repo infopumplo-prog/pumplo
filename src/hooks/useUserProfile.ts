@@ -30,6 +30,12 @@ export interface UserProfile {
   current_streak: number;
   max_streak: number;
   streak_updated_at: string | null;
+  // Notification fields
+  notification_morning_reminder: boolean;
+  notification_missed_workout: boolean;
+  notification_closing_soon: boolean;
+  notification_onboarding_shown: boolean;
+  push_subscription: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +83,7 @@ export const useUserProfile = () => {
 
     const { error } = await supabase
       .from('user_profiles')
-      .update(updates)
+      .update(updates as any)
       .eq('user_id', user.id);
 
     if (error) {
