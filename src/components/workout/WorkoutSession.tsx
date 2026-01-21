@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Trophy, Clock, Dumbbell, Weight, Plus, Star } from 'lucide-react';
+import { X, Trophy, Clock, Dumbbell, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExercisePlayer } from './ExercisePlayer';
 import { RestTimer } from './RestTimer';
-import { ExtendWorkoutSelector } from './ExtendWorkoutSelector';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
+import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 
 interface SetData {
   completed: boolean;
@@ -30,7 +30,6 @@ interface WorkoutSessionProps {
   isBonus?: boolean;
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
-  onExtend?: (count: number) => void;
 }
 
 // Rest times in seconds based on goal and situation
@@ -65,7 +64,6 @@ export const WorkoutSession = ({
   isBonus = false,
   onComplete,
   onCancel,
-  onExtend
 }: WorkoutSessionProps) => {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -74,8 +72,7 @@ export const WorkoutSession = ({
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const [workoutStartTime] = useState(new Date());
-  const [showExtendOption, setShowExtendOption] = useState(false);
-  const [isExtending, setIsExtending] = useState(false);
+  const [showSkipDialog, setShowSkipDialog] = useState(false);
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -108,7 +105,11 @@ export const WorkoutSession = ({
     setCurrentExerciseIndex(prev => prev + 1);
   }, []);
 
-  const handleSkipExercise = useCallback(() => {
+  const handleSkipClick = useCallback(() => {
+    setShowSkipDialog(true);
+  }, []);
+
+  const handleConfirmSkip = useCallback(() => {
     const newResult: ExerciseResult = {
       exerciseId: currentExercise.exerciseId || '',
       exerciseName: currentExercise.exerciseName || '',
@@ -147,8 +148,6 @@ export const WorkoutSession = ({
 
   // Summary screen
   if (showSummary) {
-    const canExtend = onExtend && !isBonus && !dayLetter.includes('_EXT');
-    
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -204,55 +203,14 @@ export const WorkoutSession = ({
             </div>
           </div>
 
-          {/* Extend workout option */}
-          {canExtend && showExtendOption && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mb-4"
-            >
-              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 via-background to-amber-500/5 border border-amber-500/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-semibold">Rozšířit trénink</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Přidej další cviky k dnešnímu tréninku
-                </p>
-                <ExtendWorkoutSelector 
-                  onConfirm={(count) => {
-                    setIsExtending(true);
-                    onExtend(count);
-                  }}
-                  isLoading={isExtending}
-                  buttonText="Rozšířit trénink"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          <div className="space-y-2">
-            {canExtend && !showExtendOption && (
-              <Button 
-                variant="outline"
-                size="lg" 
-                className="w-full gap-2" 
-                onClick={() => setShowExtendOption(true)}
-              >
-                <Plus className="w-5 h-5" />
-                Chci pokračovat
-              </Button>
-            )}
-            
-            <Button 
-              size="lg" 
-              className="w-full" 
-              onClick={handleFinishWorkout}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Ukládám...' : 'Dokončit trénink'}
-            </Button>
-          </div>
+          <Button 
+            size="lg" 
+            className="w-full" 
+            onClick={handleFinishWorkout}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Ukládám...' : 'Dokončit trénink'}
+          </Button>
         </motion.div>
       </motion.div>
     );
@@ -289,9 +247,24 @@ export const WorkoutSession = ({
         exerciseIndex={currentExerciseIndex}
         totalExercises={exercises.length}
         onCompleteExercise={handleCompleteExercise}
-        onSkipExercise={handleSkipExercise}
+        onSkipExercise={handleSkipClick}
         showWeightInput={true}
         restBetweenSets={restTimes.betweenSets}
+        gymId={gymId}
+        planId={planId || undefined}
+        dayLetter={dayLetter}
+      />
+
+      {/* Skip Dialog */}
+      <ExerciseSkipDialog
+        open={showSkipDialog}
+        onOpenChange={setShowSkipDialog}
+        exerciseId={currentExercise.exerciseId}
+        exerciseName={currentExercise.exerciseName || 'Cvik'}
+        gymId={gymId}
+        planId={planId || undefined}
+        dayLetter={dayLetter}
+        onConfirmSkip={handleConfirmSkip}
       />
     </div>
   );
@@ -305,7 +278,10 @@ const ExercisePlayerWithVideo = ({
   onCompleteExercise,
   onSkipExercise,
   showWeightInput,
-  restBetweenSets
+  restBetweenSets,
+  gymId,
+  planId,
+  dayLetter,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -314,6 +290,9 @@ const ExercisePlayerWithVideo = ({
   onSkipExercise: () => void;
   showWeightInput: boolean;
   restBetweenSets: number;
+  gymId?: string;
+  planId?: string;
+  dayLetter?: string;
 }) => {
   const [videoData, setVideoData] = useState<{ 
     url: string | null; 
