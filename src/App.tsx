@@ -22,6 +22,7 @@ import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
 import ExerciseSkipFeedback from "@/pages/admin/ExerciseSkipFeedback";
 import AppFeedbackList from "@/pages/admin/AppFeedbackList";
+import UserFeedbackList from "@/pages/admin/UserFeedbackList";
 import GymDashboard from "@/pages/business/GymDashboard";
 import GymMachines from "@/pages/business/GymMachines";
 import GymSettings from "@/pages/business/GymSettings";
@@ -139,6 +140,7 @@ const AppRoutes = () => (
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
     <Route path="/admin/feedback/skipped" element={<AdminRoute><ExerciseSkipFeedback /></AdminRoute>} />
     <Route path="/admin/feedback/app" element={<AdminRoute><AppFeedbackList /></AdminRoute>} />
+    <Route path="/admin/feedback/user" element={<AdminRoute><UserFeedbackList /></AdminRoute>} />
     
     {/* Business Routes - share GymProvider via BusinessLayout */}
     <Route element={<BusinessLayout />}>
