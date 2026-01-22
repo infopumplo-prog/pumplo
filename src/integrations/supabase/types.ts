@@ -371,6 +371,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          date_key: string
+          id: string
+          notification_type: string
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          date_key: string
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          date_key?: string
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       role_muscles: {
         Row: {
           created_at: string | null
@@ -981,6 +1005,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_notification_logs: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
