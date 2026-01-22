@@ -31,7 +31,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/machines', icon: Dumbbell, label: 'Stroje' },
     { path: '/admin/exercises', icon: Activity, label: 'Cviky' },
     { path: '/admin/feedback/skipped', icon: SkipForward, label: 'Přeskočené' },
-    { path: '/admin/feedback/app', icon: MessageSquare, label: 'Feedback' },
+    { path: '/admin/feedback/user', icon: MessageSquare, label: 'User FB' },
   ];
 
   return (

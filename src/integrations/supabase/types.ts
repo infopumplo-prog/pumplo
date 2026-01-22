@@ -446,6 +446,93 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feedback: {
+        Row: {
+          admin_notes: string | null
+          app_version: string | null
+          can_contact: boolean | null
+          contact_email: string | null
+          created_at: string | null
+          current_route: string | null
+          day_index: number | null
+          day_letter: string | null
+          error_code: string | null
+          error_message: string | null
+          exercise_id: string | null
+          feedback_type: Database["public"]["Enums"]["feedback_type"]
+          gym_id: string | null
+          id: string
+          last_action: string | null
+          locale: string | null
+          message: string | null
+          plan_id: string | null
+          platform: string | null
+          responses: Json | null
+          screenshot_url: string | null
+          status: Database["public"]["Enums"]["feedback_status"] | null
+          timezone: string | null
+          user_id: string
+          week_index: number | null
+          workout_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          app_version?: string | null
+          can_contact?: boolean | null
+          contact_email?: string | null
+          created_at?: string | null
+          current_route?: string | null
+          day_index?: number | null
+          day_letter?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          exercise_id?: string | null
+          feedback_type: Database["public"]["Enums"]["feedback_type"]
+          gym_id?: string | null
+          id?: string
+          last_action?: string | null
+          locale?: string | null
+          message?: string | null
+          plan_id?: string | null
+          platform?: string | null
+          responses?: Json | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["feedback_status"] | null
+          timezone?: string | null
+          user_id: string
+          week_index?: number | null
+          workout_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          app_version?: string | null
+          can_contact?: boolean | null
+          contact_email?: string | null
+          created_at?: string | null
+          current_route?: string | null
+          day_index?: number | null
+          day_letter?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          exercise_id?: string | null
+          feedback_type?: Database["public"]["Enums"]["feedback_type"]
+          gym_id?: string | null
+          id?: string
+          last_action?: string | null
+          locale?: string | null
+          message?: string | null
+          plan_id?: string | null
+          platform?: string | null
+          responses?: Json | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["feedback_status"] | null
+          timezone?: string | null
+          user_id?: string
+          week_index?: number | null
+          workout_id?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           age: number | null
@@ -904,6 +991,13 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "business" | "admin"
+      feedback_status: "new" | "in_progress" | "fixed" | "wont_fix"
+      feedback_type:
+        | "training_exercises"
+        | "bug_error"
+        | "missing_feature"
+        | "confusion"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1032,6 +1126,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "business", "admin"],
+      feedback_status: ["new", "in_progress", "fixed", "wont_fix"],
+      feedback_type: [
+        "training_exercises",
+        "bug_error",
+        "missing_feature",
+        "confusion",
+        "other",
+      ],
     },
   },
 } as const
