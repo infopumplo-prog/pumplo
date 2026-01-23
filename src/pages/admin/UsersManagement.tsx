@@ -26,7 +26,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { KeyRound, Pencil, Loader2, Search, ChevronRight, Plus, Eye, EyeOff, Mail, Copy, Check } from 'lucide-react';
+import { KeyRound, Pencil, Loader2, Search, ChevronRight, Plus, Eye, EyeOff, Mail, Copy, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -66,6 +66,10 @@ const UsersManagement = () => {
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
+  
+  // Delete user dialog
+  const [deleteUserDialog, setDeleteUserDialog] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   const fetchUsers = async () => {
@@ -176,6 +180,34 @@ const UsersManagement = () => {
     setSelectedUser(user);
     setNewEmail(user.email || '');
     setDrawerMode('change-email');
+  };
+
+  const handleDeleteUser = (user: UserData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedUser(user);
+    setDeleteUserDialog(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!selectedUser) return;
+    
+    setIsDeletingUser(true);
+    
+    const response = await supabase.functions.invoke('admin-user-actions', {
+      body: { action: 'delete_user', user_id: selectedUser.user_id },
+    });
+
+    setIsDeletingUser(false);
+
+    if (response.error || response.data?.error) {
+      toast.error(response.data?.error || 'Nepodarilo sa odstrániť používateľa');
+      return;
+    }
+
+    toast.success('Používateľ bol odstránený');
+    setDeleteUserDialog(false);
+    setSelectedUser(null);
+    fetchUsers();
   };
 
   const confirmChangeEmail = async () => {
@@ -392,6 +424,15 @@ const UsersManagement = () => {
                       title="Reset hesla"
                     >
                       <KeyRound className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                      onClick={(e) => handleDeleteUser(user, e)}
+                      title="Odstrániť"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                     <ChevronRight className="w-5 h-5 text-muted-foreground ml-1" />
                   </div>
@@ -706,6 +747,36 @@ const UsersManagement = () => {
                   </Button>
                 </>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Dialog */}
+        <Dialog open={deleteUserDialog} onOpenChange={(open) => {
+          setDeleteUserDialog(open);
+          if (!open) setSelectedUser(null);
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Odstrániť používateľa</DialogTitle>
+              <DialogDescription>
+                Naozaj chcete odstrániť používateľa <strong>{selectedUser?.email}</strong>? 
+                Táto akcia je nevratná a odstráni všetky údaje spojené s týmto účtom.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteUserDialog(false)}>
+                Zrušiť
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteUser} 
+                disabled={isDeletingUser}
+              >
+                {isDeletingUser ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Odstrániť
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
