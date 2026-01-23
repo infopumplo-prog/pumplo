@@ -187,6 +187,31 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "delete_user": {
+        if (!user_id) {
+          return new Response(
+            JSON.stringify({ error: "Chýba user_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Delete from auth.users (this will cascade to user_profiles and user_roles via triggers)
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
+
+        if (deleteError) {
+          console.error("Error deleting user:", deleteError);
+          return new Response(
+            JSON.stringify({ error: deleteError.message || "Nepodarilo sa odstrániť používateľa" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Používateľ bol úspešne odstránený" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "Neznáma akcia" }),
