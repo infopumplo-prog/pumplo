@@ -9,7 +9,7 @@ export const FeedbackButton = () => {
   return (
     <>
       <motion.button
-        className="fixed bottom-24 right-4 z-40 bg-primary text-primary-foreground rounded-full p-3 shadow-lg"
+        className="fixed bottom-24 right-4 z-[60] bg-primary text-primary-foreground rounded-full p-3 shadow-lg"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
