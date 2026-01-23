@@ -18,7 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { KeyRound, Pencil, Loader2, Search, ChevronRight, Plus, Eye, EyeOff } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { KeyRound, Pencil, Loader2, Search, ChevronRight, Plus, Eye, EyeOff, Mail, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -27,6 +35,7 @@ import AdminPagination from '@/components/admin/AdminPagination';
 interface UserData {
   id: string;
   user_id: string;
+  email?: string;
   first_name: string | null;
   last_name: string | null;
   age: number | null;
@@ -44,43 +53,43 @@ const UsersManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'create' | null>(null);
+  const [drawerMode, setDrawerMode] = useState<'view' | 'edit' | 'create' | 'change-email' | null>(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', age: '', role: 'user', gym_license_count: '0' });
   const [currentPage, setCurrentPage] = useState(1);
   const [createForm, setCreateForm] = useState({ email: '', password: '', first_name: '', last_name: '', role: 'user', gym_license_count: '1' });
   const [isCreating, setIsCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  
+  // Password reset dialog
+  const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
     
-    const { data: profiles, error: profilesError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const response = await supabase.functions.invoke('admin-user-actions', {
+      body: { action: 'list_users', page: 1, per_page: 1000 },
+    });
 
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+    if (response.error) {
+      console.error('Error fetching users:', response.error);
+      toast.error('Nepodarilo sa načítať užívateľov');
       setIsLoading(false);
       return;
     }
 
-    const usersWithRoles = await Promise.all(
-      (profiles || []).map(async (profile) => {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.user_id)
-          .single();
+    if (response.data?.error) {
+      console.error('Error:', response.data.error);
+      toast.error(response.data.error);
+      setIsLoading(false);
+      return;
+    }
 
-        return {
-          ...profile,
-          role: roleData?.role || 'user',
-        };
-      })
-    );
-
-    setUsers(usersWithRoles);
+    setUsers(response.data?.users || []);
     setIsLoading(false);
   };
 
@@ -93,7 +102,8 @@ const UsersManagement = () => {
     return users.filter((user) => {
       const searchLower = searchTerm.toLowerCase();
       const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-      return fullName.includes(searchLower) || user.user_id.includes(searchLower);
+      const email = (user.email || '').toLowerCase();
+      return fullName.includes(searchLower) || user.user_id.includes(searchLower) || email.includes(searchLower);
     });
   }, [users, searchTerm]);
 
@@ -127,9 +137,71 @@ const UsersManagement = () => {
     setDrawerMode('edit');
   };
 
-  const handleSendPasswordReset = (e: React.MouseEvent) => {
+  const handleResetPassword = async (user: UserData, e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.info('Funkcia reset hesla vyžaduje nastavenie edge function');
+    setSelectedUser(user);
+    setGeneratedPassword('');
+    setPasswordCopied(false);
+    setResetPasswordDialog(true);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!selectedUser) return;
+    
+    setIsResettingPassword(true);
+    
+    const response = await supabase.functions.invoke('admin-user-actions', {
+      body: { action: 'reset_password', user_id: selectedUser.user_id },
+    });
+
+    setIsResettingPassword(false);
+
+    if (response.error || response.data?.error) {
+      toast.error(response.data?.error || 'Nepodarilo sa resetovať heslo');
+      return;
+    }
+
+    setGeneratedPassword(response.data.new_password);
+    toast.success('Heslo bolo resetované');
+  };
+
+  const copyPassword = async () => {
+    await navigator.clipboard.writeText(generatedPassword);
+    setPasswordCopied(true);
+    toast.success('Heslo skopírované do schránky');
+  };
+
+  const handleChangeEmail = (user: UserData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedUser(user);
+    setNewEmail(user.email || '');
+    setDrawerMode('change-email');
+  };
+
+  const confirmChangeEmail = async () => {
+    if (!selectedUser || !newEmail) return;
+    
+    if (newEmail === selectedUser.email) {
+      toast.error('Nový email je rovnaký ako súčasný');
+      return;
+    }
+
+    setIsChangingEmail(true);
+    
+    const response = await supabase.functions.invoke('admin-user-actions', {
+      body: { action: 'change_email', user_id: selectedUser.user_id, new_email: newEmail },
+    });
+
+    setIsChangingEmail(false);
+
+    if (response.error || response.data?.error) {
+      toast.error(response.data?.error || 'Nepodarilo sa zmeniť email');
+      return;
+    }
+
+    toast.success('Email bol úspešne zmenený');
+    closeDrawer();
+    fetchUsers();
   };
 
   const saveUserEdit = async () => {
@@ -182,6 +254,7 @@ const UsersManagement = () => {
     setSelectedUser(null);
     setCreateForm({ email: '', password: '', first_name: '', last_name: '', role: 'user', gym_license_count: '1' });
     setShowPassword(false);
+    setNewEmail('');
   };
 
   const handleCreateUser = async () => {
@@ -196,8 +269,6 @@ const UsersManagement = () => {
     }
 
     setIsCreating(true);
-    
-    const { data: sessionData } = await supabase.auth.getSession();
     
     const response = await supabase.functions.invoke('admin-create-user', {
       body: {
@@ -257,7 +328,7 @@ const UsersManagement = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Hľadať používateľa..."
+            placeholder="Hľadať podľa mena alebo emailu..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -280,6 +351,7 @@ const UsersManagement = () => {
                         ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
                         : 'Bez mena'}
                     </p>
+                    <p className="text-sm text-muted-foreground truncate">{user.email || '-'}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeClass(user.role || 'user')}`}>
                         {user.role}
@@ -299,6 +371,7 @@ const UsersManagement = () => {
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={(e) => handleEditUser(user, e)}
+                      title="Upraviť"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -306,7 +379,17 @@ const UsersManagement = () => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0"
-                      onClick={handleSendPasswordReset}
+                      onClick={(e) => handleChangeEmail(user, e)}
+                      title="Zmeniť email"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={(e) => handleResetPassword(user, e)}
+                      title="Reset hesla"
                     >
                       <KeyRound className="w-4 h-4" />
                     </Button>
@@ -335,6 +418,10 @@ const UsersManagement = () => {
             </DrawerHeader>
             {selectedUser && (
               <div className="px-4 pb-4 space-y-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <p className="font-medium">{selectedUser.email || '-'}</p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground text-xs">Meno</Label>
@@ -451,6 +538,39 @@ const UsersManagement = () => {
           </DrawerContent>
         </Drawer>
 
+        {/* Change Email Drawer */}
+        <Drawer open={drawerMode === 'change-email'} onOpenChange={closeDrawer}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Zmeniť email</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4 space-y-4">
+              <div>
+                <Label className="text-muted-foreground text-xs">Aktuálny email</Label>
+                <p className="font-medium">{selectedUser?.email || '-'}</p>
+              </div>
+              <div>
+                <Label>Nový email</Label>
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="novy@email.com"
+                />
+              </div>
+            </div>
+            <DrawerFooter>
+              <Button onClick={confirmChangeEmail} className="w-full" disabled={isChangingEmail || !newEmail}>
+                {isChangingEmail ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Zmeniť email
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Zrušiť</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+
         {/* Create User Drawer */}
         <Drawer open={drawerMode === 'create'} onOpenChange={closeDrawer}>
           <DrawerContent>
@@ -538,6 +658,57 @@ const UsersManagement = () => {
             </DrawerFooter>
           </DrawerContent>
         </Drawer>
+
+        {/* Password Reset Dialog */}
+        <Dialog open={resetPasswordDialog} onOpenChange={(open) => {
+          setResetPasswordDialog(open);
+          if (!open) {
+            setGeneratedPassword('');
+            setPasswordCopied(false);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset hesla</DialogTitle>
+              <DialogDescription>
+                {generatedPassword 
+                  ? 'Nové heslo bolo vygenerované. Skopírujte ho a pošlite užívateľovi.'
+                  : `Naozaj chcete resetovať heslo pre ${selectedUser?.email || 'tohto užívateľa'}?`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            {generatedPassword ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  <code className="flex-1 font-mono text-lg">{generatedPassword}</code>
+                  <Button size="icon" variant="ghost" onClick={copyPassword}>
+                    {passwordCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Toto heslo sa zobrazí iba raz. Uistite sa, že ste ho skopírovali.
+                </p>
+              </div>
+            ) : null}
+            
+            <DialogFooter>
+              {generatedPassword ? (
+                <Button onClick={() => setResetPasswordDialog(false)}>Zavrieť</Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setResetPasswordDialog(false)}>
+                    Zrušiť
+                  </Button>
+                  <Button onClick={confirmResetPassword} disabled={isResettingPassword}>
+                    {isResettingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Resetovať heslo
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
