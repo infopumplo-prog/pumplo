@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 
 type AuthMode = 'login' | 'register';
@@ -17,7 +17,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  // registrationSuccess state removed - auto-confirm is now enabled
   
   const { login, register } = useAuth();
 
@@ -32,14 +32,18 @@ const Auth = () => {
         if (!result.success) {
           setError(result.error || 'Přihlášení se nezdařilo');
         }
+        // Successful login will auto-redirect via AuthContext
       } else {
         const result = await register(email, password, firstName, lastName);
         if (!result.success) {
-          setError(result.error || 'Registrace se nezdařila');
-        } else {
-          // Registration successful - show success screen
-          setRegistrationSuccess(true);
+          // Handle rate limit error with user-friendly message
+          if (result.error?.includes('rate limit') || result.error?.includes('429')) {
+            setError('Příliš mnoho registrací. Zkuste to prosím za pár minut.');
+          } else {
+            setError(result.error || 'Registrace se nezdařila');
+          }
         }
+        // Successful registration will auto-login and redirect via AuthContext (auto-confirm enabled)
       }
     } catch {
       setError('Něco se pokazilo. Zkuste to prosím znovu.');
@@ -51,98 +55,7 @@ const Auth = () => {
   const toggleMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setError('');
-    setRegistrationSuccess(false);
   };
-
-  const backToLogin = () => {
-    setMode('login');
-    setRegistrationSuccess(false);
-    setEmail('');
-    setPassword('');
-    setFirstName('');
-    setLastName('');
-    setError('');
-  };
-
-  // Registration success screen
-  if (registrationSuccess) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col safe-top safe-bottom">
-        <div className="flex-shrink-0 gradient-hero pt-12 pb-8 px-6">
-          <motion.div 
-            className="flex flex-col items-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.img
-              src={pumploLogo}
-              alt="Pumplo"
-              className="w-32 h-32 mb-4 object-contain"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            />
-            <h1 className="text-3xl font-bold text-foreground">Pumplo</h1>
-          </motion.div>
-        </div>
-
-        <motion.div 
-          className="flex-1 px-6 pt-8 flex flex-col items-center justify-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="max-w-md mx-auto w-full text-center space-y-6">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
-              className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center"
-            >
-              <CheckCircle className="w-10 h-10 text-primary" />
-            </motion.div>
-            
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground">Registrácia úspešná!</h2>
-              <p className="text-muted-foreground">
-                Na adresu <span className="font-semibold text-foreground">{email}</span> sme ti poslali potvrdzovací email.
-              </p>
-            </div>
-
-            <div className="bg-muted/50 rounded-xl p-4 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Čo teraz?</span>
-              </p>
-              <ol className="text-sm text-muted-foreground text-left space-y-1 list-decimal list-inside">
-                <li>Otvor si emailovú schránku</li>
-                <li>Nájdi email od Pumplo</li>
-                <li>Klikni na potvrdzovací odkaz</li>
-                <li>Vráť sa a prihlás sa</li>
-              </ol>
-            </div>
-
-            <Button
-              onClick={backToLogin}
-              size="lg"
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Späť na prihlásenie
-            </Button>
-
-            <p className="text-xs text-muted-foreground">
-              Neprišiel ti email? Skontroluj priečinok spam alebo sa{' '}
-              <button onClick={backToLogin} className="text-primary underline">
-                zaregistruj znovu
-              </button>
-              .
-            </p>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-top safe-bottom">
