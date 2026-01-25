@@ -26,28 +26,28 @@ export const MVP_GOALS = [
     label: 'Nabrat svaly', 
     emoji: '💪',
     split: 'ppl',
-    description: 'Push / Pull / Legs - 3 tréninkové dny',
+    description: 'Délka plánu: 12 týdnů',
   },
   { 
     id: 'fat_loss' as TrainingGoalId, 
     label: 'Zhubnout', 
     emoji: '🔥',
     split: 'upper_lower',
-    description: 'Horní / Dolní tělo - 2 dny',
+    description: 'Délka plánu: 8 týdnů',
   },
   { 
     id: 'strength' as TrainingGoalId, 
     label: 'Získat sílu', 
     emoji: '🏋️',
     split: 'upper_lower',
-    description: 'Horní / Dolní tělo - 2 dny',
+    description: 'Délka plánu: 8 týdnů',
   },
   { 
     id: 'general_fitness' as TrainingGoalId, 
     label: 'Celková kondice', 
     emoji: '✨',
     split: 'full_body',
-    description: 'Full Body - 2 dny',
+    description: 'Délka plánu: 8 týdnů',
   },
 ];
 
