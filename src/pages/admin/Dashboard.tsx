@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing } from 'lucide-react';
+import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing, Send, Loader2 } from 'lucide-react';
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
@@ -20,6 +20,7 @@ const Dashboard = () => {
     totalMachines: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   
   const { 
     isSupported, 
@@ -73,6 +74,32 @@ const Dashboard = () => {
     }
     sendTestNotification(type);
     toast.success('Testovací notifikace odeslána');
+  };
+
+  const handleBroadcastNotification = async () => {
+    setIsBroadcasting(true);
+    try {
+      const response = await supabase.functions.invoke('send-push-notifications', {
+        body: { type: 'test' }
+      });
+      
+      if (response.error) {
+        toast.error(`Chyba: ${response.error.message}`);
+        return;
+      }
+      
+      const results = response.data?.results?.test;
+      if (results) {
+        toast.success(`Odoslaných: ${results.sent}, Preskočených: ${results.skipped}, Chýb: ${results.errors}`);
+      } else {
+        toast.success('Broadcast dokončený');
+      }
+    } catch (error) {
+      toast.error('Nepodarilo sa odoslať broadcast');
+      console.error('Broadcast error:', error);
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   const statCards = [
@@ -183,6 +210,34 @@ const Dashboard = () => {
               </Button>
             </div>
           )}
+        </Card>
+
+        {/* Broadcast Push Notification */}
+        <Card className="p-4 border-primary/30">
+          <div className="flex items-center gap-2 mb-4">
+            <Send className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Push Broadcast (všem)</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Odošle testovací push notifikáciu všetkým používateľom s aktívnym push subscription.
+          </p>
+          <Button 
+            onClick={handleBroadcastNotification}
+            disabled={isBroadcasting}
+            className="w-full"
+          >
+            {isBroadcasting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Odosiela sa...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Broadcast Test Notifikáciu
+              </>
+            )}
+          </Button>
         </Card>
       </div>
     </AdminLayout>
