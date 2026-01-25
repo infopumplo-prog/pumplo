@@ -638,15 +638,14 @@ const Training = () => {
   }, [plan, profile]);
 
   // Calculate workout duration - unified with useWorkoutGenerator's calculateSlotsForDuration
-  const calculateWorkoutDuration = (exercises: WorkoutExercise[]): number => {
-    const WARMUP_MINUTES = 10;
-    const COOLDOWN_MINUTES = 5;
+  // New formula: warmup (dynamic 30s per exercise) + exercises × 8 min
+  const calculateWorkoutDuration = (exercises: WorkoutExercise[], warmupCount: number = 4): number => {
+    // Warmup: each exercise is 30 seconds = 0.5 min (round up)
+    const WARMUP_MINUTES = Math.ceil(warmupCount * 0.5);
     const MINUTES_PER_EXERCISE = 8;
     
-    // Inverse formula from calculateSlotsForDuration: slots = (duration - 15) / 8
-    // So: duration = (slots × 8) + 15
     const exerciseCount = exercises.length;
-    const estimatedDuration = (exerciseCount * MINUTES_PER_EXERCISE) + WARMUP_MINUTES + COOLDOWN_MINUTES;
+    const estimatedDuration = (exerciseCount * MINUTES_PER_EXERCISE) + WARMUP_MINUTES;
     
     return estimatedDuration;
   };
@@ -1125,7 +1124,7 @@ const Training = () => {
           exerciseName: selected.name,
           equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
-          sets: profile.user_level === 'beginner' ? 2 : 3,
+          sets: profile.user_level === 'advanced' ? 4 : 3,
           repMin: 10,
           repMax: 15,
           isFallback: false,
@@ -1188,7 +1187,7 @@ const Training = () => {
           exerciseName: selected.name,
           equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
-          sets: profile.user_level === 'beginner' ? 2 : 3,
+          sets: profile.user_level === 'advanced' ? 4 : 3,
           repMin: 10,
           repMax: 15,
           isFallback: false,
@@ -1199,7 +1198,8 @@ const Training = () => {
       
       setGeneratedExercises(bonusExercises);
       setSelectedWorkoutGymId(profile.selected_gym_id);
-      setIsWorkoutActive(true);
+      // Route bonus workout through preview/warmup flow instead of starting directly
+      setShowWorkoutPreview(true);
     } catch (err) {
       console.error('Error generating bonus exercises:', err);
     } finally {
@@ -1815,12 +1815,12 @@ const Training = () => {
                         ) : historyExercises.length > 0 ? (
                           <div className="space-y-2">
                             {historyExercises.map((ex, idx) => (
-                              <div key={idx} className="flex items-center gap-3 text-sm">
-                                <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-[10px] font-bold text-green-600">
+                              <div key={idx} className="flex items-center gap-3 text-sm overflow-hidden max-w-full">
+                                <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-[10px] font-bold text-green-600 shrink-0 flex-none">
                                   {idx + 1}
                                 </span>
-                                <span className="flex-1 truncate">{ex.exerciseName}</span>
-                                <span className="text-muted-foreground text-xs">
+                                <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+                                <span className="text-muted-foreground text-xs shrink-0 flex-none">
                                   {ex.sets}×{ex.reps || '?'}
                                   {ex.weight ? ` • ${ex.weight}kg` : ''}
                                 </span>
@@ -1851,12 +1851,12 @@ const Training = () => {
                       ) : selectedDayExercises.length > 0 ? (
                         <div className="space-y-2">
                           {selectedDayExercises.map((ex, idx) => (
-                            <div key={ex.id} className="flex items-center gap-3 text-sm">
-                              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                            <div key={ex.id} className="flex items-center gap-3 text-sm overflow-hidden max-w-full">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 flex-none">
                                 {idx + 1}
                               </span>
-                              <span className="flex-1 truncate">{ex.exerciseName}</span>
-                              <span className="text-muted-foreground text-xs">{ex.sets}×{ex.repMin}-{ex.repMax}</span>
+                              <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+                              <span className="text-muted-foreground text-xs shrink-0 flex-none">{ex.sets}×{ex.repMin}-{ex.repMax}</span>
                             </div>
                           ))}
                         </div>
@@ -1971,12 +1971,12 @@ const Training = () => {
                 ) : generatedExercises.length > 0 ? (
                   <div className="space-y-2 mb-4">
                     {generatedExercises.map((ex, idx) => (
-                      <div key={ex.id} className="flex items-center gap-3 text-sm">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                      <div key={ex.id} className="flex items-center gap-3 text-sm overflow-hidden max-w-full">
+                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0 flex-none">
                           {idx + 1}
                         </span>
-                        <span className="flex-1 truncate">{ex.exerciseName}</span>
-                        <span className="text-xs text-muted-foreground">{ex.sets}×</span>
+                        <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+                        <span className="text-xs text-muted-foreground shrink-0 flex-none">{ex.sets}×</span>
                       </div>
                     ))}
                   </div>

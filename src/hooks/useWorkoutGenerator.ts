@@ -494,29 +494,30 @@ export const useWorkoutGenerator = () => {
   /**
    * Vypočíta počet cvikov podľa trvania tréningu
    * 
-   * Predpoklady:
-   * - Rozcvička: 10 min
-   * - Záver: 5 min
+   * Nová formula (per user request):
+   * - Rozcvička: ~4 min (dynamická, reálny odhad)
    * - Jeden cvik (vrátane prestávok): ~8 min
+   * - Padding: 3 min max ponad užívateľom nastavený čas
    * 
    * Príklady:
-   * - 30 min = (30 - 15) / 8 = ~2 cviky (minimum 3)
-   * - 45 min = (45 - 15) / 8 = ~4 cviky
-   * - 60 min = (60 - 15) / 8 = ~5-6 cvikov
-   * - 90 min = (90 - 15) / 8 = ~9 cvikov
-   * - 120 min = (120 - 15) / 8 = ~13 cvikov
+   * - 30 min = (30 - 4 + 3) / 8 = 3 cviky
+   * - 45 min = (45 - 4 + 3) / 8 = 5 cvikov
+   * - 60 min = (60 - 4 + 3) / 8 = 7 cvikov
+   * - 90 min = (90 - 4 + 3) / 8 = 11 cvikov
+   * - 120 min = (120 - 4 + 3) / 8 = 14 cvikov
    */
   const calculateSlotsForDuration = (
     durationMinutes: number,
     templateSlots: DayTemplateSlot[],
     userLevel: UserLevel
   ): DayTemplateSlot[] => {
-    const WARMUP_MINUTES = 10;
-    const COOLDOWN_MINUTES = 5;
+    const WARMUP_MINUTES = 4;
+    const PADDING_MINUTES = 3;
     const MINUTES_PER_EXERCISE = 8;
     
-    const effectiveMinutes = durationMinutes - WARMUP_MINUTES - COOLDOWN_MINUTES;
-    let targetExerciseCount = Math.floor(effectiveMinutes / MINUTES_PER_EXERCISE);
+    // Available time = userDuration - warmup + allowed padding
+    const availableMinutes = durationMinutes - WARMUP_MINUTES + PADDING_MINUTES;
+    let targetExerciseCount = Math.floor(availableMinutes / MINUTES_PER_EXERCISE);
     
     // Minimum 3 cviky, maximum rozumne na základe šablóny
     const MIN_EXERCISES = 3;
