@@ -53,8 +53,8 @@ const Home = () => {
   const completedTodayDayLetter = todaySession?.dayLetter || null;
   const wasCompletedToday = completedTodayDayLetter !== null;
 
-  // Training days from profile
-  const trainingDays = profile?.training_days || [];
+  // Training days - use snapshotted plan data when plan exists
+  const trainingDays = plan?.trainingDays || profile?.training_days || [];
 
   // Adjusted display index for schedule
   const adjustedDisplayIndex = wasCompletedToday && plan

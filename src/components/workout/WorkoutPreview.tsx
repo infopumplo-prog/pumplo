@@ -60,8 +60,8 @@ export const WorkoutPreview = ({
       </div>
 
       {/* Exercise list */}
-      <ScrollArea className="flex-1">
-        <div className="px-4 py-4 space-y-2 overflow-hidden">
+      <ScrollArea className="flex-1 w-full">
+        <div className="px-4 py-4 space-y-2 overflow-hidden w-full">
           {exercises.map((ex, idx) => (
             <motion.div
               key={ex.id}
