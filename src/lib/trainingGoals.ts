@@ -19,12 +19,56 @@ export const TRAINING_GOAL_IDS = [
 
 export type TrainingGoalId = typeof TRAINING_GOAL_IDS[number];
 
+// MVP Goals for onboarding - 4 goals only (single select)
+export const MVP_GOALS = [
+  { 
+    id: 'muscle_gain' as TrainingGoalId, 
+    label: 'Nabrat svaly', 
+    emoji: '💪',
+    split: 'ppl',
+    description: 'Push / Pull / Legs - 3 tréninkové dny',
+  },
+  { 
+    id: 'fat_loss' as TrainingGoalId, 
+    label: 'Zhubnout', 
+    emoji: '🔥',
+    split: 'upper_lower',
+    description: 'Horní / Dolní tělo - 2 dny',
+  },
+  { 
+    id: 'strength' as TrainingGoalId, 
+    label: 'Získat sílu', 
+    emoji: '🏋️',
+    split: 'upper_lower',
+    description: 'Horní / Dolní tělo - 2 dny',
+  },
+  { 
+    id: 'general_fitness' as TrainingGoalId, 
+    label: 'Celková kondice', 
+    emoji: '✨',
+    split: 'full_body',
+    description: 'Full Body - 2 dny',
+  },
+];
+
+// Mapping goal -> split (automatic determination)
+export const GOAL_TO_SPLIT: Record<TrainingGoalId, string> = {
+  'muscle_gain': 'ppl',
+  'fat_loss': 'upper_lower',
+  'strength': 'upper_lower',
+  'general_fitness': 'full_body',
+};
+
 // Mapping from onboarding primary_goal to training_goals
+// Keep for backward compatibility, but now they're the same IDs
 export const PRIMARY_GOAL_TO_TRAINING_GOAL: Record<string, TrainingGoalId> = {
-  'muscle': 'muscle_gain',
+  'muscle_gain': 'muscle_gain',
   'fat_loss': 'fat_loss',
-  'tone': 'general_fitness',
   'strength': 'strength',
+  'general_fitness': 'general_fitness',
+  // Legacy mappings for backward compatibility
+  'muscle': 'muscle_gain',
+  'tone': 'general_fitness',
   'endurance': 'general_fitness',
   'consistency': 'general_fitness',
 };
