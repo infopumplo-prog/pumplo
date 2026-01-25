@@ -123,8 +123,8 @@ function base64UrlDecode(str: string): Uint8Array {
 async function createVapidAuthHeader(
   audience: string,
   subject: string,
-  publicKey: string,
-  privateKey: string
+  publicKey: string,  // base64url encoded 65-byte uncompressed public key
+  privateKey: string  // base64url encoded 32-byte raw private key
 ): Promise<{ authorization: string; cryptoKey: string }> {
   const header = { typ: 'JWT', alg: 'ES256' };
   const payload = {
@@ -139,65 +139,50 @@ async function createVapidAuthHeader(
   const payloadB64 = base64UrlEncode(payloadBytes);
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  // Import private key - convert to proper ArrayBuffer
-  const privateKeyBytes = base64UrlDecode(privateKey);
-  const privateKeyBuffer = new ArrayBuffer(privateKeyBytes.length);
-  new Uint8Array(privateKeyBuffer).set(privateKeyBytes);
+  // Decode the public key to extract X and Y coordinates
+  const publicKeyBytes = base64UrlDecode(publicKey);
   
+  // Public key is 65 bytes: 0x04 prefix + 32 bytes X + 32 bytes Y
+  if (publicKeyBytes.length !== 65 || publicKeyBytes[0] !== 0x04) {
+    throw new Error(`Invalid public key format - expected 65-byte uncompressed key, got ${publicKeyBytes.length} bytes`);
+  }
+  
+  const xBytes = publicKeyBytes.slice(1, 33);
+  const yBytes = publicKeyBytes.slice(33, 65);
+  const privateKeyBytes = base64UrlDecode(privateKey);
+  
+  if (privateKeyBytes.length !== 32) {
+    throw new Error(`Invalid private key format - expected 32 bytes, got ${privateKeyBytes.length} bytes`);
+  }
+
+  // Create JWK for the private key
+  const jwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    x: base64UrlEncode(xBytes),
+    y: base64UrlEncode(yBytes),
+    d: base64UrlEncode(privateKeyBytes),
+    ext: true,
+  };
+
+  // Import as JWK (not PKCS#8!)
   const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    privateKeyBuffer,
+    'jwk',
+    jwk,
     { name: 'ECDSA', namedCurve: 'P-256' },
     false,
     ['sign']
   );
 
-  // Sign
+  // Sign the token
   const signature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     cryptoKey,
     new TextEncoder().encode(unsignedToken)
   );
 
-  // Convert DER signature to raw format (64 bytes)
-  const signatureBytes = new Uint8Array(signature);
-  let rawSignature: Uint8Array;
-  
-  if (signatureBytes.length === 64) {
-    rawSignature = signatureBytes;
-  } else {
-    // Parse DER format
-    rawSignature = new Uint8Array(64);
-    
-    const rLength = signatureBytes[3];
-    const rStart = 4;
-    const sStart = rStart + rLength + 2;
-    const sLength = signatureBytes[sStart - 1];
-    
-    const r = signatureBytes.slice(rStart, rStart + rLength);
-    const s = signatureBytes.slice(sStart, sStart + sLength);
-    
-    // Pad r and s to 32 bytes each
-    const rPadded = new Uint8Array(32);
-    const sPadded = new Uint8Array(32);
-    
-    if (r.length <= 32) {
-      rPadded.set(r, 32 - r.length);
-    } else {
-      rPadded.set(r.slice(r.length - 32));
-    }
-    
-    if (s.length <= 32) {
-      sPadded.set(s, 32 - s.length);
-    } else {
-      sPadded.set(s.slice(s.length - 32));
-    }
-    
-    rawSignature.set(rPadded, 0);
-    rawSignature.set(sPadded, 32);
-  }
-
-  const token = `${unsignedToken}.${base64UrlEncode(rawSignature)}`;
+  // WebCrypto returns raw 64-byte signature (R || S) for P-256 - no DER parsing needed
+  const token = `${unsignedToken}.${base64UrlEncode(signature)}`;
 
   return {
     authorization: `vapid t=${token}, k=${publicKey}`,
