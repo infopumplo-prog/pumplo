@@ -278,36 +278,31 @@ const Settings = () => {
     
     setIsDeleting(true);
     try {
-      // Delete user profile first
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('user_id', user.id);
+      // Call edge function to delete user from auth.users (requires service_role)
+      const { data, error } = await supabase.functions.invoke('delete-own-account');
       
-      if (profileError) throw profileError;
+      if (error) {
+        console.error('Delete account error:', error);
+        throw new Error(error.message || 'Nepodařilo se smazat účet');
+      }
+      
+      if (!data?.success) {
+        throw new Error(data?.error || 'Nepodařilo se smazat účet');
+      }
 
-      // Delete user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (roleError) console.error('Role deletion error:', roleError);
-
-      // Sign out and redirect
-      await supabase.auth.signOut();
-      
       toast({
         title: 'Účet smazán',
         description: 'Váš účet byl úspěšně odstraněn.',
       });
       
+      // Sign out locally and redirect
+      await supabase.auth.signOut();
       navigate('/auth');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete account error:', error);
       toast({
         title: 'Chyba',
-        description: 'Nepodařilo se smazat účet. Zkuste to znovu.',
+        description: error.message || 'Nepodařilo se smazat účet. Zkuste to znovu.',
         variant: 'destructive',
       });
     } finally {
