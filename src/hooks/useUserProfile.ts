@@ -97,6 +97,16 @@ export const useUserProfile = () => {
 
   useEffect(() => {
     fetchProfile();
+    
+    // Listen for auth state changes to refetch profile
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        // Small delay to ensure trigger has created/updated profile
+        setTimeout(() => fetchProfile(), 500);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
   }, [user]);
 
   return { profile, isLoading, updateProfile, refetch: fetchProfile };

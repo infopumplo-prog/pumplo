@@ -20,9 +20,9 @@ export const ExtendWorkoutSelector = ({
   buttonText,
   showCard = false
 }: ExtendWorkoutSelectorProps) => {
-  const [count, setCount] = useState(2);
+  const [count, setCount] = useState(3);
 
-  const minCount = 1;
+  const minCount = 3;
   const maxCount = 6;
 
   const handleIncrement = () => {

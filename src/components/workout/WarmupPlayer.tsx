@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, Flame, Timer } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, Flame, Timer, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -242,6 +242,25 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
 
       {/* Action buttons */}
       <div className="p-4 pb-28 border-t border-border flex gap-2">
+        <Button
+          variant={isPaused ? "default" : "outline"}
+          size="lg"
+          className="flex-1 gap-2"
+          onClick={() => setIsPaused(!isPaused)}
+        >
+          {isPaused ? (
+            <>
+              <Play className="w-5 h-5" />
+              Pokračovat
+            </>
+          ) : (
+            <>
+              <Pause className="w-5 h-5" />
+              Pauza
+            </>
+          )}
+        </Button>
+
         <Button
           variant="outline"
           size="lg"
