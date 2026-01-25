@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 type AuthMode = 'login' | 'register';
 
 const Auth = () => {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>('login');
   const { toast } = useToast();
   
@@ -182,7 +184,8 @@ const Auth = () => {
         description: 'Tvůj účet byl vytvořen. Nyní si vyber posilovnu.'
       });
 
-      // Auth context will handle redirect
+      // Force navigation to home page after all data is saved
+      navigate('/');
     } catch (err) {
       console.error('Registration error:', err);
       setError('Něco se pokazilo. Zkuste to prosím znovu.');
