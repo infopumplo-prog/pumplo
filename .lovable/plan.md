@@ -1,232 +1,219 @@
 
+# Push Notifications Not Working on iPhone - Diagnostic Analysis & Fix Plan
 
-# Plan: Fix Profile State After Registration & Push Notification VAPID Key Issue
+## Root Cause Analysis
 
-## Overview
+After comprehensive investigation, I've identified the **primary issue**: Your PWA has **two conflicting service workers**, and the one handling push notifications is not being properly registered.
 
-Two critical bugs to fix:
+### Current Situation
 
-1. **"Dokonči svůj profil" warning appears after registration** - Profile data isn't refreshed after registration completes, so Home.tsx shows stale `onboarding_completed: false`
+1. **Vite PWA Plugin** (`vite.config.ts:16-170`): Configured to auto-generate a service worker for offline caching using Workbox
+2. **Custom Push Worker** (`public/sw.js`): Contains critical `push` and `notificationclick` event listeners
+3. **The Problem**: Vite PWA's generated worker **does not include** the push notification logic from `public/sw.js`
 
-2. **Push notifications not sending** - VAPID private key is in raw 32-byte format, but code tries to import as PKCS#8, causing "expected valid PKCS#8 data" errors
+### Evidence from Investigation
+
+#### ✅ Backend Working Correctly
+- Edge function returns **status 201** (successful dispatch)
+- VAPID keys are now synchronized (`BOnDHrq6aL...`)
+- Valid Apple push subscription stored in database: `https://web.push.apple.com/...`
+
+#### ❌ Frontend Service Worker Issues
+- **No SW console logs** when app loads (should see `[SW] Installing service worker...` and `[SW] Service worker activated`)
+- Push subscription succeeds, but notifications never display
+- The Vite-generated worker lacks the `push` event handler needed to show notifications
+
+### iOS-Specific Requirements (All Met)
+- ✅ PWA installed to Home Screen (standalone mode)
+- ✅ `apple-mobile-web-app-capable` meta tags present
+- ✅ Valid push subscription with Apple endpoint
+- ❌ Service worker with `push` listener **must be active** when subscription is created
 
 ---
 
-## Issue 1: Profile State Not Updating After Registration
+## Fix Strategy
 
-### Root Cause
+To resolve this, we need to configure Vite PWA to use the **`injectManifest`** strategy instead of the default `generateSW`. This allows us to use the custom `public/sw.js` file while still benefiting from Vite PWA's build optimizations.
 
-In `Auth.tsx`, after successful registration:
-1. Profile is updated with `onboarding_completed: true` (line 138)
-2. Navigation to `/` happens immediately (line 188)
+### Implementation Plan
 
-But in `Home.tsx`:
-- `useUserProfile` hook has cached the OLD profile data (before update)
-- The `onAuthStateChange` listener triggers on `SIGNED_IN`, but that fires BEFORE the profile update
-- Result: Home.tsx renders with stale `profile.onboarding_completed === false`
+#### **Step 1: Update Vite PWA Configuration**
 
-### Solution
+Modify `vite.config.ts` to:
+- Switch to `injectManifest` strategy
+- Point to the custom service worker source file
+- Move offline caching logic into the custom worker
 
-Force the `useUserProfile` hook to refetch after Auth.tsx completes registration. Two approaches:
-
-**Option A (Recommended)**: Add a short delay before navigation, then manually trigger profile refetch via a global event or context method.
-
-**Option B (Simpler)**: After profile update in Auth.tsx, wait until we can verify the profile is updated before navigating.
-
-I'll implement **Option B** - add a verification loop that confirms `onboarding_completed === true` before navigating:
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/pages/Auth.tsx` | Add profile verification before navigation |
-
-### Code Changes
-
-After the profile update succeeds (line 152), add a verification step:
-
+**Changes Required:**
 ```typescript
-// 5. Verify profile was updated before navigating
-let verified = false;
-let verifyAttempts = 5;
-
-while (!verified && verifyAttempts > 0) {
-  const { data: verifyProfile } = await supabase
-    .from('user_profiles')
-    .select('onboarding_completed')
-    .eq('user_id', userId)
-    .single();
-  
-  if (verifyProfile?.onboarding_completed === true) {
-    verified = true;
-  } else {
-    verifyAttempts--;
-    await new Promise(resolve => setTimeout(resolve, 200));
+VitePWA({
+  strategies: 'injectManifest',  // NEW: Use custom SW instead of generating one
+  srcDir: 'public',               // NEW: Directory containing custom SW
+  filename: 'sw.js',              // NEW: Custom SW filename
+  registerType: 'autoUpdate',
+  // ... rest of manifest config stays the same
+  injectManifest: {               // NEW: Configuration for injection
+    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+    maximumFileSizeToCacheInBytes: 3000000  // 3MB limit
   }
-}
-
-// 6. Force a small delay for React Query cache invalidation
-await new Promise(resolve => setTimeout(resolve, 100));
+})
 ```
 
-This ensures the database has committed the change before we navigate.
+#### **Step 2: Enhance Custom Service Worker**
 
----
+Update `public/sw.js` to:
+- Include Workbox imports for offline caching (previously handled by Vite PWA)
+- Add precaching logic for static assets
+- Keep existing push notification handlers
+- Add proper error handling
 
-## Issue 2: Push Notifications Failing - VAPID Key Format
+**Key Additions:**
+```javascript
+// Import Workbox for caching (injected by Vite PWA)
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 
-### Root Cause
+// Precache static assets (Vite PWA injects manifest here)
+precacheAndRoute(self.__WB_MANIFEST || []);
 
-The edge function logs show:
-```
-Failed to send to user xxx: expected valid PKCS#8 data
-```
-
-This happens at line 147-153 in `send-push-notifications/index.ts`:
-```typescript
-const cryptoKey = await crypto.subtle.importKey(
-  'pkcs8',
-  privateKeyBuffer,
-  { name: 'ECDSA', namedCurve: 'P-256' },
-  false,
-  ['sign']
+// Runtime caching for Supabase API (replicate existing patterns)
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
+  new StaleWhileRevalidate({ cacheName: 'workout-plans-cache', ... })
 );
+// ... other caching routes
+
+// Existing push notification handlers remain unchanged
+self.addEventListener('push', (event) => { ... });
 ```
 
-**The problem**: VAPID private keys are stored as **raw 32-byte** values (base64url encoded), NOT in PKCS#8 format. PKCS#8 is an ASN.1 DER structure that includes algorithm identifiers and wrapping.
+#### **Step 3: Update Service Worker Registration**
 
-### Solution
-
-Use **JWK (JSON Web Key)** import instead of PKCS#8. This is the standard approach for Web Crypto API with raw EC keys.
-
-To create a JWK:
-1. Extract X and Y coordinates from the public key (bytes 1-32 and 33-64)
-2. Use the private key as the `d` parameter
-3. Import as JWK
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `supabase/functions/send-push-notifications/index.ts` | Replace PKCS#8 import with JWK import |
-
-### Code Changes
-
-Replace the `createVapidAuthHeader` function (lines 123-206) with a corrected version:
-
+Modify `src/main.tsx` to ensure proper registration:
 ```typescript
-async function createVapidAuthHeader(
-  audience: string,
-  subject: string,
-  publicKey: string,  // base64url encoded 65-byte uncompressed public key
-  privateKey: string  // base64url encoded 32-byte raw private key
-): Promise<{ authorization: string; cryptoKey: string }> {
-  const header = { typ: 'JWT', alg: 'ES256' };
-  const payload = {
-    aud: audience,
-    exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60,
-    sub: subject,
-  };
-
-  const headerBytes = new TextEncoder().encode(JSON.stringify(header));
-  const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
-  const headerB64 = base64UrlEncode(headerBytes);
-  const payloadB64 = base64UrlEncode(payloadBytes);
-  const unsignedToken = `${headerB64}.${payloadB64}`;
-
-  // Decode the public key to extract X and Y coordinates
-  const publicKeyBytes = base64UrlDecode(publicKey);
-  
-  // Public key is 65 bytes: 0x04 prefix + 32 bytes X + 32 bytes Y
-  if (publicKeyBytes.length !== 65 || publicKeyBytes[0] !== 0x04) {
-    throw new Error('Invalid public key format - expected 65-byte uncompressed key');
-  }
-  
-  const xBytes = publicKeyBytes.slice(1, 33);
-  const yBytes = publicKeyBytes.slice(33, 65);
-  const privateKeyBytes = base64UrlDecode(privateKey);
-  
-  if (privateKeyBytes.length !== 32) {
-    throw new Error('Invalid private key format - expected 32 bytes');
-  }
-
-  // Create JWK for the private key
-  const jwk = {
-    kty: 'EC',
-    crv: 'P-256',
-    x: base64UrlEncode(xBytes),
-    y: base64UrlEncode(yBytes),
-    d: base64UrlEncode(privateKeyBytes),
-    ext: true,
-  };
-
-  // Import as JWK (not PKCS#8!)
-  const cryptoKey = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign']
-  );
-
-  // Sign the token
-  const signature = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: 'SHA-256' },
-    cryptoKey,
-    new TextEncoder().encode(unsignedToken)
-  );
-
-  // WebCrypto returns raw 64-byte signature (R || S) for P-256
-  // No DER parsing needed when using WebCrypto with ECDSA
-  const token = `${unsignedToken}.${base64UrlEncode(signature)}`;
-
-  return {
-    authorization: `vapid t=${token}, k=${publicKey}`,
-    cryptoKey: publicKey,
-  };
+// Remove virtual:pwa-register import
+// Add manual registration with proper error handling
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .then(registration => {
+      console.log('[Main] Service worker registered:', registration.scope);
+    })
+    .catch(error => {
+      console.error('[Main] Service worker registration failed:', error);
+    });
 }
 ```
 
-### Key Differences
+#### **Step 4: Force Service Worker Update**
 
-| Aspect | Old (Broken) | New (Fixed) |
-|--------|-------------|-------------|
-| Import format | `pkcs8` | `jwk` |
-| Key structure | Raw bytes as ArrayBuffer | JWK object with x, y, d |
-| Public key usage | Only for auth header | Also for extracting x, y coordinates |
-| Signature handling | Manual DER parsing | Direct use (WebCrypto returns raw) |
+After deploying changes:
+1. **Increment PWA version** in manifest or add version query param to `sw.js`
+2. Users must **uninstall and reinstall** the PWA from their home screen
+3. Alternative: Add "Update Available" UI with `registration.update()` call
 
 ---
 
-## Summary
+## Technical Details
 
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| Profile warning after registration | Stale cached profile data | Verify profile update before navigation |
-| Push notifications failing | PKCS#8 import with raw key | JWK import with extracted coordinates |
+### Why This Fixes the Problem
 
-## Files Changed
+1. **Single Service Worker**: Eliminates conflict by using one worker with both offline caching AND push handling
+2. **Workbox Integration**: Maintains all existing offline caching functionality
+3. **iOS Compatibility**: Ensures `push` listener is registered before subscription, meeting iOS requirements
+4. **Console Visibility**: Custom worker will log events, making debugging easier
 
-1. `src/pages/Auth.tsx` - Add profile verification loop
-2. `supabase/functions/send-push-notifications/index.ts` - Fix VAPID key import
+### Migration Considerations
+
+**Breaking Changes:**
+- Users will need to re-enable push notifications after PWA reinstall
+- Existing push subscriptions in database remain valid (no backend changes needed)
+
+**Testing Strategy:**
+1. Build and deploy updated PWA
+2. On iPhone: Delete app from home screen, clear browser cache
+3. Re-add to home screen, complete onboarding
+4. Enable notifications (creates new subscription)
+5. Test broadcast from admin panel
+
+### iOS-Specific Notes
+
+Apple's push system has additional constraints:
+- **Safari 16.4+** required for web push
+- **Must be installed PWA** (not in-browser)
+- **User gesture required** for permission (already implemented)
+- **Notification display** requires valid `push` event handler in SW
 
 ---
 
-## Technical Notes
+## Alternative Approaches (Not Recommended)
 
-### Notification Timing
+### Option B: Dual Worker Registration
+Register both workers separately, but this creates complexity:
+- Potential race conditions during app load
+- Uncertain which worker handles which requests
+- iOS may reject dual registrations
 
-The notification system uses scheduled invocations:
-- **Morning notifications**: Every hour, checks if current hour matches user's `preferred_time` (6, 10, 14, 18)
-- **Closing notifications**: Every 15 minutes, checks if gym closes in 30-120 minutes
+### Option C: Move Push Logic to Main Thread
+Handle push notifications without service worker:
+- **Problem**: iOS requires SW for background notifications
+- Only works when app is open (defeats purpose)
 
-This means notifications are NOT "exactly on the dot" - they have a tolerance window. If the edge function runs at 6:05 and your preferred time is "morning" (hour 6), you'll still get the notification.
+---
 
-### VAPID Key Format Clarification
+## Expected Outcome
 
-Standard web-push libraries generate:
-- **Public key**: 65 bytes (0x04 + 32 bytes X + 32 bytes Y), base64url encoded
-- **Private key**: 32 bytes raw, base64url encoded
+After implementing this fix:
+1. ✅ Service worker logs appear in console
+2. ✅ Push notifications display on iPhone (locked & unlocked)
+3. ✅ Offline caching continues to work
+4. ✅ Admin broadcast test succeeds
+5. ✅ Scheduled notifications trigger correctly
 
-The fix ensures we correctly parse and use these formats with the Web Crypto API.
+---
 
+## Files to Modify
+
+1. **`vite.config.ts`**: Update VitePWA configuration (strategy, srcDir, filename)
+2. **`public/sw.js`**: Add Workbox imports and runtime caching
+3. **`src/main.tsx`**: Update SW registration logic
+4. **`package.json`** (if needed): Ensure `workbox-*` dependencies are available
+
+---
+
+## Risk Assessment
+
+**Low Risk Changes:**
+- Configuration updates to build process
+- Service worker enhancement (additive, not destructive)
+
+**Medium Risk:**
+- Users must reinstall PWA (one-time friction)
+- Testing on iOS required to verify fix
+
+**Mitigation:**
+- Deploy to staging/preview environment first
+- Test on actual iOS device before production release
+- Document reinstall process for users
+
+---
+
+## Next Steps After Approval
+
+1. Update Vite PWA config to `injectManifest` strategy
+2. Enhance `public/sw.js` with Workbox caching
+3. Modify `src/main.tsx` registration
+4. Test locally with dev build
+5. Deploy to production
+6. Guide you through testing on iPhone
+7. Verify notifications display correctly
+
+---
+
+## Additional Debugging Tools (Post-Fix)
+
+After implementation, you can verify:
+- **Chrome DevTools > Application > Service Workers**: Check active worker script URL
+- **Safari Web Inspector > Service Workers**: iOS-specific debugging
+- **Console logs**: `[SW]` prefixed messages confirm custom worker is active
+- **Network tab**: Monitor push message delivery from Apple's servers
