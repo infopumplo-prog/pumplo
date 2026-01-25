@@ -61,14 +61,14 @@ export const WorkoutPreview = ({
 
       {/* Exercise list */}
       <ScrollArea className="flex-1 w-full">
-        <div className="px-4 py-4 space-y-2 overflow-hidden w-full">
+        <div className="px-4 py-4 space-y-2 overflow-hidden w-full max-w-full">
           {exercises.map((ex, idx) => (
             <motion.div
               key={ex.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="flex items-center gap-3 py-3 px-3 rounded-xl bg-muted/50 border border-border/50 overflow-hidden max-w-full"
+              className="flex items-center gap-3 py-3 px-3 rounded-xl bg-muted/50 border border-border/50 overflow-hidden w-full max-w-full min-w-0"
             >
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 flex-none">
                 <span className="font-bold text-sm text-primary">{idx + 1}</span>
