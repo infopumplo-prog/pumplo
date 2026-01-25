@@ -1,222 +1,303 @@
 
-# Plan: Refactor Onboarding Flow - Pre-Registration with Simplified Questions
+# Plan: Fix Onboarding Refresh + Training Issues
 
 ## Overview
 
-This plan refactors the onboarding to occur **BEFORE registration** with simplified questions per user request. After registration, the questionnaire data is saved and a workout plan is automatically generated.
+This plan addresses **7 issues** reported by the user:
 
-## Current State vs. New Requirements
+1. **Onboarding refresh issue** - After completing onboarding and logging in, the home page doesn't show "questionnaire completed" until manual refresh
+2. **Exercise icon overflow** - Icons next to exercises in /training overflow the screen on mobile
+3. **Exercise sets always 2** - All exercises generate with only 2 sets instead of at least 3
+4. **Bonus workout lacks warmup** - Bonus workouts skip directly to workout session without warmup
+5. **Bonus workout single exercise** - Bonus workout generates only 1 exercise instead of a reasonable amount
+6. **Add pause button to warmup** - WarmupPlayer needs a pause/resume button
+7. **Workout duration calculation** - Update formula to: 4 min warmup + 8 min per exercise + 3 min padding
 
-| Aspect | Current | New |
-|--------|---------|-----|
-| Flow Order | Registration -> Onboarding | Onboarding -> Registration |
-| Goals | 6 goals + secondary | 4 goals (single select only) |
-| Training Split | User selects manually | Automatic based on goal |
-| Gym Selection | In onboarding | NOT in onboarding |
-| Bio Data | Missing from early steps | Gender, Height, Weight, Age included |
-| Equipment Pref | Stroje / Volné váhy / Intenzivní | Hlavne stroje / Vlastna vaha / Bez preferencie |
-| Motivations | Required step | REMOVED |
-| Secondary Goals | Allowed | REMOVED |
+---
 
-## New Onboarding Steps (8 Steps + Registration)
+## Issue 1: Onboarding Refresh Issue
 
-```text
-Step 1: Goal Selection (single choice)
-  - Nabrat svaly (muscle_gain) -> PPL split
-  - Zhubnout (fat_loss) -> Upper/Lower split  
-  - Ziskat silu (strength) -> Upper/Lower split
-  - Celkova kondice (general_fitness) -> Full Body split
+### Root Cause
+After login, the `AuthContext` triggers a state change but the `useUserProfile` hook may not immediately refetch the profile data. The home page shows "Dokonči svůj profil" because `profile.onboarding_completed` is still `false` from the stale cache.
 
-Step 2: Training Level
-  - Beginner / Intermediate / Advanced
+### Solution
+Force a profile refetch when the auth state changes to `SIGNED_IN`.
 
-Step 3: Training Days Selection
-  - Mon/Tue/Wed/Thu/Fri/Sat/Sun (multi-select)
+### Files to Modify
+- `src/hooks/useUserProfile.ts`
 
-Step 4: Preferred Time + Duration
-  - Morning/Late Morning/Afternoon/Evening
-  - Duration slider 30-120 min
-
-Step 5: Demographics (NEW)
-  - Gender (Muz/Zena)
-  - Height (cm)
-  - Weight (kg)
-  - Age
-
-Step 6: Injuries
-  - Body parts multi-select + "Nemam zadne"
-
-Step 7: Equipment Preference (NEW options)
-  - Hlavne stroje
-  - Vlastna vaha
-  - Bez preferencie
-
-Step 8: Registration
-  - First name, Last name, Email, Password
-  -> On submit: Save profile + Generate workout plan
-```
-
-## Goal to Split Mapping
-
-| Goal | Split Type | Days |
-|------|------------|------|
-| muscle_gain | PPL (Push/Pull/Legs) | 3 |
-| fat_loss | Upper/Lower | 2 |
-| strength | Upper/Lower | 2 |
-| general_fitness | Full Body | 2 |
-
-## Technical Implementation
-
-### 1. Update `src/lib/trainingGoals.ts`
-
-Add goal-to-split mapping and simplified goal list:
+### Changes
+Add a listener for auth state changes to trigger refetch:
 
 ```typescript
-// New: 4 MVP goals for onboarding (single select)
-export const MVP_GOALS = [
-  { 
-    id: 'muscle_gain', 
-    label: 'Nabrat svaly', 
-    emoji: '💪',
-    split: 'ppl',
-    description: 'Push / Pull / Legs - 3 tréninkové dny',
-  },
-  { 
-    id: 'fat_loss', 
-    label: 'Zhubnout', 
-    emoji: '🔥',
-    split: 'upper_lower',
-    description: 'Horní / Dolní tělo - 2 dny',
-  },
-  { 
-    id: 'strength', 
-    label: 'Získat sílu', 
-    emoji: '🏋️',
-    split: 'upper_lower',
-    description: 'Horní / Dolní tělo - 2 dny',
-  },
-  { 
-    id: 'general_fitness', 
-    label: 'Celková kondice', 
-    emoji: '✨',
-    split: 'full_body',
-    description: 'Full Body - 2 dny',
-  },
-];
+// In useUserProfile.ts useEffect
+useEffect(() => {
+  fetchProfile();
+  
+  // Listen for auth state changes to refetch profile
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') {
+      // Small delay to ensure trigger has created/updated profile
+      setTimeout(() => fetchProfile(), 500);
+    }
+  });
+  
+  return () => subscription.unsubscribe();
+}, [user]);
+```
 
-// Mapping goal -> split (for automatic determination)
-export const GOAL_TO_SPLIT: Record<TrainingGoalId, string> = {
-  'muscle_gain': 'ppl',
-  'fat_loss': 'upper_lower',
-  'strength': 'upper_lower',
-  'general_fitness': 'full_body',
+---
+
+## Issue 2: Exercise Icon Overflow in /training
+
+### Root Cause
+Looking at the uploaded screenshot and code at lines 1972-1980, the exercise list items have icons that overflow on small screens because the container doesn't constrain width properly.
+
+### Solution
+Add `overflow-hidden` to the parent container and ensure icons have `shrink-0 flex-none` classes.
+
+### Files to Modify
+- `src/pages/Training.tsx` (lines 1972-1980 and 1818-1827)
+
+### Changes
+Update the exercise list item layout:
+
+```typescript
+// Current (line 1974):
+<div key={ex.id} className="flex items-center gap-3 text-sm">
+
+// New:
+<div key={ex.id} className="flex items-center gap-3 text-sm overflow-hidden max-w-full">
+  <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0 flex-none">
+    {idx + 1}
+  </span>
+  <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+  <span className="text-xs text-muted-foreground shrink-0 flex-none">{ex.sets}×</span>
+</div>
+```
+
+Apply similar fixes to:
+- Lines 1854-1860 (selected day detail exercises)
+- Lines 1818-1827 (history exercises)
+
+---
+
+## Issue 3: Exercises Always Generate with 2 Sets
+
+### Root Cause
+The database `day_templates` has `beginner_sets: 2`, `intermediate_sets: 3`, `advanced_sets: 3-4`. The issue is that beginner users get 2 sets which is too low.
+
+Additionally, bonus and extension workouts hardcode sets:
+```typescript
+// Line 1128 and 1191:
+sets: profile.user_level === 'beginner' ? 2 : 3,
+```
+
+### Solution
+1. Update the database `day_templates` to have minimum 3 sets for all levels
+2. Update bonus/extension workout generation to use minimum 3 sets
+
+### Database Migration
+```sql
+UPDATE day_templates 
+SET beginner_sets = 3 
+WHERE beginner_sets < 3;
+```
+
+### Files to Modify
+- `src/pages/Training.tsx` (lines 1128 and 1191)
+
+### Changes
+```typescript
+// Change from:
+sets: profile.user_level === 'beginner' ? 2 : 3,
+
+// To (always at least 3):
+sets: profile.user_level === 'advanced' ? 4 : 3,
+```
+
+---
+
+## Issue 4 & 5: Bonus Workout Lacks Warmup + Single Exercise
+
+### Root Cause
+The `generateBonusWorkout` function (lines 1148-1208):
+1. Sets `isWorkoutActive(true)` directly, bypassing `showWorkoutPreview` and `showWarmup`
+2. Uses the `count` parameter from ExtendWorkoutSelector which defaults to 2, but the user may only select 1
+
+### Solution
+1. Route bonus workouts through the same preview/warmup flow as regular workouts
+2. Set minimum exercise count to 3 for bonus workouts
+
+### Files to Modify
+- `src/pages/Training.tsx` (function `generateBonusWorkout`)
+- `src/components/workout/ExtendWorkoutSelector.tsx` (change minimum from 1 to 3)
+
+### Changes
+
+**ExtendWorkoutSelector.tsx:**
+```typescript
+// Change line 25:
+const minCount = 1;
+// To:
+const minCount = 3;
+
+// And default state (line 23):
+const [count, setCount] = useState(2);
+// To:
+const [count, setCount] = useState(3);
+```
+
+**Training.tsx (generateBonusWorkout):**
+```typescript
+// After generating exercises (line 1200-1202), instead of:
+setGeneratedExercises(bonusExercises);
+setSelectedWorkoutGymId(profile.selected_gym_id);
+setIsWorkoutActive(true);
+
+// Change to show preview first:
+setGeneratedExercises(bonusExercises);
+setSelectedWorkoutGymId(profile.selected_gym_id);
+setShowWorkoutPreview(true);  // This will then flow to warmup
+```
+
+---
+
+## Issue 6: Add Pause Button to Warmup
+
+### Root Cause
+The `WarmupPlayer` component has `isPaused` state (line 38) but no UI button to toggle it.
+
+### Solution
+Add a pause/resume button to the warmup UI.
+
+### Files to Modify
+- `src/components/workout/WarmupPlayer.tsx`
+
+### Changes
+Add a toggle pause button in the action buttons section (line 244):
+
+```typescript
+// Before the "Další cvik" button:
+<Button
+  variant={isPaused ? "default" : "outline"}
+  size="lg"
+  className="flex-1 gap-2"
+  onClick={() => setIsPaused(!isPaused)}
+>
+  {isPaused ? (
+    <>
+      <Play className="w-5 h-5" />
+      Pokračovat
+    </>
+  ) : (
+    <>
+      <Pause className="w-5 h-5" />
+      Pauza
+    </>
+  )}
+</Button>
+```
+
+Add import for `Pause` and `Play` icons from lucide-react.
+
+---
+
+## Issue 7: Workout Duration Calculation
+
+### Current Formula
+```
+duration = (exercises × 8) + 10 (warmup) + 5 (cooldown) = exercises × 8 + 15
+```
+
+### New Formula (per user request)
+```
+warmup = 4 min (dynamic, real estimate)
+exercises = count × 8 min
+padding = 3 min max
+
+Target exercises = floor((userDuration - warmupEstimate + 3) / 8)
+
+Display: warmupEstimate + (exercises × 8) min
+```
+
+### Solution
+1. Calculate warmup duration dynamically (warmupExercises.length × 0.5 min = 30 sec each)
+2. Update `calculateWorkoutDuration` to use 4 min warmup estimate by default
+3. Update `calculateSlotsForDuration` in `useWorkoutGenerator.ts` with new formula
+
+### Files to Modify
+- `src/pages/Training.tsx` (calculateWorkoutDuration)
+- `src/hooks/useWorkoutGenerator.ts` (calculateSlotsForDuration)
+
+### Changes
+
+**Training.tsx (calculateWorkoutDuration):**
+```typescript
+const calculateWorkoutDuration = (exercises: WorkoutExercise[], warmupCount: number = 4): number => {
+  // Warmup: each exercise is 30 seconds = 0.5 min
+  const WARMUP_MINUTES = Math.ceil(warmupCount * 0.5);
+  const MINUTES_PER_EXERCISE = 8;
+  
+  const exerciseCount = exercises.length;
+  const estimatedDuration = (exerciseCount * MINUTES_PER_EXERCISE) + WARMUP_MINUTES;
+  
+  return estimatedDuration;
 };
 ```
 
-### 2. Refactor `src/pages/Auth.tsx`
-
-Complete rewrite to handle onboarding-first flow:
-
-**State Management:**
-- Add onboarding step state (0-7 for questionnaire, 8 for registration)
-- Add all onboarding field states (goal, level, trainingDays, preferredTime, duration, gender, age, height, weight, injuries, equipmentPreference)
-- Mode state: 'onboarding' | 'login'
-
-**Flow Logic:**
-- When user clicks "Registrace" tab -> start onboarding flow (step 0)
-- Navigate through steps 0-6 with Next/Back buttons
-- Step 7 = Registration form (name, email, password)
-- On registration submit:
-  1. Create user via supabase.auth.signUp
-  2. Wait for auth state change
-  3. Save onboarding data to user_profiles
-  4. Generate workout plan automatically
-  5. Redirect to home
-
-**UI Structure:**
-- Login tab: Standard login form (unchanged)
-- Register tab: Multi-step onboarding flow ending with registration
-
-### 3. Simplify `src/components/OnboardingDrawer.tsx`
-
-For edit mode (existing users updating settings):
-
-**Changes:**
-- Reduce to 7 steps (remove registration step, it's not needed in edit mode)
-- Remove: secondary_goals, motivations
-- Update goal selection to single-select only
-- Add equipment preference with new options
-- Split is auto-determined from goal (read-only display)
-
-**New Equipment Options:**
+**useWorkoutGenerator.ts (calculateSlotsForDuration):**
 ```typescript
-const EQUIPMENT = [
-  { id: 'machines', label: 'Hlavně stroje' },
-  { id: 'bodyweight', label: 'Vlastní váha' },
-  { id: 'no_preference', label: 'Bez preference' },
-];
+const calculateSlotsForDuration = (
+  durationMinutes: number,
+  templateSlots: DayTemplateSlot[],
+  userLevel: UserLevel
+): DayTemplateSlot[] => {
+  const WARMUP_MINUTES = 4;  // Updated from 10
+  const PADDING_MINUTES = 3;
+  const MINUTES_PER_EXERCISE = 8;
+  
+  // Available time for exercises = userDuration - warmup + allowed padding
+  const availableMinutes = durationMinutes - WARMUP_MINUTES + PADDING_MINUTES;
+  let targetExerciseCount = Math.floor(availableMinutes / MINUTES_PER_EXERCISE);
+  
+  // Minimum 3 exercises, maximum reasonable
+  const MIN_EXERCISES = 3;
+  const MAX_EXERCISES = Math.max(templateSlots.length + 4, 10);
+  
+  targetExerciseCount = Math.max(MIN_EXERCISES, Math.min(targetExerciseCount, MAX_EXERCISES));
+  
+  // ... rest of function unchanged
+};
 ```
 
-### 4. Update `src/contexts/AuthContext.tsx`
+### Example Calculation (45 min workout):
+- Available: 45 - 4 + 3 = 44 min
+- Exercises: floor(44 / 8) = 5 exercises
+- Display: 4 + (5 × 8) = 44 min
 
-Extend register function to accept onboarding data:
+---
 
-```typescript
-const register = async (
-  email: string, 
-  password: string, 
-  firstName: string, 
-  lastName: string,
-  onboardingData?: OnboardingData
-): Promise<{ success: boolean; error?: string; userId?: string }>
-```
-
-After successful registration, if onboardingData is provided:
-1. Update user_profiles with all fields
-2. Set onboarding_completed = true
-3. Trigger workout plan generation
-
-### 5. Update `src/hooks/useUserProfile.ts`
-
-Ensure the UserProfile interface has all required fields:
-- Already has: gender, age, height_cm, weight_kg, injuries, equipment_preference
-- Confirm training_split field exists and is being used
-
-## Files to Modify
+## Summary of Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Auth.tsx` | Complete refactor - add 8-step onboarding before registration |
-| `src/components/OnboardingDrawer.tsx` | Simplify to 7 steps, remove motivations/secondary goals, update equipment options |
-| `src/lib/trainingGoals.ts` | Add MVP_GOALS array, GOAL_TO_SPLIT mapping |
-| `src/contexts/AuthContext.tsx` | Extend register to accept and save onboarding data |
+| `src/hooks/useUserProfile.ts` | Add auth state listener to refetch profile on login |
+| `src/pages/Training.tsx` | Fix icon overflow, update bonus workout flow, update duration calc |
+| `src/components/workout/WarmupPlayer.tsx` | Add pause/resume button |
+| `src/components/workout/ExtendWorkoutSelector.tsx` | Change min count from 1 to 3 |
+| `src/hooks/useWorkoutGenerator.ts` | Update duration calculation formula |
+| **Database migration** | Update `day_templates` beginner_sets to minimum 3 |
 
-## UI/UX Flow Summary
+---
 
-**New User Journey:**
-1. User arrives at /auth
-2. Sees tabs: "Přihlášení" | "Registrace"
-3. Clicks "Registrace" -> Onboarding starts
-4. Completes 7 question steps
-5. Step 8: Fills registration form (name, email, password)
-6. Clicks "Dokončit registraci"
-7. System: Creates user -> Saves profile -> Generates plan
-8. Redirects to Home with workout ready
+## Implementation Order
 
-**Existing User (Edit Mode):**
-1. Opens OnboardingDrawer from Profile
-2. Same 7 steps (without registration)
-3. Split shown as read-only (derived from goal)
-4. Warning: "Změny se projeví až v novém plánu"
-
-## Validation Rules
-
-Each step must be completed before proceeding:
-- Step 0 (Goal): One goal must be selected
-- Step 1 (Level): One level must be selected  
-- Step 2 (Days): At least 1 day selected
-- Step 3 (Time): Time selected + duration set
-- Step 4 (Demographics): Gender + all bio fields filled
-- Step 5 (Injuries): At least one option selected (including "none")
-- Step 6 (Equipment): One preference selected
-- Step 7 (Registration): All fields filled, valid email, password >= 6 chars
+1. Database migration (update beginner_sets)
+2. Fix useUserProfile refetch on auth state change
+3. Fix Training.tsx icon overflow
+4. Update sets minimum in Training.tsx bonus/extension generation
+5. Update ExtendWorkoutSelector minimum count
+6. Update bonus workout to use preview/warmup flow
+7. Add pause button to WarmupPlayer
+8. Update duration calculation in both files
