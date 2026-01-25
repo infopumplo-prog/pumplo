@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, Flame, Timer, Pause, Play } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, Flame, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -21,7 +21,7 @@ import { getMuscleLabel } from '@/lib/muscleLabels';
 export interface WarmupExercise {
   id: string;
   name: string;
-  duration: number; // in seconds
+  duration: number;
   videoPath: string | null;
   primaryMuscles?: string[];
 }
@@ -36,6 +36,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.duration || 30);
   const [isPaused, setIsPaused] = useState(false);
+  const [isWaitingForTap, setIsWaitingForTap] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
@@ -65,34 +66,40 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
     fetchVideoUrl();
   }, [currentExercise?.videoPath]);
 
-  // Countdown timer
+  // Countdown timer - stops when reaches 0 and waits for tap
   useEffect(() => {
-    if (isPaused || !currentExercise) return;
+    if (isPaused || !currentExercise || isWaitingForTap) return;
 
     const interval = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          // Move to next exercise
-          if (currentIndex < exercises.length - 1) {
-            setCurrentIndex(curr => curr + 1);
-            return exercises[currentIndex + 1]?.duration || 30;
-          } else {
-            clearInterval(interval);
-            onComplete();
-            return 0;
-          }
+          clearInterval(interval);
+          setIsWaitingForTap(true);
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentIndex, exercises, onComplete, isPaused, currentExercise]);
+  }, [currentIndex, isPaused, currentExercise, isWaitingForTap]);
+
+  // Handle advancing to next exercise (called on tap)
+  const handleAdvance = useCallback(() => {
+    if (currentIndex < exercises.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setTimeRemaining(exercises[currentIndex + 1]?.duration || 30);
+      setIsWaitingForTap(false);
+    } else {
+      onComplete();
+    }
+  }, [currentIndex, exercises, onComplete]);
 
   const handleSkipExercise = useCallback(() => {
     if (currentIndex < exercises.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setTimeRemaining(exercises[currentIndex + 1]?.duration || 30);
+      setIsWaitingForTap(false);
     } else {
       onComplete();
     }
@@ -109,45 +116,41 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
 
   if (!currentExercise) return null;
 
-  // Calculate progress for SVG circle
-  const circumference = 2 * Math.PI * 48;
-  const progressOffset = circumference * (1 - timeRemaining / currentExercise.duration);
+  const timerProgressValue = (timeRemaining / currentExercise.duration) * 100;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background flex flex-col"
+      className="fixed inset-0 z-50 bg-background flex flex-col w-screen max-w-full overflow-hidden"
     >
       {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="gap-1">
-            <Flame className="w-3 h-3 text-orange-500" />
-            Rozcvička {currentIndex + 1}/{totalExercises}
-          </Badge>
-        </div>
+      <div className="flex-none p-4 border-b border-border flex items-center justify-between">
+        <Badge variant="secondary" className="gap-1">
+          <Flame className="w-3 h-3 text-orange-500" />
+          Rozcvička {currentIndex + 1}/{totalExercises}
+        </Badge>
         <Button variant="ghost" size="sm" onClick={handleSkipAll} className="text-muted-foreground">
           Přeskočit vše
         </Button>
       </div>
 
-      {/* Progress bar */}
-      <div className="px-4 pt-2">
+      {/* Exercise progress bar */}
+      <div className="flex-none px-4 pt-2">
         <Progress value={progressPercentage} className="h-1" />
       </div>
 
-      {/* Video / Visual area */}
-      <div className="flex-1 relative bg-muted/30 flex items-center justify-center min-h-[240px]">
+      {/* Video / Visual area - relative for tap overlay */}
+      <div className="flex-1 relative bg-muted/30 flex items-center justify-center min-h-[200px]">
         {videoUrl ? (
           <video
             src={videoUrl}
             loop
             muted
-            autoPlay
+            autoPlay={!isPaused && !isWaitingForTap}
             playsInline
-            className="w-full h-full object-contain max-h-[300px]"
+            className="w-full h-full object-contain max-h-[280px]"
           />
         ) : (
           <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -156,66 +159,54 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           </div>
         )}
 
-        {/* Circular timer with progress ring */}
-        <motion.div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2"
-          initial={{ scale: 0.8 }}
-          animate={{ 
-            scale: timeRemaining <= 5 ? [1, 1.05, 1] : 1 
-          }}
-          transition={{ 
-            duration: 0.5, 
-            repeat: timeRemaining <= 5 ? Infinity : 0 
-          }}
-        >
-          <div className="relative w-28 h-28">
-            {/* SVG progress ring */}
-            <svg className="w-full h-full -rotate-90">
-              {/* Background circle */}
-              <circle
-                cx="56"
-                cy="56"
-                r="48"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="6"
-                className="text-muted/30"
-              />
-              {/* Progress circle */}
-              <circle
-                cx="56"
-                cy="56"
-                r="48"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="6"
-                strokeLinecap="round"
-                className={cn(
-                  "transition-colors duration-300",
-                  timeRemaining <= 5 ? "text-destructive" : "text-primary"
-                )}
-                strokeDasharray={circumference}
-                strokeDashoffset={progressOffset}
-                style={{ transition: 'stroke-dashoffset 1s linear' }}
-              />
-            </svg>
-            
-            {/* Center content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Timer className="w-4 h-4 mb-1 text-muted-foreground" />
-              <span className={cn(
-                "text-3xl font-bold transition-colors duration-300",
-                timeRemaining <= 5 && "text-destructive"
-              )}>
-                {timeRemaining}
-              </span>
+        {/* Tap overlay when timer finished */}
+        {isWaitingForTap && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 cursor-pointer"
+            onClick={handleAdvance}
+          >
+            <div className="text-center">
+              <motion.div 
+                className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <ChevronRight className="w-8 h-8 text-primary" />
+              </motion.div>
+              <p className="text-lg font-semibold">Klepni pro další cvik</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentIndex < exercises.length - 1 
+                  ? exercises[currentIndex + 1].name 
+                  : 'Spustit trénink'}
+              </p>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Timer progress bar */}
+      <div className="flex-none px-4 py-3 border-t border-border">
+        <div className="flex items-center gap-3">
+          <Progress 
+            value={timerProgressValue} 
+            className={cn(
+              "flex-1 h-2 transition-colors",
+              timeRemaining <= 5 && "[&>div]:bg-destructive"
+            )}
+          />
+          <span className={cn(
+            "text-lg font-bold tabular-nums w-12 text-right transition-colors",
+            timeRemaining <= 5 && "text-destructive"
+          )}>
+            {timeRemaining}s
+          </span>
+        </div>
       </div>
 
       {/* Exercise info */}
-      <div className="p-6 text-center border-t border-border">
+      <div className="flex-none p-6 text-center border-t border-border">
         <motion.h2
           key={currentExercise.id}
           initial={{ opacity: 0, y: 10 }}
@@ -228,7 +219,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           Drž pozici / Provádej {currentExercise.duration} sekund
         </p>
 
-        {/* Muscle tags - formatted */}
+        {/* Muscle tags */}
         {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
           <div className="flex flex-wrap gap-1 justify-center mt-3">
             {currentExercise.primaryMuscles.slice(0, 3).map(muscle => (
@@ -241,12 +232,13 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
       </div>
 
       {/* Action buttons */}
-      <div className="p-4 pb-28 border-t border-border flex gap-2">
+      <div className="flex-none p-4 pb-28 border-t border-border flex gap-2">
         <Button
           variant={isPaused ? "default" : "outline"}
           size="lg"
           className="flex-1 gap-2"
           onClick={() => setIsPaused(!isPaused)}
+          disabled={isWaitingForTap}
         >
           {isPaused ? (
             <>
