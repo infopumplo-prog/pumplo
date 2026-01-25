@@ -94,9 +94,9 @@ const Auth = () => {
     setIsSubmitting(true);
 
     try {
-      // 1. Register user
+      // 1. Register user - returns userId directly
       const result = await register(regEmail, regPassword, firstName, lastName);
-      if (!result.success) {
+      if (!result.success || !result.userId) {
         if (result.error?.includes('rate limit') || result.error?.includes('429')) {
           setError('Příliš mnoho registrací. Zkuste to prosím za pár minut.');
         } else {
@@ -106,59 +106,68 @@ const Auth = () => {
         return;
       }
 
-      // 2. Wait a moment for auth to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const userId = result.userId;
 
-      // 3. Get current user
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        setError('Nepodařilo se načíst uživatele');
-        setIsSubmitting(false);
-        return;
-      }
+      // 2. Wait a moment for trigger to create profile
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // 4. Save onboarding data to profile
+      // 3. Save onboarding data to profile (retry logic for race condition)
       const trainingSplit = primaryGoal ? GOAL_TO_SPLIT[primaryGoal] : null;
       
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({
-          primary_goal: primaryGoal,
-          user_level: userLevel,
-          training_days: trainingDays,
-          preferred_time: preferredTime,
-          training_duration_minutes: trainingDuration,
-          gender,
-          age: age ? parseInt(age) : null,
-          height_cm: height ? parseInt(height) : null,
-          weight_kg: weight ? parseFloat(weight) : null,
-          injuries,
-          equipment_preference: equipmentPreference,
-          training_split: trainingSplit,
-          onboarding_completed: true,
-          current_step: ONBOARDING_TOTAL_STEPS,
-          first_name: firstName,
-          last_name: lastName,
-        })
-        .eq('user_id', userData.user.id);
+      let profileUpdateSuccess = false;
+      let retries = 3;
+      
+      while (!profileUpdateSuccess && retries > 0) {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .update({
+            primary_goal: primaryGoal,
+            user_level: userLevel,
+            training_days: trainingDays,
+            preferred_time: preferredTime,
+            training_duration_minutes: trainingDuration,
+            gender,
+            age: age ? parseInt(age) : null,
+            height_cm: height ? parseInt(height) : null,
+            weight_kg: weight ? parseFloat(weight) : null,
+            injuries,
+            equipment_preference: equipmentPreference,
+            training_split: trainingSplit,
+            onboarding_completed: true,
+            current_step: ONBOARDING_TOTAL_STEPS,
+            first_name: firstName,
+            last_name: lastName,
+          })
+          .eq('user_id', userId);
 
-      if (profileError) {
-        console.error('Profile update error:', profileError);
+        if (profileError) {
+          console.error('Profile update error (retry ' + (4 - retries) + '):', profileError);
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } else {
+          profileUpdateSuccess = true;
+        }
       }
 
-      // 5. Create workout plan
+      if (!profileUpdateSuccess) {
+        console.error('Failed to update profile after retries');
+      }
+
+      // 4. Create workout plan
       if (primaryGoal) {
         // Deactivate any existing plans
         await supabase
           .from('user_workout_plans')
           .update({ is_active: false })
-          .eq('user_id', userData.user.id);
+          .eq('user_id', userId);
 
         // Create new plan with training_days snapshot
         await supabase
           .from('user_workout_plans')
           .insert({
-            user_id: userData.user.id,
+            user_id: userId,
             goal_id: primaryGoal,
             is_active: true,
             started_at: new Date().toISOString(),

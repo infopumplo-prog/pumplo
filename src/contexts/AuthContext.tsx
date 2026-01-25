@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; userId?: string }>;
   logout: () => void;
 }
 
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { success: true };
   };
 
-  const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string }> => {
+  const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -69,14 +69,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       },
     });
 
-    if (!error && data.user) {
-      // Update profile with names
-      await supabase
-        .from('user_profiles')
-        .update({ first_name: firstName, last_name: lastName })
-        .eq('user_id', data.user.id);
-    }
-
     if (error) {
       if (error.message.includes('User already registered')) {
         return { success: false, error: 'Uživatel s tímto emailem již existuje' };
@@ -87,7 +79,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, error: error.message };
     }
 
-    return { success: true };
+    // Return userId for immediate use (no need to call getUser separately)
+    return { success: true, userId: data.user?.id };
   };
 
   const logout = async () => {
