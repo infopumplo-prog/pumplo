@@ -179,13 +179,27 @@ const Auth = () => {
           });
       }
 
-      toast({ 
-        title: 'Vítej v Pumplo!', 
-        description: 'Tvůj účet byl vytvořen. Nyní si vyber posilovnu.'
-      });
+      // 5. Verify profile was updated before navigating
+      let verified = false;
+      let verifyAttempts = 5;
 
-      // Force navigation to home page after all data is saved
-      navigate('/');
+      while (!verified && verifyAttempts > 0) {
+        const { data: verifyProfile } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', userId)
+          .single();
+        
+        if (verifyProfile?.onboarding_completed === true) {
+          verified = true;
+        } else {
+          verifyAttempts--;
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+
+      // 6. Force a small delay for React Query cache invalidation
+      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (err) {
       console.error('Registration error:', err);
       setError('Něco se pokazilo. Zkuste to prosím znovu.');
