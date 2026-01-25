@@ -1,17 +1,66 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function generatePassword(length = 12): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+// Secure password generation using Web Crypto API
+function generatePassword(length = 16): string {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  const randomValues = new Uint32Array(length);
+  crypto.getRandomValues(randomValues);
   let password = "";
   for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(randomValues[i] % chars.length);
   }
   return password;
+}
+
+// Input validation schemas
+const listUsersSchema = z.object({
+  action: z.literal("list_users"),
+  page: z.number().int().positive().optional().default(1),
+  per_page: z.number().int().positive().max(1000).optional().default(100),
+});
+
+const resetPasswordSchema = z.object({
+  action: z.literal("reset_password"),
+  user_id: z.string().uuid("Neplatné ID používateľa"),
+});
+
+const changeEmailSchema = z.object({
+  action: z.literal("change_email"),
+  user_id: z.string().uuid("Neplatné ID používateľa"),
+  new_email: z.string().email("Neplatný formát emailu").max(255),
+});
+
+const deleteUserSchema = z.object({
+  action: z.literal("delete_user"),
+  user_id: z.string().uuid("Neplatné ID používateľa"),
+});
+
+const actionSchema = z.discriminatedUnion("action", [
+  listUsersSchema,
+  resetPasswordSchema,
+  changeEmailSchema,
+  deleteUserSchema,
+]);
+
+// Safe error response helper - logs details server-side only
+function safeErrorResponse(
+  message: string, 
+  status: number, 
+  internalError?: unknown
+): Response {
+  if (internalError) {
+    console.error("Internal error details:", internalError);
+  }
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 Deno.serve(async (req) => {
@@ -26,10 +75,7 @@ Deno.serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Chýba autorizácia" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return safeErrorResponse("Chýba autorizácia", 401);
     }
 
     // Verify the caller is an admin
@@ -39,10 +85,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Neplatná autorizácia" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return safeErrorResponse("Neplatná autorizácia", 401, userError);
     }
 
     const { data: roleData } = await userClient
@@ -53,22 +96,37 @@ Deno.serve(async (req) => {
       .single();
 
     if (!roleData) {
-      return new Response(
-        JSON.stringify({ error: "Prístup zamietnutý - vyžaduje sa admin rola" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return safeErrorResponse("Prístup zamietnutý - vyžaduje sa admin rola", 403);
+    }
+
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return safeErrorResponse("Neplatný JSON vstup", 400);
+    }
+
+    const validationResult = actionSchema.safeParse(body);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      return safeErrorResponse(
+        firstError?.message || "Neplatné vstupné údaje",
+        400
       );
     }
+
+    const validatedData = validationResult.data;
 
     // Create admin client with service role
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const body = await req.json();
-    const { action, user_id, new_email, page = 1, per_page = 100 } = body;
-
-    switch (action) {
+    switch (validatedData.action) {
       case "list_users": {
+        const { page, per_page } = validatedData;
+        
         // Get users from auth.users with pagination
         const { data: authUsers, error: authError } = await adminClient.auth.admin.listUsers({
           page,
@@ -76,11 +134,7 @@ Deno.serve(async (req) => {
         });
 
         if (authError) {
-          console.error("Error fetching auth users:", authError);
-          return new Response(
-            JSON.stringify({ error: "Nepodarilo sa načítať užívateľov" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return safeErrorResponse("Nepodarilo sa načítať užívateľov", 500, authError);
         }
 
         // Get profiles
@@ -133,25 +187,15 @@ Deno.serve(async (req) => {
       }
 
       case "reset_password": {
-        if (!user_id) {
-          return new Response(
-            JSON.stringify({ error: "Chýba user_id" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const newPassword = generatePassword(12);
+        const { user_id } = validatedData;
+        const newPassword = generatePassword(16);
         
         const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, {
           password: newPassword,
         });
 
         if (updateError) {
-          console.error("Error resetting password:", updateError);
-          return new Response(
-            JSON.stringify({ error: "Nepodarilo sa resetovať heslo" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return safeErrorResponse("Nepodarilo sa resetovať heslo", 500, updateError);
         }
 
         return new Response(
@@ -161,12 +205,7 @@ Deno.serve(async (req) => {
       }
 
       case "change_email": {
-        if (!user_id || !new_email) {
-          return new Response(
-            JSON.stringify({ error: "Chýba user_id alebo new_email" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        const { user_id, new_email } = validatedData;
 
         const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, {
           email: new_email,
@@ -174,11 +213,7 @@ Deno.serve(async (req) => {
         });
 
         if (updateError) {
-          console.error("Error changing email:", updateError);
-          return new Response(
-            JSON.stringify({ error: updateError.message || "Nepodarilo sa zmeniť email" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return safeErrorResponse("Nepodarilo sa zmeniť email", 500, updateError);
         }
 
         return new Response(
@@ -188,22 +223,13 @@ Deno.serve(async (req) => {
       }
 
       case "delete_user": {
-        if (!user_id) {
-          return new Response(
-            JSON.stringify({ error: "Chýba user_id" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        const { user_id } = validatedData;
 
         // Delete from auth.users (this will cascade to user_profiles and user_roles via triggers)
         const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
 
         if (deleteError) {
-          console.error("Error deleting user:", deleteError);
-          return new Response(
-            JSON.stringify({ error: deleteError.message || "Nepodarilo sa odstrániť používateľa" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return safeErrorResponse("Nepodarilo sa odstrániť používateľa", 500, deleteError);
         }
 
         return new Response(
@@ -213,16 +239,9 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: "Neznáma akcia" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return safeErrorResponse("Neznáma akcia", 400);
     }
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ error: "Interná chyba servera" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return safeErrorResponse("Interná chyba servera", 500, error);
   }
 });
