@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 // VAPID public key - generated for production push notifications
-const VAPID_PUBLIC_KEY = 'BAo-pzpiXFiYpB3IAofvNOTBIAxD6Fo77sZWk48yRbJCYE34CJ8nhGfSAj1c8cTx9Jz9hP2vW8HD1am_q1MYkNA';
+// This MUST match the VAPID_PUBLIC_KEY secret in Supabase
+const VAPID_PUBLIC_KEY = 'BOfIdeWamKReFm5zoYHlJLcUhNzV8KzGKEkxkqCIPK5-kAuIl4Cf6MGP_BsvOPjGjvSna_1o0TibNw6MS_TdAko';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
