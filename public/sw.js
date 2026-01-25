@@ -1,4 +1,150 @@
-// Pumplo Service Worker for Push Notifications
+// Pumplo Service Worker for Push Notifications + Offline Caching
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+
+// Precache static assets (Vite PWA injects manifest here)
+precacheAndRoute(self.__WB_MANIFEST || []);
+
+// Runtime caching for Supabase API
+// Cache workout plans and exercises - critical for offline
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'workout-plans-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_exercises.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'workout-exercises-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Cache workout history
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_sessions.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'workout-history-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_session_sets.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'workout-sets-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 500,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Cache day templates and exercises catalog
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/day_templates.*/i,
+  new CacheFirst({
+    cacheName: 'day-templates-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
+  new CacheFirst({
+    cacheName: 'exercises-catalog-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 500,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Cache user profile
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'user-profile-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 10,
+        maxAgeSeconds: 60 * 60 * 24, // 24 hours
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Fallback for other Supabase requests
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/.*/i,
+  new NetworkFirst({
+    cacheName: 'supabase-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24, // 24 hours
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// ============================================
+// Push Notification Handlers
+// ============================================
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
