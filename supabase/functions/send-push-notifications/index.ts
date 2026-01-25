@@ -870,12 +870,40 @@ Deno.serve(async (req) => {
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
   const vapidSubject = Deno.env.get('VAPID_SUBJECT');
 
+  // Debug: Log key info (lengths only, not actual values for security)
+  console.log('VAPID Key Debug:', {
+    publicKeyLength: vapidPublicKey?.length,
+    publicKeyPrefix: vapidPublicKey?.substring(0, 10),
+    privateKeyLength: vapidPrivateKey?.length,
+    hasSubject: !!vapidSubject,
+  });
+
   if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
     console.error('Missing VAPID configuration');
     return new Response(
       JSON.stringify({ error: 'Missing VAPID configuration' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
+  
+  // Validate key formats
+  try {
+    const pubKeyBytes = base64UrlDecode(vapidPublicKey);
+    const privKeyBytes = base64UrlDecode(vapidPrivateKey);
+    console.log('Decoded key sizes:', {
+      publicKeyBytes: pubKeyBytes.length,
+      privateKeyBytes: privKeyBytes.length,
+      publicKeyFirstByte: pubKeyBytes[0],
+    });
+    
+    if (pubKeyBytes.length !== 65) {
+      console.error(`Invalid public key: expected 65 bytes, got ${pubKeyBytes.length}`);
+    }
+    if (privKeyBytes.length !== 32) {
+      console.error(`Invalid private key: expected 32 bytes, got ${privKeyBytes.length}`);
+    }
+  } catch (e) {
+    console.error('Key decode error:', e);
   }
 
   const supabase = createClient(
