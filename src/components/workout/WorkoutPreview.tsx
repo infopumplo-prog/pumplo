@@ -2,9 +2,7 @@ import { motion } from 'framer-motion';
 import { X, Play, Clock, Dumbbell, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { WorkoutExercise } from '@/lib/trainingGoals';
-import { cn } from '@/lib/utils';
 
 interface WorkoutPreviewProps {
   exercises: WorkoutExercise[];
@@ -30,10 +28,10 @@ export const WorkoutPreview = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background flex flex-col"
+      className="fixed inset-0 z-50 bg-background flex flex-col w-screen max-w-full overflow-x-hidden"
     >
       {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      <div className="flex-none p-4 border-b border-border flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="w-5 h-5" />
         </Button>
@@ -45,13 +43,13 @@ export const WorkoutPreview = ({
       </div>
 
       {/* Day info */}
-      <div className="p-4 bg-gradient-to-br from-primary/10 via-background to-background border-b border-border">
+      <div className="flex-none p-4 bg-gradient-to-br from-primary/10 via-background to-background border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+          <div className="w-12 h-12 shrink-0 rounded-xl bg-primary/20 flex items-center justify-center">
             <span className="font-bold text-lg text-primary">{dayLetter}</span>
           </div>
-          <div>
-            <h3 className="font-bold text-lg">{dayName}</h3>
+          <div className="min-w-0">
+            <h3 className="font-bold text-lg truncate">{dayName}</h3>
             <p className="text-sm text-muted-foreground">
               {exercises.length} cviků připraveno
             </p>
@@ -59,36 +57,41 @@ export const WorkoutPreview = ({
         </div>
       </div>
 
-      {/* Exercise list */}
-      <ScrollArea className="flex-1 w-full">
-        <div className="px-4 py-4 space-y-2 overflow-hidden w-full max-w-full">
+      {/* Exercise list - native scroll */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="px-4 py-4 space-y-2">
           {exercises.map((ex, idx) => (
             <motion.div
               key={ex.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="flex items-center gap-3 py-3 px-3 rounded-xl bg-muted/50 border border-border/50 overflow-hidden w-full max-w-full min-w-0"
+              className="flex items-center gap-3 py-3 px-3 rounded-xl bg-muted/50 border border-border/50"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 flex-none">
+              {/* Index - fixed width */}
+              <div className="w-8 h-8 shrink-0 flex-none rounded-full bg-primary/20 flex items-center justify-center">
                 <span className="font-bold text-sm text-primary">{idx + 1}</span>
               </div>
-              <div className="flex-1 min-w-0">
+              
+              {/* Name + details - takes remaining space, truncates */}
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="font-medium text-sm truncate">{ex.exerciseName}</p>
                 <p className="text-xs text-muted-foreground">
                   {ex.sets} sérií × {ex.repMin}-{ex.repMax} opak.
                 </p>
               </div>
-              <Dumbbell className="w-4 h-4 text-muted-foreground shrink-0 flex-none" />
+              
+              {/* Icon - fixed width */}
+              <Dumbbell className="w-4 h-4 shrink-0 flex-none text-muted-foreground" />
             </motion.div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Action button */}
-      <div className="p-4 pb-28 border-t border-border bg-background">
+      <div className="flex-none p-4 pb-28 border-t border-border bg-background">
         <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-          <Flame className="w-4 h-4 text-orange-500" />
+          <Flame className="w-4 h-4 shrink-0 text-orange-500" />
           <span>Začneme rozcvičkou pro přípravu svalů</span>
         </div>
         <Button 
