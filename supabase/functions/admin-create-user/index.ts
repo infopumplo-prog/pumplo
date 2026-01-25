@@ -1,9 +1,35 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const createUserSchema = z.object({
+  email: z.string().email("Neplatný formát emailu").max(255),
+  password: z.string().min(6, "Heslo musí mať aspoň 6 znakov").max(72),
+  first_name: z.string().max(100).optional().nullable(),
+  last_name: z.string().max(100).optional().nullable(),
+  role: z.enum(["user", "business", "admin"]).optional().default("user"),
+  gym_license_count: z.number().int().positive().max(100).optional().default(1),
+});
+
+// Safe error response helper - logs details server-side only
+function safeErrorResponse(
+  message: string, 
+  status: number, 
+  internalError?: unknown
+): Response {
+  if (internalError) {
+    console.error("Internal error details:", internalError);
+  }
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -15,10 +41,7 @@ Deno.serve(async (req) => {
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Chýba autorizácia' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeErrorResponse('Chýba autorizácia', 401);
     }
 
     // Create Supabase client with user's token to verify admin status
@@ -33,10 +56,7 @@ Deno.serve(async (req) => {
     
     const { data: { user: callingUser }, error: userError } = await userClient.auth.getUser();
     if (userError || !callingUser) {
-      return new Response(
-        JSON.stringify({ error: 'Neplatná autorizácia' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeErrorResponse('Neplatná autorizácia', 401, userError);
     }
 
     // Check if calling user is admin
@@ -47,30 +67,27 @@ Deno.serve(async (req) => {
       .single();
 
     if (roleError || roleData?.role !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Nemáte oprávnenie vytvárať používateľov' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return safeErrorResponse('Nemáte oprávnenie vytvárať používateľov', 403, roleError);
+    }
+
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return safeErrorResponse('Neplatný JSON vstup', 400);
+    }
+
+    const validationResult = createUserSchema.safeParse(body);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      return safeErrorResponse(
+        firstError?.message || 'Neplatné vstupné údaje',
+        400
       );
     }
 
-    // Parse request body
-    const body = await req.json();
-    const { email, password, first_name, last_name, role = 'user', gym_license_count = 1 } = body;
-
-    // Validate required fields
-    if (!email || !password) {
-      return new Response(
-        JSON.stringify({ error: 'Email a heslo sú povinné' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: 'Heslo musí mať aspoň 6 znakov' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { email, password, first_name, last_name, role, gym_license_count } = validationResult.data;
 
     // Create admin client with service role
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -89,18 +106,15 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error('Error creating user:', createError);
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Map common errors to safe messages
+      if (createError.message?.includes('already registered')) {
+        return safeErrorResponse('Používateľ s týmto emailom už existuje', 400, createError);
+      }
+      return safeErrorResponse('Nepodarilo sa vytvoriť používateľa', 500, createError);
     }
 
     if (!newUser.user) {
-      return new Response(
-        JSON.stringify({ error: 'Nepodarilo sa vytvoriť používateľa' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeErrorResponse('Nepodarilo sa vytvoriť používateľa', 500);
     }
 
     // Update user_profiles with first_name, last_name, and gym_license_count
@@ -151,10 +165,6 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Interná chyba servera' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return safeErrorResponse('Interná chyba servera', 500, error);
   }
 });
