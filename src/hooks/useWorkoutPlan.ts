@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TrainingGoalId, WorkoutExercise, DayTemplate } from '@/lib/trainingGoals';
+import { 
+  TrainingGoalId, 
+  WorkoutExercise, 
+  DayTemplate,
+  PlanInputsSnapshot,
+  ValidationReport,
+  WorkoutPlanV2
+} from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
+import { checkPlanEquipmentValidity } from '@/lib/planValidation';
 
 interface WorkoutPlanData {
   id: string;
@@ -15,7 +23,13 @@ interface WorkoutPlanData {
   exercises: WorkoutExercise[];
   allDays: DayTemplate[];
   startedAt: string | null;
-  trainingDays: string[] | null; // Training days stored at plan creation
+  trainingDays: string[] | null;
+  // v2.0 fields
+  generatorVersion: string | null;
+  methodologyVersion: string | null;
+  needsRegeneration: boolean;
+  inputsSnapshot: PlanInputsSnapshot | null;
+  validationReport: ValidationReport | null;
 }
 
 export const useWorkoutPlan = () => {
@@ -23,6 +37,7 @@ export const useWorkoutPlan = () => {
   const [plan, setPlan] = useState<WorkoutPlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [equipmentWarning, setEquipmentWarning] = useState<string | null>(null);
 
   const fetchActivePlan = useCallback(async () => {
     if (!user) {
@@ -33,9 +48,10 @@ export const useWorkoutPlan = () => {
 
     setIsLoading(true);
     setError(null);
+    setEquipmentWarning(null);
 
     try {
-      // 1. Get active plan
+      // 1. Get active plan with v2.0 fields
       const { data: planData, error: planError } = await supabase
         .from('user_workout_plans')
         .select(`
@@ -97,7 +113,7 @@ export const useWorkoutPlan = () => {
 
       if (exError) throw exError;
 
-      // 4. Transform exercises
+      // 5. Transform exercises (strictly from DB, no random selection)
       const exercises: WorkoutExercise[] = (exercisesData || []).map(ex => ({
         id: ex.id,
         dayLetter: ex.day_letter,
@@ -111,10 +127,63 @@ export const useWorkoutPlan = () => {
         repMin: ex.rep_min || 8,
         repMax: ex.rep_max || 12,
         isFallback: ex.is_fallback || false,
-        fallbackReason: ex.fallback_reason
+        fallbackReason: ex.fallback_reason,
+        selectionScore: ex.selection_score
       }));
 
-      // 5. Group exercises by day
+      // 6. Check if gym equipment has changed (needs_regeneration check)
+      if (planData.gym_id && !planData.needs_regeneration) {
+        const { data: currentMachines } = await supabase
+          .from('gym_machines')
+          .select('machine_id')
+          .eq('gym_id', planData.gym_id);
+
+        const currentMachineIds = new Set(
+          currentMachines?.map(m => m.machine_id).filter(Boolean) || []
+        );
+
+        // Get machine_ids from exercises
+        const exerciseMachines = (exercisesData || [])
+          .filter(e => e.exercises && (e.exercises as any).machine_id)
+          .map(e => ({
+            exercise_id: e.exercise_id,
+            machine_id: (e.exercises as any).machine_id
+          }));
+
+        const validity = await checkPlanEquipmentValidity(exerciseMachines, currentMachineIds);
+
+        if (!validity.valid) {
+          // Flag plan as needing regeneration
+          await supabase
+            .from('user_workout_plans')
+            .update({ needs_regeneration: true })
+            .eq('id', planData.id);
+          
+          setEquipmentWarning(`Některé cviky v plánu již nejsou dostupné v posilovně. Doporučujeme regenerovat plán.`);
+        }
+      }
+
+      // 7. Parse v2.0 JSON fields
+      let inputsSnapshot: PlanInputsSnapshot | null = null;
+      let validationReport: ValidationReport | null = null;
+
+      if (planData.inputs_snapshot_json) {
+        try {
+          inputsSnapshot = planData.inputs_snapshot_json as unknown as PlanInputsSnapshot;
+        } catch (e) {
+          console.warn('Failed to parse inputs_snapshot_json');
+        }
+      }
+
+      if (planData.validation_report_json) {
+        try {
+          validationReport = planData.validation_report_json as unknown as ValidationReport;
+        } catch (e) {
+          console.warn('Failed to parse validation_report_json');
+        }
+      }
+
+      // 8. Group exercises by day
       const dayLetters = getAllDayLetters(dayCount);
       const allDays: DayTemplate[] = dayLetters.map(letter => {
         const dayExercises = exercises.filter(e => e.dayLetter === letter);
@@ -145,7 +214,13 @@ export const useWorkoutPlan = () => {
         exercises,
         allDays,
         startedAt: planData.started_at,
-        trainingDays: planData.training_days
+        trainingDays: planData.training_days,
+        // v2.0 fields
+        generatorVersion: planData.generator_version || null,
+        methodologyVersion: planData.methodology_version || null,
+        needsRegeneration: planData.needs_regeneration || false,
+        inputsSnapshot,
+        validationReport
       });
     } catch (err) {
       console.error('Error fetching workout plan:', err);
@@ -183,6 +258,18 @@ export const useWorkoutPlan = () => {
     return plan.exercises.filter(e => e.dayLetter === dayLetter);
   }, [plan]);
 
+  // Clear needs_regeneration flag after user regenerates
+  const clearRegenerationFlag = useCallback(async () => {
+    if (!plan) return;
+    
+    await supabase
+      .from('user_workout_plans')
+      .update({ needs_regeneration: false })
+      .eq('id', plan.id);
+    
+    setEquipmentWarning(null);
+  }, [plan]);
+
   useEffect(() => {
     fetchActivePlan();
   }, [fetchActivePlan]);
@@ -191,9 +278,11 @@ export const useWorkoutPlan = () => {
     plan,
     isLoading,
     error,
+    equipmentWarning,
     refetch: fetchActivePlan,
     advanceToNextDay,
     getCurrentDayExercises,
-    getExercisesForDay
+    getExercisesForDay,
+    clearRegenerationFlag
   };
 };

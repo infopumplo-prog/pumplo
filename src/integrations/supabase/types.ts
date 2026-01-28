@@ -181,49 +181,61 @@ export type Database = {
       exercises: {
         Row: {
           allowed_phase: string | null
+          banned_injuries: string[] | null
           category: string
           created_at: string
           difficulty: number
           equipment_type: string | null
           exercise_with_weights: boolean | null
           id: string
+          is_compound: boolean | null
           machine_id: string | null
           name: string
           primary_muscles: string[]
           primary_role: string | null
           secondary_muscles: string[]
+          slot_type: string | null
+          stability_rating: number | null
           updated_at: string
           video_path: string | null
         }
         Insert: {
           allowed_phase?: string | null
+          banned_injuries?: string[] | null
           category: string
           created_at?: string
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
+          is_compound?: boolean | null
           machine_id?: string | null
           name: string
           primary_muscles?: string[]
           primary_role?: string | null
           secondary_muscles?: string[]
+          slot_type?: string | null
+          stability_rating?: number | null
           updated_at?: string
           video_path?: string | null
         }
         Update: {
           allowed_phase?: string | null
+          banned_injuries?: string[] | null
           category?: string
           created_at?: string
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
           id?: string
+          is_compound?: boolean | null
           machine_id?: string | null
           name?: string
           primary_muscles?: string[]
           primary_role?: string | null
           secondary_muscles?: string[]
+          slot_type?: string | null
+          stability_rating?: number | null
           updated_at?: string
           video_path?: string | null
         }
@@ -395,6 +407,35 @@ export type Database = {
         }
         Relationships: []
       }
+      role_aliases: {
+        Row: {
+          alias_for: string
+          created_at: string | null
+          id: string
+          priority: number | null
+        }
+        Insert: {
+          alias_for: string
+          created_at?: string | null
+          id: string
+          priority?: number | null
+        }
+        Update: {
+          alias_for?: string
+          created_at?: string | null
+          id?: string
+          priority?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_aliases_alias_for_fkey"
+            columns: ["alias_for"]
+            isOneToOne: false
+            referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_muscles: {
         Row: {
           created_at: string | null
@@ -448,27 +489,87 @@ export type Database = {
       }
       training_roles: {
         Row: {
+          allowed_equipment_categories: string[] | null
+          banned_injury_tags: string[] | null
           category: string
           created_at: string | null
           description: string | null
+          difficulty_level: string | null
+          has_bodyweight_variant: boolean | null
           id: string
           name: string
+          phase_type: string | null
         }
         Insert: {
+          allowed_equipment_categories?: string[] | null
+          banned_injury_tags?: string[] | null
           category: string
           created_at?: string | null
           description?: string | null
+          difficulty_level?: string | null
+          has_bodyweight_variant?: boolean | null
           id: string
           name: string
+          phase_type?: string | null
         }
         Update: {
+          allowed_equipment_categories?: string[] | null
+          banned_injury_tags?: string[] | null
           category?: string
           created_at?: string | null
           description?: string | null
+          difficulty_level?: string | null
+          has_bodyweight_variant?: boolean | null
           id?: string
           name?: string
+          phase_type?: string | null
         }
         Relationships: []
+      }
+      user_exercise_history: {
+        Row: {
+          day_letter: string | null
+          exercise_id: string | null
+          id: string
+          plan_id: string | null
+          role_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          day_letter?: string | null
+          exercise_id?: string | null
+          id?: string
+          plan_id?: string | null
+          role_id: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          day_letter?: string | null
+          exercise_id?: string | null
+          id?: string
+          plan_id?: string | null
+          role_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_history_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_exercise_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_feedback: {
         Row: {
@@ -713,6 +814,7 @@ export type Database = {
           rep_max: number | null
           rep_min: number | null
           role_id: string
+          selection_score: number | null
           sets: number
           slot_order: number
         }
@@ -727,6 +829,7 @@ export type Database = {
           rep_max?: number | null
           rep_min?: number | null
           role_id: string
+          selection_score?: number | null
           sets: number
           slot_order: number
         }
@@ -741,6 +844,7 @@ export type Database = {
           rep_max?: number | null
           rep_min?: number | null
           role_id?: string
+          selection_score?: number | null
           sets?: number
           slot_order?: number
         }
@@ -772,38 +876,56 @@ export type Database = {
         Row: {
           created_at: string | null
           current_week: number | null
+          generator_version: string | null
           goal_id: string
           gym_id: string | null
           id: string
+          inputs_snapshot_json: Json | null
           is_active: boolean | null
+          methodology_version: string | null
+          needs_regeneration: boolean | null
+          selection_seed: string | null
           started_at: string | null
           training_days: string[] | null
           updated_at: string | null
           user_id: string
+          validation_report_json: Json | null
         }
         Insert: {
           created_at?: string | null
           current_week?: number | null
+          generator_version?: string | null
           goal_id: string
           gym_id?: string | null
           id?: string
+          inputs_snapshot_json?: Json | null
           is_active?: boolean | null
+          methodology_version?: string | null
+          needs_regeneration?: boolean | null
+          selection_seed?: string | null
           started_at?: string | null
           training_days?: string[] | null
           updated_at?: string | null
           user_id: string
+          validation_report_json?: Json | null
         }
         Update: {
           created_at?: string | null
           current_week?: number | null
+          generator_version?: string | null
           goal_id?: string
           gym_id?: string | null
           id?: string
+          inputs_snapshot_json?: Json | null
           is_active?: boolean | null
+          methodology_version?: string | null
+          needs_regeneration?: boolean | null
+          selection_seed?: string | null
           started_at?: string | null
           training_days?: string[] | null
           updated_at?: string | null
           user_id?: string
+          validation_report_json?: Json | null
         }
         Relationships: [
           {
@@ -1006,6 +1128,21 @@ export type Database = {
     }
     Functions: {
       cleanup_old_notification_logs: { Args: never; Returns: undefined }
+      generate_workout_plan_atomic: {
+        Args: {
+          p_exercises: Json
+          p_generator_version: string
+          p_goal_id: string
+          p_gym_id: string
+          p_inputs_snapshot: Json
+          p_methodology_version: string
+          p_selection_seed: string
+          p_training_days: string[]
+          p_user_id: string
+          p_validation_report?: Json
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
