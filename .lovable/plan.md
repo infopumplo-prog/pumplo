@@ -1,5 +1,17 @@
 
-# PUMPLO Training System Refactor - Complete Implementation Plan
+# PUMPLO Training System Refactor - Implementation Status
+
+## ✅ COMPLETED - Phase 1: Database Schema Changes
+All migrations applied successfully:
+- Added columns to `exercises` table (banned_injuries, slot_type, is_compound, stability_rating)
+- Added columns to `user_workout_plans` (generator_version, methodology_version, selection_seed, inputs_snapshot_json, validation_report_json, needs_regeneration)
+- Added selection_score to `user_workout_exercises`
+- Added columns to `training_roles` (allowed_equipment_categories, banned_injury_tags, difficulty_level, has_bodyweight_variant, phase_type)
+- Created `role_aliases` table with RLS
+- Created `user_exercise_history` table with RLS and index
+- Added new training roles (rear_delt_isolation, upper_back_isolation, anti_lateral_flexion)
+- Fixed role_muscles mappings
+- Created `generate_workout_plan_atomic` RPC function
 
 ## Overview
 This plan addresses all 11 specification prompts for a comprehensive refactor of the PUMPLO workout generation system. The changes ensure proper methodology compliance, safety, auditability, and reproducibility.
