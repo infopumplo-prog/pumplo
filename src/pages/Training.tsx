@@ -573,36 +573,61 @@ const Training = () => {
     }
   }, [profile?.primary_goal, profile?.training_split, availableGoals, selectedGoalId]);
 
-  // Create a plan structure without exercises
+  // Create a plan structure - generates exercises if gym is selected
   const handleCreatePlanSchedule = async () => {
     if (!selectedGoalId || !profile?.user_level) return;
     
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
 
-    await supabase
-      .from('user_workout_plans')
-      .update({ is_active: false })
-      .eq('user_id', user.user.id);
+    // If user has a gym selected, generate full plan with exercises
+    if (profile.selected_gym_id) {
+      const planId = await generateWorkoutPlan(
+        profile.selected_gym_id,
+        selectedGoalId as any,
+        profile.user_level as any,
+        profile.injuries || [],
+        profile.equipment_preference,
+        profile.training_duration_minutes || 60
+      );
+      
+      if (planId) {
+        // Update plan with snapshotted training_days
+        await supabase
+          .from('user_workout_plans')
+          .update({ training_days: profile.training_days || [] })
+          .eq('id', planId);
+        
+        await refetchPlan();
+        toast.success('Plán vytvořen!');
+      }
+    } else {
+      // No gym selected - create plan with training_days snapshot
+      await supabase
+        .from('user_workout_plans')
+        .update({ is_active: false })
+        .eq('user_id', user.user.id);
 
-    // Reset current_day_index to 0
-    await supabase
-      .from('user_profiles')
-      .update({ current_day_index: 0 })
-      .eq('user_id', user.user.id);
+      await supabase
+        .from('user_profiles')
+        .update({ current_day_index: 0 })
+        .eq('user_id', user.user.id);
 
-    const { error } = await supabase
-      .from('user_workout_plans')
-      .insert({
-        user_id: user.user.id,
-        goal_id: selectedGoalId,
-        is_active: true,
-        gym_id: null,
-        current_week: 1
-      });
+      const { error } = await supabase
+        .from('user_workout_plans')
+        .insert({
+          user_id: user.user.id,
+          goal_id: selectedGoalId,
+          is_active: true,
+          gym_id: null,
+          current_week: 1,
+          training_days: profile.training_days || [] // SNAPSHOT training days!
+        });
 
-    if (!error) {
-      refetchPlan();
+      if (!error) {
+        await refetchPlan();
+        toast.info('Plán vytvořen. Pro generování cviků vyber posilovnu.');
+      }
     }
   };
 

@@ -150,7 +150,9 @@ export const matchesEquipmentPreference = (
   exercise: Exercise,
   preference: string | null
 ): boolean => {
-  if (!preference) return false;
+  // No preference or 'no_preference' means no scoring bonus
+  if (!preference || preference === 'no_preference') return false;
+  
   const exType = exercise.equipment_type || 'bodyweight';
   
   if (preference === 'machines') {

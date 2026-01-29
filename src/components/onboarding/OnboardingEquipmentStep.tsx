@@ -25,7 +25,10 @@ const OnboardingEquipmentStep = ({ value, onChange }: OnboardingEquipmentStepPro
                 : 'border-border bg-card hover:border-primary/50'
             }`}
           >
-            <span className="font-medium">{eq.label}</span>
+            <span className="font-medium block">{eq.label}</span>
+            {'description' in eq && eq.description && (
+              <span className="text-sm text-muted-foreground">{eq.description}</span>
+            )}
           </button>
         ))}
       </div>

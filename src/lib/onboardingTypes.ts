@@ -68,9 +68,10 @@ export const INJURIES_LIST = [
 ];
 
 export const EQUIPMENT_OPTIONS = [
-  { id: 'machines', label: 'Hlavně stroje' },
-  { id: 'bodyweight', label: 'Vlastní váha' },
-  { id: 'no_preference', label: 'Bez preference' },
+  { id: 'machines', label: 'Hlavně stroje', description: 'Káblové a hydraulické stroje' },
+  { id: 'free_weights', label: 'Volné váhy', description: 'Činky, kettlebelly, olympijské tyče' },
+  { id: 'bodyweight', label: 'Vlastní váha', description: 'Cviky bez vybavení' },
+  { id: 'no_preference', label: 'Bez preference', description: 'Kombinace všeho' },
 ];
 
 export const USER_LEVEL_OPTIONS = [
