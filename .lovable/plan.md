@@ -1,533 +1,162 @@
 
-# PUMPLO Training System Refactor - Implementation Status
+# Plán opravy: 3 problémy s generováním plánu
 
-## ✅ COMPLETED - Phase 1: Database Schema Changes
-All migrations applied successfully:
-- Added columns to `exercises` table (banned_injuries, slot_type, is_compound, stability_rating)
-- Added columns to `user_workout_plans` (generator_version, methodology_version, selection_seed, inputs_snapshot_json, validation_report_json, needs_regeneration)
-- Added selection_score to `user_workout_exercises`
-- Added columns to `training_roles` (allowed_equipment_categories, banned_injury_tags, difficulty_level, has_bodyweight_variant, phase_type)
-- Created `role_aliases` table with RLS
-- Created `user_exercise_history` table with RLS and index
-- Added new training roles (rear_delt_isolation, upper_back_isolation, anti_lateral_flexion)
-- Fixed role_muscles mappings
-- Created `generate_workout_plan_atomic` RPC function
+## Shrnutí problémů
 
-## Overview
-This plan addresses all 11 specification prompts for a comprehensive refactor of the PUMPLO workout generation system. The changes ensure proper methodology compliance, safety, auditability, and reproducibility.
+### Problém 1: Redundantní výběr cíle
+**Co se děje**: Po přihlášení a dokončení onboardingu se na stránce `/training` znovu zobrazuje obrazovka "Vyber si cíl", i když uživatel cíl již zadal v dotazníku.
 
----
+**Příčina**: V `Training.tsx` existují dvě různé cesty pro vytvoření plánu:
+1. `OnboardingDrawer.handleComplete()` - správně volá `generateWorkoutPlan()` a vytváří plán s cviky
+2. `handleCreatePlanSchedule()` - vytváří PRÁZDNÝ plán bez cviků, bez `training_days`, takže plán sice existuje, ale nemá žádná data
 
-## Phase 1: Database Schema Changes
+Když uživatel nemá gym vybraný při dokončení onboardingu, OnboardingDrawer vytvoří prázdný plán, ale bez `training_days` snapshot. Pak když jde na /training, vidí znovu výběr cíle.
 
-### 1.1 Add columns to `exercises` table
-- `banned_injuries TEXT[] DEFAULT '{}'` - injuries that contraindicate this exercise (e.g., shoulder, lower_back, knees)
-- `slot_type TEXT DEFAULT 'main'` - which slot types this exercise fits (main/secondary/accessory/core)
-- `is_compound BOOLEAN DEFAULT false` - differentiates compound vs isolation movements
-- `stability_rating INTEGER DEFAULT 5` - 1-10 safety/stability score for beginner filtering
+### Problém 2: Možnosti v dotazníku neodpovídají algoritmu
+**Co se děje**: V dotazníku (step 6 - Equipment) jsou možnosti:
+- `machines` - Hlavně stroje
+- `bodyweight` - Vlastní váha
+- `no_preference` - Bez preference
 
-### 1.2 Add columns to `user_workout_plans` table
-- `generator_version TEXT DEFAULT '2.0.0'` - version of the generator algorithm
-- `methodology_version TEXT DEFAULT '2.0.0'` - methodology spec version
-- `selection_seed TEXT` - random seed for reproducible selection
-- `inputs_snapshot_json JSONB` - frozen generation inputs (goal, level, duration, injuries, equipment, gym snapshot)
-- `validation_report_json JSONB` - pass/fail status with reasons
-- `needs_regeneration BOOLEAN DEFAULT false` - flag when gym equipment changes invalidate plan
+Ale v `selectionAlgorithm.ts` funkce `matchesEquipmentPreference()` očekává:
+- `machines` ✓
+- `free_weights` (činkky) - **CHYBÍ v dotazníku!**
+- `bodyweight` ✓
 
-### 1.3 Add columns to `user_workout_exercises` table
-- `selection_score NUMERIC` - the scoring value used to select this exercise
+### Problém 3: Tlačítko "Vytvořit plán" nefunguje
+**Co se děje**: Funkce `handleCreatePlanSchedule()` vytváří plán bez cviků a bez gym_id.
 
-### 1.4 Add columns to `training_roles` table
-- `allowed_equipment_categories TEXT[] DEFAULT '{}'` - equipment types valid for this role
-- `banned_injury_tags TEXT[] DEFAULT '{}'` - injuries that contraindicate this role
-- `difficulty_level TEXT DEFAULT 'all'` - beginner_safe/intermediate/advanced/all
-- `has_bodyweight_variant BOOLEAN DEFAULT true` - whether bodyweight fallback exists
-- `phase_type TEXT DEFAULT 'main'` - main/secondary/accessory/core
-
-### 1.5 Create new `role_aliases` table
-Stores movement-pattern substitutions for fallback:
-```
-id TEXT PRIMARY KEY
-alias_for TEXT REFERENCES training_roles(id)
-priority INTEGER DEFAULT 1
-```
-Examples: `push_general` -> alias for `horizontal_push`, `vertical_push`
-
-### 1.6 Create new `user_exercise_history` table
-Tracks recent exercise usage for anti-repetition logic:
-```
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-user_id UUID NOT NULL
-exercise_id UUID
-role_id TEXT
-used_at TIMESTAMP DEFAULT now()
-plan_id UUID
-day_letter TEXT
-```
-With RLS: users can only view/insert their own history.
-
-### 1.7 Fix `role_muscles` mappings
-**Corrections needed:**
-- `horizontal_push`: Remove rhomboids from secondary (they are NOT trained by push movements)
-- `squat`: Remove `back_thighs` from secondary (hamstrings are not a hypertrophy target in squats)
-- `hinge`: Ensure `back_thighs`, `glutes` are PRIMARY, add `core_stabilizers` as secondary
-
-**New roles to add to `training_roles` and `role_muscles`:**
-- `rear_delt_isolation` (primary: rear_shoulders; secondary: middle_back)
-- `upper_back_isolation` / `scapular_retraction` (primary: rhomboids, middle_trapezius)
-- `external_rotation` (primary: rotator_cuff / infraspinatus)
-- `anti_lateral_flexion` (primary: obliques, core_stabilizers)
+**Příčina**: Funkce by měla volat `generateWorkoutPlan()` (pokud je gym vybrán), ale místo toho jen insertuje prázdný záznam do `user_workout_plans`.
 
 ---
 
-## Phase 2: Algorithm Refactor (`useWorkoutGenerator.ts`)
+## Plán opravy
 
-### 2.1 New Types and Interfaces
+### Fáze 1: Oprava handleCreatePlanSchedule() v Training.tsx
+Přepsat funkci aby:
+1. Pokud uživatel MÁ vybranou posilovnu (`profile.selected_gym_id`):
+   - Zavolat `generateWorkoutPlan()` s všemi parametry z profilu
+2. Pokud uživatel NEMÁ posilovnu:
+   - Vytvořit plán s `training_days` snapshotem z profilu
+   - Zobrazit zprávu, že musí nejdřív vybrat posilovnu
 
-```typescript
-interface ExerciseCandidate {
-  exercise: Exercise;
-  scores: {
-    roleMatch: number;      // +100 if exact role match
-    muscleScore: number;    // Primary: +3, Secondary: +0.5
-    equipmentBonus: number; // +5 if matches preference
-    difficultyBonus: number;// +3 for beginner-friendly
-    repetitionPenalty: number; // -10 to -30 based on recent usage
-    injuryPenalty: number;  // -999 if contraindicated
-    varietyBonus: number;   // +2 for equipment variety
-  };
-  totalScore: number;
-}
-
-interface SelectionContext {
-  gymId: string;
-  userLevel: UserLevel;
-  injuries: string[];
-  equipmentPreference: string | null;
-  equipmentAvailable: Set<string>;
-  machineIdsAvailable: Set<string>;
-  coveredMusclesSession: Set<string>;
-  usedExerciseIdsToday: string[];
-  recentExerciseHistory: Map<string, Date[]>; // role -> dates
-  pushPullBalance: { push: number; pull: number };
-  slotType: 'main' | 'secondary' | 'accessory' | 'core';
-}
-
-interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-}
+### Fáze 2: Přidání možnosti free_weights do dotazníku
+Aktualizovat `EQUIPMENT_OPTIONS` v `src/lib/onboardingTypes.ts`:
+```
+export const EQUIPMENT_OPTIONS = [
+  { id: 'machines', label: 'Hlavně stroje' },
+  { id: 'free_weights', label: 'Volné váhy (činkky)' },
+  { id: 'bodyweight', label: 'Vlastní váha' },
+  { id: 'no_preference', label: 'Bez preference' },
+];
 ```
 
-### 2.2 Remove Unsafe Logic
-- **Remove** hard-coded beginner equipment restriction (`['machine', 'cable', 'bodyweight']`)
-- **Remove** Fallback 1 that ignores equipment availability
-- **Remove** Fallback 2 that selects based on secondary_muscles matching
+### Fáze 3: Oprava OnboardingDrawer.handleComplete()
+Zajistit, že při vytvoření prázdného plánu (bez gym) se správně nastaví `training_days` snapshot.
 
-### 2.3 Implement New Equipment Logic
-- `equipmentAvailable` from `gym_machines` is a **HARD filter** (never select unavailable equipment)
-- `equipmentPreference` is a **SOFT scoring factor** (+5 bonus)
-- Exception: `preference === 'bodyweight'` becomes a hard filter
+---
 
-### 2.4 Implement Injury Filtering
+## Technické detaily
+
+### Soubory k úpravě:
+
+| Soubor | Změna |
+|--------|-------|
+| `src/pages/Training.tsx` | Přepsat `handleCreatePlanSchedule()` aby volal `generateWorkoutPlan()` |
+| `src/lib/onboardingTypes.ts` | Přidat `free_weights` do `EQUIPMENT_OPTIONS` |
+| `src/lib/selectionAlgorithm.ts` | Aktualizovat `matchesEquipmentPreference()` aby podporovala `no_preference` |
+
+### Změna v Training.tsx (handleCreatePlanSchedule):
+
 ```typescript
-const isContraindicated = (exercise: Exercise, injuries: string[]): boolean => {
-  const bannedInjuries = exercise.banned_injuries || [];
-  return injuries.some(injury => bannedInjuries.includes(injury));
-};
-```
-- Contraindicated exercises get `injuryPenalty = -999` (effectively excluded)
-
-### 2.5 Implement Anti-Repetition Window
-```typescript
-const getRepetitionPenalty = (
-  exerciseId: string,
-  roleId: string,
-  history: Map<string, Date[]>
-): number => {
-  const roleHistory = history.get(roleId) || [];
-  const recentDays = roleHistory.filter(d => 
-    (Date.now() - d.getTime()) < 7 * 24 * 60 * 60 * 1000
-  );
+const handleCreatePlanSchedule = async () => {
+  if (!selectedGoalId || !profile?.user_level) return;
   
-  if (recentDays.length >= 3) return -30; // Used 3+ times in 7 days
-  if (recentDays.length >= 2) return -20;
-  if (recentDays.length >= 1) return -10;
-  return 0;
-};
-```
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return;
 
-### 2.6 Implement New Scoring System
-```typescript
-const calculateExerciseScore = (
-  exercise: Exercise,
-  context: SelectionContext,
-  targetMuscles: TargetMuscles,
-  history: Map<string, Date[]>
-): ExerciseCandidate => {
-  const scores = {
-    roleMatch: 100, // Always start with role match (pre-filtered)
-    muscleScore: calculateMuscleScore(exercise, context.coveredMusclesSession, targetMuscles),
-    equipmentBonus: matchesEquipmentPreference(exercise, context.equipmentPreference) ? 5 : 0,
-    difficultyBonus: context.userLevel === 'beginner' && exercise.difficulty <= 3 ? 3 : 0,
-    repetitionPenalty: getRepetitionPenalty(exercise.id, exercise.primary_role, history),
-    injuryPenalty: isContraindicated(exercise, context.injuries) ? -999 : 0,
-    varietyBonus: getVarietyBonus(exercise, context),
-  };
-  
-  return {
-    exercise,
-    scores,
-    totalScore: Object.values(scores).reduce((a, b) => a + b, 0)
-  };
-};
-
-// Updated muscle scoring with correct weights
-const calculateMuscleScore = (exercise, covered, target): number => {
-  let score = 0;
-  for (const muscle of exercise.primary_muscles || []) {
-    if (target.primary.includes(muscle) && !covered.has(muscle)) {
-      score += 3; // Primary: +3 (was +2)
+  // Pokud má uživatel vybranou posilovnu, generuj plán s cviky
+  if (profile.selected_gym_id) {
+    const planId = await generateWorkoutPlan(
+      profile.selected_gym_id,
+      selectedGoalId as TrainingGoalId,
+      profile.user_level as UserLevel,
+      profile.injuries || [],
+      profile.equipment_preference,
+      profile.training_duration_minutes || 60,
+      profile.training_days || []
+    );
+    
+    if (planId) {
+      refetchPlan();
+      toast.success('Plán vytvořen!');
     }
-  }
-  for (const muscle of exercise.secondary_muscles || []) {
-    if (!covered.has(muscle)) {
-      score += 0.5; // Secondary: +0.5 (was +1)
-    }
-  }
-  return score;
-};
-```
-
-### 2.7 Implement Safe Fallback Hierarchy
-```typescript
-const selectExerciseWithFallbacks = async (
-  role: string,
-  context: SelectionContext
-): Promise<AssignedExercise> => {
-  // F0: Normal selection
-  let candidates = await getCandidates(role, context, { 
-    strictEquipment: true, 
-    strictInjuries: true,
-    checkRepetition: true 
-  });
-  
-  if (candidates.length > 0) {
-    return selectFromTop(candidates, 5);
-  }
-  
-  // F1: Relax anti-repetition ONLY
-  candidates = await getCandidates(role, context, {
-    strictEquipment: true,
-    strictInjuries: true,
-    checkRepetition: false // Allow repeats with penalty
-  });
-  
-  if (candidates.length > 0) {
-    return selectFromTop(candidates, 3, 'repetition_relaxed');
-  }
-  
-  // F2: Expand equipment within available (different types, same gym)
-  candidates = await getCandidates(role, context, {
-    strictEquipment: true, // Still gym-available only!
-    expandEquipmentTypes: true, // Ignore preference
-    strictInjuries: true,
-    checkRepetition: false
-  });
-  
-  if (candidates.length > 0) {
-    return selectFromTop(candidates, 3, 'equipment_expanded');
-  }
-  
-  // F3: Role alias substitution
-  const aliases = await getRoleAliases(role);
-  for (const alias of aliases) {
-    candidates = await getCandidates(alias.id, context, {
-      strictEquipment: true,
-      strictInjuries: true,
-      checkRepetition: false
-    });
-    if (candidates.length > 0) {
-      return selectFromTop(candidates, 3, `role_alias:${alias.id}`);
-    }
-  }
-  
-  // F4: Bodyweight fallback (only if role has valid bodyweight variant)
-  const roleInfo = await getRoleInfo(role);
-  if (roleInfo.has_bodyweight_variant) {
-    candidates = await getCandidates(role, context, {
-      bodyweightOnly: true,
-      strictInjuries: true
-    });
-    if (candidates.length > 0) {
-      return selectFromTop(candidates, 3, 'bodyweight');
-    }
-  }
-  
-  // F5: Skip slot (validate minimum structure)
-  return { exercise: null, isFallback: true, fallbackReason: 'skipped' };
-};
-```
-
-### 2.8 Implement Duplicate-Role Variation
-When the same role appears multiple times in a day:
-```typescript
-const handleDuplicateRole = (
-  role: string,
-  occurrence: number,
-  candidates: ExerciseCandidate[]
-): ExerciseCandidate[] => {
-  if (occurrence === 1) {
-    // First occurrence: prefer compound/primary pattern
-    return candidates.filter(c => c.exercise.is_compound);
   } else {
-    // Second occurrence: prefer accessory/isolation, or different equipment
-    return candidates.filter(c => !c.exercise.is_compound);
+    // Bez posilovny - vytvoř prázdný plán s training_days
+    await supabase
+      .from('user_workout_plans')
+      .update({ is_active: false })
+      .eq('user_id', user.user.id);
+
+    await supabase
+      .from('user_profiles')
+      .update({ current_day_index: 0 })
+      .eq('user_id', user.user.id);
+
+    await supabase
+      .from('user_workout_plans')
+      .insert({
+        user_id: user.user.id,
+        goal_id: selectedGoalId,
+        is_active: true,
+        gym_id: null,
+        current_week: 1,
+        training_days: profile.training_days || [] // DŮLEŽITÉ!
+      });
+
+    refetchPlan();
+    toast.info('Plán vytvořen. Pro generování cviků vyber posilovnu.');
   }
 };
 ```
 
----
+### Změna v onboardingTypes.ts:
 
-## Phase 3: Plan Validation and Transactions
-
-### 3.1 Create Database Function for Atomic Operations
-```sql
-CREATE OR REPLACE FUNCTION generate_workout_plan_atomic(
-  p_user_id UUID,
-  p_gym_id UUID,
-  p_goal_id TEXT,
-  p_exercises JSONB,
-  p_inputs_snapshot JSONB,
-  p_training_days TEXT[],
-  p_generator_version TEXT,
-  p_methodology_version TEXT,
-  p_selection_seed TEXT
-) RETURNS UUID AS $$
-DECLARE
-  v_plan_id UUID;
-BEGIN
-  -- Deactivate existing plans
-  UPDATE user_workout_plans 
-  SET is_active = false 
-  WHERE user_id = p_user_id AND is_active = true;
-  
-  -- Create new plan with snapshot
-  INSERT INTO user_workout_plans (
-    user_id, gym_id, goal_id, is_active, 
-    training_days, generator_version, methodology_version,
-    selection_seed, inputs_snapshot_json
-  ) VALUES (
-    p_user_id, p_gym_id, p_goal_id, true,
-    p_training_days, p_generator_version, p_methodology_version,
-    p_selection_seed, p_inputs_snapshot
-  ) RETURNING id INTO v_plan_id;
-  
-  -- Insert exercises from JSONB array
-  INSERT INTO user_workout_exercises (
-    plan_id, day_letter, slot_order, role_id, 
-    exercise_id, sets, rep_min, rep_max,
-    is_fallback, fallback_reason, selection_score
-  )
-  SELECT 
-    v_plan_id,
-    (ex->>'day_letter')::TEXT,
-    (ex->>'slot_order')::INTEGER,
-    (ex->>'role_id')::TEXT,
-    (ex->>'exercise_id')::UUID,
-    (ex->>'sets')::INTEGER,
-    (ex->>'rep_min')::INTEGER,
-    (ex->>'rep_max')::INTEGER,
-    (ex->>'is_fallback')::BOOLEAN,
-    (ex->>'fallback_reason')::TEXT,
-    (ex->>'selection_score')::NUMERIC
-  FROM jsonb_array_elements(p_exercises) AS ex;
-  
-  RETURN v_plan_id;
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+```typescript
+export const EQUIPMENT_OPTIONS = [
+  { id: 'machines', label: 'Hlavně stroje', description: 'Káblové a hydraulické stroje' },
+  { id: 'free_weights', label: 'Volné váhy', description: 'Činky, kettlebelly, olympijské tyče' },
+  { id: 'bodyweight', label: 'Vlastní váha', description: 'Cviky bez vybavení' },
+  { id: 'no_preference', label: 'Bez preference', description: 'Kombinace všeho' },
+];
 ```
 
-### 3.2 Implement Pre-Commit Validation
+### Změna v selectionAlgorithm.ts:
+
 ```typescript
-const validatePlan = (
-  exerciseInserts: ExerciseInsert[],
-  context: SelectionContext,
-  templates: DayTemplate[]
-): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-  
-  for (const day of templates) {
-    const dayExercises = exerciseInserts.filter(e => e.day_letter === day.dayLetter);
-    
-    // Check minimum count
-    if (dayExercises.length < 3) {
-      errors.push(`Day ${day.dayLetter}: Less than 3 exercises`);
-    }
-    
-    // Check equipment compatibility
-    for (const ex of dayExercises) {
-      if (ex.machine_id && !context.machineIdsAvailable.has(ex.machine_id)) {
-        errors.push(`Day ${day.dayLetter}: Exercise uses unavailable machine`);
-      }
-    }
-    
-    // Upper day: must have push + pull
-    const isUpperDay = day.dayName.toLowerCase().includes('upper') || 
-                       day.dayName.toLowerCase().includes('push') ||
-                       day.dayName.toLowerCase().includes('pull');
-    if (isUpperDay) {
-      const hasPush = dayExercises.some(e => e.role_id.includes('push'));
-      const hasPull = dayExercises.some(e => e.role_id.includes('pull'));
-      if (!hasPush || !hasPull) {
-        errors.push(`Day ${day.dayLetter}: Upper day must have push + pull`);
-      }
-    }
-    
-    // Lower day: must have squat/hinge
-    const isLowerDay = day.dayName.toLowerCase().includes('lower') ||
-                       day.dayName.toLowerCase().includes('leg');
-    if (isLowerDay) {
-      const hasSquatOrHinge = dayExercises.some(e => 
-        e.role_id === 'squat' || e.role_id === 'hinge' || e.role_id === 'lunge'
-      );
-      if (!hasSquatOrHinge) {
-        errors.push(`Day ${day.dayLetter}: Lower day must have squat/hinge/lunge`);
-      }
-    }
-    
-    // Core check (if duration >= 30min)
-    if (context.durationMinutes >= 30) {
-      const hasCore = dayExercises.some(e => e.role_id.includes('anti_') || e.role_id.includes('rotation'));
-      if (!hasCore) {
-        warnings.push(`Day ${day.dayLetter}: No core exercise for ${context.durationMinutes}min session`);
-      }
-    }
-  }
-  
-  return { valid: errors.length === 0, errors, warnings };
+export const matchesEquipmentPreference = (
+  exercise: Exercise,
+  preference: string | null
+): boolean => {
+  if (!preference || preference === 'no_preference') return false;
+  // ... zbytek beze změny
 };
 ```
 
 ---
 
-## Phase 4: TypeScript Type Updates
+## Testovací scénáře
 
-### 4.1 Update `src/lib/trainingRoles.ts`
-Add new roles to the type definitions:
-```typescript
-export const TRAINING_ROLE_IDS = [
-  // Existing...
-  'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull',
-  'knee_dominant', 'hip_dominant', 'single_leg_lower', 'calf_isolation',
-  'biceps_isolation', 'triceps_isolation', 'core_anti_extension', 'core_rotation',
-  // New for shoulder health
-  'rear_delt_isolation', 'upper_back_isolation', 'external_rotation',
-  // New core
-  'anti_lateral_flexion',
-] as const;
+1. **Nový uživatel bez posilovny**:
+   - Dokončí onboarding → Plán se vytvoří s `training_days`
+   - Jde na /training → Vidí výzvu k výběru posilovny (NE výběr cíle znovu)
 
-// Role aliases for fallback substitution
-export const ROLE_ALIASES: Record<string, string[]> = {
-  'horizontal_push': ['push_general', 'chest_press_variant'],
-  'vertical_pull': ['pulldown_variant', 'pullup_variant'],
-  'squat': ['squat_light', 'lunge'],
-  'hinge': ['hip_hinge_light', 'glute_bridge'],
-  'knee_extension': ['squat_light', 'lunge'],
-};
-```
+2. **Nový uživatel s posilovnou**:
+   - Dokončí onboarding → Plán se vytvoří s cviky
+   - Jde na /training → Vidí svůj plán s cviky
 
-### 4.2 Update `src/lib/trainingGoals.ts`
-Add new interfaces for audit/snapshot:
-```typescript
-export interface PlanInputsSnapshot {
-  goal_id: TrainingGoalId;
-  user_level: UserLevel;
-  duration_minutes: number;
-  equipment_preference: string | null;
-  injuries: string[];
-  gym_id: string;
-  equipment_available_snapshot: string[]; // machine_ids or equipment_types
-  training_days: string[];
-}
+3. **Existující uživatel regeneruje plán**:
+   - Klikne na "Regenerovat plán" → Plán se vytvoří s novými nastaveními
 
-export interface ValidationReport {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-  generated_at: string;
-}
-```
-
----
-
-## Phase 5: Plan Stability Implementation
-
-### 5.1 Update `useWorkoutPlan.ts`
-Ensure exercises are ONLY read from database, never regenerated on refresh:
-- Remove any random selection on load
-- Add `needs_regeneration` flag check and UI warning
-
-### 5.2 Gym Equipment Change Detection
-Create a function to detect when gym equipment changes invalidate a plan:
-```typescript
-const checkPlanEquipmentValidity = async (planId: string): Promise<boolean> => {
-  // Compare current gym_machines with plan's equipment_available_snapshot
-  // If any exercise's machine_id is no longer available, return false
-};
-```
-
----
-
-## Phase 6: Progression Model (MVP)
-
-### 6.1 Implement Simple Load Progression
-For MVP, use RIR (Reps In Reserve) guidance:
-- Weeks 1-2: RIR 3 (comfortable)
-- Weeks 3-4: RIR 2 (challenging)
-- Week 5+: RIR 1 or deload
-
-This is UI guidance only, not algorithm changes.
-
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/hooks/useWorkoutGenerator.ts` | **Major Refactor** | New scoring, fallbacks, validation |
-| `src/lib/trainingRoles.ts` | **Modify** | Add new role IDs, aliases, metadata types |
-| `src/lib/trainingGoals.ts` | **Modify** | Add snapshot/validation interfaces |
-| `src/hooks/useWorkoutPlan.ts` | **Modify** | Add needs_regeneration check |
-| `src/lib/selectionAlgorithm.ts` | **Create** | Extract selection logic for testability |
-| `src/lib/planValidation.ts` | **Create** | Validation rules for plan structure |
-| Database migrations | **Create** | All schema changes above |
-
----
-
-## Testing Checklist
-
-1. **Injury filtering**: Generate plan with injuries, verify contraindicated exercises excluded
-2. **Equipment hard filter**: Verify no exercise with unavailable machine_id selected
-3. **Duplicate role variation**: Same role twice in a day gets compound first, isolation second
-4. **Anti-repetition**: Same exercise not selected for same role within 7 days (unless pool empty)
-5. **Fallback safety**: All fallbacks respect equipment availability
-6. **Plan snapshot**: Profile changes don't affect existing plan
-7. **Validation**: Upper day has push+pull, lower day has squat/hinge
-8. **Reproducibility**: Same seed produces same plan
-
----
-
-## Technical Notes for University Review
-
-- Generator version: `2.0.0`
-- Methodology version: `2.0.0`
-- All generation inputs are frozen in `inputs_snapshot_json`
-- Selection scores are stored per-exercise for auditability
-- Validation reports stored with pass/fail and reasons
-- Plans are immutable after creation unless manually regenerated
+4. **Preference vybavení**:
+   - Uživatel vybere "Volné váhy" → Cviky s činkkami dostanou bonus ve scoringu
