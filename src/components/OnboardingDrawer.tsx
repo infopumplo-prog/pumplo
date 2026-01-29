@@ -8,7 +8,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TrainingGoalId, UserLevel, GOAL_TO_SPLIT, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, GOAL_TO_SPLIT, PRIMARY_GOAL_TO_TRAINING_GOAL, getSplitByFrequency, SPLIT_LABELS, SplitType } from '@/lib/trainingGoals';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -336,15 +336,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             <Progress value={progress} className="h-2" />
           </div>
           
-          {/* Show split info derived from goal */}
-          {primaryGoal && isEditMode && (
+          {/* Show split info derived from frequency (not goal) */}
+          {primaryGoal && isEditMode && trainingDays.length > 0 && (
             <div className="mt-3 p-2 bg-muted rounded-lg text-center">
               <span className="text-xs text-muted-foreground">
                 Split: <span className="font-medium text-foreground">
-                  {GOAL_TO_SPLIT[primaryGoal] === 'ppl' ? 'Push / Pull / Legs' : 
-                   GOAL_TO_SPLIT[primaryGoal] === 'upper_lower' ? 'Horní / Dolní tělo' : 
-                   'Full Body'}
-                </span> (automaticky podle cíle)
+                  {SPLIT_LABELS[getSplitByFrequency(trainingDays.length, userLevel || 'beginner')]}
+                </span> (automaticky podle frekvence: {trainingDays.length} dny/týden)
               </span>
             </div>
           )}
