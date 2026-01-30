@@ -52,49 +52,12 @@ export const MVP_GOALS = [
   },
 ];
 
-// Mapping goal -> default split (used when frequency not specified)
-// DEPRECATED: Use getSplitByFrequency() instead for proper frequency-based logic
+// Mapping goal -> split (automatic determination)
 export const GOAL_TO_SPLIT: Record<TrainingGoalId, string> = {
   'muscle_gain': 'ppl',
   'fat_loss': 'upper_lower',
   'strength': 'upper_lower',
   'general_fitness': 'full_body',
-};
-
-// Split types
-export type SplitType = 'full_body' | 'upper_lower' | 'ppl';
-
-export const SPLIT_LABELS: Record<SplitType, string> = {
-  'full_body': 'Full Body',
-  'upper_lower': 'Horní / Dolní tělo',
-  'ppl': 'Push / Pull / Legs',
-};
-
-/**
- * Determine workout split based on training frequency and user level
- * 
- * Rules (from methodology spec):
- * - Frequency <= 3: Full Body (FB_AB)
- * - Frequency = 4: Upper/Lower (UL_AB)
- * - Frequency >= 5: Push/Pull/Legs (PPL_ABC)
- * - Beginners with frequency >= 5 default to Upper/Lower for safety
- */
-export const getSplitByFrequency = (
-  frequency: number,
-  userLevel: UserLevel = 'beginner'
-): SplitType => {
-  // Beginners with high frequency get Upper/Lower for safety
-  if (userLevel === 'beginner' && frequency >= 5) {
-    return 'upper_lower';
-  }
-  
-  if (frequency <= 3) {
-    return 'full_body';
-  } else if (frequency === 4) {
-    return 'upper_lower';
-  } else {
-    return 'ppl';
-  }
 };
 
 // Mapping from onboarding primary_goal to training_goals
