@@ -262,19 +262,32 @@ export const fetchTargetMuscles = async (roleId: string): Promise<TargetMuscles>
 
 /**
  * Fetch role aliases for fallback substitution
+ * 
+ * Logika: Aliasy mapují alternativní názvy rolí na skutečné role se cviky.
+ * Např. 'push_general' je alias pro 'horizontal_push'.
+ * 
+ * Když hledáme cviky pro alias (push_general), tato funkce vrátí
+ * skutečnou roli (horizontal_push) pod kterou cviky existují.
  */
 export const fetchRoleAliases = async (roleId: string): Promise<RoleAlias[]> => {
-  const { data, error } = await supabase
+  // Zkontroluj zda roleId je alias (hledá kde id = roleId)
+  const { data: aliasData, error: aliasError } = await supabase
     .from('role_aliases')
     .select('*')
-    .eq('alias_for', roleId)
+    .eq('id', roleId)
     .order('priority');
 
-  if (error || !data) {
-    return [];
+  if (!aliasError && aliasData && aliasData.length > 0) {
+    // roleId JE alias - vrať skutečnou roli (alias_for)
+    return aliasData.map(a => ({
+      id: a.alias_for, // Skutečná role se cviky
+      alias_for: a.id,
+      priority: a.priority || 1
+    })) as RoleAlias[];
   }
 
-  return data as RoleAlias[];
+  // roleId je skutečná role (ne alias) - není potřeba substituce
+  return [];
 };
 
 /**
