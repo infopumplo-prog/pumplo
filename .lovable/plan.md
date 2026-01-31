@@ -1,162 +1,322 @@
 
-# Plán opravy: 3 problémy s generováním plánu
 
-## Shrnutí problémů
+# Plán opravy: Generování tréninku a správné čtení cviků z DB
 
-### Problém 1: Redundantní výběr cíle
-**Co se děje**: Po přihlášení a dokončení onboardingu se na stránce `/training` znovu zobrazuje obrazovka "Vyber si cíl", i když uživatel cíl již zadal v dotazníku.
+## Souhrn problémů a oprav
 
-**Příčina**: V `Training.tsx` existují dvě různé cesty pro vytvoření plánu:
-1. `OnboardingDrawer.handleComplete()` - správně volá `generateWorkoutPlan()` a vytváří plán s cviky
-2. `handleCreatePlanSchedule()` - vytváří PRÁZDNÝ plán bez cviků, bez `training_days`, takže plán sice existuje, ale nemá žádná data
+### PROBLÉM A: Duplicitní logika generování cviků
+**Lokace:** `src/pages/Training.tsx`, řádky 686-830
 
-Když uživatel nemá gym vybraný při dokončení onboardingu, OnboardingDrawer vytvoří prázdný plán, ale bez `training_days` snapshot. Pak když jde na /training, vidí znovu výběr cíle.
+**Co je špatně:** Funkce `generateExercisesForDay()` je STARÁ lokální logika, která:
+- Ignoruje `machine_id` dostupnost v posilovně
+- Nepoužívá nový scoring systém z `selectionAlgorithm.ts`
+- Nepoužívá fallback hierarchii F0-F5
+- Neukládá výsledky do DB
 
-### Problém 2: Možnosti v dotazníku neodpovídají algoritmu
-**Co se děje**: V dotazníku (step 6 - Equipment) jsou možnosti:
-- `machines` - Hlavně stroje
-- `bodyweight` - Vlastní váha
-- `no_preference` - Bez preference
+**Správný flow:** Cviky by měly být vygenerovány při vytvoření plánu (`generateWorkoutPlan()`) a poté čteny z `user_workout_exercises` tabulky pomocí `useWorkoutPlan.getCurrentDayExercises()`.
 
-Ale v `selectionAlgorithm.ts` funkce `matchesEquipmentPreference()` očekává:
-- `machines` ✓
-- `free_weights` (činkky) - **CHYBÍ v dotazníku!**
-- `bodyweight` ✓
-
-### Problém 3: Tlačítko "Vytvořit plán" nefunguje
-**Co se děje**: Funkce `handleCreatePlanSchedule()` vytváří plán bez cviků a bez gym_id.
-
-**Příčina**: Funkce by měla volat `generateWorkoutPlan()` (pokud je gym vybrán), ale místo toho jen insertuje prázdný záznam do `user_workout_plans`.
+**Oprava:** 
+1. Smazat funkci `generateExercisesForDay()` (řádky 686-830)
+2. Upravit `handleGenerateDayExercises()` aby četla cviky z DB místo generování on-the-fly
+3. Pokud cviky v DB neexistují, zobrazit chybovou hlášku a nabídnout regeneraci plánu
 
 ---
 
-## Plán opravy
+### PROBLÉM B: Role aliasy fungují OBRÁCENĚ
+**Lokace:** `src/lib/selectionAlgorithm.ts`, funkce `fetchRoleAliases()`
 
-### Fáze 1: Oprava handleCreatePlanSchedule() v Training.tsx
-Přepsat funkci aby:
-1. Pokud uživatel MÁ vybranou posilovnu (`profile.selected_gym_id`):
-   - Zavolat `generateWorkoutPlan()` s všemi parametry z profilu
-2. Pokud uživatel NEMÁ posilovnu:
-   - Vytvořit plán s `training_days` snapshotem z profilu
-   - Zobrazit zprávu, že musí nejdřív vybrat posilovnu
-
-### Fáze 2: Přidání možnosti free_weights do dotazníku
-Aktualizovat `EQUIPMENT_OPTIONS` v `src/lib/onboardingTypes.ts`:
+**Stav databáze:**
 ```
-export const EQUIPMENT_OPTIONS = [
-  { id: 'machines', label: 'Hlavně stroje' },
-  { id: 'free_weights', label: 'Volné váhy (činkky)' },
-  { id: 'bodyweight', label: 'Vlastní váha' },
-  { id: 'no_preference', label: 'Bez preference' },
-];
+role_aliases:
+  id: push_general     → alias_for: horizontal_push
+  id: squat_light      → alias_for: squat
+  id: pulldown_variant → alias_for: vertical_pull
 ```
 
-### Fáze 3: Oprava OnboardingDrawer.handleComplete()
-Zajistit, že při vytvoření prázdného plánu (bez gym) se správně nastaví `training_days` snapshot.
+**Problém:** Když hledáme aliasy pro `horizontal_push` (protože nemáme cviky), query `.eq('alias_for', roleId)` vrátí `push_general`. Ale žádné cviky nemají `primary_role = 'push_general'`!
+
+**Správná logika:** Aliasy slouží pro případ, kdy šablona používá alias název (např. `push_general`). Pak algoritmus najde, že `push_general` je alias pro `horizontal_push` a hledá cviky pod `horizontal_push`.
+
+**Oprava:** Změnit `fetchRoleAliases()` aby:
+1. Zkontrolovala zda `roleId` JE alias (hledá kde `id = roleId`)
+2. Pokud ano, vrátí `alias_for` hodnotu (skutečná role se cviky)
+3. Pokud ne, vrátí prázdné pole (není potřeba substituce)
 
 ---
 
-## Technické detaily
+### PROBLÉM E: Chybí potvrzení posilovny před tréninkem
+**Lokace:** `src/pages/Training.tsx`
 
-### Soubory k úpravě:
+**Co chybí:** Uživatel musí vždy potvrdit do jaké posilovny jde, než začne cvičit.
 
-| Soubor | Změna |
-|--------|-------|
-| `src/pages/Training.tsx` | Přepsat `handleCreatePlanSchedule()` aby volal `generateWorkoutPlan()` |
-| `src/lib/onboardingTypes.ts` | Přidat `free_weights` do `EQUIPMENT_OPTIONS` |
-| `src/lib/selectionAlgorithm.ts` | Aktualizovat `matchesEquipmentPreference()` aby podporovala `no_preference` |
+**Oprava:** Přidat nový dialog před startem tréninku:
+- "Jdeš cvičit do [název posilovny]?"
+- Tlačítka: "Ano, začít" / "Vybrat jinou posilovnu"
 
-### Změna v Training.tsx (handleCreatePlanSchedule):
+---
 
+## Fáze 1: Oprava handleGenerateDayExercises v Training.tsx
+
+### Smazat funkci generateExercisesForDay (řádky 686-830)
+Kompletně odstranit tuto duplicitní funkci.
+
+### Přepsat handleGenerateDayExercises (řádky 634-663)
+
+**PŘED:**
 ```typescript
-const handleCreatePlanSchedule = async () => {
-  if (!selectedGoalId || !profile?.user_level) return;
+const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
+  if (!plan || !profile?.user_level) return;
+  setIsGeneratingDayExercises(true);
   
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) return;
-
-  // Pokud má uživatel vybranou posilovnu, generuj plán s cviky
-  if (profile.selected_gym_id) {
-    const planId = await generateWorkoutPlan(
-      profile.selected_gym_id,
-      selectedGoalId as TrainingGoalId,
-      profile.user_level as UserLevel,
-      profile.injuries || [],
-      profile.equipment_preference,
-      profile.training_duration_minutes || 60,
-      profile.training_days || []
+  try {
+    const exercises = await generateExercisesForDay(
+      gymId, plan.goalId, plan.currentDayLetter, profile.user_level,
+      profile.injuries || [], profile.equipment_preference || null,
+      profile.training_duration_minutes || 60
     );
     
-    if (planId) {
-      refetchPlan();
-      toast.success('Plán vytvořen!');
+    setGeneratedExercises(exercises);
+    setSelectedWorkoutGymId(gymId);
+    setShowGymSelector(false);
+    
+    if (startWorkoutAfter) {
+      setIsWorkoutActive(true);
     }
+  } catch (err) {
+    console.error('Error generating day exercises:', err);
+  } finally {
+    setIsGeneratingDayExercises(false);
+  }
+}, [plan, profile]);
+```
+
+**PO:**
+```typescript
+const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
+  if (!plan || !profile?.user_level) return;
+  setIsGeneratingDayExercises(true);
+  
+  try {
+    // Číst cviky z databáze - byly vygenerovány při vytvoření plánu
+    const exercisesFromPlan = getCurrentDayExercises();
+    
+    if (exercisesFromPlan.length > 0) {
+      // Máme cviky v DB - použijeme je
+      setGeneratedExercises(exercisesFromPlan);
+      setSelectedWorkoutGymId(gymId);
+      setShowGymSelector(false);
+      
+      if (startWorkoutAfter) {
+        setShowWorkoutPreview(true);
+      }
+    } else {
+      // Žádné cviky v DB - plán nemá vygenerované cviky
+      // To znamená, že plán byl vytvořen bez posilovny nebo se něco pokazilo
+      toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán v nastavení.');
+    }
+  } catch (err) {
+    console.error('Error loading exercises:', err);
+    toast.error('Nepodařilo se načíst cviky');
+  } finally {
+    setIsGeneratingDayExercises(false);
+  }
+}, [plan, profile, getCurrentDayExercises]);
+```
+
+---
+
+## Fáze 2: Oprava fetchRoleAliases v selectionAlgorithm.ts
+
+**Lokace:** `src/lib/selectionAlgorithm.ts`, řádky 263-278
+
+**PŘED:**
+```typescript
+export const fetchRoleAliases = async (roleId: string): Promise<RoleAlias[]> => {
+  const { data, error } = await supabase
+    .from('role_aliases')
+    .select('*')
+    .eq('alias_for', roleId)
+    .order('priority');
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as RoleAlias[];
+};
+```
+
+**PO:**
+```typescript
+/**
+ * Fetch role aliases for fallback substitution
+ * 
+ * Logika: Aliasy mapují alternativní názvy rolí na skutečné role se cviky.
+ * Např. 'push_general' je alias pro 'horizontal_push'.
+ * 
+ * Když hledáme cviky pro alias (push_general), tato funkce vrátí
+ * skutečnou roli (horizontal_push) pod kterou cviky existují.
+ */
+export const fetchRoleAliases = async (roleId: string): Promise<RoleAlias[]> => {
+  // Zkontroluj zda roleId je alias (hledá kde id = roleId)
+  const { data: aliasData, error: aliasError } = await supabase
+    .from('role_aliases')
+    .select('*')
+    .eq('id', roleId)
+    .order('priority');
+
+  if (!aliasError && aliasData && aliasData.length > 0) {
+    // roleId JE alias - vrať skutečnou roli (alias_for)
+    return aliasData.map(a => ({
+      id: a.alias_for, // Skutečná role se cviky
+      alias_for: a.id,
+      priority: a.priority || 1
+    })) as RoleAlias[];
+  }
+
+  // roleId je skutečná role (ne alias) - není potřeba substituce
+  return [];
+};
+```
+
+---
+
+## Fáze 3: Přidat potvrzení posilovny před tréninkem
+
+### Nový stav v Training.tsx
+```typescript
+const [showGymConfirmDialog, setShowGymConfirmDialog] = useState(false);
+const [confirmedGymName, setConfirmedGymName] = useState<string>('');
+```
+
+### Upravit handleStartWorkout
+**PŘED (řádky 850-882):**
+```typescript
+const handleStartWorkout = async () => {
+  // Check if gym is open...
+  if (profile?.selected_gym_id) {
+    // ... gym open check
+  }
+  
+  if (currentExercises.length > 0 && plan?.gymId) {
+    setGeneratedExercises(currentExercises);
+    // ... start
+  }
+  // ...
+};
+```
+
+**PO:**
+```typescript
+const handleStartWorkout = async () => {
+  // Uživatel musí mít vybranou posilovnu
+  if (!profile?.selected_gym_id) {
+    toast.error('Nejdříve vyber posilovnu na mapě');
+    navigate('/map');
+    return;
+  }
+  
+  // Načti název posilovny
+  const { data: gymData } = await supabase
+    .from('gyms')
+    .select('name, opening_hours')
+    .eq('id', profile.selected_gym_id)
+    .single();
+  
+  if (!gymData) {
+    toast.error('Posilovna nebyla nalezena');
+    return;
+  }
+  
+  // Zkontroluj otevírací hodiny
+  if (gymData.opening_hours) {
+    const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
+    if (!isOpen) {
+      setClosedGymName(gymData.name || 'Vybraná posilovna');
+      setShowGymClosedWarning(true);
+      return;
+    }
+  }
+  
+  // Zobraz potvrzovací dialog
+  setConfirmedGymName(gymData.name || 'Vybraná posilovna');
+  setShowGymConfirmDialog(true);
+};
+
+// Nová funkce pro potvrzení
+const handleConfirmGymAndStart = async () => {
+  setShowGymConfirmDialog(false);
+  
+  const currentExercises = getCurrentDayExercises();
+  
+  if (currentExercises.length > 0) {
+    setGeneratedExercises(currentExercises);
+    setSelectedWorkoutGymId(profile!.selected_gym_id!);
+    setShowWorkoutPreview(true);
   } else {
-    // Bez posilovny - vytvoř prázdný plán s training_days
-    await supabase
-      .from('user_workout_plans')
-      .update({ is_active: false })
-      .eq('user_id', user.user.id);
-
-    await supabase
-      .from('user_profiles')
-      .update({ current_day_index: 0 })
-      .eq('user_id', user.user.id);
-
-    await supabase
-      .from('user_workout_plans')
-      .insert({
-        user_id: user.user.id,
-        goal_id: selectedGoalId,
-        is_active: true,
-        gym_id: null,
-        current_week: 1,
-        training_days: profile.training_days || [] // DŮLEŽITÉ!
-      });
-
-    refetchPlan();
-    toast.info('Plán vytvořen. Pro generování cviků vyber posilovnu.');
+    toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán.');
   }
 };
-```
 
-### Změna v onboardingTypes.ts:
-
-```typescript
-export const EQUIPMENT_OPTIONS = [
-  { id: 'machines', label: 'Hlavně stroje', description: 'Káblové a hydraulické stroje' },
-  { id: 'free_weights', label: 'Volné váhy', description: 'Činky, kettlebelly, olympijské tyče' },
-  { id: 'bodyweight', label: 'Vlastní váha', description: 'Cviky bez vybavení' },
-  { id: 'no_preference', label: 'Bez preference', description: 'Kombinace všeho' },
-];
-```
-
-### Změna v selectionAlgorithm.ts:
-
-```typescript
-export const matchesEquipmentPreference = (
-  exercise: Exercise,
-  preference: string | null
-): boolean => {
-  if (!preference || preference === 'no_preference') return false;
-  // ... zbytek beze změny
+// Změna posilovny
+const handleChangeGym = () => {
+  setShowGymConfirmDialog(false);
+  navigate('/map');
 };
 ```
+
+### Nový dialog komponenta
+```tsx
+{/* Gym Confirmation Dialog */}
+<AlertDialog open={showGymConfirmDialog} onOpenChange={setShowGymConfirmDialog}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Potvrzení posilovny</AlertDialogTitle>
+      <AlertDialogDescription>
+        Jdeš cvičit do <strong>{confirmedGymName}</strong>?
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel onClick={handleChangeGym}>
+        Vybrat jinou
+      </AlertDialogCancel>
+      <AlertDialogAction onClick={handleConfirmGymAndStart}>
+        Ano, začít trénink
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+---
+
+## Shrnutí změn
+
+| Soubor | Změna | Popis |
+|--------|-------|-------|
+| `src/pages/Training.tsx` | Smazat `generateExercisesForDay` | Odstranit duplicitní generování (řádky 686-830) |
+| `src/pages/Training.tsx` | Přepsat `handleGenerateDayExercises` | Číst cviky z DB místo generování |
+| `src/pages/Training.tsx` | Přidat gym confirmation dialog | Nový stav + dialog + handlery |
+| `src/lib/selectionAlgorithm.ts` | Opravit `fetchRoleAliases` | Správná logika hledání aliasů |
 
 ---
 
 ## Testovací scénáře
 
-1. **Nový uživatel bez posilovny**:
-   - Dokončí onboarding → Plán se vytvoří s `training_days`
-   - Jde na /training → Vidí výzvu k výběru posilovny (NE výběr cíle znovu)
+1. **Uživatel s vygenerovaným plánem:**
+   - Klikne "Začít trénink"
+   - Zobrazí se dialog "Jdeš do [Gym]?"
+   - Potvrdí → Zobrazí se preview s cviky z DB
 
-2. **Nový uživatel s posilovnou**:
-   - Dokončí onboarding → Plán se vytvoří s cviky
-   - Jde na /training → Vidí svůj plán s cviky
+2. **Uživatel bez posilovny:**
+   - Klikne "Začít trénink"
+   - Přesměrován na `/map` s hláškou
 
-3. **Existující uživatel regeneruje plán**:
-   - Klikne na "Regenerovat plán" → Plán se vytvoří s novými nastaveními
+3. **Uživatel s plánem bez cviků:**
+   - Klikne "Začít trénink"
+   - Zobrazí se chyba "Plán nemá cviky, regeneruj"
 
-4. **Preference vybavení**:
-   - Uživatel vybere "Volné váhy" → Cviky s činkkami dostanou bonus ve scoringu
+4. **Alias role v šabloně:**
+   - Šablona má `push_general`
+   - Algoritmus najde alias → hledá cviky pod `horizontal_push`
+
