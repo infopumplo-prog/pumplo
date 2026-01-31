@@ -631,36 +631,36 @@ const Training = () => {
     }
   };
 
-  // Generate exercises for current day
+  // Load exercises from database - they were generated when plan was created
   const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
     if (!plan || !profile?.user_level) return;
 
     setIsGeneratingDayExercises(true);
     
     try {
-      const exercises = await generateExercisesForDay(
-        gymId,
-        plan.goalId,
-        plan.currentDayLetter,
-        profile.user_level,
-        profile.injuries || [],
-        profile.equipment_preference || null,
-        profile.training_duration_minutes || 60
-      );
+      // Číst cviky z databáze - byly vygenerovány při vytvoření plánu
+      const exercisesFromPlan = getCurrentDayExercises();
       
-      setGeneratedExercises(exercises);
-      setSelectedWorkoutGymId(gymId);
-      setShowGymSelector(false);
-      
-      if (startWorkoutAfter) {
-        setIsWorkoutActive(true);
+      if (exercisesFromPlan.length > 0) {
+        // Máme cviky v DB - použijeme je
+        setGeneratedExercises(exercisesFromPlan);
+        setSelectedWorkoutGymId(gymId);
+        setShowGymSelector(false);
+        
+        if (startWorkoutAfter) {
+          setShowWorkoutPreview(true);
+        }
+      } else {
+        // Žádné cviky v DB - plán nemá vygenerované cviky
+        toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán v nastavení.');
       }
     } catch (err) {
-      console.error('Error generating day exercises:', err);
+      console.error('Error loading exercises:', err);
+      toast.error('Nepodařilo se načíst cviky');
     } finally {
       setIsGeneratingDayExercises(false);
     }
-  }, [plan, profile]);
+  }, [plan, profile, getCurrentDayExercises]);
 
   // Calculate workout duration - unified with useWorkoutGenerator's calculateSlotsForDuration
   // New formula: warmup (dynamic 30s per exercise) + exercises × 8 min
@@ -683,151 +683,9 @@ const Training = () => {
     return Math.max(3, Math.min(12, count));
   };
 
-  // Generate exercises for a specific day - PUMPLO logic
-  const generateExercisesForDay = async (
-    gymId: string,
-    goalId: TrainingGoalId,
-    dayLetter: string,
-    userLevel: string,
-    userInjuries: string[],
-    equipmentPreference: string | null,
-    trainingDurationMinutes: number | null = null
-  ): Promise<WorkoutExercise[]> => {
-    const targetExerciseCount = getTargetExerciseCount(trainingDurationMinutes, userLevel);
-    
-    const { data: templates } = await supabase
-      .from('day_templates')
-      .select('*')
-      .eq('goal_id', goalId)
-      .eq('day_letter', dayLetter)
-      .order('slot_order');
-
-    if (!templates || templates.length === 0) return [];
-
-    const { data: gymMachines } = await supabase
-      .from('gym_machines')
-      .select('machine_id, machines(id, equipment_type)')
-      .eq('gym_id', gymId);
-
-    const rawEquipmentTypes = gymMachines?.map(m => (m.machines as any)?.equipment_type).filter(Boolean) || [];
-    
-    const expandedEquipment = new Set<string>(rawEquipmentTypes);
-    if (rawEquipmentTypes.includes('free_weights')) {
-      expandedEquipment.add('barbell');
-      expandedEquipment.add('dumbbell');
-      expandedEquipment.add('kettlebell');
-    }
-    if (rawEquipmentTypes.includes('machine')) {
-      expandedEquipment.add('machine');
-      expandedEquipment.add('cable');
-      expandedEquipment.add('plate_loaded');
-    }
-    expandedEquipment.add('bodyweight');
-
-    const availableEquipmentTypes = Array.from(expandedEquipment);
-    const usedExerciseIds: string[] = [];
-    const exercises: WorkoutExercise[] = [];
-
-    const maxDifficulty = userLevel === 'beginner' ? 3 : userLevel === 'intermediate' ? 6 : 10;
-    const activeInjuries = userInjuries.filter(i => i && i !== 'none');
-
-    const rolesToFill: typeof templates = [];
-    
-    for (const slot of templates) {
-      if (rolesToFill.length >= targetExerciseCount) break;
-      rolesToFill.push(slot);
-    }
-    
-    if (rolesToFill.length < targetExerciseCount) {
-      const shuffled = [...templates].sort(() => Math.random() - 0.5);
-      for (const slot of shuffled) {
-        if (rolesToFill.length >= targetExerciseCount) break;
-        const roleCount = rolesToFill.filter(r => r.role_id === slot.role_id).length;
-        if (roleCount < 2) {
-          rolesToFill.push(slot);
-        }
-      }
-    }
-
-    for (let slotIndex = 0; slotIndex < rolesToFill.length; slotIndex++) {
-      const slot = rolesToFill[slotIndex];
-      
-      const { data: roleExercises } = await supabase
-        .from('exercises')
-        .select('*')
-        .eq('primary_role', slot.role_id);
-
-      if (!roleExercises || roleExercises.length === 0) continue;
-
-      let filteredExercises = roleExercises.filter(ex => {
-        if (ex.difficulty && ex.difficulty > maxDifficulty) return false;
-        if (usedExerciseIds.includes(ex.id)) return false;
-        
-        // Filter by allowed_phase = 'main'
-        if (ex.allowed_phase !== 'main') return false;
-
-        const exEquipmentType = ex.equipment_type || 'bodyweight';
-        if (exEquipmentType === 'bodyweight') return true;
-        
-        if (['barbell', 'dumbbell', 'kettlebell'].includes(exEquipmentType)) {
-          return rawEquipmentTypes.includes('free_weights') || availableEquipmentTypes.includes(exEquipmentType);
-        }
-        
-        if (exEquipmentType === 'cable') {
-          return availableEquipmentTypes.includes('cable') || rawEquipmentTypes.includes('machine');
-        }
-        
-        if (['machine', 'plate_loaded'].includes(exEquipmentType)) {
-          return rawEquipmentTypes.includes('machine') || rawEquipmentTypes.includes('plate_loaded');
-        }
-        
-        return availableEquipmentTypes.includes(exEquipmentType);
-      });
-
-      if (equipmentPreference === 'machines') {
-        const machineExercises = filteredExercises.filter(ex =>
-          ['machine', 'cable', 'plate_loaded'].includes(ex.equipment_type || '')
-        );
-        if (machineExercises.length > 0) filteredExercises = machineExercises;
-      } else if (equipmentPreference === 'free_weights') {
-        const fwExercises = filteredExercises.filter(ex =>
-          ['barbell', 'dumbbell', 'kettlebell'].includes(ex.equipment_type || '')
-        );
-        if (fwExercises.length > 0) filteredExercises = fwExercises;
-      } else if (equipmentPreference === 'bodyweight') {
-        const bwExercises = filteredExercises.filter(ex => ex.equipment_type === 'bodyweight');
-        if (bwExercises.length > 0) filteredExercises = bwExercises;
-      }
-
-      if (filteredExercises.length === 0) continue;
-
-      const topCandidates = filteredExercises.slice(0, Math.min(5, filteredExercises.length));
-      const randomIndex = Math.floor(Math.random() * topCandidates.length);
-      const selectedExercise = topCandidates[randomIndex];
-      usedExerciseIds.push(selectedExercise.id);
-
-      const sets = userLevel === 'beginner' ? slot.beginner_sets :
-                   userLevel === 'intermediate' ? slot.intermediate_sets : slot.advanced_sets;
-
-      exercises.push({
-        id: `temp-${slot.id}-${slotIndex}`,
-        dayLetter: slot.day_letter,
-        slotOrder: slotIndex + 1,
-        roleId: slot.role_id,
-        exerciseId: selectedExercise.id,
-        exerciseName: selectedExercise.name,
-        equipment: [], // deprecated, kept for interface compatibility
-        machineName: null,
-        sets: sets,
-        repMin: slot.rep_min || 8,
-        repMax: slot.rep_max || 12,
-        isFallback: false,
-        fallbackReason: null
-      });
-    }
-
-    return exercises;
-  };
+  // State for gym confirmation dialog
+  const [showGymConfirmDialog, setShowGymConfirmDialog] = useState(false);
+  const [confirmedGymName, setConfirmedGymName] = useState<string>('');
 
   const currentExercises = plan ? getCurrentDayExercises() : [];
 
@@ -846,39 +704,61 @@ const Training = () => {
   const [showGymClosedWarning, setShowGymClosedWarning] = useState(false);
   const [closedGymName, setClosedGymName] = useState<string>('');
 
-  // Open workout preview instead of directly starting
+  // Open workout preview with gym confirmation
   const handleStartWorkout = async () => {
-    // Check if selected gym is open before starting
-    if (profile?.selected_gym_id) {
-      const { data: gymData } = await supabase
-        .from('gyms')
-        .select('opening_hours, name')
-        .eq('id', profile.selected_gym_id)
-        .single();
-      
-      if (gymData?.opening_hours) {
-        const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
-        if (!isOpen) {
-          setClosedGymName(gymData.name || 'Vybraná posilovna');
-          setShowGymClosedWarning(true);
-          return;
-        }
+    // Uživatel musí mít vybranou posilovnu
+    if (!profile?.selected_gym_id) {
+      toast.error('Nejdříve vyber posilovnu na mapě');
+      navigate('/map');
+      return;
+    }
+    
+    // Načti název posilovny
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('name, opening_hours')
+      .eq('id', profile.selected_gym_id)
+      .single();
+    
+    if (!gymData) {
+      toast.error('Posilovna nebyla nalezena');
+      return;
+    }
+    
+    // Zkontroluj otevírací hodiny
+    if (gymData.opening_hours) {
+      const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
+      if (!isOpen) {
+        setClosedGymName(gymData.name || 'Vybraná posilovna');
+        setShowGymClosedWarning(true);
+        return;
       }
     }
+    
+    // Zobraz potvrzovací dialog
+    setConfirmedGymName(gymData.name || 'Vybraná posilovna');
+    setShowGymConfirmDialog(true);
+  };
 
-    if (currentExercises.length > 0 && plan?.gymId) {
-      setGeneratedExercises(currentExercises);
-      setSelectedWorkoutGymId(plan.gymId);
-      setShowWorkoutPreview(true);
-    } else if (generatedExercises.length > 0 && selectedWorkoutGymId) {
-      setShowWorkoutPreview(true);
-    } else if (profile?.selected_gym_id) {
-      handleGenerateDayExercises(profile.selected_gym_id, false);
-      // Will show preview after generation completes
+  // Potvrzení posilovny a start tréninku
+  const handleConfirmGymAndStart = async () => {
+    setShowGymConfirmDialog(false);
+    
+    const exercisesFromPlan = getCurrentDayExercises();
+    
+    if (exercisesFromPlan.length > 0) {
+      setGeneratedExercises(exercisesFromPlan);
+      setSelectedWorkoutGymId(profile!.selected_gym_id!);
       setShowWorkoutPreview(true);
     } else {
-      setShowGymSelector(true);
+      toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán.');
     }
+  };
+
+  // Změna posilovny
+  const handleChangeGym = () => {
+    setShowGymConfirmDialog(false);
+    navigate('/map');
   };
   
   // Generate warmup exercises based on main workout's target muscles
@@ -1076,7 +956,7 @@ const Training = () => {
     setShowCancelConfirm(false);
   };
   
-  // Regenerate exercises for current day
+  // Regenerate exercises - now just reloads from DB since generation happens in plan creation
   const handleRegenerateExercises = useCallback(async () => {
     if (!plan || !profile?.selected_gym_id || !profile?.user_level) {
       toast.error('Nejprve vyber posilovnu');
@@ -1086,25 +966,22 @@ const Training = () => {
     setIsGeneratingDayExercises(true);
     
     try {
-      const newExercises = await generateExercisesForDay(
-        profile.selected_gym_id,
-        plan.goalId,
-        plan.currentDayLetter,
-        profile.user_level,
-        profile.injuries || [],
-        profile.equipment_preference,
-        profile.training_duration_minutes || 60
-      );
+      // Reload exercises from plan
+      const exercisesFromPlan = getCurrentDayExercises();
       
-      setGeneratedExercises(newExercises);
-      toast.success('Cviky byly regenerovány!');
+      if (exercisesFromPlan.length > 0) {
+        setGeneratedExercises(exercisesFromPlan);
+        toast.success('Cviky byly načteny!');
+      } else {
+        toast.error('Pro regenerování cviků prosím regeneruj celý plán v nastavení.');
+      }
     } catch (err) {
-      console.error('Error regenerating exercises:', err);
-      toast.error('Nepodařilo se regenerovat cviky');
+      console.error('Error loading exercises:', err);
+      toast.error('Nepodařilo se načíst cviky');
     } finally {
       setIsGeneratingDayExercises(false);
     }
-  }, [plan, profile]);
+  }, [plan, profile, getCurrentDayExercises]);
 
   // Extension workout generation
   const generateExtensionExercises = useCallback(async (count: number) => {
@@ -2165,6 +2042,30 @@ const Training = () => {
               >
                 <MapPin className="w-4 h-4" />
                 Vybrat jinou posilovnu
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Gym Confirmation Dialog */}
+        <AlertDialog open={showGymConfirmDialog} onOpenChange={setShowGymConfirmDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                Potvrzení posilovny
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Jdeš cvičit do <strong>{confirmedGymName}</strong>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel onClick={handleChangeGym}>
+                Vybrat jinou
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmGymAndStart} className="gap-2">
+                <Play className="w-4 h-4" />
+                Ano, začít trénink
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
