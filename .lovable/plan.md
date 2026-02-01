@@ -1,101 +1,98 @@
 
-# Plán oprav: Nesoulad dnů A/B, Rozcvičkové cviky se strojem, UI tlačítko
 
-## Identifikované problémy
+# Oprava: Správná detekce split_type z cviků v plánu
 
-### 1. Nesoulad dnů A/B mezi stránkami
+## Příčina problému
 
-**Screenshot z Home:** Neděle = **B** (Dolní tělo)
-**Screenshot z Training týden 1:** Neděle = **A** (Horní tělo)
-**Screenshot z Training týden 2:** Pondělí = **B** (Dolní tělo)
+Tvůj plán byl vygenerován jako **Full Body** (cviky `squat` + `horizontal_push` v jednom dni A), ale:
+1. `split_type` sloupec v DB = `NULL` (RPC funkce ho neukládá)
+2. `inputs_snapshot_json` = `NULL` (starší verze generátoru)
+3. Fallback logika v `useWorkoutPlan.ts` používá `getSplitFromFrequency(4, ...)` = `upper_lower`
+4. UI pak zobrazuje "Horní tělo" místo "Celé tělo A"
 
-**Příčina:**
-- V `Home.tsx` (řádek 60-62) se používá **adjustedDisplayIndex** který odečítá 1 od `currentDayIndex` pokud uživatel dnes dokončil trénink
-- V `Training.tsx` se používá **jiná logika** pro výpočet týdnů a dnů
-- Obě stránky volají `getTrainingSchedule()`, ale s **různými indexy**
+**Výsledek**: Clap Curtsy Squat (squat role) se zobrazuje pod "Horní tělo" - to je matoucí.
 
-**Řešení:**
-- Sjednotit logiku rotace - obě stránky musí používat `plan.currentDayIndex` přímo z hooku `useWorkoutPlan`
-- Odstranit ruční úpravy indexu v Home.tsx
+## Řešení
 
----
+Přidáme **detekci split_type z obsahu cviků**, ne z frekvence. Pokud den A obsahuje jak upper, tak lower body cviky → je to Full Body.
 
-### 2. Rozcvičkové cviky používají stroje
+### Logika deriveSplitType:
 
-**Screenshot:** "Ski Ergometer Cross Country Ski Kneeling Reverse Fly Pull" v rozcvičce
-
-**Data z databáze:**
-- V tabulce `exercises` s `allowed_phase = 'warmup'` je **50 cviků se strojem** (`machine_id IS NOT NULL`)
-- Celkem 216 warmup cviků, z toho 166 je bez stroje
-
-**Příčina:**
-V `generateWarmupExercises` (Training.tsx, řádky 821-824):
-```typescript
-const { data: warmupExercisesData } = await supabase
-  .from('exercises')
-  .select('id, name, primary_muscles, video_path')
-  .eq('allowed_phase', 'warmup');
-  // ← CHYBÍ filtrování na machine_id IS NULL!
 ```
+Den A obsahuje:
+  - squat/hinge/lunge/step → lower body role ✓
+  - horizontal_push/pull, vertical_push/pull → upper body role ✓
 
-**Řešení:**
-```typescript
-const { data: warmupExercisesData } = await supabase
-  .from('exercises')
-  .select('id, name, primary_muscles, video_path')
-  .eq('allowed_phase', 'warmup')
-  .is('machine_id', null); // Pouze cviky bez vybavení/stroje
+Pokud má den A OBĚ → split = full_body
+Pokud počet dnů = 3 → split = ppl
+Jinak → split = upper_lower
 ```
-
----
-
-### 3. Tlačítko "Další cvik" je zbytečné na posledním cviku rozcvičky
-
-**Screenshot:** Poslední cvik (5/5) má tlačítka "Pauza" + "Další cvik" + "Spustit trénink" (3 tlačítka!)
-
-**Problém v `WarmupPlayer.tsx` (řádky 255-275):**
-```tsx
-// Vždy se zobrazuje "Další cvik"
-<Button onClick={handleSkipExercise}>
-  <SkipForward /> Další cvik
-</Button>
-
-// Na posledním cviku se přidá DALŠÍ tlačítko "Spustit trénink"
-{currentIndex === exercises.length - 1 && (
-  <Button onClick={onComplete}>
-    <ChevronRight /> Spustit trénink
-  </Button>
-)}
-```
-
-**Řešení:**
-Místo přidávání třetího tlačítka **nahradit** "Další cvik" za "Spustit trénink" na posledním cviku:
-```tsx
-{currentIndex < exercises.length - 1 ? (
-  <Button onClick={handleSkipExercise}>
-    <SkipForward /> Další cvik
-  </Button>
-) : (
-  <Button onClick={onComplete}>
-    <ChevronRight /> Spustit trénink
-  </Button>
-)}
-```
-
----
 
 ## Technické změny
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Home.tsx` | Odstranit `adjustedDisplayIndex` a použít přímo `plan.currentDayIndex` pro konzistenci s Training.tsx |
-| `src/pages/Training.tsx` | Přidat `.is('machine_id', null)` do query pro warmup cviky |
-| `src/components/workout/WarmupPlayer.tsx` | Nahradit "Další cvik" za "Spustit trénink" na posledním cviku místo přidávání třetího tlačítka |
+| `src/hooks/useWorkoutPlan.ts` | Přidat funkci `deriveSplitTypeFromExercises()` která analyzuje role v cviků a vrátí správný split_type |
+| `src/hooks/useWorkoutGenerator.ts` | Upravit RPC volání - předat `split_type` jako parametr |
+| Migrace SQL | Přidat parametr `p_split_type` do RPC `generate_workout_plan_atomic` a uložit do sloupce |
 
----
+## Detailní implementace
+
+### 1. useWorkoutPlan.ts - nová funkce
+
+```typescript
+const deriveSplitTypeFromExercises = (exercises: any[]): SplitType => {
+  const LOWER_ROLES = ['squat', 'hinge', 'lunge', 'step', 'jump'];
+  const UPPER_ROLES = ['horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull', 
+                       'elbow_flexion', 'elbow_extension'];
+  
+  // Analyzovat den A
+  const dayAExercises = exercises.filter(e => e.day_letter === 'A');
+  const hasLowerBody = dayAExercises.some(e => LOWER_ROLES.includes(e.role_id));
+  const hasUpperBody = dayAExercises.some(e => UPPER_ROLES.includes(e.role_id));
+  
+  // Pokud den A má obojí → Full Body
+  if (hasLowerBody && hasUpperBody) {
+    return 'full_body';
+  }
+  
+  // Počet unikátních dnů
+  const uniqueDays = new Set(exercises.map(e => e.day_letter));
+  if (uniqueDays.size >= 3) return 'ppl';
+  
+  return 'upper_lower';
+};
+```
+
+### 2. Změna fallback logiky (řádek 110-114)
+
+```typescript
+// Místo:
+const splitType: SplitType = (planData as any).split_type 
+  || (planData.inputs_snapshot_json as any)?.split_type
+  || getSplitFromFrequency(trainingDaysCount, userLevel);
+
+// Na:
+const splitType: SplitType = (planData as any).split_type 
+  || (planData.inputs_snapshot_json as any)?.split_type
+  || deriveSplitTypeFromExercises(exercisesData || []);
+```
+
+### 3. RPC migrace (budoucí prevence)
+
+```sql
+ALTER FUNCTION generate_workout_plan_atomic ADD PARAMETER p_split_type TEXT;
+-- A v INSERT přidat: split_type = p_split_type
+```
 
 ## Očekávaný výsledek
 
-1. **Konzistentní dny A/B** - Home i Training stránka zobrazí stejné přiřazení dnů
-2. **Rozcvička bez strojů** - pouze bodyweight cviky pro warmup
-3. **Čisté UI** - 2 tlačítka: Pauza + (Další cvik NEBO Spustit trénink)
+Po opravě:
+- Systém detekuje, že den A obsahuje `squat` + `horizontal_push` → **Full Body**
+- UI zobrazí: "Celé tělo A" místo "Horní tělo"
+- Clap Curtsy Squat bude dávat smysl v kontextu Full Body tréninku
+
+## Poznámka k regeneraci plánu
+
+Existující plán má smíchanou strukturu. Pokud chceš **opravdu Upper/Lower** (horní tělo v dni A, dolní v dni B), budeš muset plán **regenerovat**. Tato oprava pouze zajistí správné zobrazení názvů dnů.
+
