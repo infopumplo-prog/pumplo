@@ -375,19 +375,6 @@ const Home = () => {
                       </div>}
                   </motion.div>
 
-                  {/* Quick Stats */}
-                  {stats.allTime.totalWorkouts > 0 && <motion.div variants={itemVariants}>
-                      <div className="grid grid-cols-2 gap-3">
-                        
-                        <div className="bg-card border border-border rounded-2xl p-4">
-                          <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center mb-3">
-                            <TrendingUp className="w-5 h-5 text-green-500" />
-                          </div>
-                          <p className="text-2xl font-bold text-foreground">{stats.thisWeek.totalWorkouts}</p>
-                          <p className="text-sm text-muted-foreground">tento týden</p>
-                        </div>
-                      </div>
-                    </motion.div>}
                 </>) : null}
             </>}
         </motion.div>
