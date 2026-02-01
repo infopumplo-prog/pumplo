@@ -1,19 +1,67 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2, ChevronLeft, ChevronRight, Flame, Zap, Leaf, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
-import { PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
+import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+// Week type based on RIR methodology
+type WeekType = 'normal' | 'moderate' | 'hardcore' | 'deload';
+
+const getWeekType = (weekNumber: number): WeekType => {
+  const { rir, label } = getRIRGuidance(weekNumber);
+  if (label === 'Deload') return 'deload';
+  if (rir === 1) return 'hardcore';
+  if (rir === 2) return 'moderate';
+  return 'normal';
+};
+
+const weekTypeStyles: Record<WeekType, { bg: string; border: string; text: string; icon: React.ReactNode }> = {
+  normal: { 
+    bg: 'bg-muted/50', 
+    border: 'border-border', 
+    text: 'text-muted-foreground',
+    icon: <Activity className="w-3 h-3" />
+  },
+  moderate: { 
+    bg: 'bg-amber-500/20', 
+    border: 'border-amber-500/30', 
+    text: 'text-amber-600',
+    icon: <Zap className="w-3 h-3" />
+  },
+  hardcore: { 
+    bg: 'bg-red-500/20', 
+    border: 'border-red-500/30', 
+    text: 'text-red-600',
+    icon: <Flame className="w-3 h-3" />
+  },
+  deload: { 
+    bg: 'bg-green-500/20', 
+    border: 'border-green-500/30', 
+    text: 'text-green-600',
+    icon: <Leaf className="w-3 h-3" />
+  }
+};
+
+const weekTypeLabels: Record<WeekType, string> = {
+  normal: 'Normální',
+  moderate: 'Náročný',
+  hardcore: 'Hardcore',
+  deload: 'Deload'
+};
 
 // Split type labels in Czech
 const SPLIT_TYPE_LABELS: Record<string, string> = {
@@ -24,13 +72,26 @@ const SPLIT_TYPE_LABELS: Record<string, string> = {
 
 // Goal labels in Czech
 const GOAL_LABELS: Record<string, string> = {
+  muscle_gain: 'Nabrat svaly',
   hypertrophy: 'Nabrat svaly',
   strength: 'Získat sílu',
+  fat_loss: 'Zhubnout',
   weight_loss: 'Zhubnout',
+  general_fitness: 'Celková kondice',
   endurance: 'Celková kondice'
 };
 
-// Day names short in Czech
+// Day names in Czech
+const DAY_NAMES_CZ: Record<string, string> = {
+  monday: 'Pondělí',
+  tuesday: 'Úterý',
+  wednesday: 'Středa',
+  thursday: 'Čtvrtek',
+  friday: 'Pátek',
+  saturday: 'Sobota',
+  sunday: 'Neděle'
+};
+
 const DAY_NAMES_SHORT: Record<string, string> = {
   monday: 'Po',
   tuesday: 'Út',
@@ -51,26 +112,42 @@ const MyPlan = () => {
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
-  // Calculate weeks and progress
-  const totalWeeks = 12; // Fixed 12-week plan
-  const currentWeek = useMemo(() => {
-    if (!plan) return 1;
-    const trainingDays = plan.trainingDays?.length || 3;
-    const completedDays = plan.currentDayIndex || 0;
-    return Math.min(Math.floor(completedDays / trainingDays) + 1, totalWeeks);
-  }, [plan]);
-
-  // Training days sorted
+  const totalWeeks = PLAN_DURATION_WEEKS;
+  
+  // Training days from plan or profile
   const trainingDays = useMemo(() => {
     const days = plan?.trainingDays || profile?.training_days || [];
     return [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
   }, [plan, profile]);
 
+  const trainingDaysCount = trainingDays.length || 3;
+  const totalPlanSessions = totalWeeks * trainingDaysCount;
+
+  // Current week calculation
+  const currentWeek = useMemo(() => {
+    if (!plan) return 1;
+    const completedDays = plan.currentDayIndex || 0;
+    return Math.min(Math.floor(completedDays / trainingDaysCount) + 1, totalWeeks);
+  }, [plan, trainingDaysCount, totalWeeks]);
+
+  // Progress calculation
+  const completedSessions = plan?.currentDayIndex || 0;
+  const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
+
+  // Get schedule for selected or current week
+  const viewingWeek = selectedWeek ?? currentWeek;
+  const schedule = useMemo(() => {
+    if (!plan) return [];
+    return getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex || 0);
+  }, [plan, trainingDays]);
+
+  const today = getCurrentWeekday();
+
   // Gym name
   const [gymName, setGymName] = useState<string | null>(null);
   
-  // Fetch gym name
   useMemo(() => {
     const fetchGymName = async () => {
       const gymId = plan?.gymId || profile?.selected_gym_id;
@@ -104,14 +181,12 @@ const MyPlan = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       
-      // Map current profile goal to training goal
       const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal];
       if (!mappedGoalId) {
         toast.error('Neplatný cíl tréninku');
         return;
       }
       
-      // Deactivate old plan
       if (plan?.id) {
         await supabase
           .from('user_workout_plans')
@@ -123,7 +198,6 @@ const MyPlan = () => {
       const durationMinutes = profile.training_duration_minutes || 60;
       
       if (selectedGymId && profile.user_level) {
-        // Generate full plan with exercises - IMPORTANT: pass training_days!
         const planId = await generateWorkoutPlan(
           selectedGymId,
           mappedGoalId,
@@ -135,14 +209,12 @@ const MyPlan = () => {
         );
         
         if (planId) {
-          // Update plan with snapshotted training_days
           await supabase
             .from('user_workout_plans')
             .update({ training_days: profile.training_days })
             .eq('id', planId);
         }
       } else {
-        // No gym - create skeleton plan
         await supabase
           .from('user_workout_plans')
           .insert({
@@ -156,13 +228,11 @@ const MyPlan = () => {
           });
       }
       
-      // Reset day index but keep streak
       await supabase
         .from('user_profiles')
         .update({ current_day_index: 0 })
         .eq('user_id', userData.user.id);
       
-      // Refetch data
       await refetchProfile();
       await refetchPlan();
       
@@ -206,7 +276,7 @@ const MyPlan = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate(-1)}
                 className="bg-background/50 backdrop-blur-sm rounded-xl"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -238,7 +308,7 @@ const MyPlan = () => {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: { staggerChildren: 0.08 }
     }
   };
 
@@ -261,12 +331,17 @@ const MyPlan = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(-1)}
               className="bg-background/50 backdrop-blur-sm rounded-xl"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold text-foreground">Můj plán</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
+              <p className="text-sm text-muted-foreground">
+                {totalWeeks} týdnů • {trainingDaysCount}× týdně
+              </p>
+            </div>
           </motion.div>
         </div>
 
@@ -276,24 +351,183 @@ const MyPlan = () => {
           initial="hidden"
           animate="visible"
         >
-          {/* Plan Overview Card */}
+          {/* Progress Card */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-border rounded-2xl shadow-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                      <Target className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Celkový progress</p>
+                      <p className="text-xl font-bold">{completedSessions}/{totalPlanSessions} tréninků</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">{Math.round(progressPercent)}%</p>
+                  </div>
+                </div>
+                <Progress value={progressPercent} className="h-3" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Week Navigation */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedWeek(prev => Math.max(1, (prev ?? currentWeek) - 1))}
+                disabled={viewingWeek <= 1}
+                className="rounded-xl"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">
+                  Týden {viewingWeek}/{totalWeeks}
+                  {viewingWeek === currentWeek && (
+                    <Badge variant="secondary" className="ml-2 text-xs">teď</Badge>
+                  )}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {weekTypeLabels[getWeekType(viewingWeek)]} (RIR {getRIRGuidance(viewingWeek).rir})
+                </p>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedWeek(prev => Math.min(totalWeeks, (prev ?? currentWeek) + 1))}
+                disabled={viewingWeek >= totalWeeks}
+                className="rounded-xl"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Training Days for Selected Week */}
           <motion.div variants={itemVariants}>
             <Card className="border-border rounded-2xl shadow-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">Přehled plánu</CardTitle>
+                <CardTitle className="text-lg font-semibold">Tréninky týdne {viewingWeek}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Goal */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Target className="w-5 h-5 text-primary" />
+              <CardContent className="space-y-2">
+                {schedule.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Nastav si tréninkové dny</p>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Cíl</p>
-                    <p className="font-medium">{GOAL_LABELS[plan.goalId] || plan.goalName}</p>
-                  </div>
+                ) : (
+                  schedule.slice(0, trainingDaysCount).map((day, index) => {
+                    const isCurrentWeekAndDay = viewingWeek === currentWeek && index === 0 && day.dayOfWeek === today;
+                    const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
+                    
+                    return (
+                      <div
+                        key={`${day.dayOfWeek}-${index}`}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-xl",
+                          isCurrentWeekAndDay 
+                            ? "bg-primary/10 border border-primary/30" 
+                            : "bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center font-bold",
+                            isCurrentWeekAndDay 
+                              ? "bg-primary text-white" 
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {day.dayLetter}
+                          </div>
+                          <div>
+                            <p className="font-medium">{DAY_NAMES_CZ[day.dayOfWeek]}</p>
+                            {dayTemplate?.dayName && (
+                              <p className="text-sm text-muted-foreground">{dayTemplate.dayName}</p>
+                            )}
+                          </div>
+                        </div>
+                        {isCurrentWeekAndDay && (
+                          <Badge className="bg-primary/20 text-primary border-0">Dnes</Badge>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Week Calendar */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-border rounded-2xl shadow-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">Kalendář týdnů</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {Array.from({ length: totalWeeks }, (_, i) => {
+                    const weekNumber = i + 1;
+                    const isCompleted = weekNumber < currentWeek;
+                    const isCurrent = weekNumber === currentWeek;
+                    const isSelected = weekNumber === viewingWeek;
+                    const weekType = getWeekType(weekNumber);
+                    const styles = weekTypeStyles[weekType];
+                    
+                    return (
+                      <button
+                        key={weekNumber}
+                        onClick={() => setSelectedWeek(weekNumber)}
+                        className={cn(
+                          "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all border-2",
+                          styles.bg,
+                          isSelected ? "ring-2 ring-primary ring-offset-2" : "",
+                          isCompleted ? "opacity-60" : "",
+                          isCurrent ? `${styles.border} border-2` : styles.border
+                        )}
+                      >
+                        {isCompleted && (
+                          <Check className={cn("w-4 h-4 absolute top-1 right-1", styles.text)} />
+                        )}
+                        <span className={cn("text-xs", styles.text)}>{styles.icon}</span>
+                        <span className={cn("text-lg font-bold", isCurrent ? "text-primary" : styles.text)}>
+                          {weekNumber}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
+                {/* Legend */}
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
+                  {(Object.keys(weekTypeStyles) as WeekType[]).map((type) => {
+                    const styles = weekTypeStyles[type];
+                    return (
+                      <div key={type} className="flex items-center gap-2">
+                        <div className={cn("w-4 h-4 rounded", styles.bg, "border", styles.border)} />
+                        <span className={cn("text-xs", styles.text)}>{weekTypeLabels[type]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Plan Info */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-border rounded-2xl shadow-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">Detaily plánu</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 {/* Split Type */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-chart-2/10 rounded-xl flex items-center justify-center">
@@ -316,17 +550,6 @@ const MyPlan = () => {
                   </div>
                 </div>
 
-                {/* Current Week */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-chart-4/10 rounded-xl flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-chart-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Průběh</p>
-                    <p className="font-medium">Týden {currentWeek}/{totalWeeks}</p>
-                  </div>
-                </div>
-
                 {/* Training Days */}
                 <div className="pt-2">
                   <p className="text-sm text-muted-foreground mb-2">Tréninkové dny</p>
@@ -337,45 +560,6 @@ const MyPlan = () => {
                       </Badge>
                     ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Week Calendar */}
-          <motion.div variants={itemVariants}>
-            <Card className="border-border rounded-2xl shadow-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">Kalendář týdnů</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-2">
-                  {Array.from({ length: totalWeeks }, (_, i) => {
-                    const weekNumber = i + 1;
-                    const isCompleted = weekNumber < currentWeek;
-                    const isCurrent = weekNumber === currentWeek;
-                    
-                    return (
-                      <div
-                        key={weekNumber}
-                        className={`
-                          relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all
-                          ${isCompleted 
-                            ? 'bg-chart-2/20 text-chart-2 border-2 border-chart-2/30' 
-                            : isCurrent 
-                              ? 'bg-primary/20 text-primary border-2 border-primary' 
-                              : 'bg-muted/50 text-muted-foreground border border-border'
-                          }
-                        `}
-                      >
-                        {isCompleted && (
-                          <Check className="w-4 h-4 absolute top-1 right-1" />
-                        )}
-                        <span className="text-xs text-muted-foreground">Týden</span>
-                        <span className="text-lg font-bold">{weekNumber}</span>
-                      </div>
-                    );
-                  })}
                 </div>
               </CardContent>
             </Card>
