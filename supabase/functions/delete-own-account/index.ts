@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     if (deleteError) {
       console.error("Error deleting user:", deleteError);
       return new Response(
-        JSON.stringify({ error: deleteError.message || "Nepodarilo sa odstrániť účet" }),
+        JSON.stringify({ error: "Nepodarilo sa odstrániť účet" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
