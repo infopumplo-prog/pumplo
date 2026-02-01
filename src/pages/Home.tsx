@@ -259,45 +259,66 @@ const Home = () => {
                   const isCompletedToday = isCurrentDay && completedTodayDayLetter === day.dayLetter;
                   const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
                   const dayTypeName = dayTemplate?.dayName || '';
-                  return <motion.button key={`${day.dayOfWeek}-${index}`} onClick={() => navigate('/training')} className={cn("w-full p-4 rounded-2xl text-left transition-all flex items-center justify-between", isCompletedToday ? "bg-green-500/10 border-2 border-green-500/30" : isNextUp ? "bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30" : "bg-card border border-border hover:border-primary/30")} initial={{
-                    opacity: 0,
-                    x: -10
-                  }} animate={{
-                    opacity: 1,
-                    x: 0
-                  }} transition={{
-                    delay: index * 0.05
-                  }} whileHover={{
-                    scale: 1.01
-                  }} whileTap={{
-                    scale: 0.99
-                  }}>
-                              <div className="flex items-center gap-4">
-                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg", isCompletedToday ? "bg-green-500 text-white" : isNextUp ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                  {isCompletedToday ? <Check className="w-6 h-6" /> : day.dayLetter}
-                                </div>
-                                
-                                <div>
-                                  <h4 className={cn("font-semibold", isCompletedToday ? "text-green-600" : isNextUp ? "text-foreground" : "text-muted-foreground")}>
-                                    {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
-                                  </h4>
-                                  {dayTypeName && <p className={cn("text-sm", isCompletedToday ? "text-green-600/70" : "text-muted-foreground")}>
-                                      {dayTypeName}
-                                    </p>}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                {isCompletedToday && <span className="text-xs font-medium text-green-600 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1">
-                                    <Check className="w-3 h-3" />
-                                    Hotovo
-                                  </span>}
-                                {isCurrentDay && !isCompletedToday && <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-                                    Dnes
-                                  </span>}
-                                <ChevronRight className={cn("w-5 h-5", isCompletedToday ? "text-green-500" : isNextUp ? "text-primary" : "text-muted-foreground")} />
-                              </div>
-                            </motion.button>;
+                  
+                  // Only completed trainings are clickable
+                  const isClickable = isCompletedToday;
+                  
+                  return <motion.div 
+                    key={`${day.dayOfWeek}-${index}`} 
+                    className={cn(
+                      "w-full p-4 rounded-2xl text-left transition-all flex items-center justify-between",
+                      isCompletedToday ? "bg-green-500/10 border-2 border-green-500/30" : 
+                      isNextUp ? "bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30" : 
+                      "bg-card border border-border"
+                    )} 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg", 
+                        isCompletedToday ? "bg-green-500 text-white" : 
+                        isNextUp ? "bg-primary text-white" : 
+                        "bg-muted text-muted-foreground"
+                      )}>
+                        {isCompletedToday ? <Check className="w-6 h-6" /> : day.dayLetter}
+                      </div>
+                      
+                      <div>
+                        <h4 className={cn(
+                          "font-semibold", 
+                          isCompletedToday ? "text-green-600" : 
+                          isNextUp ? "text-foreground" : 
+                          "text-muted-foreground"
+                        )}>
+                          {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
+                        </h4>
+                        {dayTypeName && (
+                          <p className={cn(
+                            "text-sm", 
+                            isCompletedToday ? "text-green-600/70" : "text-muted-foreground"
+                          )}>
+                            {dayTypeName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {isCompletedToday && (
+                        <span className="text-xs font-medium text-green-600 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          Hotovo
+                        </span>
+                      )}
+                      {isCurrentDay && !isCompletedToday && (
+                        <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
+                          Dnes
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>;
                 })}
                       </div>}
                   </motion.div>
