@@ -56,13 +56,8 @@ const Home = () => {
   // Training days - use snapshotted plan data when plan exists
   const trainingDays = plan?.trainingDays || profile?.training_days || [];
 
-  // Adjusted display index for schedule
-  const adjustedDisplayIndex = wasCompletedToday && plan
-    ? (plan.currentDayIndex - 1 + plan.dayCount) % plan.dayCount
-    : (plan?.currentDayIndex || 0);
-
-  // Get schedule with proper day rotation
-  const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, adjustedDisplayIndex) : [];
+  // Get schedule with proper day rotation - use currentDayIndex directly for consistency with Training.tsx
+  const schedule = plan ? getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex || 0) : [];
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {

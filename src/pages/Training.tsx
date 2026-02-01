@@ -817,11 +817,12 @@ const Training = () => {
       }
     }
     
-    // 2. Fetch warmup exercises
+    // 2. Fetch warmup exercises (bodyweight only - no machines)
     const { data: warmupExercisesData } = await supabase
       .from('exercises')
       .select('id, name, primary_muscles, video_path')
-      .eq('allowed_phase', 'warmup');
+      .eq('allowed_phase', 'warmup')
+      .is('machine_id', null);
     
     if (!warmupExercisesData || warmupExercisesData.length === 0) {
       // Fallback: no warmup exercises in DB
