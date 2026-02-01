@@ -253,17 +253,17 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           )}
         </Button>
 
-        <Button
-          variant="outline"
-          size="lg"
-          className="flex-1 gap-2"
-          onClick={handleSkipExercise}
-        >
-          <SkipForward className="w-5 h-5" />
-          Další cvik
-        </Button>
-
-        {currentIndex === exercises.length - 1 && (
+        {currentIndex < exercises.length - 1 ? (
+          <Button
+            variant="outline"
+            size="lg"
+            className="flex-1 gap-2"
+            onClick={handleSkipExercise}
+          >
+            <SkipForward className="w-5 h-5" />
+            Další cvik
+          </Button>
+        ) : (
           <Button
             size="lg"
             className="flex-1 gap-2"
