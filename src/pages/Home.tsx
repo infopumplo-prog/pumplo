@@ -267,13 +267,15 @@ const Home = () => {
                     key={`${day.dayOfWeek}-${index}`} 
                     className={cn(
                       "w-full p-4 rounded-2xl text-left transition-all flex items-center justify-between",
-                      isCompletedToday ? "bg-green-500/10 border-2 border-green-500/30" : 
+                      isCompletedToday ? "bg-green-500/10 border-2 border-green-500/30 cursor-pointer" : 
                       isNextUp ? "bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30" : 
                       "bg-card border border-border"
                     )} 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
+                    onClick={isClickable ? () => navigate('/profile/history') : undefined}
+                    whileTap={isClickable ? { scale: 0.98 } : undefined}
                   >
                     <div className="flex items-center gap-4">
                       <div className={cn(
