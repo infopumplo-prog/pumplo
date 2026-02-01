@@ -888,6 +888,7 @@ export type Database = {
           methodology_version: string | null
           needs_regeneration: boolean | null
           selection_seed: string | null
+          split_type: string | null
           started_at: string | null
           training_days: string[] | null
           updated_at: string | null
@@ -906,6 +907,7 @@ export type Database = {
           methodology_version?: string | null
           needs_regeneration?: boolean | null
           selection_seed?: string | null
+          split_type?: string | null
           started_at?: string | null
           training_days?: string[] | null
           updated_at?: string | null
@@ -924,6 +926,7 @@ export type Database = {
           methodology_version?: string | null
           needs_regeneration?: boolean | null
           selection_seed?: string | null
+          split_type?: string | null
           started_at?: string | null
           training_days?: string[] | null
           updated_at?: string | null

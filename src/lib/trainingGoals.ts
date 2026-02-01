@@ -163,6 +163,7 @@ export interface WorkoutExercise {
 export interface PlanInputsSnapshot {
   goal_id: TrainingGoalId;
   user_level: UserLevel;
+  split_type: SplitType;
   duration_minutes: number;
   equipment_preference: string | null;
   injuries: string[];
