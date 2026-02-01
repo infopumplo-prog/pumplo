@@ -1,73 +1,137 @@
-# Plán opravy: Více bugů v tréninkovém systému
 
-## ✅ DOKONČENO
+# Plán opravy: Problémy s počtem cviků a zobrazením dnů
 
-Všechny identifikované problémy byly opraveny:
+## Identifikace kořenových příčin
 
----
+### Problém 1: Stále 9 cviků v plánu
+**PŘÍČINA:** Plán byl vygenerován **PŘED** nasazením oprav kódu.
 
-### 1. ✅ Příliš mnoho cviků (9 cviků × 3 série = 27 sérií)
+Databáze ukazuje:
+- Plán `9be41ad6-df6e-4bdf-a04f-ca18898a77a3` vytvořen: `2026-02-01 11:12:42`
+- Počet cviků: `9 pro den A`, `9 pro den B`
 
-**Oprava v `src/hooks/useWorkoutGenerator.ts`:**
-- Přidán hard cap podle metodiky PUMPLO v2.0:
-  - ≤30 min → max 4 cviky
-  - 31-60 min → max 6 cviků
-  - 61+ min → max 7 cviků (nikdy více)
+Změny v `useWorkoutGenerator.ts` (hard cap 4/6/7 cviků) se projeví až při **GENEROVÁNÍ NOVÉHO PLÁNU**. Refresh stránky pouze načte existující data z databáze.
 
----
+**ŘEŠENÍ:** Uživatel musí **regenerovat plán** - kliknout na "Začít trénink" → dialog s možností regenerace, nebo přidat explicitní tlačítko "Regenerovat plán" přímo na stránku Training.
 
-### 2. ✅ Video na cviku se nepouští automaticky
+### Problém 2: Budoucí dny označeny jako "Vynecháno"
+**PŘÍČINA:** Logika výpočtu kalendářního data má bug v porovnání.
 
-**Oprava v `src/components/workout/ExercisePlayer.tsx`:**
-- Přidáno `videoUrl` do dependencies `useEffect` hooku
-- Nyní se video spustí automaticky i když URL přijde asynchronně
+Konkrétní situace:
+- Plán začal: **1. února 2026 (neděle)**
+- Tréninkové dny: `[monday, tuesday, friday, saturday, sunday]`
+- `current_day_index = 1` → `currentWeek = 2` (protože v týdnu 1 byl jen 1 den - neděle)
+- Uživatel vidí "Týden 2" s dny Po, Út, Pá, So, Ne
 
----
+Problém v kódu:
+```typescript
+// Řádek 500-512: getActualDateForDay()
+const startDay = planStartDate.getDay(); // 0 (neděle)
+const daysFromMonday = startDay === 0 ? 6 : startDay - 1; // = 6
+const planWeekMonday = new Date(planStartDate);
+planWeekMonday.setDate(planStartDate.getDate() - daysFromMonday);
+// planWeekMonday = 1.2.2026 - 6 dní = 26.1.2026 (pondělí minulého týdne!)
+```
 
-### 3. ✅ Budoucí dny označeny jako "Vynecháno"
+Pak pro týden 2:
+```typescript
+viewingWeekMonday.setDate(planWeekMonday.getDate() + (viewingWeek - 1) * 7);
+// = 26.1.2026 + 7 = 2.2.2026 (pondělí aktuálního kalendářního týdne)
+```
 
-**Oprava v `src/pages/Training.tsx`:**
-- Přidána funkce `getActualDateForDay()` která vypočítá skutečné kalendářní datum pro každý den
-- Přidána kontrola `isBeforePlanStart` - dny před startem plánu nejsou označeny jako missed
-- Logika: `isMissed = !isExtraWeek && !isBeforePlanStart && (isPastThisWeek || isWeekInPast) && !isCompleted`
+A pro pondělí (dayOrderIndex = 0):
+```typescript
+targetDate.setDate(viewingWeekMonday.getDate() + dayOrderIndex);
+// = 2.2.2026 + 0 = 2.2.2026 (pondělí)
+```
 
----
+Problém: `2.2.2026 < 1.2.2026` je **FALSE**, takže `isBeforePlanStart = false`.
 
-### 4. ✅ Repetitivní cviky (stejný equipment type)
+ALE: Pondělí 2.2.2026 je **ZÍTRA** (budoucnost), ne minulost! Problém je v tom, že logika `isPastThisWeek` říká:
+```typescript
+const isPastThisWeek = viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
+// todayDayOrder = 6 (neděle)
+// dayOrderIndex = 0 (pondělí)
+// 0 < 6 = TRUE → pondělí je označeno jako "past this week"
+```
 
-**Oprava v `src/lib/selectionAlgorithm.ts`:**
-- Přidána konstanta `PENALTY_EQUIPMENT_REPETITION = -5`
-- V `calculateExerciseScore` přidána penalizace pro opakovaný equipment type ve stejné session
-- Systém nyní preferuje různé typy vybavení pro větší variabilitu tréninku
-
----
-
-### 5. ℹ️ Cvik 4 a 8 bez přiřazeného cviku (role: `anti_extension`)
-
-**Stav:** Databáze obsahuje 2 cviky s `primary_role = 'anti_extension'` a `allowed_phase = 'main'`:
-- Climber A Padded Stool Supported (bodyweight)
-- Resistance Band Lying Leg Raise (machine)
-
-Problém byl pravděpodobně způsoben tím, že konkrétní stroje nebyly dostupné v gym inventory. Po přegenerování plánu s novými limity by mělo být vše OK.
-
----
-
-## Technické změny
-
-| Problém | Soubor | Status |
-|---------|--------|--------|
-| Příliš mnoho cviků | `useWorkoutGenerator.ts` | ✅ Hard cap 4/6/7 |
-| Video autoplay | `ExercisePlayer.tsx` | ✅ Přidáno `videoUrl` do deps |
-| Missed dny v budoucnu | `Training.tsx` | ✅ Kontrola `planStartDate` |
-| Prázdný slot (anti_extension) | Databáze | ℹ️ Cviky existují |
-| Repetitivní cviky | `selectionAlgorithm.ts` | ✅ Equipment penalty -5 |
+**SKUTEČNÝ BUG:** Logika `isPastThisWeek` pracuje s kalendářním pořadím dnů v týdnu, ale "Týden 2" v systému PLÁNU neznamená "tento kalendářní týden". Je to abstraktní "týden plánu" který nezohledňuje, že plán začal v neděli.
 
 ---
 
-## Další kroky
+## Technické řešení
 
-Pro ověření změn:
-1. Přegenerovat tréninkový plán (kliknout na "Regenerovat plán")
-2. Ověřit, že nový plán má max 7 cviků
-3. Zkontrolovat, že budoucí dny nejsou označeny jako vynechané
-4. Ověřit automatické přehrávání videa u cviku
+### Změna 1: Přidat tlačítko "Regenerovat plán" na Training stránku
+Aby uživatel mohl jednoduše regenerovat plán bez nutnosti hledat, kde je funkce.
+
+### Změna 2: Opravit logiku `isPastThisWeek` a `isMissed`
+Místo spoléhání na kalendářní dny v týdnu, porovnávat **skutečná kalendářní data**:
+
+```typescript
+// Starý kód (problematický):
+const isPastThisWeek = viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
+const isMissed = !isExtraWeek && !isBeforePlanStart && (isPastThisWeek || isWeekInPast) && !isCompleted;
+
+// Nový kód:
+const actualDate = getActualDateForDay();
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+// Použít skutečné kalendářní datum místo abstraktního pořadí dnů
+const isActuallyInPast = actualDate && actualDate < today;
+const isBeforePlanStart = planStartDate && actualDate && actualDate < planStartDate;
+
+// Den je vynechaný pouze pokud:
+// 1. Není v extra týdnu (dny přesunuté z prvního týdne na konec)
+// 2. Jeho skutečné datum je v minulosti
+// 3. Není před startem plánu
+// 4. Není dokončený
+const isMissed = !isExtraWeek && 
+                 isActuallyInPast && 
+                 !isBeforePlanStart && 
+                 !isCompleted;
+```
+
+### Změna 3: Přidat viditelné tlačítko regenerace
+Na stránce Training přidat sekci s možností regenerovat plán, když plán obsahuje problémy (9 cviků místo max 7):
+
+```tsx
+{/* Zobrazit upozornění pokud plán potřebuje regeneraci */}
+{plan && plan.exercises.filter(e => e.dayLetter === currentDayLetter).length > 7 && (
+  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4">
+    <div className="flex items-center gap-2 text-amber-500">
+      <AlertCircle className="w-5 h-5" />
+      <span className="font-medium">Plán obsahuje příliš mnoho cviků</span>
+    </div>
+    <p className="text-sm text-muted-foreground mt-2">
+      Dle nové metodiky by měl trénink obsahovat max 7 cviků.
+    </p>
+    <Button 
+      onClick={handleRegeneratePlan} 
+      variant="outline" 
+      className="mt-3"
+    >
+      <RefreshCw className="w-4 h-4 mr-2" />
+      Regenerovat plán
+    </Button>
+  </div>
+)}
+```
+
+---
+
+## Shrnutí změn
+
+| Soubor | Změna |
+|--------|-------|
+| `src/pages/Training.tsx` | Opravit logiku `isMissed` - použít skutečná kalendářní data místo abstraktních indexů dnů |
+| `src/pages/Training.tsx` | Přidat tlačítko "Regenerovat plán" viditelné přímo na stránce |
+| `src/pages/Training.tsx` | Přidat upozornění když plán má více než 7 cviků za den |
+
+---
+
+## Proč refresh nepomohl
+
+1. **Cviky jsou uloženy v databázi** - refresh pouze načte stejná data znovu
+2. **Logika missed dnů má bug** - kód byl opraven správně, ale porovnání `actualDate < planStartDate` nefunguje správně pro budoucí dny protože `isPastThisWeek` je stále `true` na základě indexů dnů v týdnu
+3. **Řešení:** Uživatel musí **regenerovat plán** pro nový počet cviků, a logika kalendářních dnů musí být opravena
