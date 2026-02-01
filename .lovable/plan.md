@@ -1,322 +1,266 @@
 
 
-# Plán opravy: Generování tréninku a správné čtení cviků z DB
+# Plán opravy: Dotazník a logika podle metodiky PUMPLO
 
-## Souhrn problémů a oprav
+## Souhrn hlavního problému
 
-### PROBLÉM A: Duplicitní logika generování cviků
-**Lokace:** `src/pages/Training.tsx`, řádky 686-830
-
-**Co je špatně:** Funkce `generateExercisesForDay()` je STARÁ lokální logika, která:
-- Ignoruje `machine_id` dostupnost v posilovně
-- Nepoužívá nový scoring systém z `selectionAlgorithm.ts`
-- Nepoužívá fallback hierarchii F0-F5
-- Neukládá výsledky do DB
-
-**Správný flow:** Cviky by měly být vygenerovány při vytvoření plánu (`generateWorkoutPlan()`) a poté čteny z `user_workout_exercises` tabulky pomocí `useWorkoutPlan.getCurrentDayExercises()`.
-
-**Oprava:** 
-1. Smazat funkci `generateExercisesForDay()` (řádky 686-830)
-2. Upravit `handleGenerateDayExercises()` aby četla cviky z DB místo generování on-the-fly
-3. Pokud cviky v DB neexistují, zobrazit chybovou hlášku a nabídnout regeneraci plánu
+Aktuální implementace má **fundamentálně špatnou logiku** - split je určován podle CÍLE, ale podle metodiky by měl být určován podle **POČTU TRÉNINKOVÝCH DNÍ** (frekvence).
 
 ---
 
-### PROBLÉM B: Role aliasy fungují OBRÁCENĚ
-**Lokace:** `src/lib/selectionAlgorithm.ts`, funkce `fetchRoleAliases()`
+## Co říká metodika (sekce 3.1)
 
-**Stav databáze:**
 ```
-role_aliases:
-  id: push_general     → alias_for: horizontal_push
-  id: squat_light      → alias_for: squat
-  id: pulldown_variant → alias_for: vertical_pull
+Split je volen primárně podle frekvence:
+- pokud frequencyPerWeek <= 3 → Full Body A/B (FB_AB)
+- pokud frequencyPerWeek == 4 → Upper/Lower A/B (UL_AB)  
+- pokud frequencyPerWeek >= 5 → Push/Pull/Legs A/B/C (PPL_ABC)
+
+Bezpečnostní override pro začátečníky:
+- pokud level == beginner && frequencyPerWeek >= 5 → použij UL_AB
 ```
 
-**Problém:** Když hledáme aliasy pro `horizontal_push` (protože nemáme cviky), query `.eq('alias_for', roleId)` vrátí `push_general`. Ale žádné cviky nemají `primary_role = 'push_general'`!
-
-**Správná logika:** Aliasy slouží pro případ, kdy šablona používá alias název (např. `push_general`). Pak algoritmus najde, že `push_general` je alias pro `horizontal_push` a hledá cviky pod `horizontal_push`.
-
-**Oprava:** Změnit `fetchRoleAliases()` aby:
-1. Zkontrolovala zda `roleId` JE alias (hledá kde `id = roleId`)
-2. Pokud ano, vrátí `alias_for` hodnotu (skutečná role se cviky)
-3. Pokud ne, vrátí prázdné pole (není potřeba substituce)
-
----
-
-### PROBLÉM E: Chybí potvrzení posilovny před tréninkem
-**Lokace:** `src/pages/Training.tsx`
-
-**Co chybí:** Uživatel musí vždy potvrdit do jaké posilovny jde, než začne cvičit.
-
-**Oprava:** Přidat nový dialog před startem tréninku:
-- "Jdeš cvičit do [název posilovny]?"
-- Tlačítka: "Ano, začít" / "Vybrat jinou posilovnu"
+```
+Délka plánu: 12 týdnů pro VŠECHNY cíle (sekce 10)
+- týdny 1-3: build
+- týden 4: deload
+- týdny 5-7: build
+- týden 8: deload
+- týdny 9-11: build
+- týden 12: deload
+```
 
 ---
 
-## Fáze 1: Oprava handleGenerateDayExercises v Training.tsx
+## Co je aktuálně ŠPATNĚ
 
-### Smazat funkci generateExercisesForDay (řádky 686-830)
-Kompletně odstranit tuto duplicitní funkci.
-
-### Přepsat handleGenerateDayExercises (řádky 634-663)
-
-**PŘED:**
+### 1. `trainingGoals.ts` - Split podle cíle
 ```typescript
-const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
-  if (!plan || !profile?.user_level) return;
-  setIsGeneratingDayExercises(true);
-  
-  try {
-    const exercises = await generateExercisesForDay(
-      gymId, plan.goalId, plan.currentDayLetter, profile.user_level,
-      profile.injuries || [], profile.equipment_preference || null,
-      profile.training_duration_minutes || 60
-    );
-    
-    setGeneratedExercises(exercises);
-    setSelectedWorkoutGymId(gymId);
-    setShowGymSelector(false);
-    
-    if (startWorkoutAfter) {
-      setIsWorkoutActive(true);
-    }
-  } catch (err) {
-    console.error('Error generating day exercises:', err);
-  } finally {
-    setIsGeneratingDayExercises(false);
-  }
-}, [plan, profile]);
-```
-
-**PO:**
-```typescript
-const handleGenerateDayExercises = useCallback(async (gymId: string, startWorkoutAfter: boolean = false) => {
-  if (!plan || !profile?.user_level) return;
-  setIsGeneratingDayExercises(true);
-  
-  try {
-    // Číst cviky z databáze - byly vygenerovány při vytvoření plánu
-    const exercisesFromPlan = getCurrentDayExercises();
-    
-    if (exercisesFromPlan.length > 0) {
-      // Máme cviky v DB - použijeme je
-      setGeneratedExercises(exercisesFromPlan);
-      setSelectedWorkoutGymId(gymId);
-      setShowGymSelector(false);
-      
-      if (startWorkoutAfter) {
-        setShowWorkoutPreview(true);
-      }
-    } else {
-      // Žádné cviky v DB - plán nemá vygenerované cviky
-      // To znamená, že plán byl vytvořen bez posilovny nebo se něco pokazilo
-      toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán v nastavení.');
-    }
-  } catch (err) {
-    console.error('Error loading exercises:', err);
-    toast.error('Nepodařilo se načíst cviky');
-  } finally {
-    setIsGeneratingDayExercises(false);
-  }
-}, [plan, profile, getCurrentDayExercises]);
-```
-
----
-
-## Fáze 2: Oprava fetchRoleAliases v selectionAlgorithm.ts
-
-**Lokace:** `src/lib/selectionAlgorithm.ts`, řádky 263-278
-
-**PŘED:**
-```typescript
-export const fetchRoleAliases = async (roleId: string): Promise<RoleAlias[]> => {
-  const { data, error } = await supabase
-    .from('role_aliases')
-    .select('*')
-    .eq('alias_for', roleId)
-    .order('priority');
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data as RoleAlias[];
+// ŠPATNĚ - split je napevno přiřazen k cíli
+export const GOAL_TO_SPLIT = {
+  'muscle_gain': 'ppl',        // ❌
+  'fat_loss': 'upper_lower',   // ❌
+  'strength': 'upper_lower',   // ❌
+  'general_fitness': 'full_body' // ❌
 };
+
+// ŠPATNĚ - různá délka plánu
+{ id: 'muscle_gain', description: 'Délka plánu: 12 týdnů' },
+{ id: 'fat_loss', description: 'Délka plánu: 8 týdnů' },    // ❌
+{ id: 'strength', description: 'Délka plánu: 8 týdnů' },    // ❌
 ```
 
-**PO:**
+### 2. Databáze `day_templates` - Vázané na cíl
+```sql
+-- ŠPATNĚ - templates jsou pod goal_id
+goal_id: muscle_gain → Push/Pull/Legs
+goal_id: fat_loss → Upper/Lower
+goal_id: general_fitness → Full Body A/B
+```
+
+### 3. UI v `OnboardingDrawer.tsx` - Špatný text
+```tsx
+// Řádek 343-347: Zobrazuje "Split: ... (automaticky podle cíle)"
+// ŠPATNĚ - mělo by být podle počtu dnů
+```
+
+---
+
+## Plán opravy
+
+### Fáze 1: Nová logika určení splitu
+
+**Soubor:** `src/lib/trainingGoals.ts`
+
+Přidat novou funkci pro určení splitu podle frekvence a úrovně:
+
 ```typescript
 /**
- * Fetch role aliases for fallback substitution
- * 
- * Logika: Aliasy mapují alternativní názvy rolí na skutečné role se cviky.
- * Např. 'push_general' je alias pro 'horizontal_push'.
- * 
- * Když hledáme cviky pro alias (push_general), tato funkce vrátí
- * skutečnou roli (horizontal_push) pod kterou cviky existují.
+ * Určí split na základě počtu tréninkových dnů a úrovně uživatele
+ * Podle metodiky PUMPLO v1.1, sekce 3.1
  */
-export const fetchRoleAliases = async (roleId: string): Promise<RoleAlias[]> => {
-  // Zkontroluj zda roleId je alias (hledá kde id = roleId)
-  const { data: aliasData, error: aliasError } = await supabase
-    .from('role_aliases')
-    .select('*')
-    .eq('id', roleId)
-    .order('priority');
-
-  if (!aliasError && aliasData && aliasData.length > 0) {
-    // roleId JE alias - vrať skutečnou roli (alias_for)
-    return aliasData.map(a => ({
-      id: a.alias_for, // Skutečná role se cviky
-      alias_for: a.id,
-      priority: a.priority || 1
-    })) as RoleAlias[];
+export const getSplitFromFrequency = (
+  frequency: number, 
+  userLevel: UserLevel
+): 'full_body' | 'upper_lower' | 'ppl' => {
+  // Bezpečnostní override pro začátečníky
+  if (userLevel === 'beginner' && frequency >= 5) {
+    return 'upper_lower';
   }
-
-  // roleId je skutečná role (ne alias) - není potřeba substituce
-  return [];
+  
+  // Základní pravidlo podle frekvence
+  if (frequency <= 3) return 'full_body';
+  if (frequency === 4) return 'upper_lower';
+  return 'ppl'; // frequency >= 5
 };
+
+// Konstanty pro split
+export const SPLIT_INFO = {
+  full_body: { label: 'Full Body', days: ['A', 'B'] },
+  upper_lower: { label: 'Horní / Dolní tělo', days: ['A', 'B'] },
+  ppl: { label: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
+};
+```
+
+Upravit `MVP_GOALS` - odstranit `split` a sjednotit délku na 12 týdnů:
+
+```typescript
+export const MVP_GOALS = [
+  { 
+    id: 'muscle_gain' as TrainingGoalId, 
+    label: 'Nabrat svaly', 
+    emoji: '💪',
+    // SMAZAT: split: 'ppl',
+    description: 'Délka plánu: 12 týdnů',
+  },
+  { 
+    id: 'fat_loss' as TrainingGoalId, 
+    label: 'Zhubnout', 
+    emoji: '🔥',
+    description: 'Délka plánu: 12 týdnů', // Opravit z 8
+  },
+  // ... ostatní také 12 týdnů
+];
+```
+
+**Smazat:** `GOAL_TO_SPLIT` mapping (již nepotřebný)
+
+---
+
+### Fáze 2: Migrace databáze `day_templates`
+
+Změnit strukturu - templates vázané na **split typ**, ne na cíl:
+
+```sql
+-- 1. Přidat sloupec split_type
+ALTER TABLE day_templates ADD COLUMN split_type TEXT;
+
+-- 2. Migrovat data - templates jsou stejné pro všechny cíle se stejným splitem
+UPDATE day_templates SET split_type = 'full_body' WHERE goal_id = 'general_fitness';
+UPDATE day_templates SET split_type = 'upper_lower' WHERE goal_id IN ('fat_loss', 'strength');
+UPDATE day_templates SET split_type = 'ppl' WHERE goal_id = 'muscle_gain';
+
+-- 3. Deduplikovat - ponechat jen jednu sadu pro každý split
+-- (fat_loss a strength mají stejné UL templates)
+
+-- 4. V budoucnu: goal_id bude ovlivňovat jen rep_min/rep_max, ne strukturu dne
 ```
 
 ---
 
-## Fáze 3: Přidat potvrzení posilovny před tréninkem
+### Fáze 3: Upravit `useWorkoutGenerator.ts`
 
-### Nový stav v Training.tsx
-```typescript
-const [showGymConfirmDialog, setShowGymConfirmDialog] = useState(false);
-const [confirmedGymName, setConfirmedGymName] = useState<string>('');
-```
+Změnit `fetchDayTemplates` aby hledala podle **split_type**, ne goal_id:
 
-### Upravit handleStartWorkout
-**PŘED (řádky 850-882):**
 ```typescript
-const handleStartWorkout = async () => {
-  // Check if gym is open...
-  if (profile?.selected_gym_id) {
-    // ... gym open check
-  }
-  
-  if (currentExercises.length > 0 && plan?.gymId) {
-    setGeneratedExercises(currentExercises);
-    // ... start
-  }
+const fetchDayTemplates = async (splitType: string): Promise<DayTemplate[]> => {
+  const { data, error } = await supabase
+    .from('day_templates')
+    .select('*')
+    .eq('split_type', splitType)  // ZMĚNA: split_type místo goal_id
+    .order('day_letter')
+    .order('slot_order');
   // ...
 };
 ```
 
-**PO:**
+Upravit volání `generateWorkoutPlan`:
+
 ```typescript
-const handleStartWorkout = async () => {
-  // Uživatel musí mít vybranou posilovnu
-  if (!profile?.selected_gym_id) {
-    toast.error('Nejdříve vyber posilovnu na mapě');
-    navigate('/map');
-    return;
-  }
-  
-  // Načti název posilovny
-  const { data: gymData } = await supabase
-    .from('gyms')
-    .select('name, opening_hours')
-    .eq('id', profile.selected_gym_id)
-    .single();
-  
-  if (!gymData) {
-    toast.error('Posilovna nebyla nalezena');
-    return;
-  }
-  
-  // Zkontroluj otevírací hodiny
-  if (gymData.opening_hours) {
-    const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
-    if (!isOpen) {
-      setClosedGymName(gymData.name || 'Vybraná posilovna');
-      setShowGymClosedWarning(true);
-      return;
-    }
-  }
-  
-  // Zobraz potvrzovací dialog
-  setConfirmedGymName(gymData.name || 'Vybraná posilovna');
-  setShowGymConfirmDialog(true);
-};
-
-// Nová funkce pro potvrzení
-const handleConfirmGymAndStart = async () => {
-  setShowGymConfirmDialog(false);
-  
-  const currentExercises = getCurrentDayExercises();
-  
-  if (currentExercises.length > 0) {
-    setGeneratedExercises(currentExercises);
-    setSelectedWorkoutGymId(profile!.selected_gym_id!);
-    setShowWorkoutPreview(true);
-  } else {
-    toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán.');
-  }
-};
-
-// Změna posilovny
-const handleChangeGym = () => {
-  setShowGymConfirmDialog(false);
-  navigate('/map');
-};
+// Místo předávání goalId pro templates, vypočítat split
+const splitType = getSplitFromFrequency(trainingDays.length, userLevel);
+const templates = await fetchDayTemplates(splitType);
 ```
 
-### Nový dialog komponenta
+---
+
+### Fáze 4: Upravit `OnboardingDrawer.tsx`
+
+1. **Odstranit** import `GOAL_TO_SPLIT`
+2. **Přidat** import `getSplitFromFrequency`
+3. **Změnit** výpočet splitu:
+
+```typescript
+// PŘED (řádky 113, 176):
+const trainingSplit = primaryGoal ? GOAL_TO_SPLIT[primaryGoal] : null;
+
+// PO:
+const trainingSplit = trainingDays.length > 0 && userLevel
+  ? getSplitFromFrequency(trainingDays.length, userLevel)
+  : null;
+```
+
+4. **Změnit** info banner (řádky 339-350):
+
 ```tsx
-{/* Gym Confirmation Dialog */}
-<AlertDialog open={showGymConfirmDialog} onOpenChange={setShowGymConfirmDialog}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Potvrzení posilovny</AlertDialogTitle>
-      <AlertDialogDescription>
-        Jdeš cvičit do <strong>{confirmedGymName}</strong>?
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel onClick={handleChangeGym}>
-        Vybrat jinou
-      </AlertDialogCancel>
-      <AlertDialogAction onClick={handleConfirmGymAndStart}>
-        Ano, začít trénink
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+{/* Show split info derived from frequency */}
+{trainingDays.length > 0 && userLevel && (
+  <div className="mt-3 p-2 bg-muted rounded-lg text-center">
+    <span className="text-xs text-muted-foreground">
+      Split: <span className="font-medium text-foreground">
+        {getSplitFromFrequency(trainingDays.length, userLevel) === 'ppl' 
+          ? 'Push / Pull / Legs' 
+          : getSplitFromFrequency(trainingDays.length, userLevel) === 'upper_lower' 
+            ? 'Horní / Dolní tělo' 
+            : 'Full Body'}
+      </span> (podle počtu dnů: {trainingDays.length})
+    </span>
+  </div>
+)}
+```
+
+---
+
+### Fáze 5: Upravit `OnboardingGoalStep.tsx`
+
+Odstranit popis délky plánu z jednotlivých cílů (bude jednotná 12 týdnů):
+
+```typescript
+const OnboardingGoalStep = ({ value, onChange }: OnboardingGoalStepProps) => {
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold">Co je tvůj hlavní cíl?</h2>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Vyber jeden cíl - ovlivní typ cviků a počet opakování
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Délka plánu: 12 týdnů (pro všechny cíle)
+        </p>
+      </div>
+      {/* Goals bez description o délce */}
+    </div>
+  );
+};
 ```
 
 ---
 
 ## Shrnutí změn
 
-| Soubor | Změna | Popis |
-|--------|-------|-------|
-| `src/pages/Training.tsx` | Smazat `generateExercisesForDay` | Odstranit duplicitní generování (řádky 686-830) |
-| `src/pages/Training.tsx` | Přepsat `handleGenerateDayExercises` | Číst cviky z DB místo generování |
-| `src/pages/Training.tsx` | Přidat gym confirmation dialog | Nový stav + dialog + handlery |
-| `src/lib/selectionAlgorithm.ts` | Opravit `fetchRoleAliases` | Správná logika hledání aliasů |
+| Soubor | Změna |
+|--------|-------|
+| `src/lib/trainingGoals.ts` | Přidat `getSplitFromFrequency()`, smazat `GOAL_TO_SPLIT`, sjednotit délku na 12 týdnů |
+| `src/components/OnboardingDrawer.tsx` | Použít novou funkci pro split, opravit banner |
+| `src/components/onboarding/OnboardingGoalStep.tsx` | Odstranit individuální délky, přidat společnou 12 týdnů |
+| `src/hooks/useWorkoutGenerator.ts` | Změnit logiku načítání templates podle split_type |
+| Databáze `day_templates` | Přidat `split_type`, migrovat data |
 
 ---
 
-## Testovací scénáře
+## Logika podle metodiky
 
-1. **Uživatel s vygenerovaným plánem:**
-   - Klikne "Začít trénink"
-   - Zobrazí se dialog "Jdeš do [Gym]?"
-   - Potvrdí → Zobrazí se preview s cviky z DB
+```
+1. Uživatel vybere CÍL (strength, hypertrophy, conditioning, fat_loss)
+   → Ovlivňuje rep-range a RIR
 
-2. **Uživatel bez posilovny:**
-   - Klikne "Začít trénink"
-   - Přesměrován na `/map` s hláškou
+2. Uživatel vybere DNY (frekvence 2-6)
+   → Určuje SPLIT:
+     - ≤3 dny = Full Body A/B
+     - 4 dny = Upper/Lower A/B  
+     - ≥5 dní = Push/Pull/Legs A/B/C
+     - Začátečník + ≥5 dní = Upper/Lower (bezpečnostní override)
 
-3. **Uživatel s plánem bez cviků:**
-   - Klikne "Začít trénink"
-   - Zobrazí se chyba "Plán nemá cviky, regeneruj"
-
-4. **Alias role v šabloně:**
-   - Šablona má `push_general`
-   - Algoritmus najde alias → hledá cviky pod `horizontal_push`
+3. Délka plánu = 12 týdnů (pro VŠECHNY cíle)
+```
 
