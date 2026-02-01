@@ -15,6 +15,38 @@ import {
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
 
+// Role categories for split type detection
+const LOWER_BODY_ROLES = ['squat', 'hinge', 'lunge', 'step', 'jump'];
+const UPPER_BODY_ROLES = [
+  'horizontal_push', 'horizontal_pull', 
+  'vertical_push', 'vertical_pull',
+  'elbow_flexion', 'elbow_extension'
+];
+
+/**
+ * Derive split type from exercise roles in the plan
+ * Used as fallback when split_type is not stored in DB
+ */
+const deriveSplitTypeFromExercises = (exercises: Array<{ day_letter: string; role_id: string }>): SplitType => {
+  if (!exercises || exercises.length === 0) return 'full_body';
+  
+  // Analyze day A exercises
+  const dayAExercises = exercises.filter(e => e.day_letter === 'A');
+  const hasLowerBody = dayAExercises.some(e => LOWER_BODY_ROLES.includes(e.role_id));
+  const hasUpperBody = dayAExercises.some(e => UPPER_BODY_ROLES.includes(e.role_id));
+  
+  // If day A has both upper and lower body exercises → Full Body
+  if (hasLowerBody && hasUpperBody) {
+    return 'full_body';
+  }
+  
+  // Count unique days
+  const uniqueDays = new Set(exercises.map(e => e.day_letter));
+  if (uniqueDays.size >= 3) return 'ppl';
+  
+  return 'upper_lower';
+};
+
 interface WorkoutPlanData {
   id: string;
   gymId: string;
@@ -107,11 +139,10 @@ export const useWorkoutPlan = () => {
       const dayCount = uniqueDayLetters.size || 2;
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
-      // 5. Determine split_type: use stored value, snapshot, or calculate from frequency
-      const trainingDaysCount = planData.training_days?.length || 3;
+      // 5. Determine split_type: use stored value, snapshot, or derive from exercise roles
       const splitType: SplitType = (planData as any).split_type 
         || (planData.inputs_snapshot_json as any)?.split_type
-        || getSplitFromFrequency(trainingDaysCount, userLevel);
+        || deriveSplitTypeFromExercises(exercisesData || []);
 
       // 6. Get day templates for day names - by split_type
       const { data: dayTemplatesData } = await supabase

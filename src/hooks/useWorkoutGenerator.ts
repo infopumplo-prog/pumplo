@@ -207,6 +207,9 @@ export const useWorkoutGenerator = () => {
       selection_score: ex.selection_score
     }));
 
+    // Extract split_type from inputs snapshot
+    const splitType = (inputsSnapshot as any)?.split_type || null;
+    
     const { data, error } = await supabase.rpc('generate_workout_plan_atomic', {
       p_user_id: userId,
       p_gym_id: gymId,
@@ -217,7 +220,8 @@ export const useWorkoutGenerator = () => {
       p_generator_version: GENERATOR_VERSION,
       p_methodology_version: METHODOLOGY_VERSION,
       p_selection_seed: selectionSeed,
-      p_validation_report: validationReport as any
+      p_validation_report: validationReport as any,
+      p_split_type: splitType
     });
 
     if (error) {
