@@ -29,6 +29,7 @@ import GymSettings from "@/pages/business/GymSettings";
 import GymStats from "@/pages/business/GymStats";
 import Training from "@/pages/Training";
 import WorkoutHistory from "@/pages/WorkoutHistory";
+import MyPlan from "@/pages/MyPlan";
 import Install from "@/pages/Install";
 import Settings from "@/pages/Settings";
 
@@ -128,6 +129,7 @@ const AppRoutes = () => (
       <Route path="/training" element={<Training />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/history" element={<WorkoutHistory />} />
+      <Route path="/profile/plan" element={<MyPlan />} />
       <Route path="/settings" element={<Settings />} />
     </Route>
     
