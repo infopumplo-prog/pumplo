@@ -64,6 +64,7 @@ export type Database = {
           rep_min: number | null
           role_id: string
           slot_order: number
+          split_type: string | null
         }
         Insert: {
           advanced_sets?: number
@@ -78,6 +79,7 @@ export type Database = {
           rep_min?: number | null
           role_id: string
           slot_order: number
+          split_type?: string | null
         }
         Update: {
           advanced_sets?: number
@@ -92,6 +94,7 @@ export type Database = {
           rep_min?: number | null
           role_id?: string
           slot_order?: number
+          split_type?: string | null
         }
         Relationships: [
           {

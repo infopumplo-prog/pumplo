@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
-import { TrainingGoalId, UserLevel, GOAL_TO_SPLIT } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, getSplitFromFrequency } from '@/lib/trainingGoals';
 import { ONBOARDING_TOTAL_STEPS } from '@/lib/onboardingTypes';
 import {
   OnboardingGoalStep,
@@ -114,7 +114,9 @@ const Auth = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
 
       // 3. Save onboarding data to profile (retry logic for race condition)
-      const trainingSplit = primaryGoal ? GOAL_TO_SPLIT[primaryGoal] : null;
+      const trainingSplit = trainingDays.length > 0 && userLevel
+        ? getSplitFromFrequency(trainingDays.length, userLevel)
+        : null;
       
       let profileUpdateSuccess = false;
       let retries = 3;

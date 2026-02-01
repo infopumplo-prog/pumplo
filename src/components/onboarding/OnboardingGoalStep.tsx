@@ -1,4 +1,4 @@
-import { MVP_GOALS, TrainingGoalId } from '@/lib/trainingGoals';
+import { MVP_GOALS, TrainingGoalId, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
 
 interface OnboardingGoalStepProps {
   value: TrainingGoalId | null;
@@ -11,7 +11,10 @@ const OnboardingGoalStep = ({ value, onChange }: OnboardingGoalStepProps) => {
       <div className="text-center">
         <h2 className="text-2xl font-bold">Co je tvůj hlavní cíl?</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Vyber jeden cíl, podle něj připravíme tvůj tréninkový plán
+          Vyber jeden cíl - ovlivní typ cviků a počet opakování
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Délka plánu: {PLAN_DURATION_WEEKS} týdnů
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3">
