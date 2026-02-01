@@ -492,8 +492,33 @@ const Training = () => {
       const isFuture = isExtraWeek || viewingWeek > currentWeek || 
         (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
       
-      // Is this day missed? (past, not completed, not in extra week)
-      const isMissed = !isExtraWeek && (isPastThisWeek || isWeekInPast) && !isCompleted;
+      // Calculate actual calendar date for this day in this week
+      // Used to check if day is before plan start (shouldn't be marked as missed)
+      const getActualDateForDay = (): Date | null => {
+        if (!planStartDate) return null;
+        
+        // Calculate the Monday of the plan's start week
+        const startDay = planStartDate.getDay(); // 0=Sunday
+        const daysFromMonday = startDay === 0 ? 6 : startDay - 1; // Convert to Mon=0
+        const planWeekMonday = new Date(planStartDate);
+        planWeekMonday.setDate(planStartDate.getDate() - daysFromMonday);
+        
+        // Add weeks to get to the viewing week's Monday
+        const viewingWeekMonday = new Date(planWeekMonday);
+        viewingWeekMonday.setDate(planWeekMonday.getDate() + (viewingWeek - 1) * 7);
+        
+        // Add days to get to the specific day of week
+        const targetDate = new Date(viewingWeekMonday);
+        targetDate.setDate(viewingWeekMonday.getDate() + dayOrderIndex);
+        
+        return targetDate;
+      };
+      
+      const actualDate = getActualDateForDay();
+      const isBeforePlanStart = planStartDate && actualDate && actualDate < planStartDate;
+      
+      // Is this day missed? (past, not completed, not in extra week, AND not before plan start)
+      const isMissed = !isExtraWeek && !isBeforePlanStart && (isPastThisWeek || isWeekInPast) && !isCompleted;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
