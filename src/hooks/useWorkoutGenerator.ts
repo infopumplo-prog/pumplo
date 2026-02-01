@@ -102,30 +102,45 @@ export const useWorkoutGenerator = () => {
    * - One exercise (including rest): ~8 min
    * - Padding: 3 min max over user-set time
    */
+  /**
+   * Calculate number of exercises based on training duration
+   * 
+   * PUMPLO Methodology v2.0 Hard Caps:
+   * - ≤30 min: max 4 exercises
+   * - 31-60 min: max 6 exercises  
+   * - 61+ min: max 7 exercises
+   */
   const calculateSlotsForDuration = (
     durationMinutes: number,
     templateSlots: DayTemplateSlot[],
     userLevel: UserLevel
   ): DayTemplateSlot[] => {
-    const WARMUP_MINUTES = 4;
-    const PADDING_MINUTES = 3;
-    const MINUTES_PER_EXERCISE = 8;
+    // Hard caps from PUMPLO methodology v2.0
+    let maxExercises: number;
+    if (durationMinutes <= 30) {
+      maxExercises = 4;
+    } else if (durationMinutes <= 60) {
+      maxExercises = 6;
+    } else {
+      maxExercises = 7; // 61+ min - never more than 7
+    }
     
-    const availableMinutes = durationMinutes - WARMUP_MINUTES + PADDING_MINUTES;
+    const WARMUP_MINUTES = 4;
+    const MINUTES_PER_EXERCISE = 8;
+    const availableMinutes = durationMinutes - WARMUP_MINUTES;
     let targetExerciseCount = Math.floor(availableMinutes / MINUTES_PER_EXERCISE);
     
+    // Apply methodology hard caps
     const MIN_EXERCISES = 3;
-    const MAX_EXERCISES = Math.max(templateSlots.length + 4, 10);
+    targetExerciseCount = Math.max(MIN_EXERCISES, Math.min(targetExerciseCount, maxExercises));
     
-    targetExerciseCount = Math.max(MIN_EXERCISES, Math.min(targetExerciseCount, MAX_EXERCISES));
-    
-    console.log(`[WorkoutGenerator] Duration: ${durationMinutes}min -> Target: ${targetExerciseCount} exercises`);
+    console.log(`[WorkoutGenerator] Duration: ${durationMinutes}min -> Target: ${targetExerciseCount} exercises (max cap: ${maxExercises})`);
     
     if (targetExerciseCount <= templateSlots.length) {
       return templateSlots.slice(0, targetExerciseCount);
     }
     
-    // Extend template if needed
+    // Extend template if needed (up to maxExercises)
     const extended = [...templateSlots];
     let i = 0;
     while (extended.length < targetExerciseCount) {

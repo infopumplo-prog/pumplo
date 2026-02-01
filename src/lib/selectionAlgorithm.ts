@@ -208,6 +208,9 @@ export const calculateMuscleScore = (
   return score;
 };
 
+// Penalty for using same equipment type multiple times in one session
+const PENALTY_EQUIPMENT_REPETITION = -5;
+
 /**
  * Calculate complete exercise score
  */
@@ -217,6 +220,11 @@ export const calculateExerciseScore = (
   targetMuscles: TargetMuscles,
   history: Map<string, Date[]>
 ): ExerciseCandidate => {
+  // Equipment repetition penalty - prefer variety in equipment types within session
+  const equipmentType = exercise.equipment_type || 'bodyweight';
+  const equipmentRepetitionPenalty = context.usedEquipmentTypes.has(equipmentType) 
+    ? PENALTY_EQUIPMENT_REPETITION : 0;
+
   const scores: ExerciseScores = {
     roleMatch: SCORE_ROLE_MATCH,
     muscleScore: calculateMuscleScore(exercise, context.coveredMusclesSession, targetMuscles),
@@ -226,7 +234,7 @@ export const calculateExerciseScore = (
       ? SCORE_BEGINNER_FRIENDLY : 0,
     repetitionPenalty: getRepetitionPenalty(exercise.id, exercise.primary_role || '', history),
     injuryPenalty: isContraindicated(exercise, context.injuries) ? PENALTY_INJURY : 0,
-    varietyBonus: getVarietyBonus(exercise, context),
+    varietyBonus: getVarietyBonus(exercise, context) + equipmentRepetitionPenalty,
   };
   
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);

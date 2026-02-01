@@ -63,7 +63,7 @@ export const ExercisePlayer = ({
   const [showRestTimer, setShowRestTimer] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) {
+    if (videoRef.current && videoUrl) {
       videoRef.current.muted = true;
       if (isPlaying && !showRestTimer) {
         videoRef.current.play().catch(() => {});
@@ -71,7 +71,7 @@ export const ExercisePlayer = ({
         videoRef.current.pause();
       }
     }
-  }, [isPlaying, showRestTimer]);
+  }, [isPlaying, showRestTimer, videoUrl]);
 
   const handleCompleteSet = (setIndex: number, weight?: number, reps?: number) => {
     const newSetsData = [...setsData];
