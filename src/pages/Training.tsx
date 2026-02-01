@@ -371,7 +371,8 @@ const Training = () => {
           profile.user_level as any,
           profile.injuries || [],
           profile.equipment_preference,
-          durationMinutes
+          durationMinutes,
+          profile.training_days || []
         );
         
         if (planId) {
