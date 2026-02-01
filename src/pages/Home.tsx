@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -13,6 +15,8 @@ import PageTransition from '@/components/PageTransition';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -22,8 +26,21 @@ interface TrainingGoalWithDuration {
   day_count: number;
   duration_weeks: number;
 }
+interface TodayWorkoutSession {
+  id: string;
+  day_letter: string;
+  goal_id: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  total_sets: number | null;
+  total_reps: number | null;
+  total_weight_kg: number | null;
+}
+
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     profile,
     isLoading
@@ -41,10 +58,10 @@ const Home = () => {
     stats
   } = useWorkoutStats();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [showSessionDetail, setShowSessionDetail] = useState(false);
+  const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
+  
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
-  if (isLoading) {
-    return <HomePageSkeleton />;
-  }
 
   // Check if workout was completed today
   const todaySession = stats.today.totalWorkouts > 0 ? stats.lastDays.find(d => {
@@ -54,6 +71,39 @@ const Home = () => {
   }) || null : null;
   const completedTodayDayLetter = todaySession?.dayLetter || null;
   const wasCompletedToday = completedTodayDayLetter !== null;
+
+  // Fetch today's completed workout session
+  useEffect(() => {
+    const fetchTodaySession = async () => {
+      if (!user || !wasCompletedToday) {
+        setTodayWorkoutSession(null);
+        return;
+      }
+      
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      
+      const { data } = await supabase
+        .from('workout_sessions')
+        .select('id, day_letter, goal_id, started_at, completed_at, duration_seconds, total_sets, total_reps, total_weight_kg')
+        .eq('user_id', user.id)
+        .gte('started_at', startOfDay.toISOString())
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data) {
+        setTodayWorkoutSession(data);
+      }
+    };
+    
+    fetchTodaySession();
+  }, [user, wasCompletedToday]);
+
+  if (isLoading) {
+    return <HomePageSkeleton />;
+  }
 
   // Training days - use snapshotted plan data when plan exists
   const trainingDays = plan?.trainingDays || profile?.training_days || [];
@@ -274,7 +324,7 @@ const Home = () => {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    onClick={isClickable ? () => navigate('/profile/history') : undefined}
+                    onClick={isClickable ? () => setShowSessionDetail(true) : undefined}
                     whileTap={isClickable ? { scale: 0.98 } : undefined}
                   >
                     <div className="flex items-center gap-4">
@@ -344,6 +394,26 @@ const Home = () => {
 
         {/* Onboarding Drawer */}
         <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+
+        {/* Today's Workout Detail Drawer */}
+        <Drawer open={showSessionDetail} onOpenChange={setShowSessionDetail}>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerHeader>
+              <DrawerTitle className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-green-500" />
+                Dnešní trénink dokončen
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-6 overflow-y-auto">
+              {todayWorkoutSession && (
+                <WorkoutSessionCard 
+                  session={todayWorkoutSession} 
+                  variant="full" 
+                />
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
     </PageTransition>;
 };
