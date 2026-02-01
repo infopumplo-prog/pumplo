@@ -123,6 +123,9 @@ const Training = () => {
   
   // Plan completion confirmation
   const [showPlanCompleteDialog, setShowPlanCompleteDialog] = useState(false);
+  
+  // Missing exercises dialog
+  const [showMissingExercisesDialog, setShowMissingExercisesDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
   
   // Workout preview and warmup state
@@ -652,7 +655,7 @@ const Training = () => {
         }
       } else {
         // Žádné cviky v DB - plán nemá vygenerované cviky
-        toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán v nastavení.');
+        setShowMissingExercisesDialog(true);
       }
     } catch (err) {
       console.error('Error loading exercises:', err);
@@ -751,7 +754,7 @@ const Training = () => {
       setSelectedWorkoutGymId(profile!.selected_gym_id!);
       setShowWorkoutPreview(true);
     } else {
-      toast.error('Plán nemá vygenerované cviky. Prosím regeneruj plán.');
+      setShowMissingExercisesDialog(true);
     }
   };
 
@@ -2042,6 +2045,52 @@ const Training = () => {
               >
                 <MapPin className="w-4 h-4" />
                 Vybrat jinou posilovnu
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Missing Exercises Dialog */}
+        <AlertDialog open={showMissingExercisesDialog} onOpenChange={setShowMissingExercisesDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-500" />
+                Plán nemá vygenerované cviky
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3" asChild>
+                <div>
+                  <p>
+                    Tvůj tréninkový plán nemá vygenerované cviky. To se může stát, když:
+                  </p>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    <li>Změnila se dostupná vybavení v posilovně</li>
+                    <li>Plán byl vytvořen bez vybrané posilovny</li>
+                  </ul>
+                  <p className="text-sm">
+                    Klikni na tlačítko níže pro vygenerování nového plánu.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleRegeneratePlan}
+                disabled={isRegeneratingPlan}
+                className="gap-2"
+              >
+                {isRegeneratingPlan ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Generuji plán...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Regenerovat plán
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
