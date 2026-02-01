@@ -517,8 +517,17 @@ const Training = () => {
       const actualDate = getActualDateForDay();
       const isBeforePlanStart = planStartDate && actualDate && actualDate < planStartDate;
       
-      // Is this day missed? (past, not completed, not in extra week, AND not before plan start)
-      const isMissed = !isExtraWeek && !isBeforePlanStart && (isPastThisWeek || isWeekInPast) && !isCompleted;
+      // Compare with TODAY's actual calendar date (not day-of-week index)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isActuallyInPast = actualDate && actualDate < today;
+      
+      // Is this day missed? Only if:
+      // 1. Not in extra week (shifted days at end of plan)
+      // 2. Its actual calendar date is in the PAST (not future)
+      // 3. Not before plan start date
+      // 4. Not already completed
+      const isMissed = !isExtraWeek && isActuallyInPast && !isBeforePlanStart && !isCompleted;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
@@ -1573,6 +1582,49 @@ const Training = () => {
             </div>
             <Progress value={progressPercentage} className="h-2" />
           </div>
+          
+          {/* Warning: Plan has too many exercises - needs regeneration */}
+          {plan && (() => {
+            const currentDayExerciseCount = plan.exercises.filter(e => e.dayLetter === plan.currentDayLetter).length;
+            return currentDayExerciseCount > 7;
+          })() && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    Plán obsahuje příliš mnoho cviků
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dle aktuální metodiky by trénink měl mít max 7 cviků. Regeneruj plán pro optimální rozložení.
+                  </p>
+                  <Button 
+                    onClick={handleRegeneratePlan} 
+                    variant="outline" 
+                    size="sm"
+                    className="mt-2 h-8 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                    disabled={isRegeneratingPlan}
+                  >
+                    {isRegeneratingPlan ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                        Regeneruji...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Regenerovat plán
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Week Navigation - Compact */}
