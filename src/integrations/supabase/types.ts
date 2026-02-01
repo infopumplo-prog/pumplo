@@ -1134,21 +1134,38 @@ export type Database = {
     }
     Functions: {
       cleanup_old_notification_logs: { Args: never; Returns: undefined }
-      generate_workout_plan_atomic: {
-        Args: {
-          p_exercises: Json
-          p_generator_version: string
-          p_goal_id: string
-          p_gym_id: string
-          p_inputs_snapshot: Json
-          p_methodology_version: string
-          p_selection_seed: string
-          p_training_days: string[]
-          p_user_id: string
-          p_validation_report?: Json
-        }
-        Returns: string
-      }
+      generate_workout_plan_atomic:
+        | {
+            Args: {
+              p_exercises: Json
+              p_generator_version: string
+              p_goal_id: string
+              p_gym_id: string
+              p_inputs_snapshot: Json
+              p_methodology_version: string
+              p_selection_seed: string
+              p_training_days: string[]
+              p_user_id: string
+              p_validation_report?: Json
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_exercises: Json
+              p_generator_version: string
+              p_goal_id: string
+              p_gym_id: string
+              p_inputs_snapshot: Json
+              p_methodology_version: string
+              p_selection_seed: string
+              p_split_type?: string
+              p_training_days: string[]
+              p_user_id: string
+              p_validation_report?: Json
+            }
+            Returns: string
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
