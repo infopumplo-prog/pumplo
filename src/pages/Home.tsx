@@ -264,7 +264,7 @@ const Home = () => {
                               <p className="text-white/70 text-sm">{plan.goalName}</p>
                             </div>
                           </div>
-                          <button onClick={() => navigate('/training')} className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                          <button onClick={() => navigate('/profile/plan')} className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
