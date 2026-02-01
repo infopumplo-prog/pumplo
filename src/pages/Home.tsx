@@ -266,7 +266,7 @@ const Home = () => {
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-foreground">Nadcházející tréninky</h3>
                       <button
-                        onClick={() => navigate('/training')}
+                        onClick={() => navigate('/profile/plan')}
                         className="text-sm text-primary flex items-center gap-1 hover:underline"
                       >
                         Vše
