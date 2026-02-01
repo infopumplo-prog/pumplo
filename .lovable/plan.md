@@ -1,137 +1,209 @@
 
-# Přesun rozšířeného přehledu do MyPlan s barevným kalendářem
+# Reorganizace stránky Můj plán - Sloučení karet
 
-## Co uživatel chce
+## Přehled změn
 
-1. **Na Domů (Home.tsx) ZŮSTANE:**
-   - Velká modrá karta "Týden X / Cíl / Celkový progress X%"
-   - Sekce "Nadcházející tréninky" (1-4 tréninky)
-   - Tlačítko "Vše" → přesměruje na `/profile/plan` (místo `/training`)
+Uživatel chce dvě hlavní karty:
 
-2. **Na MyPlan.tsx PŘIDÁME** (co je teď na Training.tsx po rozkliknutí "Vše"):
-   - Header s názvem cíle, frekvencí (12 týdnů • 4× týdně)
-   - Celkový progress bar (1/48 tréninků)
-   - Navigace mezi týdny (< Týden 1/13 teď >)
-   - Seznam tréninků aktuálního týdne
-   - Kalendář 12 týdnů s **barevným rozlišením podle RIR metodiky**
-   - Legenda typů týdnů
+1. **Karta 1: "Přehled plánu"** = Sloučení "Celkový progress" + "Detaily plánu"
+2. **Karta 2: "Kalendář & Tréninky"** = Sloučení "Kalendář týdnů" + "Tréninky týdne X"
+   - Primárně zobrazovat kalendář týdnů
+   - Po kliknutí na týden se rozbalí/zobrazí tréninky daného týdne
 
-## Barevné rozlišení týdnů (podle RIR_BY_WEEK)
+## Nová struktura UI
 
-Podle existující metodiky v `src/lib/trainingGoals.ts`:
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  ← Nabrat svaly                                                 │
+│     12 týdnů • 4× týdně                                         │
+└─────────────────────────────────────────────────────────────────┘
 
-| Týden | Typ | Barva | RIR |
-|-------|-----|-------|-----|
-| 1-2 | Normální | Šedá (neutrální) | RIR 3 |
-| 3-4 | Náročné | Oranžová | RIR 2 |
-| 5-6 | Hardcore | Červená/růžová | RIR 1 |
-| 7-8 | Deload | Zelená | Regenerace |
-| 9-10 | Normální | Šedá | RIR 3 |
-| 11-12 | Náročné | Oranžová | RIR 2 |
+┌─────────────────────────────────────────────────────────────────┐
+│  📊 Přehled plánu                                               │
+│  ───────────────────────────────────────────────────────────────│
+│  Celkový progress:  0/48 tréninků                          0%   │
+│  ════════════════════════════════════════════════════════       │
+│                                                                 │
+│  🏋️ Split: Upper/Lower                                          │
+│  📍 Posilovna: Gym Name                                         │
+│  📅 Dny: Po, St, Pá, Ne                                         │
+└─────────────────────────────────────────────────────────────────┘
 
-### Funkce pro typ týdne:
-```typescript
-import { getRIRGuidance } from '@/lib/trainingGoals';
+┌─────────────────────────────────────────────────────────────────┐
+│  📅 Kalendář plánu                                              │
+│  ───────────────────────────────────────────────────────────────│
+│  ┌─────┬─────┬─────┬─────┐                                      │
+│  │  1  │  2  │  3  │  4  │  ← Kliknutelné týdny                │
+│  │ ⚪  │ ⚪  │ 🟠  │ 🟠  │                                      │
+│  ├─────┼─────┼─────┼─────┤                                      │
+│  │  5  │  6  │  7  │  8  │                                      │
+│  │ 🔴  │ 🔴  │ 🟢  │ 🟢  │                                      │
+│  ├─────┼─────┼─────┼─────┤                                      │
+│  │  9  │ 10  │ 11  │ 12  │                                      │
+│  │ ⚪  │ ⚪  │ 🟠  │ 🟠  │                                      │
+│  └─────┴─────┴─────┴─────┘                                      │
+│  Legenda: ⚪ Normální | 🟠 Náročný | 🔴 Hardcore | 🟢 Deload     │
+│                                                                 │
+│  ─────────────── Týden 5 (Hardcore) ────────────────            │
+│  ┌─────────────────────────────────────────────────┐            │
+│  │  A  Pondělí    Horní tělo                       │            │
+│  │  B  Středa     Dolní tělo                       │            │
+│  │  A  Pátek      Horní tělo                       │            │
+│  │  B  Neděle     Dolní tělo              [Dnes]   │            │
+│  └─────────────────────────────────────────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 
-const getWeekType = (weekNumber: number) => {
-  const { rir, label } = getRIRGuidance(weekNumber);
-  if (label === 'Deload') return 'deload';
-  if (rir === 1) return 'hardcore';
-  if (rir === 2) return 'moderate';
-  return 'normal';
-};
+┌─────────────────────────────────────────────────────────────────┐
+│  [🔄 Regenerovat plán]                                          │
+│  [⚙️ Změnit plán]                                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Změny v souborech
+## Detailní změny
 
-### 1. Home.tsx - Změna navigace tlačítka "Vše"
+### Karta 1: Přehled plánu (sloučení řádků 354-375 a 524-566)
 
-**Řádek 269:** Změnit `navigate('/training')` → `navigate('/profile/plan')`
+Sloučíme do jedné karty:
+- **Progress bar** s počtem tréninků a procentem
+- **Detaily:** Split type, Posilovna, Tréninkové dny
 
 ```tsx
-<button
-  onClick={() => navigate('/profile/plan')}  // ← ZMĚNA
-  className="text-sm text-primary flex items-center gap-1 hover:underline"
->
-  Vše
-  <ChevronRight className="w-4 h-4" />
-</button>
+<Card className="border-border rounded-2xl shadow-card">
+  <CardHeader className="pb-3">
+    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+      <Target className="w-5 h-5 text-primary" />
+      Přehled plánu
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    {/* Progress */}
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm text-muted-foreground">Celkový progress</span>
+        <span className="text-lg font-bold text-primary">{Math.round(progressPercent)}%</span>
+      </div>
+      <Progress value={progressPercent} className="h-2" />
+      <p className="text-sm text-muted-foreground mt-1">
+        {completedSessions}/{totalPlanSessions} tréninků
+      </p>
+    </div>
+
+    {/* Detaily */}
+    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+      <div className="flex items-center gap-2">
+        <Dumbbell className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm">{SPLIT_TYPE_LABELS[plan.splitType]}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <MapPin className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm">{gymName || 'Nevybráno'}</span>
+      </div>
+    </div>
+
+    {/* Tréninkové dny */}
+    <div className="flex flex-wrap gap-1">
+      {trainingDays.map(day => (
+        <Badge key={day} variant="secondary" className="text-xs">
+          {DAY_NAMES_SHORT[day]}
+        </Badge>
+      ))}
+    </div>
+  </CardContent>
+</Card>
 ```
 
-### 2. MyPlan.tsx - Kompletní přepracování
+### Karta 2: Kalendář plánu + Tréninky týdne (sloučení řádků 468-522 a 414-466)
 
-Přidáme:
-1. **Header s cílem a frekvencí** (jako na Training.tsx rozbalené)
-2. **Progress bar** (X/Y tréninků)
-3. **Navigace mezi týdny** (< Týden X/12 >)
-4. **Seznam tréninků aktuálního týdne** (Po, St, Pá...)
-5. **Barevný kalendář 12 týdnů** s legendou
-6. **Akční tlačítka** (Regenerovat, Změnit plán)
-
-### Nová struktura MyPlan.tsx:
+Jedna karta obsahující:
+1. **Kalendář týdnů** (grid 4x3) - vždy viditelný
+2. **Legenda** pod kalendářem
+3. **Sekce tréninků vybraného týdne** - zobrazí se po kliknutí na týden
+   - Tato sekce bude mít barevné pozadí podle typu týdne
 
 ```tsx
-// Imports + getRIRGuidance
+<Card className="border-border rounded-2xl shadow-card">
+  <CardHeader className="pb-3">
+    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+      <Calendar className="w-5 h-5 text-primary" />
+      Kalendář plánu
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    {/* Kalendář týdnů - grid 4x3 */}
+    <div className="grid grid-cols-4 gap-2">
+      {/* ... týdny 1-12 jako kliknutelné buttony ... */}
+    </div>
 
-const getWeekType = (weekNumber: number) => {
-  const { rir, label } = getRIRGuidance(weekNumber);
-  if (label === 'Deload') return 'deload';
-  if (rir === 1) return 'hardcore';
-  if (rir === 2) return 'moderate';
-  return 'normal';
-};
+    {/* Legenda */}
+    <div className="grid grid-cols-2 gap-2 pt-3 border-t">
+      {/* ... legenda ... */}
+    </div>
 
-const weekTypeColors = {
-  normal: 'bg-muted/50 border-border text-muted-foreground',
-  moderate: 'bg-amber-500/20 border-amber-500/30 text-amber-600',
-  hardcore: 'bg-red-500/20 border-red-500/30 text-red-600',
-  deload: 'bg-green-500/20 border-green-500/30 text-green-600'
-};
-
-const weekTypeLabels = {
-  normal: 'Normální',
-  moderate: 'Náročný',
-  hardcore: 'Hardcore',
-  deload: 'Deload'
-};
+    {/* Tréninky vybraného týdne - zobrazí se když selectedWeek !== null */}
+    {selectedWeek && (
+      <div className={cn(
+        "mt-4 p-4 rounded-xl border-2",
+        weekTypeStyles[getWeekType(selectedWeek)].bg,
+        weekTypeStyles[getWeekType(selectedWeek)].border
+      )}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {weekTypeStyles[getWeekType(selectedWeek)].icon}
+            <span className={cn("font-semibold", weekTypeStyles[getWeekType(selectedWeek)].text)}>
+              Týden {selectedWeek} - {weekTypeLabels[getWeekType(selectedWeek)]}
+            </span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setSelectedWeek(null)}
+          >
+            Zavřít
+          </Button>
+        </div>
+        
+        {/* Seznam tréninků */}
+        <div className="space-y-2">
+          {schedule.slice(0, trainingDaysCount).map((day, index) => (
+            <div key={index} className="flex items-center gap-3 p-2 bg-background/50 rounded-lg">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold bg-background">
+                {day.dayLetter}
+              </div>
+              <div>
+                <p className="font-medium">{DAY_NAMES_CZ[day.dayOfWeek]}</p>
+                <p className="text-xs text-muted-foreground">{dayTemplate?.dayName}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </CardContent>
+</Card>
 ```
 
-## Vizuální náhled kalendáře
-
-```
-┌─────────┬─────────┬─────────┬─────────┐
-│ Týden 1 │ Týden 2 │ Týden 3 │ Týden 4 │
-│  ⚪      │  ⚪      │  🟠      │  🟠      │
-├─────────┼─────────┼─────────┼─────────┤
-│ Týden 5 │ Týden 6 │ Týden 7 │ Týden 8 │
-│  🔴      │  🔴      │  🟢      │  🟢      │
-├─────────┼─────────┼─────────┼─────────┤
-│ Týden 9 │ Týden 10│ Týden 11│ Týden 12│
-│  ⚪      │  ⚪      │  🟠      │  🟠      │
-└─────────┴─────────┴─────────┴─────────┘
-
-Legenda:
-⚪ Normální (RIR 3) | 🟠 Náročný (RIR 2) | 🔴 Hardcore (RIR 1) | 🟢 Deload
-```
-
-## Shrnutí změn
+## Soubory ke změně
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Home.tsx` | Tlačítko "Vše" → `/profile/plan` místo `/training` |
-| `src/pages/MyPlan.tsx` | Přidat header s cílem, progress, navigaci týdnů, seznam tréninků, barevný kalendář s legendou |
+| `src/pages/MyPlan.tsx` | Sloučit karty: Progress+Detaily → "Přehled plánu", Kalendář+Tréninky → "Kalendář plánu" |
+
+## Logika zobrazení tréninků
+
+1. **Výchozí stav:** `selectedWeek = null` → zobrazí se pouze kalendář
+2. **Po kliknutí na týden:** `selectedWeek = číslo` → pod kalendářem se zobrazí barevná sekce s tréninky
+3. **Tlačítko "Zavřít"** nebo klik na stejný týden → `selectedWeek = null`
+
+## Interakce
+
+- Klik na týden v kalendáři → zobrazí tréninky daného týdne
+- Klik na aktuálně vybraný týden → skryje tréninky (toggle)
+- Barevné pozadí sekce tréninků odpovídá typu týdne (červená=hardcore, zelená=deload, atd.)
 
 ## Očekávaný výsledek
 
-1. Uživatel na **Domů** vidí:
-   - Velká modrá karta s týdnem a progressem
-   - Nadcházející tréninky (1-4 dny)
-   - Klik na "Vše" → přejde do **Profil → Můj plán**
-
-2. Na stránce **Můj plán** uživatel vidí:
-   - Cíl + frekvence (12 týdnů • 4× týdně)
-   - Celkový progress (X/48 tréninků)
-   - Navigaci mezi týdny (< Týden 1/12 >)
-   - Seznam tréninků vybraného týdne
-   - **Barevný kalendář 12 týdnů** s legendou (Normální/Náročný/Hardcore/Deload)
-   - Tlačítka pro regeneraci a změnu plánu
+Stránka bude mít pouze 3 hlavní sekce:
+1. **Header** (cíl + frekvence)
+2. **Přehled plánu** (progress + split + posilovna + dny)
+3. **Kalendář plánu** (12 týdnů + legenda + rozbalitelné tréninky po kliknutí)
+4. **Akční tlačítka** (Regenerovat, Změnit plán)
