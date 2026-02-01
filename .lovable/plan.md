@@ -1,89 +1,96 @@
 
-# Oprava: Regenerace plánu s Upper/Lower splitem
 
-## Příčina problému
+# Plán: Nová stránka "Můj plán" v sekci Profil
 
-Při regeneraci plánu se v `handleRegeneratePlan` (Training.tsx, řádky 368-375) volá:
+## Přehled
 
-```typescript
-const planId = await generateWorkoutPlan(
-  selectedGymId,
-  mappedGoalId,
-  profile.user_level as any,
-  profile.injuries || [],
-  profile.equipment_preference,
-  durationMinutes
-  // ← CHYBÍ 7. parametr: profile.training_days!
-);
+Vytvoříme novou stránku `/profile/plan`, která bude centrální místem pro správu tréninkového plánu. Bude dostupná z profilu a umožní uživateli:
+- Vidět přehled aktuálního plánu (split, cíl, posilovna, týdny)
+- Prohlížet kalendář týdnů
+- Regenerovat plán
+- Změnit plán (otevře dotazník)
+
+## Co uživatel uvidí
+
+### Sekce 1: Přehled plánu
+- **Cíl tréninku** (např. "Nabrat svaly")
+- **Typ splitu** (např. "Upper/Lower" nebo "Full Body")
+- **Vybraná posilovna** (název)
+- **Délka plánu** (např. "Týden 3/12")
+- **Tréninkové dny** (Po, St, Pá, Ne)
+
+### Sekce 2: Kalendář týdnů
+- Vizuální přehled všech týdnů (1-12)
+- Aktuální týden označen
+- Dokončené týdny označeny zeleně
+- Možnost kliknout pro detail (v budoucnu)
+
+### Sekce 3: Akce plánu
+- **Regenerovat plán** - vytvoří nový plán se stejnými nastaveními
+- **Změnit plán** - otevře dotazník pro úpravu cíle/dnů/atd.
+
+## Navigace
+
+Z profilu přidáme novou položku menu:
+```
+📋 Můj plán → /profile/plan
 ```
 
-Funkce `generateWorkoutPlan` má na řádku 253:
-```typescript
-trainingDays: string[] = []  // Default prázdné pole
-```
+## Technické detaily
 
-A pak na řádku 289:
-```typescript
-trainingDays.length > 0 ? trainingDays.length : 3  // Fallback na 3 dny
-```
+### Nové soubory
 
-**Tvůj profil má 4+ tréninkové dny**, ale systém používá fallback 3 dny → `full_body` místo `upper_lower`.
+| Soubor | Účel |
+|--------|------|
+| `src/pages/MyPlan.tsx` | Hlavní komponenta stránky |
 
----
-
-## Řešení
-
-Předat `profile.training_days` do `generateWorkoutPlan()` při regeneraci.
-
-### Změna v Training.tsx (řádek 368-375)
-
-**Před:**
-```typescript
-const planId = await generateWorkoutPlan(
-  selectedGymId,
-  mappedGoalId,
-  profile.user_level as any,
-  profile.injuries || [],
-  profile.equipment_preference,
-  durationMinutes
-);
-```
-
-**Po:**
-```typescript
-const planId = await generateWorkoutPlan(
-  selectedGymId,
-  mappedGoalId,
-  profile.user_level as any,
-  profile.injuries || [],
-  profile.equipment_preference,
-  durationMinutes,
-  profile.training_days || []  // ← PŘIDÁNO!
-);
-```
-
----
-
-## Soubory ke změně
+### Úpravy existujících souborů
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Training.tsx` | Přidat 7. parametr `profile.training_days \|\| []` do volání `generateWorkoutPlan` na řádku 375 |
+| `src/App.tsx` | Přidat route `/profile/plan` |
+| `src/pages/Profile.tsx` | Přidat menu položku "Můj plán" s ikonou Calendar |
 
----
+### Struktura MyPlan.tsx
+
+```tsx
+// Hlavní komponenty:
+// 1. Header s tlačítkem zpět
+// 2. Card s přehledem plánu (cíl, split, posilovna, týden)
+// 3. Kalendář týdnů (grid 4x3 pro 12 týdnů)
+// 4. Akční tlačítka (Regenerovat, Změnit plán)
+// 5. OnboardingDrawer pro editaci
+
+// Použité hooks:
+// - useWorkoutPlan() - data o plánu
+// - useUserProfile() - profil uživatele
+// - useWorkoutGenerator() - regenerace plánu
+```
+
+### Logika regenerace
+
+Přesuneme/zkopírujeme logiku `handleRegeneratePlan` z `Training.tsx` do nové stránky (nebo vytvoříme sdílený hook). Důležité:
+- Předat `profile.training_days` do `generateWorkoutPlan()`
+- Deaktivovat starý plán
+- Resetovat `current_day_index` na 0
+- Zachovat streak
+
+### Logika změny plánu
+
+1. Klik na "Změnit plán" otevře `OnboardingDrawer`
+2. Uživatel změní odpovědi v dotazníku
+3. Po uložení se automaticky vygeneruje nový plán
+
+## UI Design (konzistentní s WorkoutHistory.tsx)
+
+- Header: gradient-hero s tlačítkem zpět
+- Cards: `bg-card border border-border rounded-2xl`
+- Grid pro týdny: `grid grid-cols-4 gap-2`
+- Tlačítka: Primary pro regeneraci, Outline pro změnu
 
 ## Očekávaný výsledek
 
-Po regeneraci:
-1. Systém zjistí, že máš **4+ tréninkové dny** v profilu
-2. Použije split `upper_lower` (ne `full_body`)
-3. Den A = **Horní tělo** (push/pull/biceps/triceps)
-4. Den B = **Dolní tělo** (squat/hinge/lunge)
-5. Clap Curtsy Squat bude správně v dni B (Dolní tělo), ne v dni A
-
----
-
-## Bonus: Přidat UI pro manuální regeneraci
-
-Uživatel by měl mít možnost regenerovat plán sám. Toto je již částečně implementováno (tlačítko "Regenerovat plán" existuje pro completed/error stavy), ale přidáme i obecný přístup v nastavení nebo na stránce tréninku.
+Uživatel půjde do Profilu → klikne na "Můj plán" → uvidí přehled svého plánu s kalendářem týdnů a dvěma tlačítky:
+1. **Regenerovat plán** - vytvoří nový plán se správným Upper/Lower splitem
+2. **Změnit plán** - otevře dotazník pro úpravu preferencí
 
