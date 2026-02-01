@@ -402,6 +402,7 @@ export const useWorkoutGenerator = () => {
       const inputsSnapshot: PlanInputsSnapshot = {
         goal_id: goalId,
         user_level: userLevel,
+        split_type: splitType,
         duration_minutes: durationMinutes,
         equipment_preference: equipmentPreference,
         injuries: userInjuries,

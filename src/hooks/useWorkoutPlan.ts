@@ -7,7 +7,10 @@ import {
   DayTemplate,
   PlanInputsSnapshot,
   ValidationReport,
-  WorkoutPlanV2
+  WorkoutPlanV2,
+  SplitType,
+  getSplitFromFrequency,
+  UserLevel
 } from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
@@ -17,6 +20,7 @@ interface WorkoutPlanData {
   gymId: string;
   goalId: TrainingGoalId;
   goalName: string;
+  splitType: SplitType;
   dayCount: number;
   currentDayIndex: number;
   currentDayLetter: string;
@@ -72,17 +76,24 @@ export const useWorkoutPlan = () => {
         throw planError;
       }
 
-      // 2. Get user's current day index
+      // 2. Get user's current day index and user level
       const { data: profileData } = await supabase
         .from('user_profiles')
-        .select('current_day_index')
+        .select('current_day_index, user_level')
         .eq('user_id', user.id)
         .single();
 
       const currentDayIndex = profileData?.current_day_index || 0;
+      const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
       const dayCount = (planData.training_goals as any)?.day_count || 2;
       const goalName = (planData.training_goals as any)?.name || 'Trénink';
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
+
+      // Determine split_type: use stored value, snapshot, or calculate from frequency
+      const trainingDaysCount = planData.training_days?.length || 3;
+      const splitType: SplitType = (planData as any).split_type 
+        || (planData.inputs_snapshot_json as any)?.split_type
+        || getSplitFromFrequency(trainingDaysCount, userLevel);
 
       // 3. Get exercises for this plan with machine info
       const { data: exercisesData, error: exError } = await supabase
@@ -95,11 +106,11 @@ export const useWorkoutPlan = () => {
         .order('day_letter')
         .order('slot_order');
 
-      // 4. Get day templates for day names
+      // 4. Get day templates for day names - NOW BY SPLIT_TYPE, not goal_id
       const { data: dayTemplatesData } = await supabase
         .from('day_templates')
         .select('day_letter, day_name')
-        .eq('goal_id', planData.goal_id);
+        .eq('split_type', splitType);
       
       // Create a map of day_letter -> day_name
       const dayNameMap: Record<string, string> = {};
@@ -208,6 +219,7 @@ export const useWorkoutPlan = () => {
         gymId: planData.gym_id,
         goalId: planData.goal_id as TrainingGoalId,
         goalName,
+        splitType,
         dayCount,
         currentDayIndex,
         currentDayLetter,
