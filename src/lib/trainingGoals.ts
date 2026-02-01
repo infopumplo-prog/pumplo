@@ -1,6 +1,7 @@
 // Training Goals v2.0.0 - cíle tréninku s dynamickým počtem dní
 // Struktura dní se načítá z DB (day_templates)
 // Updated with audit/snapshot interfaces
+// v2.1: Split is determined by FREQUENCY, not goal (per PUMPLO methodology)
 
 import { TrainingRoleId } from './trainingRoles';
 
@@ -20,45 +21,72 @@ export const TRAINING_GOAL_IDS = [
 
 export type TrainingGoalId = typeof TRAINING_GOAL_IDS[number];
 
+// Split types based on training frequency
+export type SplitType = 'full_body' | 'upper_lower' | 'ppl';
+
+// Split info for UI display
+export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; days: string[] }> = {
+  full_body: { label: 'Full Body A/B', labelCz: 'Full Body', days: ['A', 'B'] },
+  upper_lower: { label: 'Upper/Lower A/B', labelCz: 'Horní / Dolní tělo', days: ['A', 'B'] },
+  ppl: { label: 'Push/Pull/Legs A/B/C', labelCz: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
+};
+
+/**
+ * Určí split na základě počtu tréninkových dnů a úrovně uživatele
+ * Podle metodiky PUMPLO v1.1, sekce 3.1
+ * 
+ * @param frequency - počet tréninkových dnů v týdnu (1-7)
+ * @param userLevel - úroveň uživatele (beginner/intermediate/advanced)
+ * @returns typ splitu (full_body/upper_lower/ppl)
+ */
+export const getSplitFromFrequency = (
+  frequency: number, 
+  userLevel: UserLevel
+): SplitType => {
+  // Bezpečnostní override pro začátečníky - max Upper/Lower
+  if (userLevel === 'beginner' && frequency >= 5) {
+    return 'upper_lower';
+  }
+  
+  // Základní pravidlo podle frekvence
+  if (frequency <= 3) return 'full_body';
+  if (frequency === 4) return 'upper_lower';
+  return 'ppl'; // frequency >= 5
+};
+
 // MVP Goals for onboarding - 4 goals only (single select)
+// Goals affect rep ranges and exercise selection, NOT the split
+// Split is determined by training frequency (getSplitFromFrequency)
+// Plan duration: 12 weeks for ALL goals (per methodology section 10)
 export const MVP_GOALS = [
   { 
     id: 'muscle_gain' as TrainingGoalId, 
     label: 'Nabrat svaly', 
     emoji: '💪',
-    split: 'ppl',
-    description: 'Délka plánu: 12 týdnů',
+    description: 'Hypertrofie - více objemu',
   },
   { 
     id: 'fat_loss' as TrainingGoalId, 
     label: 'Zhubnout', 
     emoji: '🔥',
-    split: 'upper_lower',
-    description: 'Délka plánu: 8 týdnů',
+    description: 'Spalování tuků + udržení svalů',
   },
   { 
     id: 'strength' as TrainingGoalId, 
     label: 'Získat sílu', 
     emoji: '🏋️',
-    split: 'upper_lower',
-    description: 'Délka plánu: 8 týdnů',
+    description: 'Nižší opakování, vyšší váhy',
   },
   { 
     id: 'general_fitness' as TrainingGoalId, 
     label: 'Celková kondice', 
     emoji: '✨',
-    split: 'full_body',
-    description: 'Délka plánu: 8 týdnů',
+    description: 'Vyvážený trénink celého těla',
   },
 ];
 
-// Mapping goal -> split (automatic determination)
-export const GOAL_TO_SPLIT: Record<TrainingGoalId, string> = {
-  'muscle_gain': 'ppl',
-  'fat_loss': 'upper_lower',
-  'strength': 'upper_lower',
-  'general_fitness': 'full_body',
-};
+// Standard plan duration for all goals (weeks)
+export const PLAN_DURATION_WEEKS = 12;
 
 // Mapping from onboarding primary_goal to training_goals
 // Keep for backward compatibility, but now they're the same IDs

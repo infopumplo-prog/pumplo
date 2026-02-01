@@ -18,7 +18,9 @@ import {
   DayTemplate, 
   DayTemplateSlot,
   PlanInputsSnapshot,
-  ValidationReport
+  ValidationReport,
+  SplitType,
+  getSplitFromFrequency
 } from '@/lib/trainingGoals';
 import {
   SelectionContext,
@@ -52,12 +54,13 @@ export const useWorkoutGenerator = () => {
     }
   };
 
-  // Fetch day templates from database
-  const fetchDayTemplates = async (goalId: TrainingGoalId): Promise<DayTemplate[]> => {
+  // Fetch day templates from database by split type (not goal)
+  // Per PUMPLO methodology v1.1, templates are organized by split, not goal
+  const fetchDayTemplates = async (splitType: SplitType): Promise<DayTemplate[]> => {
     const { data, error } = await supabase
       .from('day_templates')
       .select('*')
-      .eq('goal_id', goalId)
+      .eq('split_type', splitType)
       .order('day_letter')
       .order('slot_order');
 
@@ -262,12 +265,19 @@ export const useWorkoutGenerator = () => {
       const exerciseHistory = await fetchExerciseHistory(user.id, 7);
       console.log('[WorkoutGenerator v2.0] Exercise history entries:', exerciseHistory.size);
 
-      // Fetch day templates
-      const templates = await fetchDayTemplates(goalId);
+      // Determine split type from frequency (not goal) per PUMPLO methodology
+      const splitType = getSplitFromFrequency(
+        trainingDays.length > 0 ? trainingDays.length : 3, // Default to 3 days if not specified
+        userLevel
+      );
+      console.log('[WorkoutGenerator v2.0] Split type (from frequency):', splitType);
+
+      // Fetch day templates by split type
+      const templates = await fetchDayTemplates(splitType);
       if (templates.length === 0) {
-        throw new Error('Nenalezeny šablony pro tento cíl');
+        throw new Error(`Nenalezeny šablony pro split: ${splitType}`);
       }
-      console.log(`[WorkoutGenerator v2.0] Found ${templates.length} day templates`);
+      console.log(`[WorkoutGenerator v2.0] Found ${templates.length} day templates for split: ${splitType}`);
 
       // Track role occurrences across days
       const roleOccurrencesPerDay = new Map<string, Map<string, number>>();

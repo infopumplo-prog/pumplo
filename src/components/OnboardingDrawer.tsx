@@ -8,7 +8,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TrainingGoalId, UserLevel, GOAL_TO_SPLIT, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, getSplitFromFrequency, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -110,7 +110,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     if (!isOpen) {
       // Save all data and determine if onboarding is complete
       const allValid = areAllStepsValid();
-      const trainingSplit = primaryGoal ? GOAL_TO_SPLIT[primaryGoal] : null;
+      const trainingSplit = trainingDays.length > 0 && userLevel
+        ? getSplitFromFrequency(trainingDays.length, userLevel)
+        : null;
       
       await updateProfile({
         gender,
@@ -173,7 +175,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     // Set flag to prevent useEffect from resetting state during refetch
     setHasJustCompleted(true);
     
-    const trainingSplit = primaryGoal ? GOAL_TO_SPLIT[primaryGoal] : null;
+    const trainingSplit = trainingDays.length > 0 && userLevel
+      ? getSplitFromFrequency(trainingDays.length, userLevel)
+      : null;
     
     // 1. Always save profile first
     await updateProfile({
@@ -336,15 +340,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             <Progress value={progress} className="h-2" />
           </div>
           
-          {/* Show split info derived from goal */}
-          {primaryGoal && isEditMode && (
+          {/* Show split info derived from frequency */}
+          {trainingDays.length > 0 && userLevel && (
             <div className="mt-3 p-2 bg-muted rounded-lg text-center">
               <span className="text-xs text-muted-foreground">
                 Split: <span className="font-medium text-foreground">
-                  {GOAL_TO_SPLIT[primaryGoal] === 'ppl' ? 'Push / Pull / Legs' : 
-                   GOAL_TO_SPLIT[primaryGoal] === 'upper_lower' ? 'Horní / Dolní tělo' : 
-                   'Full Body'}
-                </span> (automaticky podle cíle)
+                  {SPLIT_INFO[getSplitFromFrequency(trainingDays.length, userLevel)].labelCz}
+                </span> (podle počtu dnů: {trainingDays.length})
               </span>
             </div>
           )}
