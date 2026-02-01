@@ -1,96 +1,137 @@
 
+# Přesun rozšířeného přehledu do MyPlan s barevným kalendářem
 
-# Plán: Nová stránka "Můj plán" v sekci Profil
+## Co uživatel chce
 
-## Přehled
+1. **Na Domů (Home.tsx) ZŮSTANE:**
+   - Velká modrá karta "Týden X / Cíl / Celkový progress X%"
+   - Sekce "Nadcházející tréninky" (1-4 tréninky)
+   - Tlačítko "Vše" → přesměruje na `/profile/plan` (místo `/training`)
 
-Vytvoříme novou stránku `/profile/plan`, která bude centrální místem pro správu tréninkového plánu. Bude dostupná z profilu a umožní uživateli:
-- Vidět přehled aktuálního plánu (split, cíl, posilovna, týdny)
-- Prohlížet kalendář týdnů
-- Regenerovat plán
-- Změnit plán (otevře dotazník)
+2. **Na MyPlan.tsx PŘIDÁME** (co je teď na Training.tsx po rozkliknutí "Vše"):
+   - Header s názvem cíle, frekvencí (12 týdnů • 4× týdně)
+   - Celkový progress bar (1/48 tréninků)
+   - Navigace mezi týdny (< Týden 1/13 teď >)
+   - Seznam tréninků aktuálního týdne
+   - Kalendář 12 týdnů s **barevným rozlišením podle RIR metodiky**
+   - Legenda typů týdnů
 
-## Co uživatel uvidí
+## Barevné rozlišení týdnů (podle RIR_BY_WEEK)
 
-### Sekce 1: Přehled plánu
-- **Cíl tréninku** (např. "Nabrat svaly")
-- **Typ splitu** (např. "Upper/Lower" nebo "Full Body")
-- **Vybraná posilovna** (název)
-- **Délka plánu** (např. "Týden 3/12")
-- **Tréninkové dny** (Po, St, Pá, Ne)
+Podle existující metodiky v `src/lib/trainingGoals.ts`:
 
-### Sekce 2: Kalendář týdnů
-- Vizuální přehled všech týdnů (1-12)
-- Aktuální týden označen
-- Dokončené týdny označeny zeleně
-- Možnost kliknout pro detail (v budoucnu)
+| Týden | Typ | Barva | RIR |
+|-------|-----|-------|-----|
+| 1-2 | Normální | Šedá (neutrální) | RIR 3 |
+| 3-4 | Náročné | Oranžová | RIR 2 |
+| 5-6 | Hardcore | Červená/růžová | RIR 1 |
+| 7-8 | Deload | Zelená | Regenerace |
+| 9-10 | Normální | Šedá | RIR 3 |
+| 11-12 | Náročné | Oranžová | RIR 2 |
 
-### Sekce 3: Akce plánu
-- **Regenerovat plán** - vytvoří nový plán se stejnými nastaveními
-- **Změnit plán** - otevře dotazník pro úpravu cíle/dnů/atd.
+### Funkce pro typ týdne:
+```typescript
+import { getRIRGuidance } from '@/lib/trainingGoals';
 
-## Navigace
-
-Z profilu přidáme novou položku menu:
+const getWeekType = (weekNumber: number) => {
+  const { rir, label } = getRIRGuidance(weekNumber);
+  if (label === 'Deload') return 'deload';
+  if (rir === 1) return 'hardcore';
+  if (rir === 2) return 'moderate';
+  return 'normal';
+};
 ```
-📋 Můj plán → /profile/plan
+
+## Změny v souborech
+
+### 1. Home.tsx - Změna navigace tlačítka "Vše"
+
+**Řádek 269:** Změnit `navigate('/training')` → `navigate('/profile/plan')`
+
+```tsx
+<button
+  onClick={() => navigate('/profile/plan')}  // ← ZMĚNA
+  className="text-sm text-primary flex items-center gap-1 hover:underline"
+>
+  Vše
+  <ChevronRight className="w-4 h-4" />
+</button>
 ```
 
-## Technické detaily
+### 2. MyPlan.tsx - Kompletní přepracování
 
-### Nové soubory
+Přidáme:
+1. **Header s cílem a frekvencí** (jako na Training.tsx rozbalené)
+2. **Progress bar** (X/Y tréninků)
+3. **Navigace mezi týdny** (< Týden X/12 >)
+4. **Seznam tréninků aktuálního týdne** (Po, St, Pá...)
+5. **Barevný kalendář 12 týdnů** s legendou
+6. **Akční tlačítka** (Regenerovat, Změnit plán)
 
-| Soubor | Účel |
-|--------|------|
-| `src/pages/MyPlan.tsx` | Hlavní komponenta stránky |
+### Nová struktura MyPlan.tsx:
 
-### Úpravy existujících souborů
+```tsx
+// Imports + getRIRGuidance
+
+const getWeekType = (weekNumber: number) => {
+  const { rir, label } = getRIRGuidance(weekNumber);
+  if (label === 'Deload') return 'deload';
+  if (rir === 1) return 'hardcore';
+  if (rir === 2) return 'moderate';
+  return 'normal';
+};
+
+const weekTypeColors = {
+  normal: 'bg-muted/50 border-border text-muted-foreground',
+  moderate: 'bg-amber-500/20 border-amber-500/30 text-amber-600',
+  hardcore: 'bg-red-500/20 border-red-500/30 text-red-600',
+  deload: 'bg-green-500/20 border-green-500/30 text-green-600'
+};
+
+const weekTypeLabels = {
+  normal: 'Normální',
+  moderate: 'Náročný',
+  hardcore: 'Hardcore',
+  deload: 'Deload'
+};
+```
+
+## Vizuální náhled kalendáře
+
+```
+┌─────────┬─────────┬─────────┬─────────┐
+│ Týden 1 │ Týden 2 │ Týden 3 │ Týden 4 │
+│  ⚪      │  ⚪      │  🟠      │  🟠      │
+├─────────┼─────────┼─────────┼─────────┤
+│ Týden 5 │ Týden 6 │ Týden 7 │ Týden 8 │
+│  🔴      │  🔴      │  🟢      │  🟢      │
+├─────────┼─────────┼─────────┼─────────┤
+│ Týden 9 │ Týden 10│ Týden 11│ Týden 12│
+│  ⚪      │  ⚪      │  🟠      │  🟠      │
+└─────────┴─────────┴─────────┴─────────┘
+
+Legenda:
+⚪ Normální (RIR 3) | 🟠 Náročný (RIR 2) | 🔴 Hardcore (RIR 1) | 🟢 Deload
+```
+
+## Shrnutí změn
 
 | Soubor | Změna |
 |--------|-------|
-| `src/App.tsx` | Přidat route `/profile/plan` |
-| `src/pages/Profile.tsx` | Přidat menu položku "Můj plán" s ikonou Calendar |
-
-### Struktura MyPlan.tsx
-
-```tsx
-// Hlavní komponenty:
-// 1. Header s tlačítkem zpět
-// 2. Card s přehledem plánu (cíl, split, posilovna, týden)
-// 3. Kalendář týdnů (grid 4x3 pro 12 týdnů)
-// 4. Akční tlačítka (Regenerovat, Změnit plán)
-// 5. OnboardingDrawer pro editaci
-
-// Použité hooks:
-// - useWorkoutPlan() - data o plánu
-// - useUserProfile() - profil uživatele
-// - useWorkoutGenerator() - regenerace plánu
-```
-
-### Logika regenerace
-
-Přesuneme/zkopírujeme logiku `handleRegeneratePlan` z `Training.tsx` do nové stránky (nebo vytvoříme sdílený hook). Důležité:
-- Předat `profile.training_days` do `generateWorkoutPlan()`
-- Deaktivovat starý plán
-- Resetovat `current_day_index` na 0
-- Zachovat streak
-
-### Logika změny plánu
-
-1. Klik na "Změnit plán" otevře `OnboardingDrawer`
-2. Uživatel změní odpovědi v dotazníku
-3. Po uložení se automaticky vygeneruje nový plán
-
-## UI Design (konzistentní s WorkoutHistory.tsx)
-
-- Header: gradient-hero s tlačítkem zpět
-- Cards: `bg-card border border-border rounded-2xl`
-- Grid pro týdny: `grid grid-cols-4 gap-2`
-- Tlačítka: Primary pro regeneraci, Outline pro změnu
+| `src/pages/Home.tsx` | Tlačítko "Vše" → `/profile/plan` místo `/training` |
+| `src/pages/MyPlan.tsx` | Přidat header s cílem, progress, navigaci týdnů, seznam tréninků, barevný kalendář s legendou |
 
 ## Očekávaný výsledek
 
-Uživatel půjde do Profilu → klikne na "Můj plán" → uvidí přehled svého plánu s kalendářem týdnů a dvěma tlačítky:
-1. **Regenerovat plán** - vytvoří nový plán se správným Upper/Lower splitem
-2. **Změnit plán** - otevře dotazník pro úpravu preferencí
+1. Uživatel na **Domů** vidí:
+   - Velká modrá karta s týdnem a progressem
+   - Nadcházející tréninky (1-4 dny)
+   - Klik na "Vše" → přejde do **Profil → Můj plán**
 
+2. Na stránce **Můj plán** uživatel vidí:
+   - Cíl + frekvence (12 týdnů • 4× týdně)
+   - Celkový progress (X/48 tréninků)
+   - Navigaci mezi týdny (< Týden 1/12 >)
+   - Seznam tréninků vybraného týdne
+   - **Barevný kalendář 12 týdnů** s legendou (Normální/Náročný/Hardcore/Deload)
+   - Tlačítka pro regeneraci a změnu plánu
