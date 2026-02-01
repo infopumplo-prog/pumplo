@@ -85,15 +85,7 @@ export const useWorkoutPlan = () => {
 
       const currentDayIndex = profileData?.current_day_index || 0;
       const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
-      const dayCount = (planData.training_goals as any)?.day_count || 2;
       const goalName = (planData.training_goals as any)?.name || 'Trénink';
-      const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
-
-      // Determine split_type: use stored value, snapshot, or calculate from frequency
-      const trainingDaysCount = planData.training_days?.length || 3;
-      const splitType: SplitType = (planData as any).split_type 
-        || (planData.inputs_snapshot_json as any)?.split_type
-        || getSplitFromFrequency(trainingDaysCount, userLevel);
 
       // 3. Get exercises for this plan with machine info
       const { data: exercisesData, error: exError } = await supabase
@@ -106,7 +98,22 @@ export const useWorkoutPlan = () => {
         .order('day_letter')
         .order('slot_order');
 
-      // 4. Get day templates for day names - NOW BY SPLIT_TYPE, not goal_id
+      if (exError) throw exError;
+
+      // 4. Calculate dayCount from actual unique day letters in exercises
+      const uniqueDayLetters = new Set(
+        (exercisesData || []).map(e => e.day_letter)
+      );
+      const dayCount = uniqueDayLetters.size || 2;
+      const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
+
+      // 5. Determine split_type: use stored value, snapshot, or calculate from frequency
+      const trainingDaysCount = planData.training_days?.length || 3;
+      const splitType: SplitType = (planData as any).split_type 
+        || (planData.inputs_snapshot_json as any)?.split_type
+        || getSplitFromFrequency(trainingDaysCount, userLevel);
+
+      // 6. Get day templates for day names - by split_type
       const { data: dayTemplatesData } = await supabase
         .from('day_templates')
         .select('day_letter, day_name')
@@ -122,9 +129,7 @@ export const useWorkoutPlan = () => {
         });
       }
 
-      if (exError) throw exError;
-
-      // 5. Transform exercises (strictly from DB, no random selection)
+      // 7. Transform exercises (strictly from DB, no random selection)
       const exercises: WorkoutExercise[] = (exercisesData || []).map(ex => ({
         id: ex.id,
         dayLetter: ex.day_letter,
