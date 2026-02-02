@@ -32,9 +32,11 @@ interface WorkoutSessionProps {
   isBonus?: boolean;
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
-  onPause?: (currentExerciseIndex: number, results: ExerciseResult[]) => void;
+  onPause?: (currentExerciseIndex: number, results: ExerciseResult[], currentSetIndex: number, currentExerciseSets: SetData[]) => void;
   initialExerciseIndex?: number;
   initialResults?: ExerciseResult[];
+  initialSetIndex?: number;
+  initialCurrentExerciseSets?: SetData[];
 }
 
 // Rest times in seconds based on goal and situation
@@ -72,6 +74,8 @@ export const WorkoutSession = ({
   onPause,
   initialExerciseIndex = 0,
   initialResults = [],
+  initialSetIndex = 0,
+  initialCurrentExerciseSets,
 }: WorkoutSessionProps) => {
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
@@ -84,6 +88,12 @@ export const WorkoutSession = ({
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
+  
+  // Track current set state for pause functionality
+  const [currentSetIndex, setCurrentSetIndex] = useState(initialSetIndex);
+  const [currentExerciseSets, setCurrentExerciseSets] = useState<SetData[]>(
+    initialCurrentExerciseSets || []
+  );
 
   const currentExercise = exercises[currentExerciseIndex];
   const restTimes = REST_TIMES[goalId] || REST_TIMES.general_fitness;
@@ -263,6 +273,12 @@ export const WorkoutSession = ({
         gymId={gymId}
         planId={planId || undefined}
         dayLetter={dayLetter}
+        initialSetIndex={currentExerciseIndex === initialExerciseIndex ? initialSetIndex : 0}
+        initialSetsData={currentExerciseIndex === initialExerciseIndex ? initialCurrentExerciseSets : undefined}
+        onSetChange={(setIdx, sets) => {
+          setCurrentSetIndex(setIdx);
+          setCurrentExerciseSets(sets);
+        }}
       />
 
       {/* Skip Dialog */}
@@ -287,7 +303,7 @@ export const WorkoutSession = ({
         }}
         onPause={() => {
           if (onPause) {
-            onPause(currentExerciseIndex, results);
+            onPause(currentExerciseIndex, results, currentSetIndex, currentExerciseSets);
           }
           navigate('/');
         }}
@@ -308,6 +324,9 @@ const ExercisePlayerWithVideo = ({
   gymId,
   planId,
   dayLetter,
+  initialSetIndex = 0,
+  initialSetsData,
+  onSetChange,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -319,6 +338,9 @@ const ExercisePlayerWithVideo = ({
   gymId?: string;
   planId?: string;
   dayLetter?: string;
+  initialSetIndex?: number;
+  initialSetsData?: SetData[];
+  onSetChange?: (setIndex: number, setsData: SetData[]) => void;
 }) => {
   const [videoData, setVideoData] = useState<{ 
     url: string | null; 
@@ -380,6 +402,9 @@ const ExercisePlayerWithVideo = ({
       onSkipExercise={onSkipExercise}
       showWeightInput={videoData.exerciseWithWeights}
       restBetweenSets={restBetweenSets}
+      initialSetIndex={initialSetIndex}
+      initialSetsData={initialSetsData}
+      onSetChange={onSetChange}
     />
   );
 };
