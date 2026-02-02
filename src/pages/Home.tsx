@@ -7,7 +7,7 @@ import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Play } from 'lucide-react';
+import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
+import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -376,20 +377,10 @@ const Home = () => {
 
                     {/* Start Training Button */}
                     {plan && !wasCompletedToday && (
-                      <motion.div 
-                        variants={itemVariants}
+                      <StartWorkoutButton 
+                        selectedGymId={profile?.selected_gym_id || null}
                         className="mt-6"
-                      >
-                        <Button
-                          onClick={() => navigate('/training')}
-                          size="lg"
-                          variant="gradient"
-                          className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"
-                        >
-                          <Play className="w-5 h-5" />
-                          Začít trénink
-                        </Button>
-                      </motion.div>
+                      />
                     )}
                   </motion.div>
 
