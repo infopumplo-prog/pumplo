@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { OpeningHours } from '@/hooks/useGym';
+import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 
 interface TrainingGoalOption {
   id: string;
@@ -95,6 +96,7 @@ const Training = () => {
     notificationPreferences,
     markOnboardingShown 
   } = usePushNotifications();
+  const { pausedWorkout, saveWorkout: savePausedWorkout, clearPausedWorkout } = usePausedWorkout();
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -957,6 +959,82 @@ const Training = () => {
     toast.info('Rozcvička přeskočena');
   }, []);
 
+  // Handle pausing from warmup or workout
+  const handlePauseFromWarmup = useCallback(() => {
+    if (!plan || !profile?.selected_gym_id) return;
+    
+    savePausedWorkout({
+      planId: plan.id,
+      gymId: profile.selected_gym_id,
+      dayLetter: plan.currentDayLetter || 'A',
+      goalId: plan.goalId,
+      exercises: generatedExercises,
+      warmupExercises: warmupExercises,
+      currentExerciseIndex: 0,
+      completedSets: {},
+      startedAt: new Date().toISOString(),
+      pausedAt: new Date().toISOString(),
+      isInWarmup: true,
+      warmupIndex: 0
+    });
+    
+    setShowWarmup(false);
+    setShowWorkoutPreview(false);
+    toast.info('Trénink pozastaven');
+  }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
+
+  const handlePauseFromWorkout = useCallback((currentExerciseIndex: number, results: any[]) => {
+    if (!plan || !profile?.selected_gym_id) return;
+    
+    const completedSets: Record<string, any[]> = {};
+    results.forEach(r => {
+      completedSets[r.exerciseId] = r.sets;
+    });
+    
+    savePausedWorkout({
+      planId: plan.id,
+      gymId: profile.selected_gym_id,
+      dayLetter: plan.currentDayLetter || 'A',
+      goalId: plan.goalId,
+      exercises: generatedExercises,
+      warmupExercises: warmupExercises,
+      currentExerciseIndex,
+      completedSets,
+      startedAt: new Date().toISOString(),
+      pausedAt: new Date().toISOString(),
+      isInWarmup: false
+    });
+    
+    setIsWorkoutActive(false);
+    toast.info('Trénink pozastaven');
+  }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
+
+  const handleEndFromPreview = useCallback(() => {
+    setShowWorkoutPreview(false);
+    setGeneratedExercises([]);
+  }, []);
+
+  const handlePauseFromPreview = useCallback(() => {
+    // Při pozastavení z preview jen zavřeme a uložíme jako "připravený k pokračování"
+    if (!plan || !profile?.selected_gym_id) return;
+    
+    savePausedWorkout({
+      planId: plan.id,
+      gymId: profile.selected_gym_id,
+      dayLetter: plan.currentDayLetter || 'A',
+      goalId: plan.goalId,
+      exercises: generatedExercises,
+      currentExerciseIndex: 0,
+      completedSets: {},
+      startedAt: new Date().toISOString(),
+      pausedAt: new Date().toISOString(),
+      isInWarmup: false
+    });
+    
+    setShowWorkoutPreview(false);
+    toast.info('Trénink pozastaven');
+  }, [plan, profile?.selected_gym_id, generatedExercises, savePausedWorkout]);
+
   const handleGymSelect = async (gymId: string) => {
     await updateProfile({ selected_gym_id: gymId });
     handleGenerateDayExercises(gymId, true);
@@ -1263,7 +1341,8 @@ const Training = () => {
         dayName={getTodayDayName()}
         estimatedDuration={calculateWorkoutDuration(generatedExercises)}
         onStartWarmup={handleStartWarmup}
-        onClose={() => setShowWorkoutPreview(false)}
+        onClose={handleEndFromPreview}
+        onPause={handlePauseFromPreview}
         isLoading={isGeneratingWarmup}
       />
     );
@@ -1276,6 +1355,12 @@ const Training = () => {
         exercises={warmupExercises}
         onComplete={handleWarmupComplete}
         onSkipAll={handleWarmupSkip}
+        onPause={handlePauseFromWarmup}
+        onEnd={() => {
+          setShowWarmup(false);
+          setShowWorkoutPreview(false);
+          setGeneratedExercises([]);
+        }}
       />
     );
   }
@@ -1298,8 +1383,9 @@ const Training = () => {
           setIsWorkoutActive(false);
           setExtendedExercises([]);
           setIsBonusWorkout(false);
+          clearPausedWorkout();
         }}
-        
+        onPause={handlePauseFromWorkout}
       />
     );
   }

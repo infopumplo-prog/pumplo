@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Trophy, Clock, Dumbbell, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExercisePlayer } from './ExercisePlayer';
 import { RestTimer } from './RestTimer';
+import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
@@ -30,6 +32,7 @@ interface WorkoutSessionProps {
   isBonus?: boolean;
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
+  onPause?: (currentExerciseIndex: number, results: ExerciseResult[]) => void;
 }
 
 // Rest times in seconds based on goal and situation
@@ -64,7 +67,9 @@ export const WorkoutSession = ({
   isBonus = false,
   onComplete,
   onCancel,
+  onPause,
 }: WorkoutSessionProps) => {
+  const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(0);
@@ -73,6 +78,7 @@ export const WorkoutSession = ({
   const [showSummary, setShowSummary] = useState(false);
   const [workoutStartTime] = useState(new Date());
   const [showSkipDialog, setShowSkipDialog] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -237,7 +243,7 @@ export const WorkoutSession = ({
         variant="ghost"
         size="icon"
         className="absolute top-3 left-4 z-[60] text-foreground hover:bg-muted"
-        onClick={onCancel}
+        onClick={() => setShowExitDialog(true)}
       >
         <X className="w-5 h-5" />
       </Button>
@@ -265,6 +271,22 @@ export const WorkoutSession = ({
         planId={planId || undefined}
         dayLetter={dayLetter}
         onConfirmSkip={handleConfirmSkip}
+      />
+
+      {/* Exit Dialog */}
+      <WorkoutExitDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onEnd={() => {
+          onCancel();
+          navigate('/');
+        }}
+        onPause={() => {
+          if (onPause) {
+            onPause(currentExerciseIndex, results);
+          }
+          navigate('/');
+        }}
       />
     </div>
   );
