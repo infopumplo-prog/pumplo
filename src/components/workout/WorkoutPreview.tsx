@@ -1,8 +1,11 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Play, Clock, Dumbbell, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { WorkoutExercise } from '@/lib/trainingGoals';
+import { WorkoutExitDialog } from './WorkoutExitDialog';
 
 interface WorkoutPreviewProps {
   exercises: WorkoutExercise[];
@@ -11,6 +14,7 @@ interface WorkoutPreviewProps {
   estimatedDuration: number;
   onStartWarmup: () => void;
   onClose: () => void;
+  onPause?: () => void;
   isLoading?: boolean;
 }
 
@@ -21,8 +25,27 @@ export const WorkoutPreview = ({
   estimatedDuration,
   onStartWarmup,
   onClose,
+  onPause,
   isLoading = false
 }: WorkoutPreviewProps) => {
+  const navigate = useNavigate();
+  const [showExitDialog, setShowExitDialog] = useState(false);
+
+  const handleCloseClick = () => {
+    setShowExitDialog(true);
+  };
+
+  const handleEnd = () => {
+    onClose();
+    navigate('/');
+  };
+
+  const handlePause = () => {
+    if (onPause) {
+      onPause();
+    }
+    navigate('/');
+  };
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -32,7 +55,7 @@ export const WorkoutPreview = ({
     >
       {/* Header */}
       <div className="flex-none p-4 border-b border-border flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" onClick={handleCloseClick}>
           <X className="w-5 h-5" />
         </Button>
         <h2 className="font-bold text-lg">Dnešní trénink</h2>
@@ -118,6 +141,15 @@ export const WorkoutPreview = ({
           )}
         </Button>
       </div>
+
+      {/* Exit Dialog */}
+      <WorkoutExitDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onEnd={handleEnd}
+        onPause={handlePause}
+        isWarmup={false}
+      />
     </motion.div>
   );
 };

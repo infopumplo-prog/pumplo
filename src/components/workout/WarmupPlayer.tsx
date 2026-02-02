@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, Flame, Pause, Play } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, Flame, Pause, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +18,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { getMuscleLabel } from '@/lib/muscleLabels';
+import { WorkoutExitDialog } from './WorkoutExitDialog';
 
 export interface WarmupExercise {
   id: string;
@@ -30,14 +32,18 @@ interface WarmupPlayerProps {
   exercises: WarmupExercise[];
   onComplete: () => void;
   onSkipAll: () => void;
+  onPause?: () => void;
+  onEnd?: () => void;
 }
 
-export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerProps) => {
+export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd }: WarmupPlayerProps) => {
+  const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.duration || 30);
   const [isPaused, setIsPaused] = useState(false);
   const [isWaitingForTap, setIsWaitingForTap] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const currentExercise = exercises[currentIndex];
@@ -114,6 +120,24 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
     onSkipAll();
   }, [onSkipAll]);
 
+  const handleExitClick = useCallback(() => {
+    setShowExitDialog(true);
+  }, []);
+
+  const handleEnd = useCallback(() => {
+    if (onEnd) {
+      onEnd();
+    }
+    navigate('/');
+  }, [onEnd, navigate]);
+
+  const handlePauseWorkout = useCallback(() => {
+    if (onPause) {
+      onPause();
+    }
+    navigate('/');
+  }, [onPause, navigate]);
+
   if (!currentExercise) return null;
 
   const timerProgressValue = (timeRemaining / currentExercise.duration) * 100;
@@ -127,6 +151,9 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
     >
       {/* Header */}
       <div className="flex-none p-4 border-b border-border flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={handleExitClick}>
+          <X className="w-5 h-5" />
+        </Button>
         <Badge variant="secondary" className="gap-1">
           <Flame className="w-3 h-3 text-orange-500" />
           Rozcvička {currentIndex + 1}/{totalExercises}
@@ -296,6 +323,15 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll }: WarmupPlayerP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Exit Dialog */}
+      <WorkoutExitDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onEnd={handleEnd}
+        onPause={handlePauseWorkout}
+        isWarmup={true}
+      />
     </motion.div>
   );
 };

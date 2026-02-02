@@ -6,6 +6,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
@@ -18,6 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
+import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -58,6 +60,7 @@ const Home = () => {
   const {
     stats
   } = useWorkoutStats();
+  const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [showSessionDetail, setShowSessionDetail] = useState(false);
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
@@ -375,8 +378,25 @@ const Home = () => {
                 })}
                       </div>}
 
+                    {/* Paused Workout Card */}
+                    {pausedWorkout && pausedWorkout.planId === plan?.id && (
+                      <motion.div
+                        variants={itemVariants}
+                        className="mt-6"
+                      >
+                        <PausedWorkoutCard
+                          pausedWorkout={pausedWorkout}
+                          onResume={() => {
+                            clearPausedWorkout();
+                            navigate('/training?start=true');
+                          }}
+                          onDiscard={clearPausedWorkout}
+                        />
+                      </motion.div>
+                    )}
+
                     {/* Start Training Button */}
-                    {plan && !wasCompletedToday && (
+                    {plan && !wasCompletedToday && !pausedWorkout && (
                       <StartWorkoutButton 
                         selectedGymId={profile?.selected_gym_id || null}
                         className="mt-6"
