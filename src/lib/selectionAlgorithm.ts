@@ -399,6 +399,12 @@ export const getCandidates = async (
           if (context.equipmentPreference === 'bodyweight') {
             if (exType !== 'bodyweight') return false;
           }
+          if (context.equipmentPreference === 'machines') {
+            if (!['machine', 'cable', 'plate_loaded'].includes(exType)) return false;
+          }
+          if (context.equipmentPreference === 'free_weights') {
+            if (!['barbell', 'dumbbell', 'kettlebell', 'resistance_band'].includes(exType)) return false;
+          }
         }
       }
     }
