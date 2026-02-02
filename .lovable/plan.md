@@ -1,75 +1,138 @@
 
-# Sledování aktuální série při pozastavení tréninku - IMPLEMENTOVÁNO ✅
+# Oprava kategorizace vybavení v databázi
 
-## Implementované změny
+## Problém
+Uživatel vybírá preferenci vybavení v dotazníku (Stroje / Volné váhy / Vlastní váha), ale systém **nedokáže správně prioritizovat cviky**, protože:
 
-### 1. `src/hooks/usePausedWorkout.ts`
-- Přidána nová pole do `PausedWorkoutState`:
-  - `currentSetIndex: number` - na které sérii v aktuálním cviku
-  - `currentExerciseSets: { weight?: number; reps?: number; completed: boolean }[]` - data aktuálního cviku
+- **Algoritmus je správný**: Hledá `barbell`, `dumbbell`, `kettlebell` pro volné váhy
+- **Databáze je špatná**: Všechny cviky s vybavením mají `equipment_type = 'machine'`
 
-### 2. `src/components/workout/ExercisePlayer.tsx`
-- Přidány nové props:
-  - `initialSetIndex?: number` - počáteční index série
-  - `initialSetsData?: SetData[]` - počáteční data sérií
-  - `onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void` - callback při změně série
-- Inicializace `currentSet` a `setsData` z props
-- Volání `onSetChange` při dokončení série a po odpočinku
-
-### 3. `src/components/workout/WorkoutSession.tsx`
-- Rozšířen interface `WorkoutSessionProps`:
-  - `initialSetIndex?: number`
-  - `initialCurrentExerciseSets?: SetData[]`
-  - `onPause` callback rozšířen o 4 parametry
-- Přidány nové state proměnné pro tracking série
-- `ExercisePlayerWithVideo` předává nové props do `ExercisePlayer`
-
-### 4. `src/pages/Training.tsx`
-- Přidány nové state proměnné:
-  - `initialSetIndex`
-  - `initialCurrentExerciseSets`
-- `handlePauseFromWorkout` přijímá a ukládá data série
-- Resume logika obnovuje `initialSetIndex` a `initialCurrentExerciseSets`
-- `WorkoutSession` dostává nové props
+### Příklad:
+| Cvik | machine_id → | equipment_type |
+|------|--------------|----------------|
+| Barbell Bent Over Row | Barbell | `machine` ❌ |
+| Dumbbell RDL Stretch | Dumbbells | `machine` ❌ |
 
 ---
 
-## Datový tok
+## Řešení
+
+### 1. Definovat mapování strojů na typy vybavení
+
+Stroje v `machines` tabulce lze rozdělit do kategorií:
+
+| Kategorie | Příklady strojů |
+|-----------|-----------------|
+| `barbell` | Barbell, Barbell 20kg, EZ bar |
+| `dumbbell` | Dumbbells, Dumbbell zóna |
+| `kettlebell` | Kettlebell, Kettlebells 4-22kg |
+| `cable` | Cable crossover, Cable Fly, Cable Row, cable station |
+| `plate_loaded` | Chest Press plate-loaded, Dips machine plate-loaded |
+| `machine` | Leg press, Chest press machine, Smith machine |
+
+### 2. Aktualizovat exercises.equipment_type
+
+Spustit SQL migrace, které nastaví správný `equipment_type` podle `machine_id`:
+
+```sql
+-- Barbell cviky
+UPDATE exercises SET equipment_type = 'barbell'
+WHERE machine_id IN (
+  SELECT id FROM machines 
+  WHERE name ILIKE '%barbell%' OR name ILIKE 'ez bar'
+);
+
+-- Dumbbell cviky  
+UPDATE exercises SET equipment_type = 'dumbbell'
+WHERE machine_id IN (
+  SELECT id FROM machines 
+  WHERE name ILIKE '%dumbbell%'
+);
+
+-- Kettlebell cviky
+UPDATE exercises SET equipment_type = 'kettlebell'
+WHERE machine_id IN (
+  SELECT id FROM machines 
+  WHERE name ILIKE '%kettlebell%'
+);
+
+-- Cable cviky
+UPDATE exercises SET equipment_type = 'cable'
+WHERE machine_id IN (
+  SELECT id FROM machines 
+  WHERE name ILIKE '%cable%' OR name ILIKE '%pulley%'
+);
+
+-- Plate-loaded stroje
+UPDATE exercises SET equipment_type = 'plate_loaded'
+WHERE machine_id IN (
+  SELECT id FROM machines 
+  WHERE name ILIKE '%plate-loaded%' OR name ILIKE '%plate loaded%'
+);
+```
+
+### 3. Rozšířit algoritmus o další kategorie
+
+Aktualizovat `matchesEquipmentPreference()` v `selectionAlgorithm.ts`:
+
+```typescript
+if (preference === 'free_weights') {
+  return ['barbell', 'dumbbell', 'kettlebell', 'ez_bar', 'hex_bar'].includes(exType);
+}
+```
+
+---
+
+## Změny v souborech
+
+| Soubor | Změna |
+|--------|-------|
+| SQL migrace | UPDATE exercises.equipment_type podle machine_id |
+| `src/lib/selectionAlgorithm.ts` | Rozšířit mapování kategorií (volitelně) |
+| `src/lib/equipmentTypes.ts` | Přidat chybějící typy do labels (již částečně hotovo) |
+
+---
+
+## Datový tok po opravě
 
 ```text
-POZASTAVENÍ:
+PREFERENCE "VOLNÉ VÁHY":
 ┌──────────────────────────────────────────────────────────────┐
-│  ExercisePlayer (currentSet=2, setsData=[...])              │
-│       ↓ onSetChange(setIdx, sets)                           │
-│  WorkoutSession (trackuje currentSetIndex, currentExerciseSets)
-│       ↓ onPause(exerciseIdx, results, setIdx, sets)         │
-│  Training.handlePauseFromWorkout(...)                        │
+│  Uživatel: equipment_preference = 'free_weights'             │
 │       ↓                                                      │
-│  savePausedWorkout({                                        │
-│    currentExerciseIndex: 1,                                 │
-│    currentSetIndex: 2,           ✅                          │
-│    currentExerciseSets: [...],   ✅                          │
-│    completedSets: { ... },                                  │
-│  })                                                          │
+│  matchesEquipmentPreference()                                │
+│       ↓                                                      │
+│  Hledá: equipment_type IN ('barbell','dumbbell','kettlebell')│
+│       ↓                                                      │
+│  Databáze: Barbell Bench Press (equipment_type='barbell')    │
+│       ↓                                                      │
+│  +5 bonus → vyšší priorita oproti machine cvikům            │
 └──────────────────────────────────────────────────────────────┘
 
-OBNOVENÍ:
+PREFERENCE "STROJE":
 ┌──────────────────────────────────────────────────────────────┐
-│  Training.tsx detekuje ?resume=true                          │
+│  Uživatel: equipment_preference = 'machines'                 │
 │       ↓                                                      │
-│  Načte z pausedWorkout:                                     │
-│    - initialExerciseIndex: 1                                 │
-│    - initialSetIndex: 2          ✅                          │
-│    - initialCurrentExerciseSets  ✅                          │
+│  matchesEquipmentPreference()                                │
 │       ↓                                                      │
-│  WorkoutSession:                                             │
-│    - initialSetIndex = 2                                     │
-│    - initialCurrentExerciseSets = [...]                     │
+│  Hledá: equipment_type IN ('machine','cable','plate_loaded') │
 │       ↓                                                      │
-│  ExercisePlayer:                                             │
-│    - initialSetIndex = 2                                     │
-│    - initialSetsData = [...]                                │
+│  Databáze: Chest Press Machine (equipment_type='machine')    │
 │       ↓                                                      │
-│  Uživatel pokračuje od série 3/4                            │
+│  +5 bonus → vyšší priorita oproti free weights cvikům       │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Očekávaný výsledek
+
+1. **Správná prioritizace** - Cviky odpovídající preferenci získají +5 bodů
+2. **Variabilita zachována** - Pokud gym nemá preferovaný typ, použije se dostupný
+3. **Fallback logika** - Bodyweight zůstává jako poslední možnost (F4)
+
+---
+
+## Technická poznámka
+
+Aktualizace bude provedena pomocí SQL příkazů na databázi. Algoritmus v kódu už je správně připravený a po aktualizaci databáze bude fungovat.
