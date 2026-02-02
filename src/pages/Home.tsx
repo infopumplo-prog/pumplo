@@ -7,7 +7,7 @@ import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy } from 'lucide-react';
+import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Play } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -373,6 +373,24 @@ const Home = () => {
                   </motion.div>;
                 })}
                       </div>}
+
+                    {/* Start Training Button */}
+                    {plan && !wasCompletedToday && (
+                      <motion.div 
+                        variants={itemVariants}
+                        className="mt-6"
+                      >
+                        <Button
+                          onClick={() => navigate('/training')}
+                          size="lg"
+                          variant="gradient"
+                          className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"
+                        >
+                          <Play className="w-5 h-5" />
+                          Začít trénink
+                        </Button>
+                      </motion.div>
+                    )}
                   </motion.div>
 
                 </>) : null}
