@@ -32,6 +32,9 @@ interface ExercisePlayerProps {
   onSkipExercise?: () => void;
   showWeightInput?: boolean;
   restBetweenSets?: number;
+  initialSetIndex?: number;
+  initialSetsData?: SetData[];
+  onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
 }
 
 export const ExercisePlayer = ({
@@ -50,13 +53,16 @@ export const ExercisePlayer = ({
   onCompleteExercise,
   onSkipExercise,
   showWeightInput = true,
-  restBetweenSets = 90
+  restBetweenSets = 90,
+  initialSetIndex = 0,
+  initialSetsData,
+  onSetChange
 }: ExercisePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [currentSet, setCurrentSet] = useState(0);
+  const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
-    Array.from({ length: totalSets }, () => ({ completed: false }))
+    initialSetsData || Array.from({ length: totalSets }, () => ({ completed: false }))
   );
   const [showDescription, setShowDescription] = useState(false);
   const [showFullName, setShowFullName] = useState(false);
@@ -78,6 +84,11 @@ export const ExercisePlayer = ({
     newSetsData[setIndex] = { completed: true, weight, reps };
     setSetsData(newSetsData);
     
+    // Notify parent about set change for pause tracking
+    if (onSetChange) {
+      onSetChange(setIndex + 1, newSetsData);
+    }
+    
     if (setIndex + 1 >= totalSets) {
       onCompleteExercise(newSetsData);
     } else {
@@ -87,7 +98,12 @@ export const ExercisePlayer = ({
 
   const handleRestComplete = () => {
     setShowRestTimer(false);
-    setCurrentSet(prev => prev + 1);
+    const newSetIndex = currentSet + 1;
+    setCurrentSet(newSetIndex);
+    // Notify parent about set change
+    if (onSetChange) {
+      onSetChange(newSetIndex, setsData);
+    }
   };
 
   const togglePlay = () => {

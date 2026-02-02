@@ -147,6 +147,8 @@ const Training = () => {
   const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
   const [initialResults, setInitialResults] = useState<any[]>([]);
   const [initialWarmupIndex, setInitialWarmupIndex] = useState(0);
+  const [initialSetIndex, setInitialSetIndex] = useState(0);
+  const [initialCurrentExerciseSets, setInitialCurrentExerciseSets] = useState<any[]>([]);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -404,6 +406,8 @@ const Training = () => {
       } else {
         // Resume in main workout
         setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
+        setInitialSetIndex(pausedWorkout.currentSetIndex || 0);
+        setInitialCurrentExerciseSets(pausedWorkout.currentExerciseSets || []);
         // Convert completedSets back to results array format
         const resultsArray = Object.entries(pausedWorkout.completedSets).map(([exerciseId, sets]) => {
           const exercise = pausedWorkout.exercises.find(e => e.exerciseId === exerciseId);
@@ -1020,6 +1024,8 @@ const Training = () => {
       exercises: generatedExercises,
       warmupExercises: warmupExercises,
       currentExerciseIndex: 0,
+      currentSetIndex: 0,
+      currentExerciseSets: [],
       completedSets: {},
       startedAt: new Date().toISOString(),
       pausedAt: new Date().toISOString(),
@@ -1032,7 +1038,7 @@ const Training = () => {
     toast.info('Trénink pozastaven');
   }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
 
-  const handlePauseFromWorkout = useCallback((currentExerciseIndex: number, results: any[]) => {
+  const handlePauseFromWorkout = useCallback((currentExerciseIndex: number, results: any[], currentSetIndex: number, currentExerciseSets: any[]) => {
     if (!plan || !profile?.selected_gym_id) return;
     
     const completedSets: Record<string, any[]> = {};
@@ -1048,6 +1054,8 @@ const Training = () => {
       exercises: generatedExercises,
       warmupExercises: warmupExercises,
       currentExerciseIndex,
+      currentSetIndex,
+      currentExerciseSets,
       completedSets,
       startedAt: new Date().toISOString(),
       pausedAt: new Date().toISOString(),
@@ -1074,6 +1082,8 @@ const Training = () => {
       goalId: plan.goalId,
       exercises: generatedExercises,
       currentExerciseIndex: 0,
+      currentSetIndex: 0,
+      currentExerciseSets: [],
       completedSets: {},
       startedAt: new Date().toISOString(),
       pausedAt: new Date().toISOString(),
@@ -1437,10 +1447,14 @@ const Training = () => {
           // Reset resume state
           setInitialExerciseIndex(0);
           setInitialResults([]);
+          setInitialSetIndex(0);
+          setInitialCurrentExerciseSets([]);
         }}
         onPause={handlePauseFromWorkout}
         initialExerciseIndex={initialExerciseIndex}
         initialResults={initialResults}
+        initialSetIndex={initialSetIndex}
+        initialCurrentExerciseSets={initialCurrentExerciseSets}
       />
     );
   }

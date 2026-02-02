@@ -10,6 +10,8 @@ export interface PausedWorkoutState {
   exercises: WorkoutExercise[];
   warmupExercises?: WarmupExercise[];
   currentExerciseIndex: number;
+  currentSetIndex: number;  // Which set in current exercise
+  currentExerciseSets: { weight?: number; reps?: number; completed: boolean }[];  // Sets data for current exercise
   completedSets: Record<string, { weight?: number; reps?: number; completed: boolean }[]>;
   startedAt: string;
   pausedAt: string;
