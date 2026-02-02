@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +82,7 @@ const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satu
 
 const Training = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile, isLoading: profileLoading, updateProfile, refetch: refetchProfile } = useUserProfile();
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan, getExercisesForDay } = useWorkoutPlan();
   const { generateWorkoutPlan, isGenerating, error: generatorError } = useWorkoutGenerator();
@@ -136,6 +137,9 @@ const Training = () => {
   
   // Notification onboarding
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false);
+
+  // Auto-start flag from URL param
+  const [autoStartTriggered, setAutoStartTriggered] = useState(false);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
@@ -253,7 +257,7 @@ const Training = () => {
       const { data } = await supabase
         .from('workout_sessions')
         .select('id, started_at, day_letter, is_bonus')
-        .eq('goal_id', plan.goalId)
+        .eq('plan_id', plan.id)
         .not('completed_at', 'is', null)
         .order('started_at', { ascending: true });
       
@@ -336,6 +340,36 @@ const Training = () => {
       return () => clearTimeout(timer);
     }
   }, [profile?.onboarding_completed, profileLoading, notificationsSupported, notificationsEnabled, notificationPreferences.onboardingShown]);
+  
+  // Auto-start workout when navigating from Home with ?start=true
+  useEffect(() => {
+    const shouldAutoStart = searchParams.get('start') === 'true';
+    
+    if (
+      shouldAutoStart && 
+      !autoStartTriggered && 
+      plan && 
+      !planLoading && 
+      profile?.selected_gym_id && 
+      !profileLoading
+    ) {
+      setAutoStartTriggered(true);
+      // Clear the URL param
+      searchParams.delete('start');
+      setSearchParams(searchParams, { replace: true });
+      
+      // Start workout flow directly (gym already confirmed in Home)
+      const exercisesFromPlan = getCurrentDayExercises();
+      
+      if (exercisesFromPlan.length > 0) {
+        setGeneratedExercises(exercisesFromPlan);
+        setSelectedWorkoutGymId(profile.selected_gym_id);
+        setShowWorkoutPreview(true);
+      } else {
+        setShowMissingExercisesDialog(true);
+      }
+    }
+  }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams]);
   
   // Function to regenerate plan automatically
   const handleRegeneratePlan = useCallback(async () => {
