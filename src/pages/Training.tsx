@@ -143,6 +143,11 @@ const Training = () => {
   // Auto-start flag from URL param
   const [autoStartTriggered, setAutoStartTriggered] = useState(false);
 
+  // Resume workout state
+  const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
+  const [initialResults, setInitialResults] = useState<any[]>([]);
+  const [initialWarmupIndex, setInitialWarmupIndex] = useState(0);
+
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
   
   // User's training days - use plan's stored training_days if available, otherwise fall back to profile
@@ -372,6 +377,50 @@ const Training = () => {
       }
     }
   }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams]);
+
+  // Auto-resume paused workout when navigating from Home with ?resume=true
+  useEffect(() => {
+    const shouldResume = searchParams.get('resume') === 'true';
+    
+    if (
+      shouldResume && 
+      pausedWorkout && 
+      !autoStartTriggered
+    ) {
+      setAutoStartTriggered(true);
+      // Clear the URL param
+      searchParams.delete('resume');
+      setSearchParams(searchParams, { replace: true });
+      
+      // Restore exercises from paused state
+      setGeneratedExercises(pausedWorkout.exercises);
+      setWarmupExercises(pausedWorkout.warmupExercises || []);
+      setSelectedWorkoutGymId(pausedWorkout.gymId);
+      
+      if (pausedWorkout.isInWarmup) {
+        // Resume in warmup
+        setInitialWarmupIndex(pausedWorkout.warmupIndex || 0);
+        setShowWarmup(true);
+      } else {
+        // Resume in main workout
+        setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
+        // Convert completedSets back to results array format
+        const resultsArray = Object.entries(pausedWorkout.completedSets).map(([exerciseId, sets]) => {
+          const exercise = pausedWorkout.exercises.find(e => e.exerciseId === exerciseId);
+          return {
+            exerciseId,
+            exerciseName: exercise?.exerciseName || '',
+            sets: sets
+          };
+        });
+        setInitialResults(resultsArray);
+        setIsWorkoutActive(true);
+      }
+      
+      // Clear paused workout after resuming
+      clearPausedWorkout();
+    }
+  }, [searchParams, pausedWorkout, autoStartTriggered, setSearchParams, clearPausedWorkout]);
   
   // Function to regenerate plan automatically
   const handleRegeneratePlan = useCallback(async () => {
@@ -960,7 +1009,7 @@ const Training = () => {
   }, []);
 
   // Handle pausing from warmup or workout
-  const handlePauseFromWarmup = useCallback(() => {
+  const handlePauseFromWarmup = useCallback((currentWarmupIndex: number) => {
     if (!plan || !profile?.selected_gym_id) return;
     
     savePausedWorkout({
@@ -975,7 +1024,7 @@ const Training = () => {
       startedAt: new Date().toISOString(),
       pausedAt: new Date().toISOString(),
       isInWarmup: true,
-      warmupIndex: 0
+      warmupIndex: currentWarmupIndex
     });
     
     setShowWarmup(false);
@@ -1361,6 +1410,7 @@ const Training = () => {
           setShowWorkoutPreview(false);
           setGeneratedExercises([]);
         }}
+        initialIndex={initialWarmupIndex}
       />
     );
   }
@@ -1384,8 +1434,13 @@ const Training = () => {
           setExtendedExercises([]);
           setIsBonusWorkout(false);
           clearPausedWorkout();
+          // Reset resume state
+          setInitialExerciseIndex(0);
+          setInitialResults([]);
         }}
         onPause={handlePauseFromWorkout}
+        initialExerciseIndex={initialExerciseIndex}
+        initialResults={initialResults}
       />
     );
   }

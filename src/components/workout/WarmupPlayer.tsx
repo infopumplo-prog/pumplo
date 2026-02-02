@@ -32,13 +32,14 @@ interface WarmupPlayerProps {
   exercises: WarmupExercise[];
   onComplete: () => void;
   onSkipAll: () => void;
-  onPause?: () => void;
+  onPause?: (currentIndex: number) => void;
   onEnd?: () => void;
+  initialIndex?: number;
 }
 
-export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd }: WarmupPlayerProps) => {
+export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd, initialIndex = 0 }: WarmupPlayerProps) => {
   const navigate = useNavigate();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.duration || 30);
   const [isPaused, setIsPaused] = useState(false);
   const [isWaitingForTap, setIsWaitingForTap] = useState(false);
@@ -133,10 +134,10 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd 
 
   const handlePauseWorkout = useCallback(() => {
     if (onPause) {
-      onPause();
+      onPause(currentIndex);
     }
     navigate('/');
-  }, [onPause, navigate]);
+  }, [onPause, currentIndex, navigate]);
 
   if (!currentExercise) return null;
 

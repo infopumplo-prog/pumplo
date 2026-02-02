@@ -33,6 +33,8 @@ interface WorkoutSessionProps {
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
   onPause?: (currentExerciseIndex: number, results: ExerciseResult[]) => void;
+  initialExerciseIndex?: number;
+  initialResults?: ExerciseResult[];
 }
 
 // Rest times in seconds based on goal and situation
@@ -68,13 +70,15 @@ export const WorkoutSession = ({
   onComplete,
   onCancel,
   onPause,
+  initialExerciseIndex = 0,
+  initialResults = [],
 }: WorkoutSessionProps) => {
   const navigate = useNavigate();
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(0);
   const [restLabel, setRestLabel] = useState('');
-  const [results, setResults] = useState<ExerciseResult[]>([]);
+  const [results, setResults] = useState<ExerciseResult[]>(initialResults);
   const [showSummary, setShowSummary] = useState(false);
   const [workoutStartTime] = useState(new Date());
   const [showSkipDialog, setShowSkipDialog] = useState(false);
