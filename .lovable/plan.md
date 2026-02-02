@@ -1,148 +1,117 @@
 
-
-# Oprava obnovení pozastaveného tréninku
+# Přidání sledování aktuální série při pozastavení tréninku
 
 ## Problém
-Když klikneš na "Pokračovat v tréninku", trénink se spustí od začátku místo od místa, kde jsi přestal. Důvod:
+Při pozastavení tréninku se ukládá:
+- Index aktuálního cviku (`currentExerciseIndex`)
+- Dokončené série předchozích cviků (`completedSets`)
 
-1. V `Home.tsx` se při kliknutí na "Pokračovat" **okamžitě vymaže** uložený stav (`clearPausedWorkout()`)
-2. Teprve pak se naviguje na `/training?start=true`
-3. Training.tsx už nemá přístup k uloženým datům → spustí trénink od nuly
+**ALE NEUKLÁDÁ SE:**
+- Na které sérii v aktuálním cviku uživatel skončil
+- Data (váhy, opakování) již zadaná pro aktuální cvik
+
+Například: Pokud uživatel dokončí sérii 1 a 2 ze 4 a pak pozastaví trénink, při obnovení musí začít aktuální cvik od série 1 znovu.
+
+---
 
 ## Řešení
 
-### Změny v souborech
+### 1. Rozšířit `PausedWorkoutState` o sledování série
+
+**Soubor: `src/hooks/usePausedWorkout.ts`**
+
+Přidat nová pole:
+```typescript
+export interface PausedWorkoutState {
+  // ... stávající pole ...
+  currentExerciseIndex: number;
+  currentSetIndex: number;  // ← NOVÉ: na které sérii v aktuálním cviku
+  currentExerciseSets: { weight?: number; reps?: number; completed: boolean }[];  // ← NOVÉ: data aktuálního cviku
+  completedSets: Record<string, { weight?: number; reps?: number; completed: boolean }[]>;
+  // ...
+}
+```
+
+### 2. Upravit `WorkoutSession` pro předávání dat aktuální série
+
+**Soubor: `src/components/workout/WorkoutSession.tsx`**
+
+- Přidat nový prop `initialSetIndex` a `initialCurrentExerciseSets`
+- Upravit `onPause` callback aby zahrnoval i data aktuální série:
+
+```typescript
+onPause?: (
+  currentExerciseIndex: number, 
+  results: ExerciseResult[], 
+  currentSetIndex: number,
+  currentExerciseSets: SetData[]
+) => void;
+```
+
+### 3. Upravit `ExercisePlayer` pro předání stavu série
+
+**Soubor: `src/components/workout/ExercisePlayer.tsx`**
+
+- Přidat nové props: `initialSetIndex` a `initialSetsData`
+- Inicializovat `currentSet` a `setsData` z props místo z nuly
+
+### 4. Upravit `Training.tsx` pro ukládání a obnovu série
+
+**Soubor: `src/pages/Training.tsx`**
+
+- Rozšířit `handlePauseFromWorkout` o přijímání `currentSetIndex` a `currentExerciseSets`
+- Rozšířit resume logiku o obnovení `initialSetIndex` a `initialCurrentExerciseSets`
+
+---
+
+## Změny v souborech
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Home.tsx` | Nemazat `pausedWorkout` při kliknutí, navigovat na `/training?resume=true` |
-| `src/pages/Training.tsx` | Přidat logiku pro detekci `?resume=true` a obnovení ze stavu |
-| `src/components/workout/WorkoutSession.tsx` | Přidat props pro počáteční index a výsledky |
-| `src/components/workout/WarmupPlayer.tsx` | Přidat props pro počáteční index |
+| `src/hooks/usePausedWorkout.ts` | Přidat `currentSetIndex` a `currentExerciseSets` do interface |
+| `src/components/workout/ExercisePlayer.tsx` | Přidat `initialSetIndex` a `initialSetsData` props |
+| `src/components/workout/WorkoutSession.tsx` | Rozšířit `onPause` callback, přidat předávání dat do ExercisePlayer |
+| `src/pages/Training.tsx` | Upravit ukládání a obnovení pauzovaného tréninku |
 
 ---
 
-## Technické detaily
-
-### 1. Home.tsx - Nemazat stav předčasně (řádky 389-392)
-
-**Aktuální kód:**
-```jsx
-onResume={() => {
-  clearPausedWorkout();  // ❌ Maže data PŘED navigací
-  navigate('/training?start=true');
-}}
-```
-
-**Nový kód:**
-```jsx
-onResume={() => {
-  navigate('/training?resume=true');  // ✅ Naviguje bez mazání
-}}
-```
-
-### 2. Training.tsx - Přidat resume logiku
-
-Přidat nový `useEffect` pro detekci `?resume=true`:
-
-```jsx
-// Auto-resume paused workout
-useEffect(() => {
-  const shouldResume = searchParams.get('resume') === 'true';
-  
-  if (shouldResume && pausedWorkout && !autoStartTriggered) {
-    setAutoStartTriggered(true);
-    searchParams.delete('resume');
-    setSearchParams(searchParams, { replace: true });
-    
-    // Restore exercises from paused state
-    setGeneratedExercises(pausedWorkout.exercises);
-    setWarmupExercises(pausedWorkout.warmupExercises || []);
-    setSelectedWorkoutGymId(pausedWorkout.gymId);
-    
-    if (pausedWorkout.isInWarmup) {
-      // Resume in warmup
-      setShowWarmup(true);
-      setInitialWarmupIndex(pausedWorkout.warmupIndex || 0);
-    } else {
-      // Resume in main workout
-      setIsWorkoutActive(true);
-      setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
-      setInitialResults(pausedWorkout.completedSets);
-    }
-  }
-}, [searchParams, pausedWorkout, autoStartTriggered]);
-```
-
-### 3. WorkoutSession.tsx - Přijímat počáteční stav
-
-Přidat nové props:
-```tsx
-interface WorkoutSessionProps {
-  exercises: WorkoutExercise[];
-  // ... existing props ...
-  initialExerciseIndex?: number;  // ← NOVÉ
-  initialResults?: ExerciseResult[];  // ← NOVÉ
-}
-```
-
-Inicializovat state z props:
-```tsx
-const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex || 0);
-const [results, setResults] = useState<ExerciseResult[]>(initialResults || []);
-```
-
-### 4. WarmupPlayer.tsx - Přijímat počáteční index
-
-Přidat nové props:
-```tsx
-interface WarmupPlayerProps {
-  exercises: WarmupExercise[];
-  // ... existing props ...
-  initialIndex?: number;  // ← NOVÉ
-}
-```
-
-Inicializovat state z props:
-```tsx
-const [currentIndex, setCurrentIndex] = useState(initialIndex || 0);
-```
-
-### 5. Kdy mazat pausedWorkout
-
-Vymazat až při:
-- **Dokončení tréninku** → v `handleWorkoutComplete`
-- **Ukončení tréninku** (ne pozastavení) → v `onCancel` callback
-
----
-
-## UI Flow po opravě
+## Datový tok
 
 ```text
 POZASTAVENÍ:
 ┌──────────────────────────────────────────────────────────────┐
-│  Trénink → [X] → Dialog "Pozastavit / Ukončit"              │
-│                    ↓                                         │
-│             [Pozastavit] → Uloží stav do localStorage        │
-│                    ↓                                         │
-│             Navigace na Home                                 │
+│  ExercisePlayer (currentSet=2, setsData=[...])              │
+│       ↓                                                      │
+│  WorkoutSession.onPause(exerciseIdx, results, setIdx, sets) │
+│       ↓                                                      │
+│  Training.handlePauseFromWorkout(...)                        │
+│       ↓                                                      │
+│  savePausedWorkout({                                        │
+│    currentExerciseIndex: 1,                                 │
+│    currentSetIndex: 2,           ← NOVÉ                     │
+│    currentExerciseSets: [...],   ← NOVÉ                     │
+│    completedSets: { ... },                                  │
+│  })                                                          │
 └──────────────────────────────────────────────────────────────┘
 
 OBNOVENÍ:
 ┌──────────────────────────────────────────────────────────────┐
-│  Home → PausedWorkoutCard → [Pokračovat]                     │
-│                    ↓                                         │
-│  navigate('/training?resume=true')  (BEZ mazání stavu)       │
-│                    ↓                                         │
 │  Training.tsx detekuje ?resume=true                          │
-│                    ↓                                         │
-│  Načte data z pausedWorkout:                                 │
-│    - exercises, warmupExercises                              │
-│    - currentExerciseIndex                                    │
-│    - completedSets (váhy, opakování)                        │
-│    - isInWarmup (zda byl v rozcvičce)                       │
-│                    ↓                                         │
-│  Otevře správnou obrazovku na správném místě                │
+│       ↓                                                      │
+│  Načte z pausedWorkout:                                     │
+│    - initialExerciseIndex: 1                                 │
+│    - initialSetIndex: 2          ← NOVÉ                     │
+│    - initialCurrentExerciseSets  ← NOVÉ                     │
+│       ↓                                                      │
+│  WorkoutSession:                                             │
+│    - currentExerciseIndex = 1                                │
+│    - currentSetIndex = 2         ← NOVÉ                     │
+│       ↓                                                      │
+│  ExercisePlayer:                                             │
+│    - initialSetIndex = 2         ← NOVÉ                     │
+│    - initialSetsData = [...]     ← NOVÉ                     │
+│       ↓                                                      │
+│  Uživatel pokračuje od série 3/4                            │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,7 +119,7 @@ OBNOVENÍ:
 
 ## Očekávaný výsledek
 
-1. **Správné místo** - Trénink se obnoví přesně tam, kde uživatel přestal (warmup nebo hlavní cvik)
-2. **Zachované data** - Všechny zadané váhy, opakování a dokončené série zůstanou zachovány
-3. **Správný progress** - Progress bar ukazuje skutečný stav, ne 0%
+1. **Přesné obnovení** - Trénink se obnoví na přesně té sérii, kde uživatel skončil
+2. **Zachované váhy** - Všechny zadané váhy a opakování (i v aktuálním cviku) zůstanou zachovány
+3. **Progress indikátor** - Vizuální indikátor sérií správně zobrazuje dokončené série
 
