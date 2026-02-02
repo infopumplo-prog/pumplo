@@ -387,8 +387,7 @@ const Home = () => {
                         <PausedWorkoutCard
                           pausedWorkout={pausedWorkout}
                           onResume={() => {
-                            clearPausedWorkout();
-                            navigate('/training?start=true');
+                            navigate('/training?resume=true');
                           }}
                           onDiscard={clearPausedWorkout}
                         />
