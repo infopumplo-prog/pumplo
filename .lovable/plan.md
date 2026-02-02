@@ -1,108 +1,156 @@
 
 
-# Oprava zobrazení starých tréninků a zjednodušení flow "Začít trénink"
+# Oprava obnovení pozastaveného tréninku
 
-## Identifikované problémy
+## Problém
+Když klikneš na "Pokračovat v tréninku", trénink se spustí od začátku místo od místa, kde jsi přestal. Důvod:
 
-### Problém 1: Zobrazují se tréninky ze starého plánu
-Stránka `/training` načítá dokončené tréninky podle `goal_id`, ale **nefiltruje podle `plan_id`**. Pokud máš nový plán se stejným cílem, zobrazí se i staré tréninky z předchozího plánu.
+1. V `Home.tsx` se při kliknutí na "Pokračovat" **okamžitě vymaže** uložený stav (`clearPausedWorkout()`)
+2. Teprve pak se naviguje na `/training?start=true`
+3. Training.tsx už nemá přístup k uloženým datům → spustí trénink od nuly
 
-**Aktuální kód (řádek 256):**
-```javascript
-.eq('goal_id', plan.goalId)  // ❌ Filtruje jen podle cíle
-```
+## Řešení
 
-**Řešení:**
-```javascript
-.eq('plan_id', plan.id)  // ✅ Filtruje podle konkrétního plánu
-```
-
-### Problém 2: Tlačítko "Začít trénink" naviguje na celou stránku Training
-Když klikneš na "Začít trénink" z domovské stránky, chceš:
-1. Zobrazit dialog s potvrzením posilovny
-2. Přejít rovnou na preview tréninku a warmup
-
-**Aktuální flow:**
-Home → `/training` page (celý kalendář) → Tlačítko "Začít" → Gym dialog → Preview
-
-**Požadovaný flow:**
-Home → Gym dialog (přímo v Home) → Preview → Warmup → Trénink
-
----
-
-## Navrhované změny
+### Změny v souborech
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Training.tsx` | Opravit filtrování workout sessions podle `plan_id` místo `goal_id` |
-| `src/pages/Home.tsx` | Přidat gym confirmation dialog a workout flow přímo do Home stránky |
+| `src/pages/Home.tsx` | Nemazat `pausedWorkout` při kliknutí, navigovat na `/training?resume=true` |
+| `src/pages/Training.tsx` | Přidat logiku pro detekci `?resume=true` a obnovení ze stavu |
+| `src/components/workout/WorkoutSession.tsx` | Přidat props pro počáteční index a výsledky |
+| `src/components/workout/WarmupPlayer.tsx` | Přidat props pro počáteční index |
 
 ---
 
 ## Technické detaily
 
-### 1. Oprava filtrování tréninků v Training.tsx
+### 1. Home.tsx - Nemazat stav předčasně (řádky 389-392)
 
-Změnit dotaz na workout_sessions:
-
-```javascript
-// Řádek 253-257
-const { data } = await supabase
-  .from('workout_sessions')
-  .select('id, started_at, day_letter, is_bonus')
-  .eq('plan_id', plan.id)  // ← Změna: filtrovat podle plan_id
-  .not('completed_at', 'is', null)
-  .order('started_at', { ascending: true });
+**Aktuální kód:**
+```jsx
+onResume={() => {
+  clearPausedWorkout();  // ❌ Maže data PŘED navigací
+  navigate('/training?start=true');
+}}
 ```
 
-### 2. Přidání gym confirmation flow do Home.tsx
+**Nový kód:**
+```jsx
+onResume={() => {
+  navigate('/training?resume=true');  // ✅ Naviguje bez mazání
+}}
+```
 
-Přidat na domovskou stránku:
-- State pro gym confirmation dialog
-- Funkce `handleStartWorkout` (podobná jako v Training.tsx)
-- AlertDialog pro potvrzení posilovny
-- AlertDialog pro varování o zavřené posilovně
-- Po potvrzení: navigate na `/training` s query parametrem `?start=true`
+### 2. Training.tsx - Přidat resume logiku
 
-### 3. Upravit Training.tsx pro automatický start
+Přidat nový `useEffect` pro detekci `?resume=true`:
 
-Přidat logiku, která při URL parametru `?start=true`:
-- Přeskočí kalendářovou obrazovku
-- Automaticky otevře workout preview
-- Rovnou spustí warmup flow
+```jsx
+// Auto-resume paused workout
+useEffect(() => {
+  const shouldResume = searchParams.get('resume') === 'true';
+  
+  if (shouldResume && pausedWorkout && !autoStartTriggered) {
+    setAutoStartTriggered(true);
+    searchParams.delete('resume');
+    setSearchParams(searchParams, { replace: true });
+    
+    // Restore exercises from paused state
+    setGeneratedExercises(pausedWorkout.exercises);
+    setWarmupExercises(pausedWorkout.warmupExercises || []);
+    setSelectedWorkoutGymId(pausedWorkout.gymId);
+    
+    if (pausedWorkout.isInWarmup) {
+      // Resume in warmup
+      setShowWarmup(true);
+      setInitialWarmupIndex(pausedWorkout.warmupIndex || 0);
+    } else {
+      // Resume in main workout
+      setIsWorkoutActive(true);
+      setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
+      setInitialResults(pausedWorkout.completedSets);
+    }
+  }
+}, [searchParams, pausedWorkout, autoStartTriggered]);
+```
+
+### 3. WorkoutSession.tsx - Přijímat počáteční stav
+
+Přidat nové props:
+```tsx
+interface WorkoutSessionProps {
+  exercises: WorkoutExercise[];
+  // ... existing props ...
+  initialExerciseIndex?: number;  // ← NOVÉ
+  initialResults?: ExerciseResult[];  // ← NOVÉ
+}
+```
+
+Inicializovat state z props:
+```tsx
+const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex || 0);
+const [results, setResults] = useState<ExerciseResult[]>(initialResults || []);
+```
+
+### 4. WarmupPlayer.tsx - Přijímat počáteční index
+
+Přidat nové props:
+```tsx
+interface WarmupPlayerProps {
+  exercises: WarmupExercise[];
+  // ... existing props ...
+  initialIndex?: number;  // ← NOVÉ
+}
+```
+
+Inicializovat state z props:
+```tsx
+const [currentIndex, setCurrentIndex] = useState(initialIndex || 0);
+```
+
+### 5. Kdy mazat pausedWorkout
+
+Vymazat až při:
+- **Dokončení tréninku** → v `handleWorkoutComplete`
+- **Ukončení tréninku** (ne pozastavení) → v `onCancel` callback
 
 ---
 
-## UI Flow po změně
+## UI Flow po opravě
 
 ```text
-┌─────────────────────────────────────────┐
-│  HOME PAGE                              │
-│                                         │
-│  [▶ Začít trénink]                     │
-│       ↓                                 │
-│  ┌─────────────────────────────────┐   │
-│  │  Jdeš cvičit do FitGym?        │   │
-│  │  [Vybrat jinou] [Ano, začít]   │   │
-│  └─────────────────────────────────┘   │
-│       ↓                                 │
-└─────────────────────────────────────────┘
-         ↓
-┌─────────────────────────────────────────┐
-│  TRAINING PAGE (s ?start=true)          │
-│                                         │
-│  → Automaticky otevře workout preview   │
-│  → Spustí rozcvičku                    │
-│  → Přejde do tréninku                   │
-│                                         │
-└─────────────────────────────────────────┘
+POZASTAVENÍ:
+┌──────────────────────────────────────────────────────────────┐
+│  Trénink → [X] → Dialog "Pozastavit / Ukončit"              │
+│                    ↓                                         │
+│             [Pozastavit] → Uloží stav do localStorage        │
+│                    ↓                                         │
+│             Navigace na Home                                 │
+└──────────────────────────────────────────────────────────────┘
+
+OBNOVENÍ:
+┌──────────────────────────────────────────────────────────────┐
+│  Home → PausedWorkoutCard → [Pokračovat]                     │
+│                    ↓                                         │
+│  navigate('/training?resume=true')  (BEZ mazání stavu)       │
+│                    ↓                                         │
+│  Training.tsx detekuje ?resume=true                          │
+│                    ↓                                         │
+│  Načte data z pausedWorkout:                                 │
+│    - exercises, warmupExercises                              │
+│    - currentExerciseIndex                                    │
+│    - completedSets (váhy, opakování)                        │
+│    - isInWarmup (zda byl v rozcvičce)                       │
+│                    ↓                                         │
+│  Otevře správnou obrazovku na správném místě                │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Očekávaný výsledek
 
-1. **Opravený kalendář** - V kalendáři plánu se zobrazí pouze tréninky z aktuálního plánu (nedělní trénink ze starého plánu zmizí)
-
-2. **Rychlejší start tréninku** - Kliknutí na "Začít trénink" z Home zobrazí pouze dialog s potvrzením posilovny a pak rovnou přejde na trénink
+1. **Správné místo** - Trénink se obnoví přesně tam, kde uživatel přestal (warmup nebo hlavní cvik)
+2. **Zachované data** - Všechny zadané váhy, opakování a dokončené série zůstanou zachovány
+3. **Správný progress** - Progress bar ukazuje skutečný stav, ne 0%
 
