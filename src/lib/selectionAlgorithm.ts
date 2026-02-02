@@ -159,7 +159,7 @@ export const matchesEquipmentPreference = (
     return ['machine', 'cable', 'plate_loaded'].includes(exType);
   }
   if (preference === 'free_weights') {
-    return ['barbell', 'dumbbell', 'kettlebell'].includes(exType);
+    return ['barbell', 'dumbbell', 'kettlebell', 'resistance_band'].includes(exType);
   }
   if (preference === 'bodyweight') {
     return exType === 'bodyweight';
