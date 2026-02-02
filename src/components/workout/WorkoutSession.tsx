@@ -157,7 +157,8 @@ export const WorkoutSession = ({
     });
     
     onComplete(results);
-  }, [onComplete, results, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus]);
+    navigate('/');
+  }, [onComplete, results, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus, navigate]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
@@ -190,21 +191,16 @@ export const WorkoutSession = ({
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-muted rounded-xl p-4">
               <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
               <p className="text-2xl font-bold">{totalDuration}</p>
               <p className="text-xs text-muted-foreground">minut</p>
             </div>
             <div className="bg-muted rounded-xl p-4">
-              <Dumbbell className="w-6 h-6 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{totalSets}</p>
-              <p className="text-xs text-muted-foreground">sérií</p>
-            </div>
-            <div className="bg-muted rounded-xl p-4">
               <Weight className="w-6 h-6 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{Math.round(totalWeight / 1000)}</p>
-              <p className="text-xs text-muted-foreground">tun</p>
+              <p className="text-2xl font-bold">{Math.round(totalWeight)}</p>
+              <p className="text-xs text-muted-foreground">kg</p>
             </div>
           </div>
 
