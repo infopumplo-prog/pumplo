@@ -1,138 +1,71 @@
 
-# Oprava kategorizace vybavení v databázi
+
+# Oprava kategorizace resistance bands
 
 ## Problém
-Uživatel vybírá preferenci vybavení v dotazníku (Stroje / Volné váhy / Vlastní váha), ale systém **nedokáže správně prioritizovat cviky**, protože:
+Cviky s resistance bands mají v databázi `equipment_type = 'machine'`, ale měly by být kategorizovány jako volné váhy (`resistance_band`).
 
-- **Algoritmus je správný**: Hledá `barbell`, `dumbbell`, `kettlebell` pro volné váhy
-- **Databáze je špatná**: Všechny cviky s vybavením mají `equipment_type = 'machine'`
+### Aktuální stav:
+| Cvik | Machine | equipment_type |
+|------|---------|----------------|
+| Band Bent Over Row | Resistance band with handles | `machine` ❌ |
+| Band Deadlift | Resistance band with handles | `machine` ❌ |
 
-### Příklad:
-| Cvik | machine_id → | equipment_type |
-|------|--------------|----------------|
-| Barbell Bent Over Row | Barbell | `machine` ❌ |
-| Dumbbell RDL Stretch | Dumbbells | `machine` ❌ |
+### Algoritmus je už správně nastaven:
+- `cable` je pod `machines` ✅
+- Potřebujeme jen přidat `resistance_band` pod `free_weights`
 
 ---
 
 ## Řešení
 
-### 1. Definovat mapování strojů na typy vybavení
-
-Stroje v `machines` tabulce lze rozdělit do kategorií:
-
-| Kategorie | Příklady strojů |
-|-----------|-----------------|
-| `barbell` | Barbell, Barbell 20kg, EZ bar |
-| `dumbbell` | Dumbbells, Dumbbell zóna |
-| `kettlebell` | Kettlebell, Kettlebells 4-22kg |
-| `cable` | Cable crossover, Cable Fly, Cable Row, cable station |
-| `plate_loaded` | Chest Press plate-loaded, Dips machine plate-loaded |
-| `machine` | Leg press, Chest press machine, Smith machine |
-
-### 2. Aktualizovat exercises.equipment_type
-
-Spustit SQL migrace, které nastaví správný `equipment_type` podle `machine_id`:
+### 1. Aktualizovat databázi - přiřadit resistance bands správný typ
 
 ```sql
--- Barbell cviky
-UPDATE exercises SET equipment_type = 'barbell'
+UPDATE exercises SET equipment_type = 'resistance_band'
 WHERE machine_id IN (
   SELECT id FROM machines 
-  WHERE name ILIKE '%barbell%' OR name ILIKE 'ez bar'
-);
-
--- Dumbbell cviky  
-UPDATE exercises SET equipment_type = 'dumbbell'
-WHERE machine_id IN (
-  SELECT id FROM machines 
-  WHERE name ILIKE '%dumbbell%'
-);
-
--- Kettlebell cviky
-UPDATE exercises SET equipment_type = 'kettlebell'
-WHERE machine_id IN (
-  SELECT id FROM machines 
-  WHERE name ILIKE '%kettlebell%'
-);
-
--- Cable cviky
-UPDATE exercises SET equipment_type = 'cable'
-WHERE machine_id IN (
-  SELECT id FROM machines 
-  WHERE name ILIKE '%cable%' OR name ILIKE '%pulley%'
-);
-
--- Plate-loaded stroje
-UPDATE exercises SET equipment_type = 'plate_loaded'
-WHERE machine_id IN (
-  SELECT id FROM machines 
-  WHERE name ILIKE '%plate-loaded%' OR name ILIKE '%plate loaded%'
+  WHERE name ILIKE '%band%' OR name ILIKE '%resistance%'
 );
 ```
 
-### 3. Rozšířit algoritmus o další kategorie
+### 2. Rozšířit algoritmus o resistance_band kategorizaci
 
-Aktualizovat `matchesEquipmentPreference()` v `selectionAlgorithm.ts`:
+**Soubor: `src/lib/selectionAlgorithm.ts`**
+
+Aktualizovat `matchesEquipmentPreference()`:
 
 ```typescript
 if (preference === 'free_weights') {
-  return ['barbell', 'dumbbell', 'kettlebell', 'ez_bar', 'hex_bar'].includes(exType);
+  return ['barbell', 'dumbbell', 'kettlebell', 'resistance_band'].includes(exType);
 }
 ```
 
 ---
 
-## Změny v souborech
+## Změny
 
-| Soubor | Změna |
-|--------|-------|
-| SQL migrace | UPDATE exercises.equipment_type podle machine_id |
-| `src/lib/selectionAlgorithm.ts` | Rozšířit mapování kategorií (volitelně) |
-| `src/lib/equipmentTypes.ts` | Přidat chybějící typy do labels (již částečně hotovo) |
+| Soubor/Akce | Změna |
+|-------------|-------|
+| SQL UPDATE | Změnit `equipment_type` na `resistance_band` pro cviky s gumy |
+| `src/lib/selectionAlgorithm.ts` | Přidat `resistance_band` do `free_weights` kategorie |
 
 ---
 
-## Datový tok po opravě
+## Výsledná kategorizace
 
-```text
-PREFERENCE "VOLNÉ VÁHY":
-┌──────────────────────────────────────────────────────────────┐
-│  Uživatel: equipment_preference = 'free_weights'             │
-│       ↓                                                      │
-│  matchesEquipmentPreference()                                │
-│       ↓                                                      │
-│  Hledá: equipment_type IN ('barbell','dumbbell','kettlebell')│
-│       ↓                                                      │
-│  Databáze: Barbell Bench Press (equipment_type='barbell')    │
-│       ↓                                                      │
-│  +5 bonus → vyšší priorita oproti machine cvikům            │
-└──────────────────────────────────────────────────────────────┘
-
-PREFERENCE "STROJE":
-┌──────────────────────────────────────────────────────────────┐
-│  Uživatel: equipment_preference = 'machines'                 │
-│       ↓                                                      │
-│  matchesEquipmentPreference()                                │
-│       ↓                                                      │
-│  Hledá: equipment_type IN ('machine','cable','plate_loaded') │
-│       ↓                                                      │
-│  Databáze: Chest Press Machine (equipment_type='machine')    │
-│       ↓                                                      │
-│  +5 bonus → vyšší priorita oproti free weights cvikům       │
-└──────────────────────────────────────────────────────────────┘
-```
+| Preference uživatele | Zahrnuje equipment_type |
+|---------------------|-------------------------|
+| **Stroje** | `machine`, `cable`, `plate_loaded` |
+| **Volné váhy** | `barbell`, `dumbbell`, `kettlebell`, `resistance_band` |
+| **Vlastní váha** | `bodyweight` |
 
 ---
 
 ## Očekávaný výsledek
 
-1. **Správná prioritizace** - Cviky odpovídající preferenci získají +5 bodů
-2. **Variabilita zachována** - Pokud gym nemá preferovaný typ, použije se dostupný
-3. **Fallback logika** - Bodyweight zůstává jako poslední možnost (F4)
+Po této změně:
+- Uživatel s preferencí "Volné váhy" dostane +5 bonus pro cviky s odporovými gumami
+- Uživatel s preferencí "Stroje" bude správně preferovat cable machine cviky (už funguje)
+- Lepší rozlišení vybavení pro přesnější výběr cviků
 
----
-
-## Technická poznámka
-
-Aktualizace bude provedena pomocí SQL příkazů na databázi. Algoritmus v kódu už je správně připravený a po aktualizaci databáze bude fungovat.
