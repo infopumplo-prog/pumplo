@@ -1,40 +1,47 @@
 
-# Oprava navigace šipky v kartě "Týden X"
+
+# Přidání tlačítka "Začít trénink" na domovskou stránku
 
 ## Problém
-
-Šipka (ChevronRight) v modré kartě "Týden X" na domovské stránce aktuálně přesměrovává na `/training`, ale uživatel chce, aby vedla na stejné místo jako tlačítko "Vše" - tedy na `/profile/plan` (stránka "Můj plán" s kalendářem a detaily).
+Na domovské stránce chybí rychlé tlačítko pro zahájení tréninku. Bylo pravděpodobně omylem odstraněno při předchozích úpravách.
 
 ## Řešení
+Přidat výrazné tlačítko "Začít trénink" **pod sekci "Nadcházející tréninky"** na domovské stránce.
 
-Změnit `onClick` handler tlačítka šipky z:
-```tsx
-onClick={() => navigate('/training')}
-```
-na:
-```tsx
-onClick={() => navigate('/profile/plan')}
+## Návrh UI
+
+```text
+Nadcházející tréninky                     [Vše >]
+┌─────────────────────────────────────────────────────┐
+│  [A]  Pondělí                           Dnes       │
+│       Push                                          │
+├─────────────────────────────────────────────────────┤
+│  [B]  Středa                                        │
+│       Pull                                          │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│          [▶ ZAČÍT TRÉNINK]  ◄── NOVÉ TLAČÍTKO      │
+└─────────────────────────────────────────────────────┘
 ```
 
-## Soubor ke změně
+## Změny v kódu
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Home.tsx` | Řádek 267: změnit navigaci z `/training` na `/profile/plan` |
+| `src/pages/Home.tsx` | Přidat tlačítko "Začít trénink" za sekci s nadcházejícími tréninky (cca řádek 340) |
 
-## Vizuální kontext
+## Technické detaily
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  ✨ Týden 1                              [→]  ◄──── Tato šipka
-│     Nabrat svaly                                    │
-│  Celkový progress                          0%       │
-│  ════════════════════════════════════════           │
-└─────────────────────────────────────────────────────┘
+1. Přidat novou `motion.div` sekci s tlačítkem za mapováním `schedule.slice(0, 4).map(...)`
+2. Tlačítko bude:
+   - Plné šířky s ikonou `Play` 
+   - Gradient pozadí pro výraznost
+   - Navigovat na `/training` při kliknutí
+3. Tlačítko se zobrazí pouze pokud:
+   - Existuje aktivní plán (`plan` je truthy)
+   - Dnešní trénink NEBYL dokončen (`!wasCompletedToday`)
 
-Nadcházející tréninky                     [Vše >] ◄── Stejná destinace
-```
+## Poznámka k datům
+Tréninky z neděle jsou v databázi v pořádku - nejsou smazané. Historii všech tréninků najdeš v profilu → Historie tréninků.
 
-## Očekávaný výsledek
-
-Po kliknutí na šipku v kartě "Týden X" bude uživatel přesměrován na stránku `/profile/plan` - centralizovanou správu plánu s kalendářem týdnů a detaily.
