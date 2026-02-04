@@ -70,10 +70,10 @@ const GymPhotoViewer = ({
         className="fixed inset-0 max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200] translate-x-0 translate-y-0 left-0 top-0"
         overlayClassName="z-[150]"
       >
-        {/* Close button */}
+        {/* Close button - levý horní roh, výraznější */}
         <button
           onClick={() => onOpenChange(false)}
-          className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
+          className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 transition-colors pointer-events-auto"
         >
           <X className="w-6 h-6 text-white" />
         </button>
