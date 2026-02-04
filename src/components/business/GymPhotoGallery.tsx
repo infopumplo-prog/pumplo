@@ -7,9 +7,17 @@ interface GymPhotoGalleryProps {
   photos: GymPhoto[];
   fallbackCoverUrl?: string | null;
   className?: string;
+  clickable?: boolean;
+  onPhotoClick?: (index: number) => void;
 }
 
-const GymPhotoGallery = ({ photos, fallbackCoverUrl, className }: GymPhotoGalleryProps) => {
+const GymPhotoGallery = ({ 
+  photos, 
+  fallbackCoverUrl, 
+  className,
+  clickable = false,
+  onPhotoClick
+}: GymPhotoGalleryProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
 
@@ -27,11 +35,20 @@ const GymPhotoGallery = ({ photos, fallbackCoverUrl, className }: GymPhotoGaller
     };
   }, [emblaApi, onSelect]);
 
+  const handleClick = (index: number) => {
+    if (clickable && onPhotoClick) {
+      onPhotoClick(index);
+    }
+  };
+
   // If no photos, show fallback cover or gradient
   if (photos.length === 0) {
     if (fallbackCoverUrl) {
       return (
-        <div className={cn("relative w-full h-48", className)}>
+        <div 
+          className={cn("relative w-full h-48", clickable && "cursor-pointer", className)}
+          onClick={() => handleClick(0)}
+        >
           <img 
             src={fallbackCoverUrl} 
             alt="Cover"
@@ -48,7 +65,10 @@ const GymPhotoGallery = ({ photos, fallbackCoverUrl, className }: GymPhotoGaller
   // Single photo - no carousel needed
   if (photos.length === 1) {
     return (
-      <div className={cn("relative w-full h-48", className)}>
+      <div 
+        className={cn("relative w-full h-48", clickable && "cursor-pointer", className)}
+        onClick={() => handleClick(0)}
+      >
         <img 
           src={photos[0].photo_url} 
           alt="Gym photo"
@@ -63,10 +83,11 @@ const GymPhotoGallery = ({ photos, fallbackCoverUrl, className }: GymPhotoGaller
     <div className={cn("relative w-full h-48", className)}>
       <div ref={emblaRef} className="overflow-hidden h-full">
         <div className="flex h-full">
-          {photos.map((photo) => (
+          {photos.map((photo, index) => (
             <div 
               key={photo.id} 
-              className="flex-none w-full h-full"
+              className={cn("flex-none w-full h-full", clickable && "cursor-pointer")}
+              onClick={() => handleClick(index)}
             >
               <img 
                 src={photo.photo_url} 
@@ -83,7 +104,10 @@ const GymPhotoGallery = ({ photos, fallbackCoverUrl, className }: GymPhotoGaller
         {photos.map((_, index) => (
           <button
             key={index}
-            onClick={() => emblaApi?.scrollTo(index)}
+            onClick={(e) => {
+              e.stopPropagation();
+              emblaApi?.scrollTo(index);
+            }}
             className={cn(
               "w-2 h-2 rounded-full transition-all",
               index === selectedIndex 
