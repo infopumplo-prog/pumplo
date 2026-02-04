@@ -106,13 +106,21 @@ const BusinessLayout = () => {
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { role, isLoading: roleLoading } = useUserRole();
   
-  if (isLoading) {
+  if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
   
   if (user) {
+    // Přesměrování podle role
+    if (role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    }
+    if (role === 'business') {
+      return <Navigate to="/business" replace />;
+    }
     return <Navigate to="/" replace />;
   }
   
