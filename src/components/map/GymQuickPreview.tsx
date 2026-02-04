@@ -1,4 +1,4 @@
-import { MapPin, Clock, Navigation, Info, X } from 'lucide-react';
+import { MapPin, Clock, Navigation, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
@@ -10,15 +10,13 @@ interface GymQuickPreviewProps {
   distance?: number;
   onDetailClick: () => void;
   onNavigateClick: () => void;
-  onClose: () => void;
 }
 
 const GymQuickPreview = ({ 
   gym, 
   distance, 
   onDetailClick, 
-  onNavigateClick,
-  onClose 
+  onNavigateClick
 }: GymQuickPreviewProps) => {
   const hours = gym.opening_hours as OpeningHours;
   const isOpen = isGymCurrentlyOpen(hours);
@@ -32,14 +30,6 @@ const GymQuickPreview = ({
 
   return (
     <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-      {/* Close button */}
-      <button 
-        onClick={onClose}
-        className="absolute top-3 right-3 p-1.5 rounded-full bg-background/80 hover:bg-background z-10"
-      >
-        <X className="w-4 h-4 text-muted-foreground" />
-      </button>
-
       {/* Content */}
       <div className="p-4">
         <div className="flex gap-3">
@@ -60,21 +50,18 @@ const GymQuickPreview = ({
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold text-base truncate">{gym.name}</h3>
+            <h3 className="font-bold text-base truncate">{gym.name}</h3>
+
+            {/* Address + Distance on same line */}
+            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+              <MapPin className="w-3 h-3 shrink-0" />
+              <span className="truncate">{gym.address || 'Adresa neuvedena'}</span>
               {distance !== undefined && (
-                <span className="text-xs text-muted-foreground shrink-0 font-medium">
-                  {formatDistance(distance)}
+                <span className="shrink-0 text-primary font-medium ml-1">
+                  • {formatDistance(distance)}
                 </span>
               )}
             </div>
-
-            {gym.address && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                <MapPin className="w-3 h-3 shrink-0" />
-                <span className="truncate">{gym.address}</span>
-              </div>
-            )}
 
             {/* Opening Hours */}
             <div className="flex items-center gap-1.5 mt-2">
