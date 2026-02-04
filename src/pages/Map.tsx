@@ -34,9 +34,15 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const BOTTOM_NAV_HEIGHT = 80;
 
-// Open Google Maps navigation
+// Open native navigation app (Apple Maps on iOS, Google Maps on Android/web)
 const openNavigation = (gym: PublicGym) => {
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${gym.latitude},${gym.longitude}`;
+  const { latitude, longitude } = gym;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  const url = isIOS 
+    ? `https://maps.apple.com/?daddr=${latitude},${longitude}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  
   window.open(url, '_blank');
 };
 
@@ -227,7 +233,6 @@ const Map = () => {
               distance={getGymDistance(quickPreviewGym)}
               onDetailClick={handleDetailClick}
               onNavigateClick={handleNavigateClick}
-              onClose={() => setQuickPreviewGym(null)}
             />
           </div>
         )}
