@@ -1,127 +1,159 @@
 
-# Nový design interakce s posilovnou na mapě
+# Úpravy detailu posilovny
 
 ## Přehled změn
 
-Podle mockupů z Figma bude interakce s posilovnou rozdělena do dvou kroků:
-
-### 1. Quick Preview Card (kompaktní náhled)
-Když uživatel klikne na marker posilovny na mapě, zobrazí se kompaktní karta nad mapou:
-
-```text
-┌─────────────────────────────────────────────┐
-│ ┌─────┐                                     │
-│ │LOGO │  Athletics                          │
-│ │     │  Ulice 12, Praha, 110 00    15 km   │
-│ └─────┘  Otevřeno 9:00-21:00 (zelená)       │
-├─────────────────────────────────────────────┤
-│   [    DETAIL    ]  [   NAVIGACE    ]       │
-└─────────────────────────────────────────────┘
-```
-
-**Obsah:**
-- Logo posilovny (čtvercové)
-- Název posilovny
-- Adresa + vzdálenost od uživatele
-- Otevírací doba pro dnešní den (zelená = otevřeno, červená = zavřeno)
-- Tlačítko DETAIL → otevře fullscreen drawer
-- Tlačítko NAVIGACE → otevře Google Maps navigaci
-
-### 2. Fullscreen Detail Drawer
-Po kliknutí na "DETAIL" se otevře velký drawer:
-
-```text
-┌───────────────────────────────────────┐
-│ ←     [   GALERIE FOTEK   ]       ⋮  │
-│              ● ○ ○                    │
-├───────────────────────────────────────┤
-│                                       │
-│   Athletics                           │
-│   📍 Ulice 12, Praha, 110 00          │
-│                                       │
-│   Lorem ipsum dolor sit amet...       │
-│                                       │
-│   [     ZAHÁJIT TRÉNINK     ]         │
-│                                       │
-│   PŘEHLED | STROJE | CENÍK | TRENÉŘI  │
-│   ─────────                           │
-│                                       │
-│   🕐 Otevřeno • 9:00 - 21:00  ∨       │
-│   📊 Průměrná návštěvnost             │
-│                                       │
-└───────────────────────────────────────┘
-```
+1. Odstranění tabu "Trenéři" z profilu posilovny
+2. Rozdělení vybavení do podkategorií "Stroje" a "Volné váhy"
+3. Kliknutelná galerie fotek s fullscreen prohlížením
 
 ---
 
-## Technické řešení
+## 1. Odstranění tabu "Trenéři"
 
-### Nová komponenta `GymQuickPreview.tsx`
-Kompaktní karta pro rychlý náhled:
-- Přijímá: gym, distance, userLocation, onDetailClick, onNavigateClick
-- Zobrazuje logo, název, adresu, vzdálenost, otevírací dobu
-- Dvě tlačítka s primární barvou (zelená)
+### Soubor: `GymDetailTabs.tsx`
 
-### Upravená komponenta `GymProfilePreview.tsx`
-Rozšíření pro fullscreen drawer:
-- Přidat taby (Přehled, Stroje, Ceník, Trenéři)
-- Tab "Stroje" - už existující seznam vybavení
-- Tab "Ceník" a "Trenéři" - zatím placeholder
-- Vylepšená sekce otevírací doby s rozbalovacím menu
-- Tlačítko "Zahájit trénink" místo "Vybrat pro trénink"
+- Změnit grid z `grid-cols-4` na `grid-cols-3`
+- Odstranit tab trigger "Trenéři"
+- Odstranit tab content pro "trainers"
+- Odstranit import ikony `Users` (používá se i v attendance, takže zůstane)
 
-### Úpravy v `Map.tsx`
-1. Přidat stav `showQuickPreview` - zobrazit quick preview kartu
-2. Přidat stav `showFullDetail` - zobrazit fullscreen drawer
-3. Klik na marker → `showQuickPreview = true`
-4. Klik na "DETAIL" → `showFullDetail = true`, `showQuickPreview = false`
-5. Klik na "NAVIGACE" → otevřít Google Maps s navigací
+---
 
-### Funkce navigace
+## 2. Kategorizace strojů
+
+### Logika kategorizace
+
+Protože tabulka `machines` nemá sloupec pro kategorii, rozdělíme stroje podle klíčových slov v názvu:
+
+**Volné váhy** (klíčová slova):
+- `barbell`, `dumbbell`, `kettlebell`, `činka`, `jednoručka`, `olymp`
+
+**Stroje** (vše ostatní):
+- Lat pulldown, cable, press machine, atd.
+
+### Implementace v `GymDetailTabs.tsx`
+
 ```typescript
-const openNavigation = (gym: PublicGym) => {
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${gym.latitude},${gym.longitude}`;
-  window.open(url, '_blank');
+const FREE_WEIGHT_KEYWORDS = [
+  'barbell', 'dumbbell', 'kettlebell', 'činka', 
+  'jednoručka', 'olymp', 'osa', 'kotouč'
+];
+
+const isFreeWeight = (machineName: string) => {
+  const name = machineName.toLowerCase();
+  return FREE_WEIGHT_KEYWORDS.some(kw => name.includes(kw));
 };
+
+// Rozdělení do kategorií
+const freeWeights = machines.filter(m => isFreeWeight(m.machine?.name || ''));
+const machineEquipment = machines.filter(m => !isFreeWeight(m.machine?.name || ''));
+```
+
+### UI v tabu "Stroje"
+
+```text
+┌─────────────────────────────────────┐
+│ 🏋️ STROJE (5)                       │
+│ ┌─────────────────────────────────┐ │
+│ │ Lat pulldown narrow             │ │
+│ │ Leg press                       │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ 💪 VOLNÉ VÁHY (3)                   │
+│ ┌─────────────────────────────────┐ │
+│ │ Barbell               2×        │ │
+│ │ Kettlebell            10×       │ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
 ```
 
 ---
 
-## Struktura souborů
+## 3. Fullscreen galerie fotek
+
+### Nová komponenta: `GymPhotoViewer.tsx`
+
+Dialog/modal pro fullscreen prohlížení galerie:
+
+```text
+┌─────────────────────────────────────────┐
+│ ←                              × (zavřít)│
+├─────────────────────────────────────────┤
+│                                         │
+│          [FULLSCREEN FOTKA]             │
+│                                         │
+├─────────────────────────────────────────┤
+│     ◄          2/5           ►          │
+│               ● ○ ○ ○ ○                 │
+└─────────────────────────────────────────┘
+```
+
+**Funkce:**
+- Fullscreen dialog (zabírá celou obrazovku)
+- Swipe/šipky pro navigaci mezi fotkami
+- Indikátor pozice (2/5)
+- Tlačítko zavřít (X)
+- Tmavé pozadí pro lepší zobrazení fotek
+
+### Úprava `GymPhotoGallery.tsx`
+
+Přidat props pro kliknutelnost:
+
+```typescript
+interface GymPhotoGalleryProps {
+  photos: GymPhoto[];
+  fallbackCoverUrl?: string | null;
+  className?: string;
+  clickable?: boolean;  // nové
+  onPhotoClick?: (index: number) => void;  // nové
+}
+```
+
+Obalit fotky do kliknutelného prvku, který otevře fullscreen viewer.
+
+### Úprava `GymProfilePreview.tsx`
+
+Přidat stav pro otevření galerie a integrovat `GymPhotoViewer`:
+
+```typescript
+const [galleryOpen, setGalleryOpen] = useState(false);
+const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+
+// V JSX:
+<GymPhotoGallery 
+  photos={photos} 
+  clickable={true}
+  onPhotoClick={(index) => {
+    setSelectedPhotoIndex(index);
+    setGalleryOpen(true);
+  }}
+/>
+
+<GymPhotoViewer
+  photos={photos}
+  fallbackCoverUrl={gym.cover_photo_url}
+  open={galleryOpen}
+  onOpenChange={setGalleryOpen}
+  initialIndex={selectedPhotoIndex}
+/>
+```
+
+---
+
+## Soubory ke změně/vytvoření
 
 | Soubor | Akce |
 |--------|------|
-| `src/components/map/GymQuickPreview.tsx` | Nová komponenta - kompaktní karta |
-| `src/components/business/GymProfilePreview.tsx` | Přidat taby a vylepšit layout |
-| `src/pages/Map.tsx` | Upravit interakci (quick preview → detail) |
-
----
-
-## UI detaily
-
-### Quick Preview Card
-- Pozice: Fixně nad spodním drawerem se seznamem
-- Stín a zaoblené rohy
-- Animace: fade-in při zobrazení
-- Zavření: kliknutím mimo nebo na X
-
-### Fullscreen Detail
-- Zabírá 90% výšky obrazovky
-- Zpětná šipka v levém horním rohu
-- Galerie fotek s karuselem (už existuje)
-- Taby pro přepínání mezi sekcemi
-
-### Barvy tlačítek
-- DETAIL: zelená (bg-primary)
-- NAVIGACE: zelená (bg-primary)
-- ZAHÁJIT TRÉNINK: zelená (bg-primary)
+| `src/components/business/GymDetailTabs.tsx` | Odstranit tab Trenéři, přidat kategorizaci strojů |
+| `src/components/business/GymPhotoGallery.tsx` | Přidat clickable props |
+| `src/components/business/GymPhotoViewer.tsx` | **Nový** - fullscreen galerie dialog |
+| `src/components/business/GymProfilePreview.tsx` | Integrovat fullscreen viewer |
 
 ---
 
 ## Výsledek
 
-1. Rychlý přehled posilovny po kliknutí na marker
-2. Možnost okamžité navigace do posilovny
-3. Detailní pohled s taby pro více informací
-4. Konzistentní design podle Figma mockupů
-5. Lepší UX - uživatel vidí klíčové info bez otevírání celého detailu
+1. Tab "Trenéři" bude odstraněn - zůstanou 3 taby (Přehled, Stroje, Ceník)
+2. Vybavení bude rozděleno do dvou sekcí - "Stroje" a "Volné váhy"
+3. Kliknutím na fotku v profilu se otevře fullscreen galerie s možností procházení všech fotek
