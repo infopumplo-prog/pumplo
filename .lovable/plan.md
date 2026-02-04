@@ -1,233 +1,73 @@
 
+# Oprava nahrávání fotek do galerie
 
-# Galerie fotek posiloven (max 7 fotek)
+## Problém
 
-## Přehled
+Nahrávání fotek do galerie selhává s chybou:
+```
+StorageApiError: new row violates row-level security policy
+```
 
-Rozšíření systému fotek posiloven z 2 fotek (cover + logo) na až 7 fotek v galerii. Fotky budou dostupné pro nahrávání z B2B i Admin rozhraní a zobrazeny jako karusel v profilu posilovny.
+## Příčina
 
----
-
-## 1. Databázová změna
-
-### Nová tabulka `gym_photos`
+Storage bucket `gym-images` má RLS politiku, která vyžaduje, aby název složky odpovídal **user ID**:
 
 ```sql
-CREATE TABLE public.gym_photos (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  gym_id UUID NOT NULL REFERENCES public.gyms(id) ON DELETE CASCADE,
-  photo_url TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
-);
-
--- Index pro rychlé vyhledávání
-CREATE INDEX idx_gym_photos_gym_id ON public.gym_photos(gym_id);
-
--- Omezení na max 7 fotek (validace v aplikaci)
-
--- RLS politiky
-ALTER TABLE public.gym_photos ENABLE ROW LEVEL SECURITY;
-
--- Veřejné čtení pro publikované posilovny
-CREATE POLICY "Anyone can view photos of published gyms"
-  ON public.gym_photos FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.gyms 
-    WHERE gyms.id = gym_photos.gym_id 
-    AND (gyms.is_published = true OR gyms.owner_id = auth.uid())
-  ));
-
--- Business uživatel může spravovat fotky své posilovny
-CREATE POLICY "Gym owners can insert photos"
-  ON public.gym_photos FOR INSERT
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.gyms 
-    WHERE gyms.id = gym_photos.gym_id 
-    AND gyms.owner_id = auth.uid()
-  ));
-
-CREATE POLICY "Gym owners can delete photos"
-  ON public.gym_photos FOR DELETE
-  USING (EXISTS (
-    SELECT 1 FROM public.gyms 
-    WHERE gyms.id = gym_photos.gym_id 
-    AND gyms.owner_id = auth.uid()
-  ));
-
-CREATE POLICY "Gym owners can update photos"
-  ON public.gym_photos FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM public.gyms 
-    WHERE gyms.id = gym_photos.gym_id 
-    AND gyms.owner_id = auth.uid()
-  ));
-
--- Admin může vše
-CREATE POLICY "Admins can manage all photos"
-  ON public.gym_photos FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+(auth.uid())::text = (storage.foldername(name))[1]
 ```
 
----
+Existující `GymImageUpload.tsx` (pro cover a logo) správně používá:
+```typescript
+const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
+```
 
-## 2. Nové komponenty
+Ale nový `useGymPhotos.ts` (pro galerii) nesprávně používá:
+```typescript
+const fileName = `${gymId}/gallery-${Date.now()}.${fileExt}`;
+```
 
-### 2.1 `GymPhotoGallery.tsx` - Zobrazení galerie (karusel)
+## Řešení
 
-Komponenta pro zobrazení fotek v profilu posilovny:
-- Horizontální karusel s Embla Carousel (již nainstalován)
-- Indikátory pozice (tečky)
-- Placeholder pokud nejsou žádné fotky
-
-### 2.2 `GymPhotosManager.tsx` - Správa fotek (B2B/Admin)
-
-Komponenta pro nahrávání a správu fotek:
-- Grid zobrazení nahraných fotek
-- Tlačítko pro přidání nové fotky (pokud < 7)
-- Možnost smazat existující fotku
-- Drag & drop pro změnu pořadí (volitelně)
-- Indikátor počtu fotek (např. "3/7")
-- Upload do Supabase Storage bucket `gym-images`
+Upravit `useGymPhotos.ts` aby používal **user ID** místo **gym ID** pro název složky při uploadu, ale přitom zachovat gymId v názvu souboru pro organizaci.
 
 ---
 
-## 3. Hook `useGymPhotos`
+## Změna v kódu
+
+### `src/hooks/useGymPhotos.ts`
+
+Hook potřebuje přístup k aktuálnímu uživateli. Přidáme import `useAuth` a změníme cestu souboru:
 
 ```typescript
-interface GymPhoto {
-  id: string;
-  gym_id: string;
-  photo_url: string;
-  sort_order: number;
-  created_at: string;
-}
+import { useAuth } from '@/contexts/AuthContext';
 
-interface UseGymPhotosReturn {
-  photos: GymPhoto[];
-  isLoading: boolean;
-  addPhoto: (url: string) => Promise<{ success: boolean }>;
-  removePhoto: (photoId: string) => Promise<{ success: boolean }>;
-  reorderPhotos: (orderedIds: string[]) => Promise<void>;
-  canAddMore: boolean;
-}
+export const useGymPhotos = (gymId: string | undefined): UseGymPhotosReturn => {
+  const { user } = useAuth();  // přidáno
+  // ...
+  
+  const addPhoto = async (file: File) => {
+    if (!gymId || !user) return { success: false };  // přidána kontrola user
+    
+    // ...
+    
+    // OPRAVA: Použít user.id jako složku místo gymId
+    const fileName = `${user.id}/gallery-${gymId}-${Date.now()}.${fileExt}`;
+    
+    // ...
+  };
+};
 ```
 
 ---
 
-## 4. Integrace
+## Soubor ke změně
 
-### B2B rozhraní (`GymProfile.tsx`)
-
-V Drawer pro úpravu fotek:
-- Zachovat Cover a Logo sekce
-- Přidat novou sekci "Galerie fotek (max 7)"
-- Použít `GymPhotosManager` komponentu
-
-### Admin rozhraní (`AdminGymDetail.tsx`)
-
-V Drawer pro úpravu fotek:
-- Stejná struktura jako B2B
-- Přidat `GymPhotosManager` komponentu
-
-### Profil posilovny (`GymProfilePreview.tsx`)
-
-- Nahradit statický cover photo za `GymPhotoGallery` karusel
-- Fallback na `cover_photo_url` pokud galerie prázdná
-- Logo zůstává samostatně překrývající galerii
-
----
-
-## 5. Struktura souborů
-
-```text
-src/
-├── components/
-│   └── business/
-│       ├── GymPhotoGallery.tsx     (nový - zobrazení karuselu)
-│       ├── GymPhotosManager.tsx     (nový - správa fotek)
-│       ├── GymProfile.tsx           (úprava - přidat galerii)
-│       └── GymProfilePreview.tsx    (úprava - karusel místo cover)
-├── hooks/
-│   └── useGymPhotos.ts              (nový - CRUD pro fotky)
-└── pages/
-    └── admin/
-        └── AdminGymDetail.tsx       (úprava - přidat galerii)
-```
-
----
-
-## 6. UI návrh
-
-### Správa fotek (Drawer)
-
-```text
-┌─────────────────────────────────────────┐
-│ Upravit fotky                           │
-├─────────────────────────────────────────┤
-│ Titulní fotka                           │
-│ ┌───────────────────────────────────┐   │
-│ │         [Cover Upload]            │   │
-│ └───────────────────────────────────┘   │
-├─────────────────────────────────────────┤
-│ Logo posilovny                          │
-│       ┌─────┐                           │
-│       │ 🏋️ │                           │
-│       └─────┘                           │
-├─────────────────────────────────────────┤
-│ Galerie fotek (3/7)                     │
-│ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐        │
-│ │ 📷 │ │ 📷 │ │ 📷 │ │  +  │        │
-│ │  ❌ │ │  ❌ │ │  ❌ │ │     │        │
-│ └─────┘ └─────┘ └─────┘ └─────┘        │
-│                                         │
-│ "Nahrajte až 7 fotek vaší posilovny"   │
-└─────────────────────────────────────────┘
-```
-
-### Karusel v profilu
-
-```text
-┌─────────────────────────────────────────┐
-│ ◄  [     Fotka 1/3     ]  ►            │
-│         ● ○ ○                           │
-├─────────────────────────────────────────┤
-│   🏋️                                    │
-│   Název posilovny                       │
-│   📍 Adresa                             │
-└─────────────────────────────────────────┘
-```
-
----
-
-## 7. Validace
-
-- Max 7 fotek na posilovnu (kontrola v hooku i na backendu)
-- Max 5MB na fotku
-- Pouze image/* typy souborů
-- Automatické mazání ze storage při smazání fotky z DB (CASCADE)
-
----
-
-## Soubory ke změně/vytvoření
-
-| Soubor | Akce |
-|--------|------|
-| `supabase/migrations/xxx_gym_photos.sql` | Nová tabulka + RLS |
-| `src/hooks/useGymPhotos.ts` | Nový hook |
-| `src/components/business/GymPhotoGallery.tsx` | Nová komponenta - karusel |
-| `src/components/business/GymPhotosManager.tsx` | Nová komponenta - správa |
-| `src/components/business/GymProfile.tsx` | Přidat galerii do draweru |
-| `src/components/business/GymProfilePreview.tsx` | Karusel místo statického cover |
-| `src/pages/admin/AdminGymDetail.tsx` | Přidat galerii do draweru |
+| Soubor | Změna |
+|--------|-------|
+| `src/hooks/useGymPhotos.ts` | Přidat useAuth hook, změnit cestu uploadu na user.id |
 
 ---
 
 ## Výsledek
 
-1. Majitel posilovny může nahrát až 7 fotek své posilovny
-2. Admin může spravovat fotky jakékoli posilovny
-3. Uživatelé vidí fotky jako atraktivní karusel
-4. Cover photo a logo zůstávají pro zpětnou kompatibilitu
-5. Galerie rozšiřuje vizuální prezentaci posilovny
-
+Po této změně bude galerie fotek ukládat soubory do složky pojmenované podle user ID (např. `2576dcf9-3ef5-48b8-93db-b303d6180e7c/gallery-141812dd-...-1707123456789.jpg`), což odpovídá existující RLS politice a nahrávání bude fungovat.
