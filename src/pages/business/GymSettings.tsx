@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Trash2, Building2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Trash2, Building2, LogOut } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,9 +20,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const GymSettings = () => {
   const { gym, gyms, isLoading, refetch } = useGym();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -90,6 +92,23 @@ const GymSettings = () => {
         )}
 
         <h2 className="text-lg font-semibold">Nastavení</h2>
+
+        {/* Account Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Účet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              className="w-full border-destructive text-destructive hover:bg-destructive/10"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Odhlásit se
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Danger Zone */}
         <Card className="border-destructive/50">
