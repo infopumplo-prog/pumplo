@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, useMotionValue, useAnimationControls, PanInfo } from 'framer-motion';
-import { Search, Lock, Heart, Check } from 'lucide-react';
+import { Search, Lock, Heart, Check, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap from '@/components/map/GymMap';
 import GymListItem from '@/components/map/GymListItem';
+import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
@@ -45,6 +46,12 @@ const getSnapPoints = () => {
   };
 };
 
+// Open Google Maps navigation
+const openNavigation = (gym: PublicGym) => {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${gym.latitude},${gym.longitude}`;
+  window.open(url, '_blank');
+};
+
 const Map = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,15 +61,24 @@ const Map = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
-  const [selectedGym, setSelectedGym] = useState<PublicGym | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectingGym, setIsSelectingGym] = useState(false);
+  
+  // New state for two-step interaction
+  const [quickPreviewGym, setQuickPreviewGym] = useState<PublicGym | null>(null);
+  const [detailGym, setDetailGym] = useState<PublicGym | null>(null);
   
   const controls = useAnimationControls();
   const y = useMotionValue(getSnapPoints().collapsed);
   const [currentSnap, setCurrentSnap] = useState<'collapsed' | 'half' | 'full'>('collapsed');
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  // Calculate distance for a specific gym
+  const getGymDistance = useCallback((gym: PublicGym) => {
+    if (!userLocation || !hasGpsAccess) return undefined;
+    return calculateDistance(userLocation.lat, userLocation.lng, gym.latitude, gym.longitude);
+  }, [userLocation, hasGpsAccess]);
 
   // Snap to nearest point
   const snapTo = useCallback((snapPoint: 'collapsed' | 'half' | 'full') => {
@@ -208,27 +224,44 @@ const Map = () => {
     });
   }, [gyms, userLocation, hasGpsAccess, searchQuery, favorites, isFavorite]);
 
+  // Handle marker click - show quick preview
   const handleGymSelect = (gym: PublicGym) => {
-    setSelectedGym(gym);
+    setQuickPreviewGym(gym);
+    setDetailGym(null); // Close detail if open
   };
 
-  const selectedGymIsOpen = selectedGym 
-    ? isGymCurrentlyOpen(selectedGym.opening_hours as OpeningHours)
+  // Handle detail button click - show fullscreen detail
+  const handleDetailClick = () => {
+    if (quickPreviewGym) {
+      setDetailGym(quickPreviewGym);
+      setQuickPreviewGym(null);
+    }
+  };
+
+  // Handle navigation button click
+  const handleNavigateClick = () => {
+    if (quickPreviewGym) {
+      openNavigation(quickPreviewGym);
+    }
+  };
+
+  const detailGymIsOpen = detailGym 
+    ? isGymCurrentlyOpen(detailGym.opening_hours as OpeningHours)
     : false;
 
-  const isCurrentlySelectedGym = selectedGym?.id === profile?.selected_gym_id;
+  const isCurrentlySelectedGym = detailGym?.id === profile?.selected_gym_id;
 
   const handleSelectGymForTraining = async () => {
-    if (!selectedGym || !selectedGymIsOpen) return;
+    if (!detailGym || !detailGymIsOpen) return;
     
     setIsSelectingGym(true);
     try {
-      await updateProfile({ selected_gym_id: selectedGym.id });
+      await updateProfile({ selected_gym_id: detailGym.id });
       toast({
         title: 'Posilovna vybrána',
-        description: `${selectedGym.name} byla nastavena jako tvoje posilovna pro trénink.`
+        description: `${detailGym.name} byla nastavena jako tvoje posilovna pro trénink.`
       });
-      setSelectedGym(null);
+      setDetailGym(null);
       navigate('/training');
     } catch (error) {
       toast({
@@ -291,9 +324,22 @@ const Map = () => {
             gyms={gyms}
             userLocation={userLocation}
             onGymSelect={handleGymSelect}
-            selectedGymId={selectedGym?.id}
+            selectedGymId={quickPreviewGym?.id || detailGym?.id}
           />
         </div>
+
+        {/* Quick Preview Card - positioned above bottom drawer */}
+        {quickPreviewGym && (
+          <div className="fixed left-4 right-4 z-50" style={{ bottom: BOTTOM_NAV_HEIGHT + 140 }}>
+            <GymQuickPreview
+              gym={quickPreviewGym}
+              distance={getGymDistance(quickPreviewGym)}
+              onDetailClick={handleDetailClick}
+              onNavigateClick={handleNavigateClick}
+              onClose={() => setQuickPreviewGym(null)}
+            />
+          </div>
+        )}
 
         {/* Bottom Draggable Drawer for Gym List */}
         <motion.div
@@ -372,13 +418,21 @@ const Map = () => {
           </div>
         </motion.div>
 
-        {/* Gym Detail Drawer */}
-        <Drawer open={!!selectedGym} onOpenChange={(open) => !open && setSelectedGym(null)}>
+        {/* Fullscreen Gym Detail Drawer */}
+        <Drawer open={!!detailGym} onOpenChange={(open) => !open && setDetailGym(null)}>
           <DrawerContent className="max-h-[90vh] border-0 z-[100]">
             <div className="overflow-y-auto max-h-[85vh] -mt-6">
-              {selectedGym && (
+              {detailGym && (
                 <>
-                  <GymProfilePreview gym={selectedGym} variant="drawer" showBadge={false} />
+                  <GymProfilePreview 
+                    gym={detailGym} 
+                    variant="drawer" 
+                    showBadge={false}
+                    onBack={() => {
+                      setDetailGym(null);
+                      setQuickPreviewGym(detailGym);
+                    }}
+                  />
                   
                   {/* Action Buttons */}
                   <div className="px-4 pb-6 pt-2 flex gap-3">
@@ -386,12 +440,12 @@ const Map = () => {
                       variant="outline"
                       size="lg"
                       className="flex-shrink-0"
-                      onClick={() => toggleFavorite(selectedGym.id)}
+                      onClick={() => toggleFavorite(detailGym.id)}
                     >
                       <Heart 
                         className={cn(
                           "w-5 h-5",
-                          isFavorite(selectedGym.id) && "fill-destructive text-destructive"
+                          isFavorite(detailGym.id) && "fill-destructive text-destructive"
                         )} 
                       />
                     </Button>
@@ -401,7 +455,7 @@ const Map = () => {
                         "flex-1 gap-2",
                         isCurrentlySelectedGym && "bg-green-500 hover:bg-green-600"
                       )}
-                      disabled={!selectedGymIsOpen || isSelectingGym}
+                      disabled={!detailGymIsOpen || isSelectingGym}
                       onClick={handleSelectGymForTraining}
                     >
                       {isSelectingGym ? (
@@ -414,8 +468,11 @@ const Map = () => {
                           <Check className="w-5 h-5" />
                           Aktuální posilovna
                         </>
-                      ) : selectedGymIsOpen ? (
-                        'Vybrat pro trénink'
+                      ) : detailGymIsOpen ? (
+                        <>
+                          <Play className="w-5 h-5" />
+                          Zahájit trénink
+                        </>
                       ) : (
                         'Posilovna je zavřená'
                       )}
