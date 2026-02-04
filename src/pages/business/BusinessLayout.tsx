@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Building2, Dumbbell, ArrowLeft, Loader2, Settings, BarChart3 } from 'lucide-react';
+import { Building2, Dumbbell, Loader2, Settings, BarChart3 } from 'lucide-react';
 
 interface BusinessLayoutProps {
   children: ReactNode;
@@ -25,9 +25,9 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
   }
 
   const navItems = [
+    { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
     { path: '/business', icon: Building2, label: 'Posilovna' },
     { path: '/business/machines', icon: Dumbbell, label: 'Stroje' },
-    { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
     { path: '/business/settings', icon: Settings, label: 'Nastavení' },
   ];
 
@@ -36,12 +36,6 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
       {/* Minimal Top Bar */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Link 
-            to="/" 
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
           <h1 className="text-lg font-semibold">Business</h1>
         </div>
       </header>
