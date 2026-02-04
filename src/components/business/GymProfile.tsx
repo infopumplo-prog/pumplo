@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { 
   Drawer, 
   DrawerContent, 
@@ -19,6 +20,7 @@ import { Loader2, Clock, Pencil, Image } from 'lucide-react';
 import LocationPicker from './LocationPicker';
 import GymImageUpload from './GymImageUpload';
 import GymProfilePreview from './GymProfilePreview';
+import GymPhotosManager from './GymPhotosManager';
 import { useGym, Gym, OpeningHours } from '@/hooks/useGym';
 
 const formSchema = z.object({
@@ -134,7 +136,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
             <DrawerHeader>
               <DrawerTitle>Upravit fotky</DrawerTitle>
             </DrawerHeader>
-            <div className="px-4 pb-8 space-y-6">
+            <div className="px-4 pb-8 space-y-6 overflow-y-auto max-h-[75vh]">
               <div className="space-y-2">
                 <Label>Titulní fotka</Label>
                 <GymImageUpload
@@ -153,6 +155,11 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   />
                 </div>
               </div>
+              
+              <Separator />
+              
+              {/* Gallery Section */}
+              <GymPhotosManager gymId={gym.id} />
             </div>
           </DrawerContent>
         </Drawer>
