@@ -1,16 +1,21 @@
 
 
-# Přidání viditelného křížku pro zavření galerie
+# Oprava viditelnosti křížku ve fullscreen galerii
 
-## Problém
+## Identifikovaný problém
 
-Křížek pro zavření galerie není viditelný. Ze screenshotu vidím, že:
-1. Křížek má příliš průhledné pozadí (`bg-white/10`) a na tmavém pozadí splývá
-2. Pozice může být překrytá nebo mimo viditelnou oblast
+Ze screenshotu a kódu jsem zjistil **dva problémy**:
+
+1. **Barva křížku** - Křížek má `bg-black/60` (černé pozadí) na `bg-black/95` (téměř černém) pozadí dialogu - proto splývá a není vidět
+2. **CSS specifičnost** - Tailwind nemusí správně přepsat výchozí styly z `dialog.tsx` (`left-[50%]`, `translate-x-[-50%]`) kvůli pořadí tříd
 
 ## Řešení
 
-Udělám křížek výrazně viditelnější a umístím ho do **levého horního rohu** - to je intuitivnější pro mobilní zařízení (snadněji dosažitelné palcem při držení telefonu pravou rukou).
+### 1. Změnit barvu křížku na výrazně kontrastní
+Místo `bg-black/60` použít `bg-white/20` s hover `bg-white/30` - bílé poloprůhledné tlačítko na tmavém pozadí bude viditelné.
+
+### 2. Použít `!important` modifikátor pro pozicování
+Tailwind `!` prefix zajistí přepsání výchozích stylů.
 
 ---
 
@@ -18,49 +23,44 @@ Udělám křížek výrazně viditelnější a umístím ho do **levého horníh
 
 ### Soubor: `src/components/business/GymPhotoViewer.tsx`
 
-**Změna křížku (řádky 73-79):**
+**DialogContent (řádek 69-71):**
+```typescript
+// Před:
+className="fixed inset-0 max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200] translate-x-0 translate-y-0 left-0 top-0"
 
-```text
-Před:
-{/* Close button */}
-<button
-  onClick={() => onOpenChange(false)}
-  className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
->
-  <X className="w-6 h-6 text-white" />
-</button>
-
-Po:
-{/* Close button - levý horní roh, výraznější */}
-<button
-  onClick={() => onOpenChange(false)}
-  className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 transition-colors pointer-events-auto"
->
-  <X className="w-6 h-6 text-white" />
-</button>
+// Po - přidat ! modifikátory:
+className="!fixed !inset-0 !max-w-full !h-full !w-full !p-0 !border-0 bg-black/95 [&>button]:hidden z-[200] !translate-x-0 !translate-y-0 !left-0 !top-0"
 ```
 
-Změny:
-- **Pozice**: z `right-4` na `left-4` (levý horní roh - intuitivnější na mobilu)
-- **Pozadí**: z `bg-white/10` na `bg-black/60` (výrazně tmavší, lépe viditelné)
-- **Rámeček**: přidán `border border-white/20` pro lepší kontrast
-- **Padding**: zvětšen z `p-2` na `p-2.5` pro snadnější kliknutí
+**Close button (řádky 74-79):**
+```typescript
+// Před:
+className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 ..."
+
+// Po - změnit na bílé poloprůhledné pozadí:
+className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 ..."
+```
+
+**Navigační šipky (řádky 107-118):**
+```typescript
+// Šipky mají bg-white/10 což je taky málo viditelné
+// Zvýšit na bg-white/20 a hover:bg-white/30
+```
 
 ---
 
-## Soubor ke změně
+## Změny v souborech
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/business/GymPhotoViewer.tsx` | Přesunout křížek do levého rohu, zvýšit viditelnost |
+| `src/components/business/GymPhotoViewer.tsx` | Změnit barvy na kontrastní (bílé), přidat `!important` modifikátory pro pozicování |
 
 ---
 
 ## Výsledek
 
-Křížek bude:
-- V levém horním rohu obrazovky
-- Výrazně viditelný s tmavým poloprůhledným pozadím
-- Větší hit area pro snadné kliknutí
-- Jemný bílý rámeček pro lepší kontrast
+Po úpravě:
+- **Křížek** bude mít bílé poloprůhledné pozadí (`bg-white/20`) - výrazně kontrastní na černém
+- **Šipky** budou taky lépe viditelné
+- **Pozicování** bude garantováno díky `!` modifikátorům
 
