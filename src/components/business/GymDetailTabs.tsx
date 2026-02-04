@@ -7,7 +7,6 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { OpeningHours, GymMachine } from '@/hooks/useGym';
-import { getEquipmentTypeLabel } from '@/lib/equipmentTypes';
 import { isGymCurrentlyOpen, getTodayOpeningStatus, isClosingSoon } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +20,17 @@ const DAYS = [
   { key: 'sunday', label: 'Neděle' },
 ];
 
+// Keywords to identify free weights
+const FREE_WEIGHT_KEYWORDS = [
+  'barbell', 'dumbbell', 'kettlebell', 'činka', 
+  'jednoručka', 'olymp', 'osa', 'kotouč', 'činky'
+];
+
+const isFreeWeight = (machineName: string): boolean => {
+  const name = machineName.toLowerCase();
+  return FREE_WEIGHT_KEYWORDS.some(kw => name.includes(kw));
+};
+
 interface GymDetailTabsProps {
   hours: OpeningHours;
   machines: GymMachine[];
@@ -33,21 +43,33 @@ const GymDetailTabs = ({ hours, machines, machinesLoading }: GymDetailTabsProps)
   const status = getTodayOpeningStatus(hours);
   const closingSoon = isClosingSoon(hours);
 
-  // Group machines
-  const groupedMachines = machines.reduce((acc, gm) => {
-    const type = 'Vybavení';
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(gm);
-    return acc;
-  }, {} as Record<string, GymMachine[]>);
+  // Categorize machines
+  const freeWeights = machines.filter(m => isFreeWeight(m.machine?.name || ''));
+  const machineEquipment = machines.filter(m => !isFreeWeight(m.machine?.name || ''));
+
+  const renderEquipmentList = (items: GymMachine[]) => (
+    <div className="space-y-1">
+      {items.map((gm) => (
+        <div 
+          key={gm.id}
+          className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/30 text-sm"
+        >
+          <span className="font-medium">{gm.machine?.name}</span>
+          <div className="flex items-center gap-2 text-muted-foreground text-xs">
+            {gm.quantity > 1 && <span>{gm.quantity}×</span>}
+            {gm.max_weight_kg && <span>max {gm.max_weight_kg}kg</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="w-full grid grid-cols-4 h-auto p-1">
+      <TabsList className="w-full grid grid-cols-3 h-auto p-1">
         <TabsTrigger value="overview" className="text-xs py-2">Přehled</TabsTrigger>
         <TabsTrigger value="machines" className="text-xs py-2">Stroje</TabsTrigger>
         <TabsTrigger value="pricing" className="text-xs py-2">Ceník</TabsTrigger>
-        <TabsTrigger value="trainers" className="text-xs py-2">Trenéři</TabsTrigger>
       </TabsList>
 
       {/* Overview Tab */}
@@ -114,29 +136,27 @@ const GymDetailTabs = ({ hours, machines, machinesLoading }: GymDetailTabsProps)
             Žádné vybavení není uvedeno
           </div>
         ) : (
-          <div className="space-y-4">
-            {Object.entries(groupedMachines).map(([type, items]) => (
-              <div key={type}>
+          <div className="space-y-6">
+            {/* Machines section */}
+            {machineEquipment.length > 0 && (
+              <div>
                 <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
                   <Dumbbell className="w-4 h-4" />
-                  {getEquipmentTypeLabel(type)} ({items.length})
+                  Stroje ({machineEquipment.length})
                 </h5>
-                <div className="space-y-1">
-                  {items.map((gm) => (
-                    <div 
-                      key={gm.id}
-                      className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/30 text-sm"
-                    >
-                      <span className="font-medium">{gm.machine?.name}</span>
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                        {gm.quantity > 1 && <span>{gm.quantity}×</span>}
-                        {gm.max_weight_kg && <span>max {gm.max_weight_kg}kg</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {renderEquipmentList(machineEquipment)}
               </div>
-            ))}
+            )}
+
+            {/* Free weights section */}
+            {freeWeights.length > 0 && (
+              <div>
+                <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
+                  💪 Volné váhy ({freeWeights.length})
+                </h5>
+                {renderEquipmentList(freeWeights)}
+              </div>
+            )}
           </div>
         )}
       </TabsContent>
@@ -147,16 +167,6 @@ const GymDetailTabs = ({ hours, machines, machinesLoading }: GymDetailTabsProps)
           <CreditCard className="w-12 h-12 text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground text-sm">
             Ceník bude brzy dostupný
-          </p>
-        </div>
-      </TabsContent>
-
-      {/* Trainers Tab */}
-      <TabsContent value="trainers" className="mt-4">
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Users className="w-12 h-12 text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground text-sm">
-            Trenéři budou brzy dostupní
           </p>
         </div>
       </TabsContent>

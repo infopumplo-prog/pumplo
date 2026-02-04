@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MapPin, Play, ArrowLeft } from 'lucide-react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
 import { PublicGym } from '@/hooks/usePublishedGyms';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import GymPhotoGallery from './GymPhotoGallery';
+import GymPhotoViewer from './GymPhotoViewer';
 import GymDetailTabs from './GymDetailTabs';
 
 // Accept both Gym (with owner_id) and PublicGym (without owner_id)
@@ -30,8 +32,16 @@ const GymProfilePreview = ({
   const hours = gym.opening_hours as OpeningHours;
   const { machines, isLoading: machinesLoading } = useGymMachines(gym.id);
   const { photos } = useGymPhotos(gym.id ?? undefined);
+  
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   const isDrawer = variant === 'drawer';
+
+  const handlePhotoClick = (index: number) => {
+    setSelectedPhotoIndex(index);
+    setGalleryOpen(true);
+  };
 
   return (
     <div className={cn(
@@ -55,6 +65,8 @@ const GymProfilePreview = ({
           photos={photos} 
           fallbackCoverUrl={gym.cover_photo_url}
           className="h-full"
+          clickable={true}
+          onPhotoClick={handlePhotoClick}
         />
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
@@ -121,6 +133,15 @@ const GymProfilePreview = ({
           machinesLoading={machinesLoading}
         />
       </div>
+
+      {/* Fullscreen Photo Viewer */}
+      <GymPhotoViewer
+        photos={photos}
+        fallbackCoverUrl={gym.cover_photo_url}
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        initialIndex={selectedPhotoIndex}
+      />
     </div>
   );
 };
