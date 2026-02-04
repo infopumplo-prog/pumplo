@@ -70,17 +70,57 @@ const GymPhotoViewer = ({
         className="!fixed !inset-0 !max-w-full !h-full !w-full !p-0 !border-0 bg-black/95 [&>button]:hidden z-[200] !translate-x-0 !translate-y-0 !left-0 !top-0"
         overlayClassName="z-[150]"
       >
-        {/* Close button - levý horní roh, výraznější */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
-        >
-          <X className="w-6 h-6 text-white" />
-        </button>
+        {/* Navigation wrapper - aby button nebyl přímým potomkem DialogContent */}
+        <div className="contents">
+          {/* Close button - levý horní roh, výraznější */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
 
-        {/* Photo counter */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-          {selectedIndex + 1} / {allImages.length}
+          {/* Photo counter */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+            {selectedIndex + 1} / {allImages.length}
+          </div>
+
+          {/* Navigation arrows */}
+          {allImages.length > 1 && (
+            <>
+              <button
+                onClick={scrollPrev}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors pointer-events-auto"
+              >
+                <ChevronLeft className="w-6 h-6 text-white" />
+              </button>
+              <button
+                onClick={scrollNext}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors pointer-events-auto"
+              >
+                <ChevronRight className="w-6 h-6 text-white" />
+              </button>
+            </>
+          )}
+
+          {/* Dot indicators */}
+          {allImages.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] flex gap-2">
+              {allImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => emblaApi?.scrollTo(index)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all",
+                    index === selectedIndex 
+                      ? "bg-white scale-125" 
+                      : "bg-white/40 hover:bg-white/60"
+                  )}
+                  aria-label={`Go to photo ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Carousel */}
@@ -100,43 +140,6 @@ const GymPhotoViewer = ({
             ))}
           </div>
         </div>
-
-        {/* Navigation arrows */}
-        {allImages.length > 1 && (
-          <>
-            <button
-              onClick={scrollPrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors pointer-events-auto"
-            >
-              <ChevronLeft className="w-6 h-6 text-white" />
-            </button>
-            <button
-              onClick={scrollNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors pointer-events-auto"
-            >
-              <ChevronRight className="w-6 h-6 text-white" />
-            </button>
-          </>
-        )}
-
-        {/* Dot indicators */}
-        {allImages.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] flex gap-2">
-            {allImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => emblaApi?.scrollTo(index)}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  index === selectedIndex 
-                    ? "bg-white scale-125" 
-                    : "bg-white/40 hover:bg-white/60"
-                )}
-                aria-label={`Go to photo ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
