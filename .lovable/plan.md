@@ -1,73 +1,127 @@
 
-# Oprava nahrávání fotek do galerie
+# Nový design interakce s posilovnou na mapě
 
-## Problém
+## Přehled změn
 
-Nahrávání fotek do galerie selhává s chybou:
-```
-StorageApiError: new row violates row-level security policy
-```
+Podle mockupů z Figma bude interakce s posilovnou rozdělena do dvou kroků:
 
-## Příčina
+### 1. Quick Preview Card (kompaktní náhled)
+Když uživatel klikne na marker posilovny na mapě, zobrazí se kompaktní karta nad mapou:
 
-Storage bucket `gym-images` má RLS politiku, která vyžaduje, aby název složky odpovídal **user ID**:
-
-```sql
-(auth.uid())::text = (storage.foldername(name))[1]
-```
-
-Existující `GymImageUpload.tsx` (pro cover a logo) správně používá:
-```typescript
-const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
+```text
+┌─────────────────────────────────────────────┐
+│ ┌─────┐                                     │
+│ │LOGO │  Athletics                          │
+│ │     │  Ulice 12, Praha, 110 00    15 km   │
+│ └─────┘  Otevřeno 9:00-21:00 (zelená)       │
+├─────────────────────────────────────────────┤
+│   [    DETAIL    ]  [   NAVIGACE    ]       │
+└─────────────────────────────────────────────┘
 ```
 
-Ale nový `useGymPhotos.ts` (pro galerii) nesprávně používá:
-```typescript
-const fileName = `${gymId}/gallery-${Date.now()}.${fileExt}`;
+**Obsah:**
+- Logo posilovny (čtvercové)
+- Název posilovny
+- Adresa + vzdálenost od uživatele
+- Otevírací doba pro dnešní den (zelená = otevřeno, červená = zavřeno)
+- Tlačítko DETAIL → otevře fullscreen drawer
+- Tlačítko NAVIGACE → otevře Google Maps navigaci
+
+### 2. Fullscreen Detail Drawer
+Po kliknutí na "DETAIL" se otevře velký drawer:
+
+```text
+┌───────────────────────────────────────┐
+│ ←     [   GALERIE FOTEK   ]       ⋮  │
+│              ● ○ ○                    │
+├───────────────────────────────────────┤
+│                                       │
+│   Athletics                           │
+│   📍 Ulice 12, Praha, 110 00          │
+│                                       │
+│   Lorem ipsum dolor sit amet...       │
+│                                       │
+│   [     ZAHÁJIT TRÉNINK     ]         │
+│                                       │
+│   PŘEHLED | STROJE | CENÍK | TRENÉŘI  │
+│   ─────────                           │
+│                                       │
+│   🕐 Otevřeno • 9:00 - 21:00  ∨       │
+│   📊 Průměrná návštěvnost             │
+│                                       │
+└───────────────────────────────────────┘
 ```
-
-## Řešení
-
-Upravit `useGymPhotos.ts` aby používal **user ID** místo **gym ID** pro název složky při uploadu, ale přitom zachovat gymId v názvu souboru pro organizaci.
 
 ---
 
-## Změna v kódu
+## Technické řešení
 
-### `src/hooks/useGymPhotos.ts`
+### Nová komponenta `GymQuickPreview.tsx`
+Kompaktní karta pro rychlý náhled:
+- Přijímá: gym, distance, userLocation, onDetailClick, onNavigateClick
+- Zobrazuje logo, název, adresu, vzdálenost, otevírací dobu
+- Dvě tlačítka s primární barvou (zelená)
 
-Hook potřebuje přístup k aktuálnímu uživateli. Přidáme import `useAuth` a změníme cestu souboru:
+### Upravená komponenta `GymProfilePreview.tsx`
+Rozšíření pro fullscreen drawer:
+- Přidat taby (Přehled, Stroje, Ceník, Trenéři)
+- Tab "Stroje" - už existující seznam vybavení
+- Tab "Ceník" a "Trenéři" - zatím placeholder
+- Vylepšená sekce otevírací doby s rozbalovacím menu
+- Tlačítko "Zahájit trénink" místo "Vybrat pro trénink"
 
+### Úpravy v `Map.tsx`
+1. Přidat stav `showQuickPreview` - zobrazit quick preview kartu
+2. Přidat stav `showFullDetail` - zobrazit fullscreen drawer
+3. Klik na marker → `showQuickPreview = true`
+4. Klik na "DETAIL" → `showFullDetail = true`, `showQuickPreview = false`
+5. Klik na "NAVIGACE" → otevřít Google Maps s navigací
+
+### Funkce navigace
 ```typescript
-import { useAuth } from '@/contexts/AuthContext';
-
-export const useGymPhotos = (gymId: string | undefined): UseGymPhotosReturn => {
-  const { user } = useAuth();  // přidáno
-  // ...
-  
-  const addPhoto = async (file: File) => {
-    if (!gymId || !user) return { success: false };  // přidána kontrola user
-    
-    // ...
-    
-    // OPRAVA: Použít user.id jako složku místo gymId
-    const fileName = `${user.id}/gallery-${gymId}-${Date.now()}.${fileExt}`;
-    
-    // ...
-  };
+const openNavigation = (gym: PublicGym) => {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${gym.latitude},${gym.longitude}`;
+  window.open(url, '_blank');
 };
 ```
 
 ---
 
-## Soubor ke změně
+## Struktura souborů
 
-| Soubor | Změna |
-|--------|-------|
-| `src/hooks/useGymPhotos.ts` | Přidat useAuth hook, změnit cestu uploadu na user.id |
+| Soubor | Akce |
+|--------|------|
+| `src/components/map/GymQuickPreview.tsx` | Nová komponenta - kompaktní karta |
+| `src/components/business/GymProfilePreview.tsx` | Přidat taby a vylepšit layout |
+| `src/pages/Map.tsx` | Upravit interakci (quick preview → detail) |
+
+---
+
+## UI detaily
+
+### Quick Preview Card
+- Pozice: Fixně nad spodním drawerem se seznamem
+- Stín a zaoblené rohy
+- Animace: fade-in při zobrazení
+- Zavření: kliknutím mimo nebo na X
+
+### Fullscreen Detail
+- Zabírá 90% výšky obrazovky
+- Zpětná šipka v levém horním rohu
+- Galerie fotek s karuselem (už existuje)
+- Taby pro přepínání mezi sekcemi
+
+### Barvy tlačítek
+- DETAIL: zelená (bg-primary)
+- NAVIGACE: zelená (bg-primary)
+- ZAHÁJIT TRÉNINK: zelená (bg-primary)
 
 ---
 
 ## Výsledek
 
-Po této změně bude galerie fotek ukládat soubory do složky pojmenované podle user ID (např. `2576dcf9-3ef5-48b8-93db-b303d6180e7c/gallery-141812dd-...-1707123456789.jpg`), což odpovídá existující RLS politice a nahrávání bude fungovat.
+1. Rychlý přehled posilovny po kliknutí na marker
+2. Možnost okamžité navigace do posilovny
+3. Detailní pohled s taby pro více informací
+4. Konzistentní design podle Figma mockupů
+5. Lepší UX - uživatel vidí klíčové info bez otevírání celého detailu
