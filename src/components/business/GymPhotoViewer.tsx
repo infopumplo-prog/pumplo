@@ -66,7 +66,10 @@ const GymPhotoViewer = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden">
+      <DialogContent 
+        className="max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200]"
+        overlayClassName="z-[150]"
+      >
         {/* Close button */}
         <button
           onClick={() => onOpenChange(false)}
