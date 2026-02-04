@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, useMotionValue, useAnimationControls, PanInfo } from 'framer-motion';
-import { Search, Lock, Heart, Check, Play } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Lock, Heart, Check, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
@@ -11,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap from '@/components/map/GymMap';
-import GymListItem from '@/components/map/GymListItem';
 import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { OpeningHours } from '@/hooks/useGym';
@@ -34,17 +32,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-// Snap points for the drawer (distance from top of screen)
-const BOTTOM_NAV_HEIGHT = 100; // Height of bottom nav + padding
-const getSnapPoints = () => {
-  if (typeof window === 'undefined') return { collapsed: 500, half: 300, full: 60 };
-  const vh = window.innerHeight;
-  return {
-    collapsed: vh - BOTTOM_NAV_HEIGHT - 100, // Just handle visible (lower default)
-    half: vh * 0.45, // Half screen
-    full: 60, // Almost full screen
-  };
-};
+const BOTTOM_NAV_HEIGHT = 80;
 
 // Open Google Maps navigation
 const openNavigation = (gym: PublicGym) => {
@@ -56,21 +44,16 @@ const Map = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
-  const { gyms, isLoading } = usePublishedGyms();
-  const { favorites, toggleFavorite, isFavorite } = useFavoriteGyms();
+  const { gyms } = usePublishedGyms();
+  const { toggleFavorite, isFavorite } = useFavoriteGyms();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isSelectingGym, setIsSelectingGym] = useState(false);
   
-  // New state for two-step interaction
+  // State for two-step interaction
   const [quickPreviewGym, setQuickPreviewGym] = useState<PublicGym | null>(null);
   const [detailGym, setDetailGym] = useState<PublicGym | null>(null);
-  
-  const controls = useAnimationControls();
-  const y = useMotionValue(getSnapPoints().collapsed);
-  const [currentSnap, setCurrentSnap] = useState<'collapsed' | 'half' | 'full'>('collapsed');
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
@@ -79,53 +62,6 @@ const Map = () => {
     if (!userLocation || !hasGpsAccess) return undefined;
     return calculateDistance(userLocation.lat, userLocation.lng, gym.latitude, gym.longitude);
   }, [userLocation, hasGpsAccess]);
-
-  // Snap to nearest point
-  const snapTo = useCallback((snapPoint: 'collapsed' | 'half' | 'full') => {
-    const snaps = getSnapPoints();
-    setCurrentSnap(snapPoint);
-    controls.start({ 
-      y: snaps[snapPoint],
-      transition: { type: 'spring', damping: 30, stiffness: 400 }
-    });
-  }, [controls]);
-
-  // Handle drag end
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    const snaps = getSnapPoints();
-    const currentY = y.get();
-    const velocity = info.velocity.y;
-    
-    // Determine snap based on position and velocity
-    if (velocity < -500) {
-      // Fast upward swipe
-      if (currentSnap === 'collapsed') snapTo('half');
-      else snapTo('full');
-    } else if (velocity > 500) {
-      // Fast downward swipe
-      if (currentSnap === 'full') snapTo('half');
-      else snapTo('collapsed');
-    } else {
-      // Snap to nearest
-      const distances = {
-        collapsed: Math.abs(currentY - snaps.collapsed),
-        half: Math.abs(currentY - snaps.half),
-        full: Math.abs(currentY - snaps.full),
-      };
-      
-      const nearest = Object.entries(distances).reduce((a, b) => 
-        a[1] < b[1] ? a : b
-      )[0] as 'collapsed' | 'half' | 'full';
-      
-      snapTo(nearest);
-    }
-  };
-
-  // Initialize position
-  useEffect(() => {
-    const snaps = getSnapPoints();
-    controls.set({ y: snaps.collapsed });
-  }, [controls]);
 
   // Get user location with watchPosition for real-time updates
   useEffect(() => {
@@ -149,7 +85,6 @@ const Map = () => {
       },
       (error) => {
         console.log('getCurrentPosition error:', error.code, error.message);
-        // Don't set hasGpsAccess to false yet, watchPosition might work
       },
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
@@ -166,7 +101,6 @@ const Map = () => {
       },
       (error) => {
         console.log('watchPosition error:', error.code, error.message);
-        // Only set to false if we never got a position
         if (!userLocation) {
           setHasGpsAccess(false);
         }
@@ -181,53 +115,10 @@ const Map = () => {
     };
   }, []);
 
-  // Sort and filter gyms
-  const sortedGyms = useMemo(() => {
-    let filtered = gyms;
-    
-    // Filter by search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = gyms.filter(gym => 
-        gym.name.toLowerCase().includes(query) ||
-        gym.address?.toLowerCase().includes(query)
-      );
-    }
-
-    // Calculate distances and open status
-    const gymsWithMeta = filtered.map(gym => {
-      const hours = gym.opening_hours as OpeningHours;
-      const isOpen = isGymCurrentlyOpen(hours);
-      const distance = userLocation && hasGpsAccess
-        ? calculateDistance(userLocation.lat, userLocation.lng, gym.latitude, gym.longitude)
-        : undefined;
-      const isFav = isFavorite(gym.id);
-      
-      return { gym, distance, isOpen, isFavorite: isFav };
-    });
-
-    // Sort: favorites first, then open gyms, then by distance/alphabetically
-    return gymsWithMeta.sort((a, b) => {
-      // Favorites always first
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      
-      // Open gyms before closed ones
-      if (a.isOpen && !b.isOpen) return -1;
-      if (!a.isOpen && b.isOpen) return 1;
-      
-      // Then by distance or alphabetically
-      if (a.distance !== undefined && b.distance !== undefined) {
-        return a.distance - b.distance;
-      }
-      return a.gym.name.localeCompare(b.gym.name, 'cs');
-    });
-  }, [gyms, userLocation, hasGpsAccess, searchQuery, favorites, isFavorite]);
-
   // Handle marker click - show quick preview
   const handleGymSelect = (gym: PublicGym) => {
     setQuickPreviewGym(gym);
-    setDetailGym(null); // Close detail if open
+    setDetailGym(null);
   };
 
   // Handle detail button click - show fullscreen detail
@@ -319,7 +210,7 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT + 120 }}>
+        <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT }}>
           <GymMap
             gyms={gyms}
             userLocation={userLocation}
@@ -328,9 +219,9 @@ const Map = () => {
           />
         </div>
 
-        {/* Quick Preview Card - positioned above bottom drawer */}
+        {/* Quick Preview Card - positioned above bottom nav */}
         {quickPreviewGym && (
-          <div className="fixed left-4 right-4 z-50" style={{ bottom: BOTTOM_NAV_HEIGHT + 140 }}>
+          <div className="fixed left-4 right-4 z-50" style={{ bottom: BOTTOM_NAV_HEIGHT + 16 }}>
             <GymQuickPreview
               gym={quickPreviewGym}
               distance={getGymDistance(quickPreviewGym)}
@@ -340,83 +231,6 @@ const Map = () => {
             />
           </div>
         )}
-
-        {/* Bottom Draggable Drawer for Gym List */}
-        <motion.div
-          className="fixed left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] z-40"
-          style={{ 
-            y,
-            height: '100vh',
-            bottom: BOTTOM_NAV_HEIGHT,
-          }}
-          drag="y"
-          dragConstraints={{
-            top: getSnapPoints().full,
-            bottom: getSnapPoints().collapsed,
-          }}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd}
-          animate={controls}
-        >
-          {/* Handle */}
-          <div 
-            className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
-            onDoubleClick={() => snapTo(currentSnap === 'collapsed' ? 'half' : 'collapsed')}
-          >
-            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-          </div>
-          
-          {/* Search Bar */}
-          <div className="px-4 pb-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Hledat posilovny..."
-                className="pl-12"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => snapTo('half')}
-              />
-            </div>
-          </div>
-
-          {/* Gym List */}
-          <div 
-            className="px-4 overflow-y-auto overscroll-contain"
-            style={{ height: 'calc(100vh - 120px)' }}
-          >
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 animate-pulse">
-                    <div className="w-12 h-12 bg-muted rounded-full" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : sortedGyms.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-sm">
-                {searchQuery ? 'Žádné posilovny nenalezeny' : 'Zatím nejsou k dispozici žádné posilovny'}
-              </div>
-            ) : (
-              <div className="space-y-3 pb-8">
-                {sortedGyms.map(({ gym, distance, isFavorite: isFav }) => (
-                  <GymListItem
-                    key={gym.id}
-                    gym={gym}
-                    distance={distance}
-                    onClick={() => handleGymSelect(gym)}
-                    isFavorite={isFav}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
 
         {/* Fullscreen Gym Detail Drawer */}
         <Drawer open={!!detailGym} onOpenChange={(open) => !open && setDetailGym(null)}>
