@@ -1,68 +1,113 @@
 
-# Úprava B2B navigace - Business uživatel přímo na /business
+# Úprava Business rozhraní
 
-## Identifikovaný problém
+## Přehled změn
 
-Business uživatel po přihlášení vidí uživatelskou domovskou stránku (`/`) s pozdravem "Ahoj Boby..." místo business rozhraní. 
+Úpravy pro zlepšení B2B uživatelského rozhraní:
+1. Odstranění šipky zpět z hlavičky (nikam nevede)
+2. Změna pořadí navigace podle požadavku
+3. Přidání tlačítka pro odhlášení do nastavení
 
-**Důvod**: `AuthRoute` přesměrovává na `/business` pouze při přihlašování přes `/auth`. Pokud business uživatel přejde na jiné stránky jako `/` nebo se vrací zpět, zobrazí se mu běžné uživatelské rozhraní.
+---
 
-## Řešení
+## 1. Odstranění šipky zpět
 
-### Varianta 1: Přesměrování na Index stránce (doporučeno)
+Aktuálně `BusinessLayout` obsahuje šipku zpět vedoucí na `/`, ale díky novému přesměrování je business uživatel okamžitě přesměrován zpět na `/business`. Šipka je tedy zbytečná a bude odstraněna.
 
-Upravit `src/pages/Index.tsx` tak, aby business uživatel byl automaticky přesměrován na `/business`:
+**Změna v hlavičce:**
+- Smazat tlačítko s `ArrowLeft` ikonou
+- Ponechat pouze nadpis "Business"
 
-```typescript
-const Index = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const { role, isLoading: roleLoading } = useUserRole();
+---
 
-  if (authLoading || roleLoading) {
-    return <LoadingSpinner />;
-  }
+## 2. Změna pořadí navigace
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+**Současné pořadí:**
+1. Posilovna
+2. Stroje
+3. Statistiky
+4. Nastavení
 
-  // Business uživatel → /business
-  if (role === 'business') {
-    return <Navigate to="/business" replace />;
-  }
+**Nové pořadí:**
+1. Statistiky
+2. Posilovna
+3. Stroje
+4. Nastavení
 
-  // Admin uživatel → /admin
-  if (role === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
+---
 
-  return <Home />;
-};
-```
+## 3. Přidání odhlášení do nastavení
 
-Tím zajistíme, že:
-- **Business uživatel** přejde automaticky na `/business` odkudkoli
-- **Admin uživatel** přejde automaticky na `/admin`
-- **Běžný uživatel** zůstane na domovské stránce `/`
+Stránka `GymSettings` aktuálně obsahuje pouze možnost smazání posilovny. Přidám sekci pro odhlášení, která umožní business uživateli se odhlásit z aplikace.
 
-### Varianta 2: Úprava BusinessLayout šipky zpět
+**Nová sekce bude obsahovat:**
+- Tlačítko "Odhlásit se" s ikonou `LogOut`
+- Červené variantní stylování (destructive/outline)
+- Volání `logout()` funkce z `AuthContext`
 
-Aktuálně `BusinessLayout` má šipku zpět (`ArrowLeft`) která vede na `/`. Pro business uživatele to nemá smysl - vrátí se na stránku, která ho okamžitě přesměruje zpět.
+---
 
-**Možnosti:**
-- Odstranit šipku zpět úplně
-- Změnit na navigaci do `/business` (hlavní business dashboard)
-- Ponechat (přesměrování zajistí, že se neztratí)
-
-## Změny souborů
+## Soubory ke změně
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/Index.tsx` | Přidat kontrolu role a přesměrování pro business/admin |
+| `src/pages/business/BusinessLayout.tsx` | Odstranit šipku zpět, změnit pořadí navigace |
+| `src/pages/business/GymSettings.tsx` | Přidat tlačítko pro odhlášení |
+
+---
+
+## Technické detaily
+
+### BusinessLayout.tsx
+
+```typescript
+// Změna pořadí navigace
+const navItems = [
+  { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
+  { path: '/business', icon: Building2, label: 'Posilovna' },
+  { path: '/business/machines', icon: Dumbbell, label: 'Stroje' },
+  { path: '/business/settings', icon: Settings, label: 'Nastavení' },
+];
+
+// Header bez šipky zpět
+<header>
+  <div className="flex items-center gap-3 px-4 py-3">
+    <h1 className="text-lg font-semibold">Business</h1>
+  </div>
+</header>
+```
+
+### GymSettings.tsx
+
+```typescript
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
+
+// V komponentě:
+const { logout } = useAuth();
+
+// Nová sekce před nebezpečnou zónou:
+<Card>
+  <CardHeader>
+    <CardTitle>Účet</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <Button 
+      variant="outline" 
+      className="w-full border-destructive text-destructive"
+      onClick={logout}
+    >
+      <LogOut className="w-4 h-4 mr-2" />
+      Odhlásit se
+    </Button>
+  </CardContent>
+</Card>
+```
+
+---
 
 ## Výsledek
 
-1. Business uživatel "Boby Fitness" se po přihlášení dostane přímo na `/business`
-2. Pokud business uživatel navštíví `/`, je automaticky přesměrován na `/business`
-3. Business uživatel nikdy neuvidí "Ahoj Boby..." obrazovku
-4. Stejná logika platí pro admin uživatele (přesměrování na `/admin`)
+1. Čistší hlavička bez zbytečné šipky zpět
+2. Logičtější pořadí navigace - statistiky jako první (hlavní přehled)
+3. Business uživatel se může snadno odhlásit z aplikace přes nastavení
