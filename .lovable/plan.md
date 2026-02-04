@@ -1,173 +1,233 @@
 
-# Rozšíření nastavení B2B - Skrytí z mapy a reorganizace
 
-## Přehled změn
+# Galerie fotek posiloven (max 7 fotek)
 
-1. **Přidat tlačítko "Skrýt z mapy"** - přepíná viditelnost posilovny na mapě
-2. **Smazat posilovnu jako méně výrazné** - ghost/outline varianta místo destructive
-3. **Nové pořadí akcí**: Skrýt → Smazat → Odhlásit
-4. **Potvrzovací dialogy** pro obě akce s upozorněním na nevratnost
-5. **Výběr posilovny** pokud uživatel vlastní více posiloven
+## Přehled
+
+Rozšíření systému fotek posiloven z 2 fotek (cover + logo) na až 7 fotek v galerii. Fotky budou dostupné pro nahrávání z B2B i Admin rozhraní a zobrazeny jako karusel v profilu posilovny.
 
 ---
 
-## Struktura stránky nastavení (nová)
+## 1. Databázová změna
+
+### Nová tabulka `gym_photos`
+
+```sql
+CREATE TABLE public.gym_photos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  gym_id UUID NOT NULL REFERENCES public.gyms(id) ON DELETE CASCADE,
+  photo_url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Index pro rychlé vyhledávání
+CREATE INDEX idx_gym_photos_gym_id ON public.gym_photos(gym_id);
+
+-- Omezení na max 7 fotek (validace v aplikaci)
+
+-- RLS politiky
+ALTER TABLE public.gym_photos ENABLE ROW LEVEL SECURITY;
+
+-- Veřejné čtení pro publikované posilovny
+CREATE POLICY "Anyone can view photos of published gyms"
+  ON public.gym_photos FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM public.gyms 
+    WHERE gyms.id = gym_photos.gym_id 
+    AND (gyms.is_published = true OR gyms.owner_id = auth.uid())
+  ));
+
+-- Business uživatel může spravovat fotky své posilovny
+CREATE POLICY "Gym owners can insert photos"
+  ON public.gym_photos FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.gyms 
+    WHERE gyms.id = gym_photos.gym_id 
+    AND gyms.owner_id = auth.uid()
+  ));
+
+CREATE POLICY "Gym owners can delete photos"
+  ON public.gym_photos FOR DELETE
+  USING (EXISTS (
+    SELECT 1 FROM public.gyms 
+    WHERE gyms.id = gym_photos.gym_id 
+    AND gyms.owner_id = auth.uid()
+  ));
+
+CREATE POLICY "Gym owners can update photos"
+  ON public.gym_photos FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM public.gyms 
+    WHERE gyms.id = gym_photos.gym_id 
+    AND gyms.owner_id = auth.uid()
+  ));
+
+-- Admin může vše
+CREATE POLICY "Admins can manage all photos"
+  ON public.gym_photos FOR ALL
+  USING (has_role(auth.uid(), 'admin'));
+```
+
+---
+
+## 2. Nové komponenty
+
+### 2.1 `GymPhotoGallery.tsx` - Zobrazení galerie (karusel)
+
+Komponenta pro zobrazení fotek v profilu posilovny:
+- Horizontální karusel s Embla Carousel (již nainstalován)
+- Indikátory pozice (tečky)
+- Placeholder pokud nejsou žádné fotky
+
+### 2.2 `GymPhotosManager.tsx` - Správa fotek (B2B/Admin)
+
+Komponenta pro nahrávání a správu fotek:
+- Grid zobrazení nahraných fotek
+- Tlačítko pro přidání nové fotky (pokud < 7)
+- Možnost smazat existující fotku
+- Drag & drop pro změnu pořadí (volitelně)
+- Indikátor počtu fotek (např. "3/7")
+- Upload do Supabase Storage bucket `gym-images`
+
+---
+
+## 3. Hook `useGymPhotos`
+
+```typescript
+interface GymPhoto {
+  id: string;
+  gym_id: string;
+  photo_url: string;
+  sort_order: number;
+  created_at: string;
+}
+
+interface UseGymPhotosReturn {
+  photos: GymPhoto[];
+  isLoading: boolean;
+  addPhoto: (url: string) => Promise<{ success: boolean }>;
+  removePhoto: (photoId: string) => Promise<{ success: boolean }>;
+  reorderPhotos: (orderedIds: string[]) => Promise<void>;
+  canAddMore: boolean;
+}
+```
+
+---
+
+## 4. Integrace
+
+### B2B rozhraní (`GymProfile.tsx`)
+
+V Drawer pro úpravu fotek:
+- Zachovat Cover a Logo sekce
+- Přidat novou sekci "Galerie fotek (max 7)"
+- Použít `GymPhotosManager` komponentu
+
+### Admin rozhraní (`AdminGymDetail.tsx`)
+
+V Drawer pro úpravu fotek:
+- Stejná struktura jako B2B
+- Přidat `GymPhotosManager` komponentu
+
+### Profil posilovny (`GymProfilePreview.tsx`)
+
+- Nahradit statický cover photo za `GymPhotoGallery` karusel
+- Fallback na `cover_photo_url` pokud galerie prázdná
+- Logo zůstává samostatně překrývající galerii
+
+---
+
+## 5. Struktura souborů
+
+```text
+src/
+├── components/
+│   └── business/
+│       ├── GymPhotoGallery.tsx     (nový - zobrazení karuselu)
+│       ├── GymPhotosManager.tsx     (nový - správa fotek)
+│       ├── GymProfile.tsx           (úprava - přidat galerii)
+│       └── GymProfilePreview.tsx    (úprava - karusel místo cover)
+├── hooks/
+│   └── useGymPhotos.ts              (nový - CRUD pro fotky)
+└── pages/
+    └── admin/
+        └── AdminGymDetail.tsx       (úprava - přidat galerii)
+```
+
+---
+
+## 6. UI návrh
+
+### Správa fotek (Drawer)
 
 ```text
 ┌─────────────────────────────────────────┐
-│ [Indikátor vybrané posilovny - pokud >1]│
+│ Upravit fotky                           │
 ├─────────────────────────────────────────┤
-│ Nastavení                               │
+│ Titulní fotka                           │
+│ ┌───────────────────────────────────┐   │
+│ │         [Cover Upload]            │   │
+│ └───────────────────────────────────┘   │
 ├─────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐ │
-│ │ Viditelnost                         │ │
-│ │ ───────────────────────────────     │ │
-│ │ [👁 Skrýt z mapy]  (outline btn)    │ │
-│ │ nebo                                │ │
-│ │ [✓ Zobrazit na mapě] (pokud skrytá) │ │
-│ └─────────────────────────────────────┘ │
+│ Logo posilovny                          │
+│       ┌─────┐                           │
+│       │ 🏋️ │                           │
+│       └─────┘                           │
 ├─────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐ │
-│ │ Nebezpečná zóna                     │ │
-│ │ ───────────────────────────────     │ │
-│ │ [🗑 Smazat posilovnu] (ghost/muted) │ │
-│ └─────────────────────────────────────┘ │
+│ Galerie fotek (3/7)                     │
+│ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐        │
+│ │ 📷 │ │ 📷 │ │ 📷 │ │  +  │        │
+│ │  ❌ │ │  ❌ │ │  ❌ │ │     │        │
+│ └─────┘ └─────┘ └─────┘ └─────┘        │
+│                                         │
+│ "Nahrajte až 7 fotek vaší posilovny"   │
+└─────────────────────────────────────────┘
+```
+
+### Karusel v profilu
+
+```text
+┌─────────────────────────────────────────┐
+│ ◄  [     Fotka 1/3     ]  ►            │
+│         ● ○ ○                           │
 ├─────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐ │
-│ │ Účet                                │ │
-│ │ ───────────────────────────────     │ │
-│ │ [↪ Odhlásit se]                     │ │
-│ └─────────────────────────────────────┘ │
+│   🏋️                                    │
+│   Název posilovny                       │
+│   📍 Adresa                             │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## Funkční logika
+## 7. Validace
 
-### 1. Skrýt z mapy
-- Využije existující `togglePublish()` z `GymContext`
-- Pokud `is_published = true` → tlačítko "Skrýt z mapy" 
-- Pokud `is_published = false` → tlačítko "Zobrazit na mapě"
-- **AlertDialog** s potvrzením:
-  - "Opravdu chcete skrýt posilovnu '{název}' z mapy?"
-  - "Uživatelé ji nebudou moci najít ani vybrat pro trénink."
-
-### 2. Smazat posilovnu  
-- Méně výrazné tlačítko (`variant="ghost"` s jemným textem)
-- **AlertDialog** s důrazným varováním:
-  - Červený nadpis "Trvale smazat posilovnu"
-  - "Tato akce je **NEVRATNÁ**. Posilovna '{název}' bude trvale odstraněna spolu se všemi stroji."
-  - Červené potvrzovací tlačítko
-
-### 3. Indikátor vybrané posilovny (pro více posiloven)
-- Již existuje v kódu
-- Odkaz "Změnit" vede na `/business` kde lze přepnout
+- Max 7 fotek na posilovnu (kontrola v hooku i na backendu)
+- Max 5MB na fotku
+- Pouze image/* typy souborů
+- Automatické mazání ze storage při smazání fotky z DB (CASCADE)
 
 ---
 
-## Technické detaily
+## Soubory ke změně/vytvoření
 
-### Import nových ikon
-```typescript
-import { EyeOff, Eye } from 'lucide-react';
-```
-
-### Nová sekce Viditelnost
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle className="text-base">Viditelnost</CardTitle>
-    <CardDescription>
-      Ovládejte, zda je posilovna viditelná na mapě pro uživatele.
-    </CardDescription>
-  </CardHeader>
-  <CardContent>
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" className="w-full gap-2">
-          {gym.is_published ? (
-            <>
-              <EyeOff className="w-4 h-4" />
-              Skrýt z mapy
-            </>
-          ) : (
-            <>
-              <Eye className="w-4 h-4" />
-              Zobrazit na mapě
-            </>
-          )}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {gym.is_published ? 'Skrýt posilovnu z mapy?' : 'Zobrazit posilovnu na mapě?'}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {gym.is_published 
-              ? `Posilovna "${gym.name}" nebude viditelná pro uživatele. Nebudou ji moci najít ani vybrat pro trénink.`
-              : `Posilovna "${gym.name}" bude viditelná pro všechny uživatele na mapě.`
-            }
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Zrušit</AlertDialogCancel>
-          <AlertDialogAction onClick={togglePublish}>
-            {gym.is_published ? 'Skrýt' : 'Zobrazit'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </CardContent>
-</Card>
-```
-
-### Úprava tlačítka Smazat (méně výrazné)
-```typescript
-<Button 
-  variant="ghost" 
-  className="w-full gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
->
-  <Trash2 className="w-4 h-4" />
-  Smazat posilovnu
-</Button>
-```
-
-### Vylepšený dialog pro smazání
-```typescript
-<AlertDialogContent>
-  <AlertDialogHeader>
-    <AlertDialogTitle className="text-destructive">
-      Trvale smazat posilovnu?
-    </AlertDialogTitle>
-    <AlertDialogDescription className="space-y-2">
-      <p>
-        <strong>Tato akce je NEVRATNÁ.</strong>
-      </p>
-      <p>
-        Posilovna "{gym.name}" bude trvale odstraněna spolu se všemi přiřazenými stroji.
-      </p>
-    </AlertDialogDescription>
-  </AlertDialogHeader>
-  ...
-</AlertDialogContent>
-```
-
----
-
-## Soubor ke změně
-
-| Soubor | Změna |
-|--------|-------|
-| `src/pages/business/GymSettings.tsx` | Reorganizace sekcí, přidání Viditelnost, úprava stylů |
+| Soubor | Akce |
+|--------|------|
+| `supabase/migrations/xxx_gym_photos.sql` | Nová tabulka + RLS |
+| `src/hooks/useGymPhotos.ts` | Nový hook |
+| `src/components/business/GymPhotoGallery.tsx` | Nová komponenta - karusel |
+| `src/components/business/GymPhotosManager.tsx` | Nová komponenta - správa |
+| `src/components/business/GymProfile.tsx` | Přidat galerii do draweru |
+| `src/components/business/GymProfilePreview.tsx` | Karusel místo statického cover |
+| `src/pages/admin/AdminGymDetail.tsx` | Přidat galerii do draweru |
 
 ---
 
 ## Výsledek
 
-1. B2B uživatel může snadno skrýt/zobrazit posilovnu na mapě
-2. Smazání je méně nápadné ale stále dostupné s jasným varováním
-3. Logické pořadí: Viditelnost → Smazání → Odhlášení
-4. Potvrzovací dialogy pro všechny důležité akce
-5. Při více posilovnách je jasně označeno, kterou nastavujeme
+1. Majitel posilovny může nahrát až 7 fotek své posilovny
+2. Admin může spravovat fotky jakékoli posilovny
+3. Uživatelé vidí fotky jako atraktivní karusel
+4. Cover photo a logo zůstávají pro zpětnou kompatibilitu
+5. Galerie rozšiřuje vizuální prezentaci posilovny
+
