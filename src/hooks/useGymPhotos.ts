@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const MAX_PHOTOS = 7;
@@ -23,6 +24,7 @@ interface UseGymPhotosReturn {
 }
 
 export const useGymPhotos = (gymId: string | undefined): UseGymPhotosReturn => {
+  const { user } = useAuth();
   const [photos, setPhotos] = useState<GymPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,7 +56,7 @@ export const useGymPhotos = (gymId: string | undefined): UseGymPhotosReturn => {
   }, [fetchPhotos]);
 
   const addPhoto = async (file: File): Promise<{ success: boolean; url?: string }> => {
-    if (!gymId) return { success: false };
+    if (!gymId || !user) return { success: false };
     
     if (photos.length >= MAX_PHOTOS) {
       toast.error(`Maximální počet fotek je ${MAX_PHOTOS}`);
@@ -72,9 +74,9 @@ export const useGymPhotos = (gymId: string | undefined): UseGymPhotosReturn => {
     }
 
     try {
-      // Upload to storage
+      // Upload to storage - use user.id as folder to match RLS policy
       const fileExt = file.name.split('.').pop();
-      const fileName = `${gymId}/gallery-${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/gallery-${gymId}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('gym-images')
