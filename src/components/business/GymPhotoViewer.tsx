@@ -73,7 +73,7 @@ const GymPhotoViewer = ({
         {/* Close button */}
         <button
           onClick={() => onOpenChange(false)}
-          className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
         >
           <X className="w-6 h-6 text-white" />
         </button>
@@ -84,7 +84,7 @@ const GymPhotoViewer = ({
         </div>
 
         {/* Carousel */}
-        <div ref={emblaRef} className="overflow-hidden h-full flex items-center">
+        <div ref={emblaRef} className="overflow-hidden h-full flex items-center relative z-[10]">
           <div className="flex h-full">
             {allImages.map((url, index) => (
               <div 
@@ -106,13 +106,13 @@ const GymPhotoViewer = ({
           <>
             <button
               onClick={scrollPrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
             <button
               onClick={scrollNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
             >
               <ChevronRight className="w-6 h-6 text-white" />
             </button>
