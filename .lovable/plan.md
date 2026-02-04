@@ -1,21 +1,47 @@
 
-
 # Oprava viditelnosti křížku ve fullscreen galerii
 
 ## Identifikovaný problém
 
-Ze screenshotu a kódu jsem zjistil **dva problémy**:
+Po důkladném testování v prohlížeči a analýze kódu jsem našel **přesnou příčinu**:
 
-1. **Barva křížku** - Křížek má `bg-black/60` (černé pozadí) na `bg-black/95` (téměř černém) pozadí dialogu - proto splývá a není vidět
-2. **CSS specifičnost** - Tailwind nemusí správně přepsat výchozí styly z `dialog.tsx` (`left-[50%]`, `translate-x-[-50%]`) kvůli pořadí tříd
+V `GymPhotoViewer.tsx` používám CSS selektor `[&>button]:hidden` na DialogContent. Tento selektor skrývá **VŠECHNY** buttony, které jsou přímými potomky DialogContent - včetně mého vlastního close button!
+
+```typescript
+// Aktuálně v GymPhotoViewer.tsx (řádek 70):
+className="... [&>button]:hidden ..."
+
+// To způsobuje:
+// - Skryje výchozí Radix Close button (správně)
+// - Skryje i MŮJ custom close button (ŠPATNĚ!)
+```
 
 ## Řešení
 
-### 1. Změnit barvu křížku na výrazně kontrastní
-Místo `bg-black/60` použít `bg-white/20` s hover `bg-white/30` - bílé poloprůhledné tlačítko na tmavém pozadí bude viditelné.
+Zabalit navigační prvky (close button, counter, arrows, dots) do wrapper `<div>`, který NENÍ typu `<button>`. Tím se stanou potomky divu, ne DialogContent, a nebudou skryty selektorem `[&>button]:hidden`.
 
-### 2. Použít `!important` modifikátor pro pozicování
-Tailwind `!` prefix zajistí přepsání výchozích stylů.
+Struktura před:
+```text
+DialogContent
+├── button (close) ← skrytý [&>button]:hidden
+├── div (counter)
+├── div (carousel)
+├── button (prev arrow) ← skrytý
+├── button (next arrow) ← skrytý
+└── div (dots)
+```
+
+Struktura po:
+```text
+DialogContent
+├── div (navigation wrapper)
+│   ├── button (close) ← VIDITELNÝ
+│   ├── div (counter)
+│   ├── button (prev arrow) ← VIDITELNÝ
+│   ├── button (next arrow) ← VIDITELNÝ
+│   └── div (dots)
+└── div (carousel)
+```
 
 ---
 
@@ -23,44 +49,55 @@ Tailwind `!` prefix zajistí přepsání výchozích stylů.
 
 ### Soubor: `src/components/business/GymPhotoViewer.tsx`
 
-**DialogContent (řádek 69-71):**
-```typescript
-// Před:
-className="fixed inset-0 max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200] translate-x-0 translate-y-0 left-0 top-0"
+**Zabalit všechny navigační prvky do wrapperu (řádky 73-139):**
 
-// Po - přidat ! modifikátory:
-className="!fixed !inset-0 !max-w-full !h-full !w-full !p-0 !border-0 bg-black/95 [&>button]:hidden z-[200] !translate-x-0 !translate-y-0 !left-0 !top-0"
+```typescript
+{/* Navigation wrapper - aby button nebyl přímým potomkem DialogContent */}
+<div className="contents">
+  {/* Close button */}
+  <button
+    onClick={() => onOpenChange(false)}
+    className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
+  >
+    <X className="w-6 h-6 text-white" />
+  </button>
+
+  {/* Photo counter */}
+  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+    {selectedIndex + 1} / {allImages.length}
+  </div>
+
+  {/* Navigation arrows - taky uvnitř wrapperu */}
+  {allImages.length > 1 && (
+    <>
+      <button onClick={scrollPrev} className="...">...</button>
+      <button onClick={scrollNext} className="...">...</button>
+    </>
+  )}
+
+  {/* Dot indicators */}
+  {allImages.length > 1 && (
+    <div className="...">...</div>
+  )}
+</div>
 ```
 
-**Close button (řádky 74-79):**
-```typescript
-// Před:
-className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 ..."
-
-// Po - změnit na bílé poloprůhledné pozadí:
-className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 ..."
-```
-
-**Navigační šipky (řádky 107-118):**
-```typescript
-// Šipky mají bg-white/10 což je taky málo viditelné
-// Zvýšit na bg-white/20 a hover:bg-white/30
-```
+Použití `className="contents"` zajistí, že wrapper div neovlivní layout - jeho děti se budou chovat jako by wrapper neexistoval, ale přitom nebudou přímými potomky DialogContent.
 
 ---
 
-## Změny v souborech
+## Soubor ke změně
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/business/GymPhotoViewer.tsx` | Změnit barvy na kontrastní (bílé), přidat `!important` modifikátory pro pozicování |
+| `src/components/business/GymPhotoViewer.tsx` | Zabalit navigační prvky do wrapper divu s `className="contents"` |
 
 ---
 
-## Výsledek
+## Očekávaný výsledek
 
 Po úpravě:
-- **Křížek** bude mít bílé poloprůhledné pozadí (`bg-white/20`) - výrazně kontrastní na černém
-- **Šipky** budou taky lépe viditelné
-- **Pozicování** bude garantováno díky `!` modifikátorům
-
+- Selektor `[&>button]:hidden` skryje pouze výchozí Radix Close button (který je přímým potomkem)
+- Můj custom close button bude potomkem wrapper divu → nebude skrytý → BUDE VIDITELNÝ
+- Stejně tak navigační šipky budou viditelné
+- Layout zůstane nezměněný díky `contents`
