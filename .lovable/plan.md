@@ -1,25 +1,30 @@
 
-# Oprava zobrazení šipek a křížku ve fullscreen galerii
+# Oprava viditelnosti navigace ve fullscreen galerii
 
-## Problém
+## Identifikovaný problém
 
-Šipky a křížek v `GymPhotoViewer` nejsou viditelné, protože:
+Po testování v prohlížeči jsem zjistil, že:
 
-1. **Z-index konflikt**: Elementy uvnitř `DialogContent` mají `z-50`, ale rodičovský dialog je na `z-[200]`. Relativní z-indexy uvnitř jsou stále platné, ale kombinace stylů způsobuje problémy.
+1. **Křížek a šipky nejsou viditelné** - browser observe potvrdil, že v dialogu existuje pouze počítadlo (1/1) a obrázek, ale tlačítko pro zavření není viditelné
+2. **Carousel div překrývá navigační prvky** - carousel má `h-full` a `overflow-hidden`, což vytváří stacking context a může překrývat absolutně pozicované prvky
 
-2. **Pozicování**: Výchozí styl `DialogContent` používá `translate-x-[-50%] translate-y-[-50%]` a `max-w-lg`, což může ořezávat absolutně pozicované elementy.
+## Příčina
 
-3. **Přepsání stylů**: V `GymPhotoViewer` používáme `max-w-full h-full w-full`, ale výchozí transformace z `dialog.tsx` stále přetrvává a může způsobovat problémy s pozicováním.
-
----
+V `GymPhotoViewer.tsx`:
+- Carousel div (`<div ref={emblaRef}>`) má plnou výšku a zabírá celý prostor dialogu
+- Absolutně pozicované prvky (křížek, šipky, počítadlo) jsou uvnitř `DialogContent`, ale carousel je také uvnitř
+- I když mají navigační prvky `z-[60]`, carousel div bez explicitního z-indexu může vytvořit překrytí
 
 ## Řešení
 
-Upravit `GymPhotoViewer.tsx`:
+Přidat explicitní z-index na carousel div, aby byl "pod" navigačními prvky:
 
-1. Přidat `fixed inset-0` pro zajištění fullscreen pozice
-2. Přepsat transformace pomocí `translate-x-0 translate-y-0 left-0 top-0`
-3. Zvýšit z-index navigačních prvků z `z-50` na `z-[60]` pro jistotu
+1. Carousel div: `z-[10]` (nízký, protože je to pozadí)
+2. Navigační prvky zůstanou na `z-[60]` (vysoký, protože mají být viditelné)
+
+### Alternativně (bezpečnější):
+
+Přesunout navigační prvky **mimo** carousel strukturu a zajistit, že jsou na stejné úrovni jako DialogContent children, s explicitními z-indexy.
 
 ---
 
@@ -27,33 +32,39 @@ Upravit `GymPhotoViewer.tsx`:
 
 ### Soubor: `src/components/business/GymPhotoViewer.tsx`
 
-**Řádek 69-71** - DialogContent className:
+**Přidat z-index na carousel kontejner (řádek 87):**
+
 ```typescript
 // Před:
-className="max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200]"
+<div ref={emblaRef} className="overflow-hidden h-full flex items-center">
 
 // Po:
-className="fixed inset-0 max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200] translate-x-0 translate-y-0"
+<div ref={emblaRef} className="overflow-hidden h-full flex items-center relative z-[10]">
 ```
 
-**Řádky 76, 82, 109, 115, 124** - Zvýšit z-index prvků:
+A také přidat `pointer-events-none` na carousel wrapper aby nekradl kliknutí:
+
 ```typescript
-// Všechny prvky s z-50 změnit na z-[60]:
+// Celá struktura:
+<div ref={emblaRef} className="overflow-hidden h-full flex items-center z-[10]">
+  <div className="flex h-full">
+    {allImages.map((url, index) => (
+      <div key={index} className="flex-none w-full h-full flex items-center justify-center p-4">
+        <img src={url} alt={`Photo ${index + 1}`} className="max-w-full max-h-full object-contain" />
+      </div>
+    ))}
+  </div>
+</div>
+```
 
-// Křížek (řádek 76):
-className="absolute top-4 right-4 z-[60] p-2 ..."
+A na navigační prvky přidat `pointer-events-auto` pro jistotu:
 
-// Počítadlo fotek (řádek 82):
-className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] ..."
-
-// Šipka vlevo (řádek 109):
-className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] ..."
-
-// Šipka vpravo (řádek 115):
-className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] ..."
-
-// Dot indikátory (řádek 124):
-className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] flex gap-2"
+```typescript
+// Křížek:
+<button
+  onClick={() => onOpenChange(false)}
+  className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors pointer-events-auto"
+>
 ```
 
 ---
@@ -62,16 +73,13 @@ className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] flex gap-2"
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/business/GymPhotoViewer.tsx` | Opravit pozicování a z-indexy |
+| `src/components/business/GymPhotoViewer.tsx` | Přidat z-index na carousel, pointer-events na tlačítka |
 
 ---
 
 ## Výsledek
 
-Po úpravě bude fullscreen galerie zobrazovat:
-- Křížek pro zavření v pravém horním rohu
-- Šipky vlevo/vpravo pro navigaci mezi fotkami
-- Počítadlo fotek nahoře uprostřed (1 / 7)
-- Dot indikátory dole
-
-Vše bude viditelné a klikatelné nad fotkami.
+Po úpravě:
+- Carousel bude mít nízký z-index (10), takže bude "pod" navigačními prvky
+- Navigační prvky (křížek, šipky, počítadlo, tečky) budou mít z-index 60 a budou viditelné nad fotkami
+- Vše bude klikatelné a funkční
