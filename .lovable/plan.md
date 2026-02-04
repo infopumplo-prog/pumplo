@@ -1,113 +1,173 @@
 
-# Úprava Business rozhraní
+# Rozšíření nastavení B2B - Skrytí z mapy a reorganizace
 
 ## Přehled změn
 
-Úpravy pro zlepšení B2B uživatelského rozhraní:
-1. Odstranění šipky zpět z hlavičky (nikam nevede)
-2. Změna pořadí navigace podle požadavku
-3. Přidání tlačítka pro odhlášení do nastavení
+1. **Přidat tlačítko "Skrýt z mapy"** - přepíná viditelnost posilovny na mapě
+2. **Smazat posilovnu jako méně výrazné** - ghost/outline varianta místo destructive
+3. **Nové pořadí akcí**: Skrýt → Smazat → Odhlásit
+4. **Potvrzovací dialogy** pro obě akce s upozorněním na nevratnost
+5. **Výběr posilovny** pokud uživatel vlastní více posiloven
 
 ---
 
-## 1. Odstranění šipky zpět
+## Struktura stránky nastavení (nová)
 
-Aktuálně `BusinessLayout` obsahuje šipku zpět vedoucí na `/`, ale díky novému přesměrování je business uživatel okamžitě přesměrován zpět na `/business`. Šipka je tedy zbytečná a bude odstraněna.
-
-**Změna v hlavičce:**
-- Smazat tlačítko s `ArrowLeft` ikonou
-- Ponechat pouze nadpis "Business"
-
----
-
-## 2. Změna pořadí navigace
-
-**Současné pořadí:**
-1. Posilovna
-2. Stroje
-3. Statistiky
-4. Nastavení
-
-**Nové pořadí:**
-1. Statistiky
-2. Posilovna
-3. Stroje
-4. Nastavení
-
----
-
-## 3. Přidání odhlášení do nastavení
-
-Stránka `GymSettings` aktuálně obsahuje pouze možnost smazání posilovny. Přidám sekci pro odhlášení, která umožní business uživateli se odhlásit z aplikace.
-
-**Nová sekce bude obsahovat:**
-- Tlačítko "Odhlásit se" s ikonou `LogOut`
-- Červené variantní stylování (destructive/outline)
-- Volání `logout()` funkce z `AuthContext`
+```text
+┌─────────────────────────────────────────┐
+│ [Indikátor vybrané posilovny - pokud >1]│
+├─────────────────────────────────────────┤
+│ Nastavení                               │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ Viditelnost                         │ │
+│ │ ───────────────────────────────     │ │
+│ │ [👁 Skrýt z mapy]  (outline btn)    │ │
+│ │ nebo                                │ │
+│ │ [✓ Zobrazit na mapě] (pokud skrytá) │ │
+│ └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ Nebezpečná zóna                     │ │
+│ │ ───────────────────────────────     │ │
+│ │ [🗑 Smazat posilovnu] (ghost/muted) │ │
+│ └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ Účet                                │ │
+│ │ ───────────────────────────────     │ │
+│ │ [↪ Odhlásit se]                     │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-## Soubory ke změně
+## Funkční logika
 
-| Soubor | Změna |
-|--------|-------|
-| `src/pages/business/BusinessLayout.tsx` | Odstranit šipku zpět, změnit pořadí navigace |
-| `src/pages/business/GymSettings.tsx` | Přidat tlačítko pro odhlášení |
+### 1. Skrýt z mapy
+- Využije existující `togglePublish()` z `GymContext`
+- Pokud `is_published = true` → tlačítko "Skrýt z mapy" 
+- Pokud `is_published = false` → tlačítko "Zobrazit na mapě"
+- **AlertDialog** s potvrzením:
+  - "Opravdu chcete skrýt posilovnu '{název}' z mapy?"
+  - "Uživatelé ji nebudou moci najít ani vybrat pro trénink."
+
+### 2. Smazat posilovnu  
+- Méně výrazné tlačítko (`variant="ghost"` s jemným textem)
+- **AlertDialog** s důrazným varováním:
+  - Červený nadpis "Trvale smazat posilovnu"
+  - "Tato akce je **NEVRATNÁ**. Posilovna '{název}' bude trvale odstraněna spolu se všemi stroji."
+  - Červené potvrzovací tlačítko
+
+### 3. Indikátor vybrané posilovny (pro více posiloven)
+- Již existuje v kódu
+- Odkaz "Změnit" vede na `/business` kde lze přepnout
 
 ---
 
 ## Technické detaily
 
-### BusinessLayout.tsx
-
+### Import nových ikon
 ```typescript
-// Změna pořadí navigace
-const navItems = [
-  { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
-  { path: '/business', icon: Building2, label: 'Posilovna' },
-  { path: '/business/machines', icon: Dumbbell, label: 'Stroje' },
-  { path: '/business/settings', icon: Settings, label: 'Nastavení' },
-];
-
-// Header bez šipky zpět
-<header>
-  <div className="flex items-center gap-3 px-4 py-3">
-    <h1 className="text-lg font-semibold">Business</h1>
-  </div>
-</header>
+import { EyeOff, Eye } from 'lucide-react';
 ```
 
-### GymSettings.tsx
-
+### Nová sekce Viditelnost
 ```typescript
-import { useAuth } from '@/contexts/AuthContext';
-import { LogOut } from 'lucide-react';
-
-// V komponentě:
-const { logout } = useAuth();
-
-// Nová sekce před nebezpečnou zónou:
 <Card>
   <CardHeader>
-    <CardTitle>Účet</CardTitle>
+    <CardTitle className="text-base">Viditelnost</CardTitle>
+    <CardDescription>
+      Ovládejte, zda je posilovna viditelná na mapě pro uživatele.
+    </CardDescription>
   </CardHeader>
   <CardContent>
-    <Button 
-      variant="outline" 
-      className="w-full border-destructive text-destructive"
-      onClick={logout}
-    >
-      <LogOut className="w-4 h-4 mr-2" />
-      Odhlásit se
-    </Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" className="w-full gap-2">
+          {gym.is_published ? (
+            <>
+              <EyeOff className="w-4 h-4" />
+              Skrýt z mapy
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4" />
+              Zobrazit na mapě
+            </>
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {gym.is_published ? 'Skrýt posilovnu z mapy?' : 'Zobrazit posilovnu na mapě?'}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {gym.is_published 
+              ? `Posilovna "${gym.name}" nebude viditelná pro uživatele. Nebudou ji moci najít ani vybrat pro trénink.`
+              : `Posilovna "${gym.name}" bude viditelná pro všechny uživatele na mapě.`
+            }
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Zrušit</AlertDialogCancel>
+          <AlertDialogAction onClick={togglePublish}>
+            {gym.is_published ? 'Skrýt' : 'Zobrazit'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </CardContent>
 </Card>
 ```
+
+### Úprava tlačítka Smazat (méně výrazné)
+```typescript
+<Button 
+  variant="ghost" 
+  className="w-full gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+>
+  <Trash2 className="w-4 h-4" />
+  Smazat posilovnu
+</Button>
+```
+
+### Vylepšený dialog pro smazání
+```typescript
+<AlertDialogContent>
+  <AlertDialogHeader>
+    <AlertDialogTitle className="text-destructive">
+      Trvale smazat posilovnu?
+    </AlertDialogTitle>
+    <AlertDialogDescription className="space-y-2">
+      <p>
+        <strong>Tato akce je NEVRATNÁ.</strong>
+      </p>
+      <p>
+        Posilovna "{gym.name}" bude trvale odstraněna spolu se všemi přiřazenými stroji.
+      </p>
+    </AlertDialogDescription>
+  </AlertDialogHeader>
+  ...
+</AlertDialogContent>
+```
+
+---
+
+## Soubor ke změně
+
+| Soubor | Změna |
+|--------|-------|
+| `src/pages/business/GymSettings.tsx` | Reorganizace sekcí, přidání Viditelnost, úprava stylů |
 
 ---
 
 ## Výsledek
 
-1. Čistší hlavička bez zbytečné šipky zpět
-2. Logičtější pořadí navigace - statistiky jako první (hlavní přehled)
-3. Business uživatel se může snadno odhlásit z aplikace přes nastavení
+1. B2B uživatel může snadno skrýt/zobrazit posilovnu na mapě
+2. Smazání je méně nápadné ale stále dostupné s jasným varováním
+3. Logické pořadí: Viditelnost → Smazání → Odhlášení
+4. Potvrzovací dialogy pro všechny důležité akce
+5. Při více posilovnách je jasně označeno, kterou nastavujeme
