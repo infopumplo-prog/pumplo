@@ -1,71 +1,68 @@
 
-# Automatické přesměrování admina na /admin po přihlášení
+# Úprava B2B navigace - Business uživatel přímo na /business
 
-## Současný stav
+## Identifikovaný problém
 
-Aktuálně `AuthRoute` komponenta v `App.tsx` (řádky 108-120) přesměrovává **všechny** přihlášené uživatele na `/`:
+Business uživatel po přihlášení vidí uživatelskou domovskou stránku (`/`) s pozdravem "Ahoj Boby..." místo business rozhraní. 
 
-```typescript
-const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
-  
-  if (user) {
-    return <Navigate to="/" replace />;  // Vždy na /
-  }
-  return <>{children}</>;
-};
-```
+**Důvod**: `AuthRoute` přesměrovává na `/business` pouze při přihlašování přes `/auth`. Pokud business uživatel přejde na jiné stránky jako `/` nebo se vrací zpět, zobrazí se mu běžné uživatelské rozhraní.
 
 ## Řešení
 
-Upravit `AuthRoute` tak, aby:
-1. Po přihlášení zjistila roli uživatele
-2. Admin → přesměrovat na `/admin`
-3. Business → přesměrovat na `/business`
-4. User → přesměrovat na `/`
+### Varianta 1: Přesměrování na Index stránce (doporučeno)
 
-## Technická implementace
-
-### Soubor: `src/App.tsx`
-
-Změnit `AuthRoute` komponentu:
+Upravit `src/pages/Index.tsx` tak, aby business uživatel byl automaticky přesměrován na `/business`:
 
 ```typescript
-const AuthRoute = ({ children }: { children: React.ReactNode }) => {
+const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
-  
+
   if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
-  
-  if (user) {
-    // Přesměrování podle role
-    if (role === 'admin') {
-      return <Navigate to="/admin" replace />;
-    }
-    if (role === 'business') {
-      return <Navigate to="/business" replace />;
-    }
-    return <Navigate to="/" replace />;
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
   }
-  
-  return <>{children}</>;
+
+  // Business uživatel → /business
+  if (role === 'business') {
+    return <Navigate to="/business" replace />;
+  }
+
+  // Admin uživatel → /admin
+  if (role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Home />;
 };
 ```
+
+Tím zajistíme, že:
+- **Business uživatel** přejde automaticky na `/business` odkudkoli
+- **Admin uživatel** přejde automaticky na `/admin`
+- **Běžný uživatel** zůstane na domovské stránce `/`
+
+### Varianta 2: Úprava BusinessLayout šipky zpět
+
+Aktuálně `BusinessLayout` má šipku zpět (`ArrowLeft`) která vede na `/`. Pro business uživatele to nemá smysl - vrátí se na stránku, která ho okamžitě přesměruje zpět.
+
+**Možnosti:**
+- Odstranit šipku zpět úplně
+- Změnit na navigaci do `/business` (hlavní business dashboard)
+- Ponechat (přesměrování zajistí, že se neztratí)
 
 ## Změny souborů
 
 | Soubor | Změna |
 |--------|-------|
-| `src/App.tsx` | Upravit `AuthRoute` - přidat kontrolu role a přesměrování podle ní |
+| `src/pages/Index.tsx` | Přidat kontrolu role a přesměrování pro business/admin |
 
-## Očekávaný výsledek
+## Výsledek
 
-1. **Admin** se po přihlášení automaticky dostane na `/admin` (dashboard)
-2. **Business** uživatel se dostane na `/business`
-3. **Běžný uživatel** zůstane přesměrován na `/` (domovská stránka)
-
-## Poznámka
-
-Admin nemusí mít vyplněný onboarding dotazník - admin stránky nepotřebují tato data, protože slouží pouze pro správu aplikace.
+1. Business uživatel "Boby Fitness" se po přihlášení dostane přímo na `/business`
+2. Pokud business uživatel navštíví `/`, je automaticky přesměrován na `/business`
+3. Business uživatel nikdy neuvidí "Ahoj Boby..." obrazovku
+4. Stejná logika platí pro admin uživatele (přesměrování na `/admin`)
