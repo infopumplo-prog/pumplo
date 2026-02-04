@@ -67,19 +67,19 @@ const GymPhotoViewer = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200]"
+        className="fixed inset-0 max-w-full h-full w-full p-0 border-0 bg-black/95 [&>button]:hidden z-[200] translate-x-0 translate-y-0 left-0 top-0"
         overlayClassName="z-[150]"
       >
         {/* Close button */}
         <button
           onClick={() => onOpenChange(false)}
-          className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
         >
           <X className="w-6 h-6 text-white" />
         </button>
 
         {/* Photo counter */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
           {selectedIndex + 1} / {allImages.length}
         </div>
 
@@ -106,13 +106,13 @@ const GymPhotoViewer = ({
           <>
             <button
               onClick={scrollPrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
             <button
               onClick={scrollNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             >
               <ChevronRight className="w-6 h-6 text-white" />
             </button>
@@ -121,7 +121,7 @@ const GymPhotoViewer = ({
 
         {/* Dot indicators */}
         {allImages.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] flex gap-2">
             {allImages.map((_, index) => (
               <button
                 key={index}
