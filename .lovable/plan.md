@@ -1,103 +1,109 @@
 
-# Oprava viditelnosti křížku ve fullscreen galerii
+# Úpravy Quick Preview karty a navigace
 
-## Identifikovaný problém
+## Požadované změny
 
-Po důkladném testování v prohlížeči a analýze kódu jsem našel **přesnou příčinu**:
-
-V `GymPhotoViewer.tsx` používám CSS selektor `[&>button]:hidden` na DialogContent. Tento selektor skrývá **VŠECHNY** buttony, které jsou přímými potomky DialogContent - včetně mého vlastního close button!
-
-```typescript
-// Aktuálně v GymPhotoViewer.tsx (řádek 70):
-className="... [&>button]:hidden ..."
-
-// To způsobuje:
-// - Skryje výchozí Radix Close button (správně)
-// - Skryje i MŮJ custom close button (ŠPATNĚ!)
-```
-
-## Řešení
-
-Zabalit navigační prvky (close button, counter, arrows, dots) do wrapper `<div>`, který NENÍ typu `<button>`. Tím se stanou potomky divu, ne DialogContent, a nebudou skryty selektorem `[&>button]:hidden`.
-
-Struktura před:
-```text
-DialogContent
-├── button (close) ← skrytý [&>button]:hidden
-├── div (counter)
-├── div (carousel)
-├── button (prev arrow) ← skrytý
-├── button (next arrow) ← skrytý
-└── div (dots)
-```
-
-Struktura po:
-```text
-DialogContent
-├── div (navigation wrapper)
-│   ├── button (close) ← VIDITELNÝ
-│   ├── div (counter)
-│   ├── button (prev arrow) ← VIDITELNÝ
-│   ├── button (next arrow) ← VIDITELNÝ
-│   └── div (dots)
-└── div (carousel)
-```
+Ze screenshotů a popisu chceš tři věci:
+1. **Adresa + vzdálenost na jednom řádku** - Když je adresa příliš dlouhá, ořízne se "..." a za ní bude vzdálenost
+2. **Odstranit křížek** - Zavírací tlačítko v rohu karty nepotřebuješ
+3. **Nativní navigace** - Tlačítko "Navigace" otevře výchozí mapovou aplikaci telefonu (Apple Maps, Google Maps, Waze...)
 
 ---
 
 ## Technické změny
 
-### Soubor: `src/components/business/GymPhotoViewer.tsx`
+### 1. Soubor: `src/components/map/GymQuickPreview.tsx`
 
-**Zabalit všechny navigační prvky do wrapperu (řádky 73-139):**
+**Odstranění close button (řádky 35-41):**
+Kompletně odstraním tlačítko s ikonou X a import `X` z lucide-react.
 
+**Nový layout pro adresu + vzdálenost:**
 ```typescript
-{/* Navigation wrapper - aby button nebyl přímým potomkem DialogContent */}
-<div className="contents">
-  {/* Close button */}
-  <button
-    onClick={() => onOpenChange(false)}
-    className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
-  >
-    <X className="w-6 h-6 text-white" />
-  </button>
-
-  {/* Photo counter */}
-  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-    {selectedIndex + 1} / {allImages.length}
+// Místo oddělených řádků pro adresu a vzdálenost:
+{gym.address && (
+  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+    <MapPin className="w-3 h-3 shrink-0" />
+    <span className="truncate">{gym.address}</span>
+    {distance !== undefined && (
+      <span className="shrink-0 text-primary font-medium">
+        {formatDistance(distance)}
+      </span>
+    )}
   </div>
-
-  {/* Navigation arrows - taky uvnitř wrapperu */}
-  {allImages.length > 1 && (
-    <>
-      <button onClick={scrollPrev} className="...">...</button>
-      <button onClick={scrollNext} className="...">...</button>
-    </>
-  )}
-
-  {/* Dot indicators */}
-  {allImages.length > 1 && (
-    <div className="...">...</div>
-  )}
-</div>
+)}
 ```
 
-Použití `className="contents"` zajistí, že wrapper div neovlivní layout - jeho děti se budou chovat jako by wrapper neexistoval, ale přitom nebudou přímými potomky DialogContent.
+Klíčové třídy:
+- `truncate` na adrese → ořízne s "..."
+- `shrink-0` na vzdálenosti → nikdy se nezmenší, vždy viditelná
+- `text-primary font-medium` → vzdálenost je zvýrazněná (jako ve Figma návrhu - modře)
+
+**Odstranit původní zobrazení vzdálenosti** v názvu (řádky 65-69).
+
+### 2. Soubor: `src/pages/Map.tsx`
+
+**Vylepšená funkce pro nativní navigaci (řádky 37-41):**
+```typescript
+const openNavigation = (gym: PublicGym) => {
+  const { latitude, longitude } = gym;
+  
+  // Detekce iOS zařízení
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  // iOS: geo: schéma otevře systémový dialog s výběrem aplikace
+  // Android: geo: schéma otevře výchozí mapovou aplikaci
+  const geoUrl = `geo:${latitude},${longitude}?q=${latitude},${longitude}`;
+  
+  // Fallback pro web nebo pokud geo: selže
+  const webUrl = isIOS 
+    ? `https://maps.apple.com/?daddr=${latitude},${longitude}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  
+  // Nejdřív zkusit geo: schéma (funguje na mobilech)
+  const link = document.createElement('a');
+  link.href = geoUrl;
+  link.click();
+  
+  // Fallback po krátké době pokud se nic neotevřelo
+  setTimeout(() => {
+    window.open(webUrl, '_blank');
+  }, 500);
+};
+```
+
+**Jednodušší varianta** (preferovaná - spolehlivější):
+```typescript
+const openNavigation = (gym: PublicGym) => {
+  const { latitude, longitude } = gym;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  // iOS: Apple Maps link automaticky otevře Apple Maps nebo nabídne alternativy
+  // Android/ostatní: Google Maps link otevře výchozí app nebo browser
+  const url = isIOS 
+    ? `https://maps.apple.com/?daddr=${latitude},${longitude}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  
+  window.open(url, '_blank');
+};
+```
 
 ---
 
-## Soubor ke změně
+## Soubory ke změně
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/business/GymPhotoViewer.tsx` | Zabalit navigační prvky do wrapper divu s `className="contents"` |
+| `src/components/map/GymQuickPreview.tsx` | Odstranit close button, změnit layout adresy + vzdálenosti |
+| `src/pages/Map.tsx` | Implementovat nativní navigaci s detekcí iOS/Android |
 
 ---
 
-## Očekávaný výsledek
+## Výsledek
 
-Po úpravě:
-- Selektor `[&>button]:hidden` skryje pouze výchozí Radix Close button (který je přímým potomkem)
-- Můj custom close button bude potomkem wrapper divu → nebude skrytý → BUDE VIDITELNÝ
-- Stejně tak navigační šipky budou viditelné
-- Layout zůstane nezměněný díky `contents`
+Po úpravách:
+- Karta bude čistější bez rušivého křížku
+- Adresa a vzdálenost budou vedle sebe (jak ve Figma návrhu)
+- Kliknutí na "Navigace" otevře:
+  - **iPhone**: Apple Maps (nebo výchozí nastavená aplikace)
+  - **Android**: Google Maps, Waze nebo jinou výchozí mapovou aplikaci
+  - **Desktop**: Webovou verzi map v novém tabu
