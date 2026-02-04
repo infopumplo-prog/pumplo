@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { useGymMachines } from '@/hooks/useGymMachines';
+import { useGymPhotos } from '@/hooks/useGymPhotos';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, ChevronDown, Dumbbell, AlertTriangle } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus, isClosingSoon } from '@/lib/gymUtils';
 import { getEquipmentTypeLabel } from '@/lib/equipmentTypes';
 import { cn } from '@/lib/utils';
+import GymPhotoGallery from './GymPhotoGallery';
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,6 +50,7 @@ const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymPr
   const status = getTodayOpeningStatus(hours);
   const closingSoon = isClosingSoon(hours);
   const { machines, isLoading: machinesLoading } = useGymMachines(gym.id);
+  const { photos } = useGymPhotos(gym.id ?? undefined);
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [machinesOpen, setMachinesOpen] = useState(false);
@@ -68,19 +71,15 @@ const GymProfilePreview = ({ gym, variant = 'default', showBadge = true }: GymPr
       !isDrawer && "rounded-xl border shadow-sm",
       isDrawer && "rounded-t-[10px]"
     )}>
-      {/* Cover Photo with Gradient */}
+      {/* Cover Photo / Gallery with Gradient */}
       <div className={cn("relative", isDrawer ? "h-48" : "h-40")}>
-        {gym.cover_photo_url ? (
-          <img 
-            src={gym.cover_photo_url} 
-            alt={gym.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5" />
-        )}
+        <GymPhotoGallery 
+          photos={photos} 
+          fallbackCoverUrl={gym.cover_photo_url}
+          className="h-full"
+        />
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
         
         {/* Logo */}
         <div className="absolute bottom-0 left-4 translate-y-1/2">

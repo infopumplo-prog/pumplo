@@ -34,6 +34,8 @@ import {
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import LocationPicker from '@/components/business/LocationPicker';
+import GymPhotosManager from '@/components/business/GymPhotosManager';
+import { Separator } from '@/components/ui/separator';
 
 interface OpeningHours {
   [day: string]: { open: string; close: string; closed: boolean };
@@ -658,7 +660,7 @@ const AdminGymDetail = () => {
             <DrawerHeader>
               <DrawerTitle>Upraviť fotky</DrawerTitle>
             </DrawerHeader>
-            <div className="px-4 pb-8 space-y-6">
+            <div className="px-4 pb-8 space-y-6 overflow-y-auto max-h-[75vh]">
               <div className="space-y-2">
                 <Label>Titulná fotka</Label>
                 <input
@@ -712,6 +714,11 @@ const AdminGymDetail = () => {
                   </button>
                 </div>
               </div>
+              
+              <Separator />
+              
+              {/* Gallery Section */}
+              <GymPhotosManager gymId={gym.id} />
             </div>
           </DrawerContent>
         </Drawer>

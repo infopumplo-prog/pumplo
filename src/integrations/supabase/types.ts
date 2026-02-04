@@ -311,6 +311,45 @@ export type Database = {
           },
         ]
       }
+      gym_photos: {
+        Row: {
+          created_at: string
+          gym_id: string
+          id: string
+          photo_url: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          gym_id: string
+          id?: string
+          photo_url: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          gym_id?: string
+          id?: string
+          photo_url?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gym_photos_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gym_photos_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "public_gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gyms: {
         Row: {
           address: string | null
