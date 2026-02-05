@@ -1,213 +1,85 @@
 
-# Implementace ceníku pro posilovny
+# Přesun editoru ceníku do hlavního draweru
 
-## Analýza požadavku
+## Aktuální stav
 
-Z přiloženého screenshotu ceníku Fitness Boby vidím strukturovaný ceník s:
+- Tlačítko s ikonou CreditCard otevírá samostatný drawer pro úpravu ceníku
+- Data Fitness Boby jsou již v databázi správně uložena
 
-**Jednorázové vstupy (Fitness):**
-| Čas | Základní | Studenti a senioři |
-|-----|----------|-------------------|
-| Po-Pá, Ne (do 14:00) | 125 Kč | 95 Kč |
-| Po-Pá, Ne (od 14:00) | 155 Kč | 110 Kč |
-| Sobota (celý den) | 115 Kč | 90 Kč |
+## Požadovaná změna
 
-**Permanentky Fitness:**
-| Typ | Základní | Studenti a senioři |
-|-----|----------|-------------------|
-| 10 vstupů | 1 395 Kč | - |
-| 15 vstupů | 1 975 Kč | - |
-| 20 vstupů | 2 480 Kč | - |
-| 1 měsíc | 1 290 Kč | 999 Kč |
-| 3 měsíce | 3 850 Kč | 2 900 Kč |
-| 6 měsíců | 7 250 Kč | 5 400 Kč |
-| 12 měsíců | 13 200 Kč | 10 200 Kč |
-
-## Navrhovaná struktura dat
-
-Pro univerzální formát ceníku použitelný pro všechny posilovny navrhuji následující JSONB strukturu:
-
-```typescript
-interface GymPricing {
-  single_entries: PricingCategory[];  // Jednorázové vstupy
-  memberships: PricingCategory[];     // Permanentky/členství
-}
-
-interface PricingCategory {
-  name: string;           // Název položky (např. "Po-Pá do 14:00", "1 měsíc")
-  description?: string;   // Volitelný popis
-  prices: PriceVariant[]; // Cenové varianty pro různé skupiny
-}
-
-interface PriceVariant {
-  group: string;          // Skupina (např. "Základní", "Studenti a senioři")
-  price: number | null;   // Cena v Kč (null = nedostupné)
-}
-```
+Odstranit tlačítko s kartou a přesunout editor ceníku do stejného draweru jako otevírací hodiny (drawer s tužkou).
 
 ## Technické změny
 
-### 1. Databázová migrace
+### Soubor: `src/components/business/GymProfile.tsx`
 
-Přidám nový sloupec `pricing` do tabulky `gyms`:
+**1. Odstranit:**
+- Import `CreditCard` z lucide-react
+- State `isPricingDrawerOpen`
+- Samostatný Drawer pro ceník (řádky 178-195)
+- Funkci `handlePricingSave` - místo ní uložím přímo v `onSubmit`
 
-```sql
-ALTER TABLE gyms 
-ADD COLUMN pricing jsonb DEFAULT NULL;
+**2. Přidat do hlavního formuláře v editačním draweru:**
+- State pro ceník: `const [pricing, setPricing] = useState<GymPricing | null>(gym.pricing)`
+- Sekce s ceníkem za otevírací hodiny
+- Aktualizovat `onSubmit` aby ukládal i ceník
+
+**3. Struktura upraveného draweru:**
+
+```
+Drawer "Upravit posilovnu"
+├── Název posilovny
+├── Popis
+├── Adresa
+├── Lokace na mapě
+├── Otevírací hodiny
+│   └── [Po-Ne s časem open/close]
+├── Separator
+├── Ceník
+│   ├── Jednorázové vstupy
+│   │   └── [Položky s cenami pro skupiny]
+│   └── Permanentky / Členství
+│       └── [Položky s cenami pro skupiny]
+└── Tlačítko "Uložit změny"
 ```
 
-### 2. Aktualizace TypeScript typů
-
-V `src/contexts/GymContext.tsx` přidám interface pro pricing:
+**4. Upravený kód:**
 
 ```typescript
-export interface PriceVariant {
-  group: string;
-  price: number | null;
-}
+// Přidat state
+const [pricing, setPricing] = useState<GymPricing | null>(gym.pricing);
 
-export interface PricingItem {
-  name: string;
-  description?: string;
-  prices: PriceVariant[];
-}
-
-export interface GymPricing {
-  single_entries: PricingItem[];
-  memberships: PricingItem[];
-}
-
-export interface Gym {
-  // ... stávající pole
-  pricing: GymPricing | null;
-}
+// Aktualizovat onSubmit
+const onSubmit = async (data: FormData) => {
+  setIsSubmitting(true);
+  const result = await updateGym({
+    name: data.name,
+    description: data.description || null,
+    address: data.address || null,
+    latitude: location.lat,
+    longitude: location.lng,
+    opening_hours: openingHours,
+    pricing: pricing,  // Přidáno
+  });
+  setIsSubmitting(false);
+  if (result.success) {
+    setIsDrawerOpen(false);
+  }
+};
 ```
 
-### 3. Nová komponenta pro správu ceníku
+**5. Inline verze editoru ceníku:**
+Místo použití `GymPricingEditor` komponenty vložím přímo funkcionalitu do formuláře, protože potřebuji jednotné tlačítko "Uložit změny" místo dvou oddělených.
 
-Vytvořím `src/components/business/GymPricingEditor.tsx`:
+## Soubory k úpravě
 
-- Formulář pro přidávání/úpravu položek ceníku
-- Oddělené sekce pro jednorázové vstupy a permanentky
-- Dynamické přidávání cenových skupin (Základní, Studenti, Senioři...)
-- Možnost přidat/odebrat položky
-
-### 4. Komponenta pro zobrazení ceníku
-
-Vytvořím `src/components/business/GymPricingDisplay.tsx`:
-
-- Přehledné tabulkové zobrazení ceníku
-- Responzivní design pro mobilní zobrazení
-- Použití v tabu "Ceník" v `GymDetailTabs.tsx`
-
-### 5. Integrace do GymProfile.tsx
-
-Přidám nový drawer pro úpravu ceníku:
-- Nové tlačítko s ikonou CreditCard vedle stávajících tlačítek
-- Drawer s kompletním editorem ceníku
-
-### 6. Aktualizace GymDetailTabs.tsx
-
-Nahradím placeholder v tabu "Ceník" reálným zobrazením dat z `gym.pricing`.
-
-### 7. Vložení dat Fitness Boby
-
-Po implementaci vložím ceník Fitness Boby do databáze:
-
-```json
-{
-  "single_entries": [
-    {
-      "name": "Po-Pá, Ne (do 14:00)",
-      "prices": [
-        { "group": "Základní", "price": 125 },
-        { "group": "Studenti a senioři", "price": 95 }
-      ]
-    },
-    {
-      "name": "Po-Pá, Ne (od 14:00)",
-      "prices": [
-        { "group": "Základní", "price": 155 },
-        { "group": "Studenti a senioři", "price": 110 }
-      ]
-    },
-    {
-      "name": "Sobota (celý den)",
-      "prices": [
-        { "group": "Základní", "price": 115 },
-        { "group": "Studenti a senioři", "price": 90 }
-      ]
-    }
-  ],
-  "memberships": [
-    {
-      "name": "10 vstupů",
-      "prices": [
-        { "group": "Základní", "price": 1395 },
-        { "group": "Studenti a senioři", "price": null }
-      ]
-    },
-    {
-      "name": "15 vstupů",
-      "prices": [
-        { "group": "Základní", "price": 1975 },
-        { "group": "Studenti a senioři", "price": null }
-      ]
-    },
-    {
-      "name": "20 vstupů",
-      "prices": [
-        { "group": "Základní", "price": 2480 },
-        { "group": "Studenti a senioři", "price": null }
-      ]
-    },
-    {
-      "name": "1 měsíc",
-      "prices": [
-        { "group": "Základní", "price": 1290 },
-        { "group": "Studenti a senioři", "price": 999 }
-      ]
-    },
-    {
-      "name": "3 měsíce",
-      "prices": [
-        { "group": "Základní", "price": 3850 },
-        { "group": "Studenti a senioři", "price": 2900 }
-      ]
-    },
-    {
-      "name": "6 měsíců",
-      "prices": [
-        { "group": "Základní", "price": 7250 },
-        { "group": "Studenti a senioři", "price": 5400 }
-      ]
-    },
-    {
-      "name": "12 měsíců",
-      "prices": [
-        { "group": "Základní", "price": 13200 },
-        { "group": "Studenti a senioři", "price": 10200 }
-      ]
-    }
-  ]
-}
-```
-
-## Soubory k vytvoření/úpravě
-
-| Soubor | Akce |
-|--------|------|
-| Databázová migrace | Přidat sloupec `pricing` |
-| `src/contexts/GymContext.tsx` | Přidat typy pro pricing |
-| `src/components/business/GymPricingEditor.tsx` | **Nový** - editor ceníku |
-| `src/components/business/GymPricingDisplay.tsx` | **Nový** - zobrazení ceníku |
-| `src/components/business/GymProfile.tsx` | Přidat drawer pro ceník |
-| `src/components/business/GymDetailTabs.tsx` | Implementovat tab Ceník |
-| Data pro Fitness Boby | INSERT do tabulky gyms |
+| Soubor | Změna |
+|--------|-------|
+| `src/components/business/GymProfile.tsx` | Odstranit tlačítko CreditCard, přesunout ceník do hlavního draweru |
 
 ## Výsledek
 
-- Majitelé posiloven mohou spravovat ceník přímo v aplikaci
-- Ceník je strukturovaný a konzistentní napříč všemi posilovnami
-- Uživatelé uvidí přehledný ceník v detailu posilovny
-- Fitness Boby bude mít kompletní ceník podle přiloženého screenshotu
+- Jedno tlačítko tužky pro úpravu všech dat (info, lokace, hodiny, ceník)
+- Ceník se ukládá společně s ostatními daty
+- Data Fitness Boby jsou již v databázi správně
