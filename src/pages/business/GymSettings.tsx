@@ -67,18 +67,37 @@ const GymSettings = () => {
   if (!gym) {
     return (
       <BusinessLayout>
-        <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 dark:text-amber-200">
-            Nemáte vytvořený profil posilovny
-          </AlertTitle>
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Pro přístup k nastavení musíte mít vytvořený profil posilovny.
-          </AlertDescription>
-        </Alert>
-        <Button asChild className="w-full mt-4">
-          <Link to="/business">Vytvořit profil</Link>
-        </Button>
+        <div className="space-y-4">
+          <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">
+              Nemáte vytvořený profil posilovny
+            </AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              Pro přístup k nastavení posilovny musíte mít vytvořený profil.
+            </AlertDescription>
+          </Alert>
+          <Button asChild className="w-full">
+            <Link to="/business">Vytvořit profil</Link>
+          </Button>
+
+          {/* Účet sekce - vždy dostupná */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Účet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                onClick={logout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Odhlásit se
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </BusinessLayout>
     );
   }
