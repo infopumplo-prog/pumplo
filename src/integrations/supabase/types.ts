@@ -1141,6 +1141,7 @@ export type Database = {
           longitude: number | null
           name: string | null
           opening_hours: Json | null
+          pricing: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -1155,6 +1156,7 @@ export type Database = {
           longitude?: number | null
           name?: string | null
           opening_hours?: Json | null
+          pricing?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -1169,6 +1171,7 @@ export type Database = {
           longitude?: number | null
           name?: string | null
           opening_hours?: Json | null
+          pricing?: Json | null
           updated_at?: string | null
         }
         Relationships: []

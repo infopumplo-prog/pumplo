@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OpeningHours } from './useGym';
+import { GymPricing } from '@/contexts/GymContext';
 
 // Public gym type without owner_id for security
 export interface PublicGym {
@@ -14,6 +15,7 @@ export interface PublicGym {
   opening_hours: OpeningHours;
   cover_photo_url: string | null;
   logo_url: string | null;
+  pricing: GymPricing | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,7 @@ export const usePublishedGyms = () => {
       return (data || []).map(gym => ({
         ...gym,
         opening_hours: gym.opening_hours as OpeningHours,
+        pricing: gym.pricing as unknown as GymPricing | null,
       })) as PublicGym[];
     },
   });
