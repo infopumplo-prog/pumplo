@@ -36,6 +36,7 @@ import AdminLayout from './AdminLayout';
 import LocationPicker from '@/components/business/LocationPicker';
 import GymPhotosManager from '@/components/business/GymPhotosManager';
 import GymPricingDisplay from '@/components/business/GymPricingDisplay';
+import GymPricingEditor from '@/components/business/GymPricingEditor';
 import { GymPricing } from '@/contexts/GymContext';
 import { Separator } from '@/components/ui/separator';
 
@@ -119,6 +120,7 @@ const AdminGymDetail = () => {
   const [openingHours, setOpeningHours] = useState<OpeningHours>({});
   const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [pricing, setPricing] = useState<GymPricing | null>(null);
   
   // Machine states
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,6 +173,7 @@ const AdminGymDetail = () => {
       setOpeningHours(typedGym.opening_hours || {});
       setCoverPhotoUrl(typedGym.cover_photo_url);
       setLogoUrl(typedGym.logo_url);
+      setPricing(typedGym.pricing);
       reset({
         name: typedGym.name,
         description: typedGym.description || '',
@@ -229,6 +232,7 @@ const AdminGymDetail = () => {
         latitude: location.lat,
         longitude: location.lng,
         opening_hours: openingHours,
+        pricing: pricing as unknown as null,
       })
       .eq('id', gym.id);
 
@@ -240,7 +244,7 @@ const AdminGymDetail = () => {
     }
 
     toast.success('Posilovňa bola aktualizovaná');
-    setGym(prev => prev ? { ...prev, ...data, latitude: location.lat, longitude: location.lng, opening_hours: openingHours } : null);
+    setGym(prev => prev ? { ...prev, ...data, latitude: location.lat, longitude: location.lng, opening_hours: openingHours, pricing: pricing } : null);
     setIsEditDrawerOpen(false);
   };
 
@@ -661,6 +665,17 @@ const AdminGymDetail = () => {
                       )}
                     </div>
                   ))}
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-3">
+                  <Label>Ceník</Label>
+                  <GymPricingEditor 
+                    pricing={pricing} 
+                    onChange={setPricing} 
+                    showSaveButton={false} 
+                  />
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
