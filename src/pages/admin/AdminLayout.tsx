@@ -1,8 +1,10 @@
 import { ReactNode } from 'react';
-import { Link, useLocation, Navigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Users, Dumbbell, ArrowLeft, Loader2, Activity, Building2, MessageSquare, SkipForward } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -11,6 +13,7 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAdmin, isLoading } = useUserRole();
   const location = useLocation();
+  const { logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,14 +41,14 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="min-h-screen bg-background flex flex-col pb-20">
       {/* Minimal Top Bar - just back button */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Link 
-            to="/" 
+        <div className="flex items-center justify-between px-4 py-3">
+          <h1 className="text-lg font-semibold">Admin</h1>
+          <button 
+            onClick={logout}
             className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <h1 className="text-lg font-semibold">Admin</h1>
+            <LogOut className="w-5 h-5 text-muted-foreground" />
+          </button>
         </div>
       </header>
 
