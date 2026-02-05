@@ -269,31 +269,6 @@ const GymProfile = ({ gym }: GymProfileProps) => {
           </DrawerContent>
         </Drawer>
       </div>
-
-      {/* Opening Hours Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            Otevírací hodiny
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5 text-sm">
-            {DAYS.map(day => (
-              <div key={day.key} className="flex justify-between py-1">
-                <span className="font-medium">{day.label}</span>
-                <span className="text-muted-foreground">
-                  {hours[day.key]?.closed 
-                    ? 'Zavřeno' 
-                    : `${hours[day.key]?.open || '-'} - ${hours[day.key]?.close || '-'}`
-                  }
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
