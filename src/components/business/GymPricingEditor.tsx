@@ -1,4 +1,4 @@
- import { useState, useEffect } from 'react';
+ import { useState, useEffect, useCallback } from 'react';
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
  import { Label } from '@/components/ui/label';
@@ -9,7 +9,9 @@
  
  interface GymPricingEditorProps {
    pricing: GymPricing | null;
-   onSave: (pricing: GymPricing) => Promise<void>;
+   onSave?: (pricing: GymPricing) => Promise<void>;
+   onChange?: (pricing: GymPricing) => void;
+   showSaveButton?: boolean;
  }
  
  const DEFAULT_GROUPS = ['Základní', 'Studenti a senioři'];
@@ -19,7 +21,7 @@
    prices: groups.map(group => ({ group, price: null })),
  });
  
- const GymPricingEditor = ({ pricing, onSave }: GymPricingEditorProps) => {
+ const GymPricingEditor = ({ pricing, onSave, onChange, showSaveButton = true }: GymPricingEditorProps) => {
    const [groups, setGroups] = useState<string[]>(DEFAULT_GROUPS);
    const [singleEntries, setSingleEntries] = useState<PricingItem[]>([]);
    const [memberships, setMemberships] = useState<PricingItem[]>([]);
@@ -43,20 +45,39 @@
      }
    }, [pricing]);
  
+   // Notify parent of changes
+   const notifyChange = useCallback((newSingleEntries: PricingItem[], newMemberships: PricingItem[]) => {
+     if (onChange) {
+       const cleanedPricing: GymPricing = {
+         single_entries: newSingleEntries.filter(item => item.name.trim() !== ''),
+         memberships: newMemberships.filter(item => item.name.trim() !== ''),
+       };
+       onChange(cleanedPricing);
+     }
+   }, [onChange]);
+ 
    const handleAddItem = (section: 'single' | 'membership') => {
      const newItem = createEmptyItem(groups);
      if (section === 'single') {
-       setSingleEntries([...singleEntries, newItem]);
+       const updated = [...singleEntries, newItem];
+       setSingleEntries(updated);
+       notifyChange(updated, memberships);
      } else {
-       setMemberships([...memberships, newItem]);
+       const updated = [...memberships, newItem];
+       setMemberships(updated);
+       notifyChange(singleEntries, updated);
      }
    };
  
    const handleRemoveItem = (section: 'single' | 'membership', index: number) => {
      if (section === 'single') {
-       setSingleEntries(singleEntries.filter((_, i) => i !== index));
+       const updated = singleEntries.filter((_, i) => i !== index);
+       setSingleEntries(updated);
+       notifyChange(updated, memberships);
      } else {
-       setMemberships(memberships.filter((_, i) => i !== index));
+       const updated = memberships.filter((_, i) => i !== index);
+       setMemberships(updated);
+       notifyChange(singleEntries, updated);
      }
    };
  
@@ -65,10 +86,12 @@
        const updated = [...singleEntries];
        updated[index] = { ...updated[index], name };
        setSingleEntries(updated);
+       notifyChange(updated, memberships);
      } else {
        const updated = [...memberships];
        updated[index] = { ...updated[index], name };
        setMemberships(updated);
+       notifyChange(singleEntries, updated);
      }
    };
  
@@ -83,6 +106,7 @@
          ),
        };
        setSingleEntries(updated);
+       notifyChange(updated, memberships);
      } else {
        const updated = [...memberships];
        updated[itemIndex] = {
@@ -92,10 +116,12 @@
          ),
        };
        setMemberships(updated);
+       notifyChange(singleEntries, updated);
      }
    };
  
    const handleSave = async () => {
+     if (!onSave) return;
      setIsSaving(true);
      try {
        // Filter out items without names
@@ -182,22 +208,25 @@
        {renderPricingSection('Jednorázové vstupy', singleEntries, 'single')}
        {renderPricingSection('Permanentky / Členství', memberships, 'membership')}
        
-       <Separator />
-       
-       <Button 
-         className="w-full" 
-         onClick={handleSave}
-         disabled={isSaving}
-       >
-         {isSaving ? (
-           <>
-             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-             Ukládám...
-           </>
-         ) : (
-           'Uložit ceník'
-         )}
-       </Button>
+       {showSaveButton && onSave && (
+         <>
+           <Separator />
+           <Button 
+             className="w-full" 
+             onClick={handleSave}
+             disabled={isSaving}
+           >
+             {isSaving ? (
+               <>
+                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                 Ukládám...
+               </>
+             ) : (
+               'Uložit ceník'
+             )}
+           </Button>
+         </>
+       )}
      </div>
    );
  };

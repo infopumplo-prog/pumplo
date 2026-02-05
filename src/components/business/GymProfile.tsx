@@ -17,7 +17,6 @@ import {
   DrawerTrigger 
 } from '@/components/ui/drawer';
 import { Loader2, Clock, Pencil, Image } from 'lucide-react';
- import { CreditCard } from 'lucide-react';
 import LocationPicker from './LocationPicker';
 import GymImageUpload from './GymImageUpload';
 import GymProfilePreview from './GymProfilePreview';
@@ -53,10 +52,10 @@ const GymProfile = ({ gym }: GymProfileProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPhotoDrawerOpen, setIsPhotoDrawerOpen] = useState(false);
-   const [isPricingDrawerOpen, setIsPricingDrawerOpen] = useState(false);
   const [location, setLocation] = useState({ lat: gym.latitude, lng: gym.longitude });
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(gym.cover_photo_url);
   const [logoUrl, setLogoUrl] = useState(gym.logo_url);
+   const [pricing, setPricing] = useState<GymPricing | null>(gym.pricing);
   const [openingHours, setOpeningHours] = useState<OpeningHours>(
     gym.opening_hours || DAYS.reduce((acc, day) => ({
       ...acc,
@@ -89,6 +88,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
       latitude: location.lat,
       longitude: location.lng,
       opening_hours: openingHours,
+       pricing: pricing,
     });
     setIsSubmitting(false);
     if (result.success) {
@@ -106,13 +106,6 @@ const GymProfile = ({ gym }: GymProfileProps) => {
     await updateGym({ logo_url: url });
   };
 
-   const handlePricingSave = async (pricing: GymPricing) => {
-     const result = await updateGym({ pricing } as Partial<Gym>);
-     if (result.success) {
-       setIsPricingDrawerOpen(false);
-     }
-   };
- 
   const hours = gym.opening_hours as OpeningHours;
 
   // Create a local gym object with updated photo URLs for preview
@@ -175,25 +168,6 @@ const GymProfile = ({ gym }: GymProfileProps) => {
           </DrawerContent>
         </Drawer>
 
-         <Drawer open={isPricingDrawerOpen} onOpenChange={setIsPricingDrawerOpen}>
-           <DrawerTrigger asChild>
-             <Button variant="outline" size="icon">
-               <CreditCard className="w-4 h-4" />
-             </Button>
-           </DrawerTrigger>
-           <DrawerContent className="max-h-[90vh]">
-             <DrawerHeader>
-               <DrawerTitle>Upravit ceník</DrawerTitle>
-             </DrawerHeader>
-             <div className="px-4 pb-8 overflow-y-auto">
-               <GymPricingEditor 
-                 pricing={gym.pricing} 
-                 onSave={handlePricingSave}
-               />
-             </div>
-           </DrawerContent>
-         </Drawer>
- 
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
             <Button variant="outline" size="icon">
@@ -269,6 +243,17 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   ))}
                 </div>
 
+               <Separator className="my-4" />
+ 
+               <div className="space-y-3">
+                 <Label>Ceník</Label>
+                 <GymPricingEditor 
+                   pricing={pricing} 
+                   onChange={setPricing}
+                   showSaveButton={false}
+                 />
+               </div>
+ 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
