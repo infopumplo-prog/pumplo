@@ -29,12 +29,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, Clock, Pencil, Image, ArrowLeft, Trash2, Plus,
-  Search, Dumbbell, MapPin, Globe, Lock, Camera, ImageIcon
+  Search, Dumbbell, MapPin, Globe, Lock, Camera, ImageIcon, CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import LocationPicker from '@/components/business/LocationPicker';
 import GymPhotosManager from '@/components/business/GymPhotosManager';
+import GymPricingDisplay from '@/components/business/GymPricingDisplay';
+import { GymPricing } from '@/contexts/GymContext';
 import { Separator } from '@/components/ui/separator';
 
 interface OpeningHours {
@@ -55,6 +57,7 @@ interface GymData {
   logo_url: string | null;
   cover_photo_url: string | null;
   opening_hours: OpeningHours;
+  pricing: GymPricing | null;
 }
 
 interface GymMachine {
@@ -159,7 +162,8 @@ const AdminGymDetail = () => {
 
       const typedGym = {
         ...gymData,
-        opening_hours: gymData.opening_hours as OpeningHours
+        opening_hours: gymData.opening_hours as OpeningHours,
+        pricing: gymData.pricing as unknown as GymPricing | null
       };
       
       setGym(typedGym);
@@ -518,6 +522,19 @@ const AdminGymDetail = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Pricing Section */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Ceník
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GymPricingDisplay pricing={gym.pricing} />
+          </CardContent>
+        </Card>
 
         {/* Machines Section */}
         <Card>
