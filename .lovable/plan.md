@@ -1,85 +1,113 @@
 
-# Přesun editoru ceníku do hlavního draweru
+# Přidání ceníku do Admin panelu a data pro Fitness Motivace
 
-## Aktuální stav
+## Problém
 
-- Tlačítko s ikonou CreditCard otevírá samostatný drawer pro úpravu ceníku
-- Data Fitness Boby jsou již v databázi správně uložena
+1. **AdminGymDetail.tsx** nezobrazuje ceník posilovny - chybí sekce s ceníkem
+2. **Fitness Motivace** (ID: `3a70c9bb-7a60-4613-a195-2fce2d2d97fc`) nemá vyplněný ceník v databázi
 
-## Požadovaná změna
+## Řešení
 
-Odstranit tlačítko s kartou a přesunout editor ceníku do stejného draweru jako otevírací hodiny (drawer s tužkou).
+### 1. Přidat sekci ceníku do AdminGymDetail.tsx
 
-## Technické změny
-
-### Soubor: `src/components/business/GymProfile.tsx`
-
-**1. Odstranit:**
-- Import `CreditCard` z lucide-react
-- State `isPricingDrawerOpen`
-- Samostatný Drawer pro ceník (řádky 178-195)
-- Funkci `handlePricingSave` - místo ní uložím přímo v `onSubmit`
-
-**2. Přidat do hlavního formuláře v editačním draweru:**
-- State pro ceník: `const [pricing, setPricing] = useState<GymPricing | null>(gym.pricing)`
-- Sekce s ceníkem za otevírací hodiny
-- Aktualizovat `onSubmit` aby ukládal i ceník
-
-**3. Struktura upraveného draweru:**
-
-```
-Drawer "Upravit posilovnu"
-├── Název posilovny
-├── Popis
-├── Adresa
-├── Lokace na mapě
-├── Otevírací hodiny
-│   └── [Po-Ne s časem open/close]
-├── Separator
-├── Ceník
-│   ├── Jednorázové vstupy
-│   │   └── [Položky s cenami pro skupiny]
-│   └── Permanentky / Členství
-│       └── [Položky s cenami pro skupiny]
-└── Tlačítko "Uložit změny"
-```
-
-**4. Upravený kód:**
+Přidám novou kartu s ceníkem mezi kartu "Otevírací hodiny" a "Stroje" (kolem řádku 520):
 
 ```typescript
-// Přidat state
-const [pricing, setPricing] = useState<GymPricing | null>(gym.pricing);
+// Nový import
+import { CreditCard } from 'lucide-react';
+import GymPricingDisplay from '@/components/business/GymPricingDisplay';
+import { GymPricing } from '@/contexts/GymContext';
 
-// Aktualizovat onSubmit
-const onSubmit = async (data: FormData) => {
-  setIsSubmitting(true);
-  const result = await updateGym({
-    name: data.name,
-    description: data.description || null,
-    address: data.address || null,
-    latitude: location.lat,
-    longitude: location.lng,
-    opening_hours: openingHours,
-    pricing: pricing,  // Přidáno
-  });
-  setIsSubmitting(false);
-  if (result.success) {
-    setIsDrawerOpen(false);
-  }
-};
+// V GymData interface přidat:
+pricing: GymPricing | null;
+
+// Nová karta v renderování:
+<Card>
+  <CardHeader className="pb-2">
+    <CardTitle className="text-base flex items-center gap-2">
+      <CreditCard className="w-4 h-4" />
+      Ceník
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    <GymPricingDisplay pricing={gym.pricing} />
+  </CardContent>
+</Card>
 ```
 
-**5. Inline verze editoru ceníku:**
-Místo použití `GymPricingEditor` komponenty vložím přímo funkcionalitu do formuláře, protože potřebuji jednotné tlačítko "Uložit změny" místo dvou oddělených.
+### 2. Vložit ceník Fitness Motivace
+
+Z obrázku jsem vyčetl ceník:
+
+**Jednorázový vstup:**
+| Typ | Základní | Student |
+|-----|----------|---------|
+| Vstup | 150 Kč | 130 Kč |
+
+**Permanentky:**
+| Typ | Základní | Student |
+|-----|----------|---------|
+| 10 vstupů | 1 290 Kč | 1 150 Kč |
+| 20 vstupů | 2 300 Kč | 2 000 Kč |
+| Měsíční | 1 350 Kč | 1 190 Kč |
+| Roční | 12 000 Kč | 9 990 Kč |
+
+SQL pro vložení:
+
+```sql
+UPDATE gyms
+SET pricing = '{
+  "single_entries": [
+    {
+      "name": "Jednorázový vstup",
+      "prices": [
+        { "group": "Základní", "price": 150 },
+        { "group": "Student", "price": 130 }
+      ]
+    }
+  ],
+  "memberships": [
+    {
+      "name": "10 vstupů",
+      "prices": [
+        { "group": "Základní", "price": 1290 },
+        { "group": "Student", "price": 1150 }
+      ]
+    },
+    {
+      "name": "20 vstupů",
+      "prices": [
+        { "group": "Základní", "price": 2300 },
+        { "group": "Student", "price": 2000 }
+      ]
+    },
+    {
+      "name": "Měsíční permanentka",
+      "prices": [
+        { "group": "Základní", "price": 1350 },
+        { "group": "Student", "price": 1190 }
+      ]
+    },
+    {
+      "name": "Roční permanentka",
+      "prices": [
+        { "group": "Základní", "price": 12000 },
+        { "group": "Student", "price": 9990 }
+      ]
+    }
+  ]
+}'
+WHERE id = '3a70c9bb-7a60-4613-a195-2fce2d2d97fc';
+```
 
 ## Soubory k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/business/GymProfile.tsx` | Odstranit tlačítko CreditCard, přesunout ceník do hlavního draweru |
+| `src/pages/admin/AdminGymDetail.tsx` | Přidat interface pricing, import GymPricingDisplay, nová karta s ceníkem |
+| Databázová migrace | INSERT ceníku pro Fitness Motivace |
 
 ## Výsledek
 
-- Jedno tlačítko tužky pro úpravu všech dat (info, lokace, hodiny, ceník)
-- Ceník se ukládá společně s ostatními daty
-- Data Fitness Boby jsou již v databázi správně
+- Admin panel bude zobrazovat ceník všech posiloven
+- Fitness Motivace bude mít vyplněný kompletní ceník podle jejich webu
