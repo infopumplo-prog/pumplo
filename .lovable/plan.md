@@ -1,74 +1,213 @@
 
-# Oprava B2B Settings - Přidání odhlášení i bez gym profilu
+# Implementace ceníku pro posilovny
 
-## Problém
+## Analýza požadavku
 
-Aktuálně když B2B uživatel nemá vytvořený profil posilovny a přejde do Nastavení, vidí pouze:
-- Varování "Nemáte vytvořený profil posilovny"
-- Tlačítko "Vytvořit profil"
+Z přiloženého screenshotu ceníku Fitness Boby vidím strukturovaný ceník s:
 
-**Chybí tlačítko pro odhlášení** - uživatel je uvězněný a nemůže se odhlásit.
+**Jednorázové vstupy (Fitness):**
+| Čas | Základní | Studenti a senioři |
+|-----|----------|-------------------|
+| Po-Pá, Ne (do 14:00) | 125 Kč | 95 Kč |
+| Po-Pá, Ne (od 14:00) | 155 Kč | 110 Kč |
+| Sobota (celý den) | 115 Kč | 90 Kč |
 
-## Řešení
+**Permanentky Fitness:**
+| Typ | Základní | Studenti a senioři |
+|-----|----------|-------------------|
+| 10 vstupů | 1 395 Kč | - |
+| 15 vstupů | 1 975 Kč | - |
+| 20 vstupů | 2 480 Kč | - |
+| 1 měsíc | 1 290 Kč | 999 Kč |
+| 3 měsíce | 3 850 Kč | 2 900 Kč |
+| 6 měsíců | 7 250 Kč | 5 400 Kč |
+| 12 měsíců | 13 200 Kč | 10 200 Kč |
 
-Přidat sekci "Účet" s tlačítkem odhlášení i do stavu, kdy uživatel nemá gym profil.
+## Navrhovaná struktura dat
 
-## Technická změna
-
-### Soubor: `src/pages/business/GymSettings.tsx`
-
-Upravím podmínku `if (!gym)` (řádky 67-83) tak, aby obsahovala i kartu s odhlášením:
+Pro univerzální formát ceníku použitelný pro všechny posilovny navrhuji následující JSONB strukturu:
 
 ```typescript
-if (!gym) {
-  return (
-    <BusinessLayout>
-      <div className="space-y-4">
-        <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 dark:text-amber-200">
-            Nemáte vytvořený profil posilovny
-          </AlertTitle>
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Pro přístup k nastavení posilovny musíte mít vytvořený profil.
-          </AlertDescription>
-        </Alert>
-        <Button asChild className="w-full">
-          <Link to="/business">Vytvořit profil</Link>
-        </Button>
+interface GymPricing {
+  single_entries: PricingCategory[];  // Jednorázové vstupy
+  memberships: PricingCategory[];     // Permanentky/členství
+}
 
-        {/* Účet sekce - vždy dostupná */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Účet</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              variant="outline" 
-              className="w-full border-destructive text-destructive hover:bg-destructive/10"
-              onClick={logout}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Odhlásit se
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </BusinessLayout>
-  );
+interface PricingCategory {
+  name: string;           // Název položky (např. "Po-Pá do 14:00", "1 měsíc")
+  description?: string;   // Volitelný popis
+  prices: PriceVariant[]; // Cenové varianty pro různé skupiny
+}
+
+interface PriceVariant {
+  group: string;          // Skupina (např. "Základní", "Studenti a senioři")
+  price: number | null;   // Cena v Kč (null = nedostupné)
 }
 ```
 
-## Změny
+## Technické změny
 
-| Soubor | Změna |
-|--------|-------|
-| `src/pages/business/GymSettings.tsx` | Přidat kartu "Účet" s odhlášením i do stavu bez gym profilu |
+### 1. Databázová migrace
+
+Přidám nový sloupec `pricing` do tabulky `gyms`:
+
+```sql
+ALTER TABLE gyms 
+ADD COLUMN pricing jsonb DEFAULT NULL;
+```
+
+### 2. Aktualizace TypeScript typů
+
+V `src/contexts/GymContext.tsx` přidám interface pro pricing:
+
+```typescript
+export interface PriceVariant {
+  group: string;
+  price: number | null;
+}
+
+export interface PricingItem {
+  name: string;
+  description?: string;
+  prices: PriceVariant[];
+}
+
+export interface GymPricing {
+  single_entries: PricingItem[];
+  memberships: PricingItem[];
+}
+
+export interface Gym {
+  // ... stávající pole
+  pricing: GymPricing | null;
+}
+```
+
+### 3. Nová komponenta pro správu ceníku
+
+Vytvořím `src/components/business/GymPricingEditor.tsx`:
+
+- Formulář pro přidávání/úpravu položek ceníku
+- Oddělené sekce pro jednorázové vstupy a permanentky
+- Dynamické přidávání cenových skupin (Základní, Studenti, Senioři...)
+- Možnost přidat/odebrat položky
+
+### 4. Komponenta pro zobrazení ceníku
+
+Vytvořím `src/components/business/GymPricingDisplay.tsx`:
+
+- Přehledné tabulkové zobrazení ceníku
+- Responzivní design pro mobilní zobrazení
+- Použití v tabu "Ceník" v `GymDetailTabs.tsx`
+
+### 5. Integrace do GymProfile.tsx
+
+Přidám nový drawer pro úpravu ceníku:
+- Nové tlačítko s ikonou CreditCard vedle stávajících tlačítek
+- Drawer s kompletním editorem ceníku
+
+### 6. Aktualizace GymDetailTabs.tsx
+
+Nahradím placeholder v tabu "Ceník" reálným zobrazením dat z `gym.pricing`.
+
+### 7. Vložení dat Fitness Boby
+
+Po implementaci vložím ceník Fitness Boby do databáze:
+
+```json
+{
+  "single_entries": [
+    {
+      "name": "Po-Pá, Ne (do 14:00)",
+      "prices": [
+        { "group": "Základní", "price": 125 },
+        { "group": "Studenti a senioři", "price": 95 }
+      ]
+    },
+    {
+      "name": "Po-Pá, Ne (od 14:00)",
+      "prices": [
+        { "group": "Základní", "price": 155 },
+        { "group": "Studenti a senioři", "price": 110 }
+      ]
+    },
+    {
+      "name": "Sobota (celý den)",
+      "prices": [
+        { "group": "Základní", "price": 115 },
+        { "group": "Studenti a senioři", "price": 90 }
+      ]
+    }
+  ],
+  "memberships": [
+    {
+      "name": "10 vstupů",
+      "prices": [
+        { "group": "Základní", "price": 1395 },
+        { "group": "Studenti a senioři", "price": null }
+      ]
+    },
+    {
+      "name": "15 vstupů",
+      "prices": [
+        { "group": "Základní", "price": 1975 },
+        { "group": "Studenti a senioři", "price": null }
+      ]
+    },
+    {
+      "name": "20 vstupů",
+      "prices": [
+        { "group": "Základní", "price": 2480 },
+        { "group": "Studenti a senioři", "price": null }
+      ]
+    },
+    {
+      "name": "1 měsíc",
+      "prices": [
+        { "group": "Základní", "price": 1290 },
+        { "group": "Studenti a senioři", "price": 999 }
+      ]
+    },
+    {
+      "name": "3 měsíce",
+      "prices": [
+        { "group": "Základní", "price": 3850 },
+        { "group": "Studenti a senioři", "price": 2900 }
+      ]
+    },
+    {
+      "name": "6 měsíců",
+      "prices": [
+        { "group": "Základní", "price": 7250 },
+        { "group": "Studenti a senioři", "price": 5400 }
+      ]
+    },
+    {
+      "name": "12 měsíců",
+      "prices": [
+        { "group": "Základní", "price": 13200 },
+        { "group": "Studenti a senioři", "price": 10200 }
+      ]
+    }
+  ]
+}
+```
+
+## Soubory k vytvoření/úpravě
+
+| Soubor | Akce |
+|--------|------|
+| Databázová migrace | Přidat sloupec `pricing` |
+| `src/contexts/GymContext.tsx` | Přidat typy pro pricing |
+| `src/components/business/GymPricingEditor.tsx` | **Nový** - editor ceníku |
+| `src/components/business/GymPricingDisplay.tsx` | **Nový** - zobrazení ceníku |
+| `src/components/business/GymProfile.tsx` | Přidat drawer pro ceník |
+| `src/components/business/GymDetailTabs.tsx` | Implementovat tab Ceník |
+| Data pro Fitness Boby | INSERT do tabulky gyms |
 
 ## Výsledek
 
-- Uživatel bez gym profilu uvidí:
-  1. Varování že nemá profil
-  2. Tlačítko "Vytvořit profil"
-  3. **Kartu "Účet" s tlačítkem odhlášení**
-- Uživatel se může vždy odhlásit, i když ještě nevytvořil posilovnu
+- Majitelé posiloven mohou spravovat ceník přímo v aplikaci
+- Ceník je strukturovaný a konzistentní napříč všemi posilovnami
+- Uživatelé uvidí přehledný ceník v detailu posilovny
+- Fitness Boby bude mít kompletní ceník podle přiloženého screenshotu
