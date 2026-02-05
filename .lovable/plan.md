@@ -1,109 +1,58 @@
 
-# Úpravy Quick Preview karty a navigace
+# Úprava Admin Layoutu - Logout tlačítko a odstranění šipky zpět
 
 ## Požadované změny
 
-Ze screenshotů a popisu chceš tři věci:
-1. **Adresa + vzdálenost na jednom řádku** - Když je adresa příliš dlouhá, ořízne se "..." a za ní bude vzdálenost
-2. **Odstranit křížek** - Zavírací tlačítko v rohu karty nepotřebuješ
-3. **Nativní navigace** - Tlačítko "Navigace" otevře výchozí mapovou aplikaci telefonu (Apple Maps, Google Maps, Waze...)
-
----
+Ze screenshotu vidím aktuální stav:
+1. **Vlevo nahoře** je šipka zpět, která vede na "/" - ale admin by se měl přihlásit rovnou do admin panelu, takže šipka je zbytečná
+2. **Vpravo nahoře** chybí tlačítko pro odhlášení
 
 ## Technické změny
 
-### 1. Soubor: `src/components/map/GymQuickPreview.tsx`
+### Soubor: `src/pages/admin/AdminLayout.tsx`
 
-**Odstranění close button (řádky 35-41):**
-Kompletně odstraním tlačítko s ikonou X a import `X` z lucide-react.
-
-**Nový layout pro adresu + vzdálenost:**
+**1. Přidat import pro logout funkci a ikonu:**
 ```typescript
-// Místo oddělených řádků pro adresu a vzdálenost:
-{gym.address && (
-  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-    <MapPin className="w-3 h-3 shrink-0" />
-    <span className="truncate">{gym.address}</span>
-    {distance !== undefined && (
-      <span className="shrink-0 text-primary font-medium">
-        {formatDistance(distance)}
-      </span>
-    )}
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
+```
+
+**2. Použít hook v komponentě:**
+```typescript
+const { logout } = useAuth();
+```
+
+**3. Upravit header - odstranit šipku, přidat logout:**
+```typescript
+<header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  <div className="flex items-center justify-between px-4 py-3">
+    <h1 className="text-lg font-semibold">Admin</h1>
+    <button 
+      onClick={logout}
+      className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+    >
+      <LogOut className="w-5 h-5 text-muted-foreground" />
+    </button>
   </div>
-)}
+</header>
 ```
 
-Klíčové třídy:
-- `truncate` na adrese → ořízne s "..."
-- `shrink-0` na vzdálenosti → nikdy se nezmenší, vždy viditelná
-- `text-primary font-medium` → vzdálenost je zvýrazněná (jako ve Figma návrhu - modře)
+Změny v headeru:
+- Odstraním `Link` se šipkou zpět (`ArrowLeft`)
+- Změním layout na `justify-between` pro rozložení vlevo/vpravo
+- Nadpis "Admin" zůstane vlevo
+- Vpravo přidám tlačítko s ikonou `LogOut`
+- Po kliknutí se zavolá `logout()` z AuthContext
 
-**Odstranit původní zobrazení vzdálenosti** v názvu (řádky 65-69).
-
-### 2. Soubor: `src/pages/Map.tsx`
-
-**Vylepšená funkce pro nativní navigaci (řádky 37-41):**
-```typescript
-const openNavigation = (gym: PublicGym) => {
-  const { latitude, longitude } = gym;
-  
-  // Detekce iOS zařízení
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
-  // iOS: geo: schéma otevře systémový dialog s výběrem aplikace
-  // Android: geo: schéma otevře výchozí mapovou aplikaci
-  const geoUrl = `geo:${latitude},${longitude}?q=${latitude},${longitude}`;
-  
-  // Fallback pro web nebo pokud geo: selže
-  const webUrl = isIOS 
-    ? `https://maps.apple.com/?daddr=${latitude},${longitude}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-  
-  // Nejdřív zkusit geo: schéma (funguje na mobilech)
-  const link = document.createElement('a');
-  link.href = geoUrl;
-  link.click();
-  
-  // Fallback po krátké době pokud se nic neotevřelo
-  setTimeout(() => {
-    window.open(webUrl, '_blank');
-  }, 500);
-};
-```
-
-**Jednodušší varianta** (preferovaná - spolehlivější):
-```typescript
-const openNavigation = (gym: PublicGym) => {
-  const { latitude, longitude } = gym;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
-  // iOS: Apple Maps link automaticky otevře Apple Maps nebo nabídne alternativy
-  // Android/ostatní: Google Maps link otevře výchozí app nebo browser
-  const url = isIOS 
-    ? `https://maps.apple.com/?daddr=${latitude},${longitude}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-  
-  window.open(url, '_blank');
-};
-```
-
----
-
-## Soubory ke změně
+## Soubor ke změně
 
 | Soubor | Změna |
 |--------|-------|
-| `src/components/map/GymQuickPreview.tsx` | Odstranit close button, změnit layout adresy + vzdálenosti |
-| `src/pages/Map.tsx` | Implementovat nativní navigaci s detekcí iOS/Android |
-
----
+| `src/pages/admin/AdminLayout.tsx` | Odstranit šipku zpět, přidat logout tlačítko vpravo |
 
 ## Výsledek
 
-Po úpravách:
-- Karta bude čistější bez rušivého křížku
-- Adresa a vzdálenost budou vedle sebe (jak ve Figma návrhu)
-- Kliknutí na "Navigace" otevře:
-  - **iPhone**: Apple Maps (nebo výchozí nastavená aplikace)
-  - **Android**: Google Maps, Waze nebo jinou výchozí mapovou aplikaci
-  - **Desktop**: Webovou verzi map v novém tabu
+Po úpravě:
+- Vlevo nahoře bude jen text "Admin"
+- Vpravo nahoře bude tlačítko pro odhlášení (ikona LogOut)
+- Po kliknutí na logout se admin odhlásí a bude přesměrován na přihlašovací stránku
