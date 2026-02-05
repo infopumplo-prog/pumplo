@@ -7,6 +7,22 @@ export interface OpeningHours {
   [day: string]: { open: string; close: string; closed: boolean };
 }
 
+ export interface PriceVariant {
+   group: string;
+   price: number | null;
+ }
+ 
+ export interface PricingItem {
+   name: string;
+   description?: string;
+   prices: PriceVariant[];
+ }
+ 
+ export interface GymPricing {
+   single_entries: PricingItem[];
+   memberships: PricingItem[];
+ }
+ 
 export interface Gym {
   id: string;
   owner_id: string;
@@ -19,6 +35,7 @@ export interface Gym {
   opening_hours: OpeningHours;
   cover_photo_url: string | null;
   logo_url: string | null;
+   pricing: GymPricing | null;
   created_at: string;
   updated_at: string;
 }
@@ -103,18 +120,22 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error fetching gyms:', error);
       toast.error('Nepodařilo se načíst posilovny');
     } else {
-      const gymList = (data || []).map(g => ({ ...g, opening_hours: g.opening_hours as OpeningHours })) as Gym[];
-      setGyms(gymList);
+       const processedGymList: Gym[] = (data || []).map(g => ({
+         ...g,
+         opening_hours: g.opening_hours as OpeningHours,
+         pricing: g.pricing as unknown as GymPricing | null,
+       }));
+     setGyms(processedGymList);
       
       // Restore selected gym from localStorage or select first
       const savedGymId = localStorage.getItem(SELECTED_GYM_KEY);
-      const savedGym = gymList.find(g => g.id === savedGymId);
+     const savedGym = processedGymList.find(g => g.id === savedGymId);
       
       if (savedGym) {
         setSelectedGym(savedGym);
-      } else if (gymList.length > 0 && !selectedGym) {
-        setSelectedGym(gymList[0]);
-        localStorage.setItem(SELECTED_GYM_KEY, gymList[0].id);
+     } else if (processedGymList.length > 0 && !selectedGym) {
+       setSelectedGym(processedGymList[0]);
+       localStorage.setItem(SELECTED_GYM_KEY, processedGymList[0].id);
       }
     }
     setIsLoading(false);
@@ -178,7 +199,11 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: error.message };
     }
 
-    const newGym = { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym;
+     const newGym: Gym = {
+       ...data,
+       opening_hours: data.opening_hours as OpeningHours,
+       pricing: data.pricing as unknown as GymPricing | null,
+     };
     setGyms(prev => [...prev, newGym]);
     setSelectedGym(newGym);
     localStorage.setItem(SELECTED_GYM_KEY, newGym.id);
@@ -189,9 +214,21 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
   const updateGym = async (updates: Partial<Gym>) => {
     if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
 
-    const { data, error } = await supabase
+     // Build updates object, properly casting types for Supabase
+     const dbUpdates: Record<string, unknown> = {};
+     for (const [key, value] of Object.entries(updates)) {
+       if (key === 'pricing') {
+         dbUpdates[key] = value as unknown;
+       } else if (key === 'opening_hours') {
+         dbUpdates[key] = value as unknown;
+       } else {
+         dbUpdates[key] = value;
+       }
+     }
+ 
+     const { data, error } = await supabase
       .from('gyms')
-      .update(updates)
+       .update(dbUpdates)
       .eq('id', selectedGym.id)
       .select()
       .single();
@@ -201,9 +238,13 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: error.message };
     }
 
-    const updatedGym = { ...data, opening_hours: data.opening_hours as OpeningHours } as Gym;
-    setGyms(prev => prev.map(g => g.id === updatedGym.id ? updatedGym : g));
-    setSelectedGym(updatedGym);
+     const updatedGym: Gym = {
+       ...data,
+       opening_hours: data.opening_hours as OpeningHours,
+       pricing: data.pricing as unknown as GymPricing | null,
+     };
+     setGyms(prev => prev.map(g => g.id === updatedGym.id ? updatedGym : g));
+     setSelectedGym(updatedGym);
     toast.success('Posilovna byla aktualizována');
     return { success: true };
   };

@@ -364,6 +364,7 @@ export type Database = {
           name: string
           opening_hours: Json
           owner_id: string
+          pricing: Json | null
           updated_at: string
         }
         Insert: {
@@ -379,6 +380,7 @@ export type Database = {
           name: string
           opening_hours?: Json
           owner_id: string
+          pricing?: Json | null
           updated_at?: string
         }
         Update: {
@@ -394,6 +396,7 @@ export type Database = {
           name?: string
           opening_hours?: Json
           owner_id?: string
+          pricing?: Json | null
           updated_at?: string
         }
         Relationships: []

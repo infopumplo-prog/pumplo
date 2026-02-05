@@ -9,6 +9,8 @@ import {
 import { OpeningHours, GymMachine } from '@/hooks/useGym';
 import { isGymCurrentlyOpen, getTodayOpeningStatus, isClosingSoon } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
+ import GymPricingDisplay from './GymPricingDisplay';
+ import { GymPricing } from '@/contexts/GymContext';
 
 const DAYS = [
   { key: 'monday', label: 'Pondělí' },
@@ -35,9 +37,10 @@ interface GymDetailTabsProps {
   hours: OpeningHours;
   machines: GymMachine[];
   machinesLoading: boolean;
+   pricing?: GymPricing | null;
 }
 
-const GymDetailTabs = ({ hours, machines, machinesLoading }: GymDetailTabsProps) => {
+ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing }: GymDetailTabsProps) => {
   const [hoursOpen, setHoursOpen] = useState(false);
   const isOpen = isGymCurrentlyOpen(hours);
   const status = getTodayOpeningStatus(hours);
@@ -163,12 +166,7 @@ const GymDetailTabs = ({ hours, machines, machinesLoading }: GymDetailTabsProps)
 
       {/* Pricing Tab */}
       <TabsContent value="pricing" className="mt-4">
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <CreditCard className="w-12 h-12 text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground text-sm">
-            Ceník bude brzy dostupný
-          </p>
-        </div>
+         <GymPricingDisplay pricing={pricing ?? null} />
       </TabsContent>
     </Tabs>
   );

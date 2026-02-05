@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Play, ArrowLeft } from 'lucide-react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
+ import { GymPricing } from '@/contexts/GymContext';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { useGymMachines } from '@/hooks/useGymMachines';
 import { useGymPhotos } from '@/hooks/useGymPhotos';
@@ -131,6 +132,7 @@ const GymProfilePreview = ({
           hours={hours}
           machines={machines}
           machinesLoading={machinesLoading}
+           pricing={'pricing' in gym ? (gym.pricing as GymPricing | null) : null}
         />
       </div>
 
