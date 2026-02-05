@@ -1,58 +1,74 @@
 
-# Úprava Admin Layoutu - Logout tlačítko a odstranění šipky zpět
+# Oprava B2B Settings - Přidání odhlášení i bez gym profilu
 
-## Požadované změny
+## Problém
 
-Ze screenshotu vidím aktuální stav:
-1. **Vlevo nahoře** je šipka zpět, která vede na "/" - ale admin by se měl přihlásit rovnou do admin panelu, takže šipka je zbytečná
-2. **Vpravo nahoře** chybí tlačítko pro odhlášení
+Aktuálně když B2B uživatel nemá vytvořený profil posilovny a přejde do Nastavení, vidí pouze:
+- Varování "Nemáte vytvořený profil posilovny"
+- Tlačítko "Vytvořit profil"
 
-## Technické změny
+**Chybí tlačítko pro odhlášení** - uživatel je uvězněný a nemůže se odhlásit.
 
-### Soubor: `src/pages/admin/AdminLayout.tsx`
+## Řešení
 
-**1. Přidat import pro logout funkci a ikonu:**
+Přidat sekci "Účet" s tlačítkem odhlášení i do stavu, kdy uživatel nemá gym profil.
+
+## Technická změna
+
+### Soubor: `src/pages/business/GymSettings.tsx`
+
+Upravím podmínku `if (!gym)` (řádky 67-83) tak, aby obsahovala i kartu s odhlášením:
+
 ```typescript
-import { useAuth } from '@/contexts/AuthContext';
-import { LogOut } from 'lucide-react';
+if (!gym) {
+  return (
+    <BusinessLayout>
+      <div className="space-y-4">
+        <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">
+            Nemáte vytvořený profil posilovny
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Pro přístup k nastavení posilovny musíte mít vytvořený profil.
+          </AlertDescription>
+        </Alert>
+        <Button asChild className="w-full">
+          <Link to="/business">Vytvořit profil</Link>
+        </Button>
+
+        {/* Účet sekce - vždy dostupná */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Účet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              className="w-full border-destructive text-destructive hover:bg-destructive/10"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Odhlásit se
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </BusinessLayout>
+  );
+}
 ```
 
-**2. Použít hook v komponentě:**
-```typescript
-const { logout } = useAuth();
-```
-
-**3. Upravit header - odstranit šipku, přidat logout:**
-```typescript
-<header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-  <div className="flex items-center justify-between px-4 py-3">
-    <h1 className="text-lg font-semibold">Admin</h1>
-    <button 
-      onClick={logout}
-      className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
-    >
-      <LogOut className="w-5 h-5 text-muted-foreground" />
-    </button>
-  </div>
-</header>
-```
-
-Změny v headeru:
-- Odstraním `Link` se šipkou zpět (`ArrowLeft`)
-- Změním layout na `justify-between` pro rozložení vlevo/vpravo
-- Nadpis "Admin" zůstane vlevo
-- Vpravo přidám tlačítko s ikonou `LogOut`
-- Po kliknutí se zavolá `logout()` z AuthContext
-
-## Soubor ke změně
+## Změny
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/admin/AdminLayout.tsx` | Odstranit šipku zpět, přidat logout tlačítko vpravo |
+| `src/pages/business/GymSettings.tsx` | Přidat kartu "Účet" s odhlášením i do stavu bez gym profilu |
 
 ## Výsledek
 
-Po úpravě:
-- Vlevo nahoře bude jen text "Admin"
-- Vpravo nahoře bude tlačítko pro odhlášení (ikona LogOut)
-- Po kliknutí na logout se admin odhlásí a bude přesměrován na přihlašovací stránku
+- Uživatel bez gym profilu uvidí:
+  1. Varování že nemá profil
+  2. Tlačítko "Vytvořit profil"
+  3. **Kartu "Účet" s tlačítkem odhlášení**
+- Uživatel se může vždy odhlásit, i když ještě nevytvořil posilovnu
