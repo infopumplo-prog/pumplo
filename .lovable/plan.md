@@ -1,113 +1,105 @@
 
-# Přidání ceníku do Admin panelu a data pro Fitness Motivace
+# Přidání editace ceníku do Admin panelu
 
-## Problém
+## Aktuální stav
 
-1. **AdminGymDetail.tsx** nezobrazuje ceník posilovny - chybí sekce s ceníkem
-2. **Fitness Motivace** (ID: `3a70c9bb-7a60-4613-a195-2fce2d2d97fc`) nemá vyplněný ceník v databázi
+V admin panelu (`AdminGymDetail.tsx`) se ceník pouze zobrazuje pomocí `GymPricingDisplay`, ale není možné ho upravovat. Edit drawer obsahuje pouze:
+- Název, popis, adresa
+- Lokace na mapě  
+- Otevírací hodiny
 
-## Řešení
+## Požadovaná změna
 
-### 1. Přidat sekci ceníku do AdminGymDetail.tsx
+Přidat editor ceníku do stejného edit draweru, kde jsou otevírací hodiny - stejně jako je to v B2B panelu.
 
-Přidám novou kartu s ceníkem mezi kartu "Otevírací hodiny" a "Stroje" (kolem řádku 520):
+## Technické změny
 
+### Soubor: `src/pages/admin/AdminGymDetail.tsx`
+
+**1. Přidat import `GymPricingEditor`:**
 ```typescript
-// Nový import
-import { CreditCard } from 'lucide-react';
-import GymPricingDisplay from '@/components/business/GymPricingDisplay';
-import { GymPricing } from '@/contexts/GymContext';
-
-// V GymData interface přidat:
-pricing: GymPricing | null;
-
-// Nová karta v renderování:
-<Card>
-  <CardHeader className="pb-2">
-    <CardTitle className="text-base flex items-center gap-2">
-      <CreditCard className="w-4 h-4" />
-      Ceník
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <GymPricingDisplay pricing={gym.pricing} />
-  </CardContent>
-</Card>
+import GymPricingEditor from '@/components/business/GymPricingEditor';
 ```
 
-### 2. Vložit ceník Fitness Motivace
+**2. Přidat state pro ceník (za řádek 119):**
+```typescript
+const [pricing, setPricing] = useState<GymPricing | null>(null);
+```
 
-Z obrázku jsem vyčetl ceník:
+**3. Inicializovat pricing state při načtení dat (za řádek 173):**
+```typescript
+setPricing(typedGym.pricing);
+```
 
-**Jednorázový vstup:**
-| Typ | Základní | Student |
-|-----|----------|---------|
-| Vstup | 150 Kč | 130 Kč |
+**4. Přidat ceník do onSubmit (řádek 223-233):**
+```typescript
+const { error } = await supabase
+  .from('gyms')
+  .update({
+    name: data.name,
+    description: data.description || null,
+    address: data.address || null,
+    latitude: location.lat,
+    longitude: location.lng,
+    opening_hours: openingHours,
+    pricing: pricing,  // Přidáno
+  })
+  .eq('id', gym.id);
+```
 
-**Permanentky:**
-| Typ | Základní | Student |
-|-----|----------|---------|
-| 10 vstupů | 1 290 Kč | 1 150 Kč |
-| 20 vstupů | 2 300 Kč | 2 000 Kč |
-| Měsíční | 1 350 Kč | 1 190 Kč |
-| Roční | 12 000 Kč | 9 990 Kč |
+**5. Aktualizovat lokální stav po uložení (řádek 243):**
+```typescript
+setGym(prev => prev ? { 
+  ...prev, 
+  ...data, 
+  latitude: location.lat, 
+  longitude: location.lng, 
+  opening_hours: openingHours,
+  pricing: pricing  // Přidáno
+} : null);
+```
 
-SQL pro vložení:
+**6. Přidat sekci ceníku do edit draweru (za otevírací hodiny, před tlačítko Uložit, kolem řádku 664):**
+```tsx
+<Separator className="my-4" />
 
-```sql
-UPDATE gyms
-SET pricing = '{
-  "single_entries": [
-    {
-      "name": "Jednorázový vstup",
-      "prices": [
-        { "group": "Základní", "price": 150 },
-        { "group": "Student", "price": 130 }
-      ]
-    }
-  ],
-  "memberships": [
-    {
-      "name": "10 vstupů",
-      "prices": [
-        { "group": "Základní", "price": 1290 },
-        { "group": "Student", "price": 1150 }
-      ]
-    },
-    {
-      "name": "20 vstupů",
-      "prices": [
-        { "group": "Základní", "price": 2300 },
-        { "group": "Student", "price": 2000 }
-      ]
-    },
-    {
-      "name": "Měsíční permanentka",
-      "prices": [
-        { "group": "Základní", "price": 1350 },
-        { "group": "Student", "price": 1190 }
-      ]
-    },
-    {
-      "name": "Roční permanentka",
-      "prices": [
-        { "group": "Základní", "price": 12000 },
-        { "group": "Student", "price": 9990 }
-      ]
-    }
-  ]
-}'
-WHERE id = '3a70c9bb-7a60-4613-a195-2fce2d2d97fc';
+<div className="space-y-3">
+  <Label>Ceník</Label>
+  <GymPricingEditor 
+    pricing={pricing} 
+    onChange={setPricing} 
+    showSaveButton={false} 
+  />
+</div>
+```
+
+## Struktura upraveného draweru
+
+```
+Drawer "Upraviť posilovňu"
+├── Názov posilovne
+├── Popis  
+├── Adresa
+├── Lokácia na mape
+├── Otváracie hodiny
+│   └── [Po-Ne s časom open/close]
+├── Separator
+├── Ceník
+│   ├── Jednorázové vstupy
+│   │   └── [Položky s cenami pro skupiny]
+│   └── Permanentky / Členství
+│       └── [Položky s cenami pro skupiny]
+└── Tlačítko "Uložiť zmeny"
 ```
 
 ## Soubory k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/admin/AdminGymDetail.tsx` | Přidat interface pricing, import GymPricingDisplay, nová karta s ceníkem |
-| Databázová migrace | INSERT ceníku pro Fitness Motivace |
+| `src/pages/admin/AdminGymDetail.tsx` | Přidat pricing state, import GymPricingEditor, sekci ceníku do draweru, aktualizovat onSubmit |
 
 ## Výsledek
 
-- Admin panel bude zobrazovat ceník všech posiloven
-- Fitness Motivace bude mít vyplněný kompletní ceník podle jejich webu
+- Admin bude moci upravovat ceník přímo v edit draweru
+- Ceník se uloží společně s ostatními údaji
+- Konzistentní UX s B2B panelem
