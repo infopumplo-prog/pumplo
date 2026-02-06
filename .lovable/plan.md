@@ -1,62 +1,155 @@
 
+# Kategorizace vybavení - Zjednodušené řešení
 
-# Oprava: Přidání ceníku do public_gyms view
+## Přehled
 
-## Příčina problému
+Přidám do tabulky `machines` sloupec `equipment_category` se **3 hlavními kategoriemi** pro algoritmus výběru cviků, plus volitelný tag pro kardio.
 
-1. **View `public_gyms`** neobsahuje sloupec `pricing` - byl vytvořen před přidáním systému ceníků
-2. **Interface `PublicGym`** v `usePublishedGyms.ts` nemá pole `pricing`
-3. Data ceníků **jsou** správně uložena v databázi (ověřeno dotazem)
+## Kategorie vybavení
 
-## Řešení
+| Kategorie | Hodnota | Příklady |
+|-----------|---------|----------|
+| **Stroje** | `machine` | Chest press, Leg press, Cable crossover, Lat pulldown, Plate-loaded stroje |
+| **Volné váhy** | `free_weight` | Barbell, Dumbbells, Kettlebell, EZ bar |
+| **Příslušenství** | `accessory` | Bench, Plyo box, Ab mat, Foam roller, Exercise ball |
 
-### 1. Aktualizovat databázový view
+Plus volitelný boolean `is_cardio` pro běžecké pásy, rotopedy atd.
 
-Přepíšu view `public_gyms` a přidám sloupec `pricing`:
+## Databázové změny
 
 ```sql
-CREATE OR REPLACE VIEW public.public_gyms
-WITH (security_invoker=on) AS
-SELECT 
-  id,
-  name,
-  description,
-  latitude,
-  longitude,
-  address,
-  is_published,
-  opening_hours,
-  cover_photo_url,
-  logo_url,
-  pricing,          -- Přidáno
-  created_at,
-  updated_at
-FROM public.gyms
-WHERE is_published = true;
+-- Přidat kategorizaci do tabulky machines
+ALTER TABLE public.machines 
+ADD COLUMN equipment_category text DEFAULT 'machine';
+
+ALTER TABLE public.machines 
+ADD COLUMN is_cardio boolean DEFAULT false;
 ```
 
-### 2. Aktualizovat TypeScript interface
+## Změny v Admin panelu
 
-V `src/hooks/usePublishedGyms.ts` přidám `pricing` do interface a query:
+### 1. MachinesManagement.tsx
 
+**Rozšířit interface a form:**
 ```typescript
-import { GymPricing } from '@/contexts/GymContext';
-
-export interface PublicGym {
-  // ... stávající pole
-  pricing: GymPricing | null;  // Přidáno
+interface Machine {
+  id: string;
+  name: string;
+  description: string | null;
+  equipment_category: string;  // Přidáno
+  is_cardio: boolean;          // Přidáno
+  created_at: string;
 }
+```
+
+**Přidat UI prvky do draweru:**
+- Select pro kategorii (Stroj / Volná váha / Příslušenství)
+- Switch pro označení jako Kardio
+- Badge zobrazující kategorii v seznamu
+
+**Přidat filtr podle kategorie** do seznamu strojů.
+
+### 2. Propojení s cviky
+
+Současný stav:
+- Cviky mají `equipment_type` (bodyweight, barbell, dumbbell, machine, cable, kettlebell...)
+- Cviky mají `machine_id` odkazující na konkrétní stroj
+
+**Problém**: Cvik může potřebovat více vybavení (např. Incline Dumbbell Press = Dumbbells + Incline Bench)
+
+**Řešení - Fáze 1**: Přidat `secondary_machine_id` do `exercises` pro jednoduché případy:
+```sql
+ALTER TABLE public.exercises 
+ADD COLUMN secondary_machine_id uuid REFERENCES machines(id);
+```
+
+**Řešení - Fáze 2** (později): Plná M:N vazba přes tabulku `exercise_equipment`.
+
+### 3. Aktualizace algoritmu
+
+V `selectionAlgorithm.ts` aktualizovat kontrolu vybavení:
+- Kontrolovat, že posilovna má primární I sekundární stroj
+- Mapovat `equipment_category` strojů na preferenci uživatele
+
+## Technické detaily
+
+### MachinesManagement.tsx změny
+
+```tsx
+// Konstanty pro kategorie
+const EQUIPMENT_CATEGORIES = [
+  { value: 'machine', label: 'Stroj' },
+  { value: 'free_weight', label: 'Volná váha' },
+  { value: 'accessory', label: 'Příslušenství' },
+];
+
+// V draweru přidat:
+<div>
+  <Label>Kategorie vybavení</Label>
+  <Select
+    value={form.equipment_category}
+    onValueChange={(value) => setForm({ ...form, equipment_category: value })}
+  >
+    <SelectTrigger><SelectValue /></SelectTrigger>
+    <SelectContent>
+      {EQUIPMENT_CATEGORIES.map((cat) => (
+        <SelectItem key={cat.value} value={cat.value}>
+          {cat.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+<div className="flex items-center justify-between">
+  <Label>Kardio vybavení</Label>
+  <Switch
+    checked={form.is_cardio}
+    onCheckedChange={(checked) => setForm({ ...form, is_cardio: checked })}
+  />
+</div>
+```
+
+### ExercisesManagement.tsx změny
+
+Přidat výběr sekundárního stroje:
+```tsx
+<div>
+  <Label>Sekundární vybavení (volitelné)</Label>
+  <Select
+    value={form.secondary_machine_id}
+    onValueChange={(value) => setForm({ ...form, secondary_machine_id: value })}
+  >
+    <SelectTrigger><SelectValue placeholder="Např. lavička pro cvik s činkou" /></SelectTrigger>
+    <SelectContent>
+      <SelectItem value="">Žádné</SelectItem>
+      {machines.map((machine) => (
+        <SelectItem key={machine.id} value={machine.id}>
+          {machine.name}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 ```
 
 ## Soubory k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| Databázová migrace | Přepsat view `public_gyms` s přidaným sloupcem `pricing` |
-| `src/hooks/usePublishedGyms.ts` | Přidat `pricing` do interface `PublicGym` a zpracování v query |
+| Databázová migrace | `equipment_category` + `is_cardio` do machines, `secondary_machine_id` do exercises |
+| `src/pages/admin/MachinesManagement.tsx` | Select pro kategorii, Switch pro kardio, Badge, Filtr |
+| `src/pages/admin/ExercisesManagement.tsx` | Select pro sekundární stroj |
+| `src/lib/selectionAlgorithm.ts` | Kontrola obou machine_id při výběru cviku |
+
+## Migrace stávajících dat
+
+Po implementaci bude potřeba:
+1. Ručně klasifikovat 136 strojů do 3 kategorií
+2. U cviků vyžadujících 2 vybavení doplnit secondary_machine_id
 
 ## Výsledek
 
-- Ceník Fitness Boby a Fitness Motivace se bude správně zobrazovat na mapě
-- Všechny veřejné posilovny budou mít přístupný ceník pro uživatele
-
+- Admin může klasifikovat každý stroj jako Stroj/Volnou váhu/Příslušenství
+- Cviky mohou mít přiřazené 2 vybavení (primární + sekundární)
+- Algoritmus bude respektovat preference uživatele a dostupnost vybavení v posilovně
