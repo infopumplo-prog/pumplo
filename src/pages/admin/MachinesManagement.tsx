@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Drawer,
   DrawerContent,
@@ -19,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Dumbbell, Cog, Box } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -30,21 +32,46 @@ interface Machine {
   name: string;
   description: string | null;
   image_url: string | null;
+  equipment_category: string;
+  is_cardio: boolean;
   created_at: string;
 }
 
 const ITEMS_PER_PAGE = 100;
 
+const EQUIPMENT_CATEGORIES = [
+  { value: 'machine', label: 'Stroj', icon: Cog },
+  { value: 'free_weight', label: 'Volná váha', icon: Dumbbell },
+  { value: 'accessory', label: 'Příslušenství', icon: Box },
+] as const;
+
+const getCategoryLabel = (value: string) => {
+  const cat = EQUIPMENT_CATEGORIES.find(c => c.value === value);
+  return cat?.label || value;
+};
+
+const getCategoryVariant = (value: string): 'default' | 'secondary' | 'outline' => {
+  switch (value) {
+    case 'machine': return 'default';
+    case 'free_weight': return 'secondary';
+    case 'accessory': return 'outline';
+    default: return 'default';
+  }
+};
+
 const MachinesManagement = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     name: '',
     description: '',
+    equipment_category: 'machine',
+    is_cardio: false,
   });
 
   const fetchMachines = async () => {
@@ -66,12 +93,14 @@ const MachinesManagement = () => {
     fetchMachines();
   }, []);
 
-  // Filter machines based on search
+  // Filter machines based on search and category
   const filteredMachines = useMemo(() => {
     return machines.filter((machine) => {
-      return machine.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = machine.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || machine.equipment_category === categoryFilter;
+      return matchesSearch && matchesCategory;
     });
-  }, [machines, searchTerm]);
+  }, [machines, searchTerm, categoryFilter]);
 
   // Paginate filtered results
   const totalPages = Math.ceil(filteredMachines.length / ITEMS_PER_PAGE);
@@ -83,13 +112,15 @@ const MachinesManagement = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, categoryFilter]);
 
   const openAddDrawer = () => {
     setEditingMachine(null);
     setForm({
       name: '',
       description: '',
+      equipment_category: 'machine',
+      is_cardio: false,
     });
     setDrawerOpen(true);
   };
@@ -99,6 +130,8 @@ const MachinesManagement = () => {
     setForm({
       name: machine.name,
       description: machine.description || '',
+      equipment_category: machine.equipment_category || 'machine',
+      is_cardio: machine.is_cardio || false,
     });
     setDrawerOpen(true);
   };
@@ -115,11 +148,13 @@ const MachinesManagement = () => {
         .update({
           name: form.name,
           description: form.description || null,
+          equipment_category: form.equipment_category,
+          is_cardio: form.is_cardio,
         })
         .eq('id', editingMachine.id);
 
       if (error) {
-        toast.error('Chyba pri ukladaní');
+        toast.error('Chyba při ukladaní');
         return;
       }
       toast.success('Stroj aktualizovaný');
@@ -127,13 +162,15 @@ const MachinesManagement = () => {
       const { error } = await supabase.from('machines').insert({
         name: form.name,
         description: form.description || null,
+        equipment_category: form.equipment_category,
+        is_cardio: form.is_cardio,
       });
 
       if (error) {
-        toast.error('Chyba pri vytváraní');
+        toast.error('Chyba při vytváraní');
         return;
       }
-      toast.success('Stroj pridaný');
+      toast.success('Stroj přidaný');
     }
 
     setDrawerOpen(false);
@@ -145,13 +182,23 @@ const MachinesManagement = () => {
     const { error } = await supabase.from('machines').delete().eq('id', id);
 
     if (error) {
-      toast.error('Chyba pri mazaní');
+      toast.error('Chyba při mazaní');
       return;
     }
 
     toast.success('Stroj vymazaný');
     fetchMachines();
   };
+
+  // Category stats
+  const categoryStats = useMemo(() => {
+    const stats = { machine: 0, free_weight: 0, accessory: 0 };
+    machines.forEach(m => {
+      const cat = m.equipment_category as keyof typeof stats;
+      if (stats[cat] !== undefined) stats[cat]++;
+    });
+    return stats;
+  }, [machines]);
 
   return (
     <AdminLayout>
@@ -165,9 +212,24 @@ const MachinesManagement = () => {
           </Button>
         </div>
 
+        {/* Category Stats */}
+        <div className="flex gap-2 flex-wrap">
+          {EQUIPMENT_CATEGORIES.map(cat => (
+            <Badge 
+              key={cat.value} 
+              variant={getCategoryVariant(cat.value)}
+              className="cursor-pointer"
+              onClick={() => setCategoryFilter(categoryFilter === cat.value ? 'all' : cat.value)}
+            >
+              <cat.icon className="w-3 h-3 mr-1" />
+              {cat.label}: {categoryStats[cat.value as keyof typeof categoryStats]}
+            </Badge>
+          ))}
+        </div>
+
         {/* Filters */}
-        <div className="space-y-2">
-          <div className="relative">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Hľadať stroj..."
@@ -176,6 +238,19 @@ const MachinesManagement = () => {
               className="pl-10"
             />
           </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Kategorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Všechny</SelectItem>
+              {EQUIPMENT_CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Mobile Card List */}
@@ -189,7 +264,17 @@ const MachinesManagement = () => {
               <MobileCard key={machine.id} onClick={() => openEditDrawer(machine)}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{machine.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium truncate">{machine.name}</p>
+                      <Badge variant={getCategoryVariant(machine.equipment_category)} className="text-xs">
+                        {getCategoryLabel(machine.equipment_category)}
+                      </Badge>
+                      {machine.is_cardio && (
+                        <Badge variant="outline" className="text-xs">
+                          Kardio
+                        </Badge>
+                      )}
+                    </div>
                     {machine.description && (
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
                         {machine.description}
@@ -227,17 +312,46 @@ const MachinesManagement = () => {
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
               <DrawerTitle>
-                {editingMachine ? 'Upraviť stroj' : 'Pridať stroj'}
+                {editingMachine ? 'Upravit stroj' : 'Přidat stroj'}
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4 overflow-y-auto">
               <div>
-                <Label>Názov</Label>
+                <Label>Název</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
+              
+              <div>
+                <Label>Kategorie vybavení</Label>
+                <Select
+                  value={form.equipment_category}
+                  onValueChange={(value) => setForm({ ...form, equipment_category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EQUIPMENT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <Label htmlFor="is-cardio">Kardio vybavení</Label>
+                <Switch
+                  id="is-cardio"
+                  checked={form.is_cardio}
+                  onCheckedChange={(checked) => setForm({ ...form, is_cardio: checked })}
+                />
+              </div>
+
               <div>
                 <Label>Popis</Label>
                 <Textarea
@@ -249,10 +363,10 @@ const MachinesManagement = () => {
             </div>
             <DrawerFooter>
               <Button onClick={handleSave} className="w-full">
-                {editingMachine ? 'Uložiť zmeny' : 'Pridať stroj'}
+                {editingMachine ? 'Uložit změny' : 'Přidat stroj'}
               </Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
+                <Button variant="outline">Zrušit</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>

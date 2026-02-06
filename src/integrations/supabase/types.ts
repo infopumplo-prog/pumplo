@@ -196,6 +196,7 @@ export type Database = {
           name: string
           primary_muscles: string[]
           primary_role: string | null
+          secondary_machine_id: string | null
           secondary_muscles: string[]
           slot_type: string | null
           stability_rating: number | null
@@ -216,6 +217,7 @@ export type Database = {
           name: string
           primary_muscles?: string[]
           primary_role?: string | null
+          secondary_machine_id?: string | null
           secondary_muscles?: string[]
           slot_type?: string | null
           stability_rating?: number | null
@@ -236,6 +238,7 @@ export type Database = {
           name?: string
           primary_muscles?: string[]
           primary_role?: string | null
+          secondary_machine_id?: string | null
           secondary_muscles?: string[]
           slot_type?: string | null
           stability_rating?: number | null
@@ -255,6 +258,13 @@ export type Database = {
             columns: ["primary_role"]
             isOneToOne: false
             referencedRelation: "training_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercises_secondary_machine_id_fkey"
+            columns: ["secondary_machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
             referencedColumns: ["id"]
           },
         ]
@@ -405,24 +415,30 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          equipment_category: string | null
           id: string
           image_url: string | null
+          is_cardio: boolean | null
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          equipment_category?: string | null
           id?: string
           image_url?: string | null
+          is_cardio?: boolean | null
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          equipment_category?: string | null
           id?: string
           image_url?: string | null
+          is_cardio?: boolean | null
           name?: string
           updated_at?: string
         }
