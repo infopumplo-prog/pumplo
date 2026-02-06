@@ -1,155 +1,114 @@
 
-# Kategorizace vybavení - Zjednodušené řešení
+
+# Nástroj pro sloučení duplicitních strojů v Admin panelu
 
 ## Přehled
 
-Přidám do tabulky `machines` sloupec `equipment_category` se **3 hlavními kategoriemi** pro algoritmus výběru cviků, plus volitelný tag pro kardio.
+Přidám do admin panelu strojů tlačítko **"Najít duplicity"**, které otevře drawer se seznamem duplicitních strojů a umožní je sloučit.
 
-## Kategorie vybavení
+## Co se bude měnit při sloučení
 
-| Kategorie | Hodnota | Příklady |
-|-----------|---------|----------|
-| **Stroje** | `machine` | Chest press, Leg press, Cable crossover, Lat pulldown, Plate-loaded stroje |
-| **Volné váhy** | `free_weight` | Barbell, Dumbbells, Kettlebell, EZ bar |
-| **Příslušenství** | `accessory` | Bench, Plyo box, Ab mat, Foam roller, Exercise ball |
+| Tabulka | Sloupec | Akce |
+|---------|---------|------|
+| `exercises` | `machine_id` | Přesměruje na primární ID |
+| `exercises` | `secondary_machine_id` | **NEBUDE SE MĚNIT** |
+| `gym_machines` | `machine_id` | Přesměruje na primární ID |
+| `machines` | - | Smaže duplicitní záznamy |
 
-Plus volitelný boolean `is_cardio` pro běžecké pásy, rotopedy atd.
+## Funkce nástroje
 
-## Databázové změny
+### 1. Detekce duplicit
+- Seskupí stroje podle názvu (case-insensitive)
+- Zobrazí pouze skupiny s 2+ záznamy
 
-```sql
--- Přidat kategorizaci do tabulky machines
-ALTER TABLE public.machines 
-ADD COLUMN equipment_category text DEFAULT 'machine';
+### 2. Zobrazení použití každého duplicitního stroje
+Pro každý duplicitní stroj ukáže:
+- Počet cviků kde je použit jako `machine_id`
+- Počet posiloven kde je přiřazen (`gym_machines`)
 
-ALTER TABLE public.machines 
-ADD COLUMN is_cardio boolean DEFAULT false;
+### 3. Sloučení (Merge)
+Uživatel vybere **primární** stroj (ten co zůstane) a systém:
+1. Přesune všechny reference z `exercises.machine_id` na primární ID
+2. Přesune všechny reference z `gym_machines.machine_id` na primární ID (s ošetřením konfliktů)
+3. Smaže duplicitní záznamy z `machines`
+
+**DŮLEŽITÉ**: `secondary_machine_id` zůstane nedotčen!
+
+## UI Design
+
+### Tlačítko v hlavičce
+```
+[Najít duplicity]
 ```
 
-## Změny v Admin panelu
+### Drawer s duplicitami
+```
+┌─────────────────────────────────────────┐
+│  Duplicitní stroje (4 skupiny)          │
+├─────────────────────────────────────────┤
+│                                         │
+│  📦 Ab roller (2 záznamy)               │
+│  ┌─────────────────────────────────┐    │
+│  │ ○ Ab roller (623edf0f...)       │    │
+│  │   Cviky: 0 | Posilovny: 1       │    │
+│  │ ○ Ab roller (9e6dcffc...)       │    │
+│  │   Cviky: 0 | Posilovny: 0       │    │
+│  │                                 │    │
+│  │ [Sloučit vybrané]               │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  📦 Abductor machine (2 záznamy)        │
+│  ┌─────────────────────────────────┐    │
+│  │ ● Abductor machine (79820aad..) │    │
+│  │   Cviky: 1 | Posilovny: 1       │    │
+│  │ ○ Abductor machine (7ad2691a..) │    │
+│  │   Cviky: 0 | Posilovny: 1       │    │
+│  │                                 │    │
+│  │ [Sloučit vybrané]               │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+└─────────────────────────────────────────┘
+```
 
-### 1. MachinesManagement.tsx
+## Technická implementace
 
-**Rozšířit interface a form:**
+### Logika sloučení (bez secondary_machine_id)
 ```typescript
-interface Machine {
-  id: string;
-  name: string;
-  description: string | null;
-  equipment_category: string;  // Přidáno
-  is_cardio: boolean;          // Přidáno
-  created_at: string;
-}
+const mergeDuplicates = async (groupName: string) => {
+  const primaryId = selectedPrimary[groupName];
+  const duplicateIds = group.items
+    .filter(m => m.id !== primaryId)
+    .map(m => m.id);
+  
+  // 1. Přesunout POUZE exercises.machine_id
+  await supabase
+    .from('exercises')
+    .update({ machine_id: primaryId })
+    .in('machine_id', duplicateIds);
+  
+  // 2. Přesunout gym_machines (s ošetřením konfliktů)
+  // ... logika pro přesměrování nebo smazání duplicitních vazeb
+  
+  // 3. Smazat duplicitní stroje
+  await supabase
+    .from('machines')
+    .delete()
+    .in('id', duplicateIds);
+};
 ```
 
-**Přidat UI prvky do draweru:**
-- Select pro kategorii (Stroj / Volná váha / Příslušenství)
-- Switch pro označení jako Kardio
-- Badge zobrazující kategorii v seznamu
-
-**Přidat filtr podle kategorie** do seznamu strojů.
-
-### 2. Propojení s cviky
-
-Současný stav:
-- Cviky mají `equipment_type` (bodyweight, barbell, dumbbell, machine, cable, kettlebell...)
-- Cviky mají `machine_id` odkazující na konkrétní stroj
-
-**Problém**: Cvik může potřebovat více vybavení (např. Incline Dumbbell Press = Dumbbells + Incline Bench)
-
-**Řešení - Fáze 1**: Přidat `secondary_machine_id` do `exercises` pro jednoduché případy:
-```sql
-ALTER TABLE public.exercises 
-ADD COLUMN secondary_machine_id uuid REFERENCES machines(id);
-```
-
-**Řešení - Fáze 2** (později): Plná M:N vazba přes tabulku `exercise_equipment`.
-
-### 3. Aktualizace algoritmu
-
-V `selectionAlgorithm.ts` aktualizovat kontrolu vybavení:
-- Kontrolovat, že posilovna má primární I sekundární stroj
-- Mapovat `equipment_category` strojů na preferenci uživatele
-
-## Technické detaily
-
-### MachinesManagement.tsx změny
-
-```tsx
-// Konstanty pro kategorie
-const EQUIPMENT_CATEGORIES = [
-  { value: 'machine', label: 'Stroj' },
-  { value: 'free_weight', label: 'Volná váha' },
-  { value: 'accessory', label: 'Příslušenství' },
-];
-
-// V draweru přidat:
-<div>
-  <Label>Kategorie vybavení</Label>
-  <Select
-    value={form.equipment_category}
-    onValueChange={(value) => setForm({ ...form, equipment_category: value })}
-  >
-    <SelectTrigger><SelectValue /></SelectTrigger>
-    <SelectContent>
-      {EQUIPMENT_CATEGORIES.map((cat) => (
-        <SelectItem key={cat.value} value={cat.value}>
-          {cat.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-
-<div className="flex items-center justify-between">
-  <Label>Kardio vybavení</Label>
-  <Switch
-    checked={form.is_cardio}
-    onCheckedChange={(checked) => setForm({ ...form, is_cardio: checked })}
-  />
-</div>
-```
-
-### ExercisesManagement.tsx změny
-
-Přidat výběr sekundárního stroje:
-```tsx
-<div>
-  <Label>Sekundární vybavení (volitelné)</Label>
-  <Select
-    value={form.secondary_machine_id}
-    onValueChange={(value) => setForm({ ...form, secondary_machine_id: value })}
-  >
-    <SelectTrigger><SelectValue placeholder="Např. lavička pro cvik s činkou" /></SelectTrigger>
-    <SelectContent>
-      <SelectItem value="">Žádné</SelectItem>
-      {machines.map((machine) => (
-        <SelectItem key={machine.id} value={machine.id}>
-          {machine.name}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-```
-
-## Soubory k úpravě
+## Soubor k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| Databázová migrace | `equipment_category` + `is_cardio` do machines, `secondary_machine_id` do exercises |
-| `src/pages/admin/MachinesManagement.tsx` | Select pro kategorii, Switch pro kardio, Badge, Filtr |
-| `src/pages/admin/ExercisesManagement.tsx` | Select pro sekundární stroj |
-| `src/lib/selectionAlgorithm.ts` | Kontrola obou machine_id při výběru cviku |
-
-## Migrace stávajících dat
-
-Po implementaci bude potřeba:
-1. Ručně klasifikovat 136 strojů do 3 kategorií
-2. U cviků vyžadujících 2 vybavení doplnit secondary_machine_id
+| `src/pages/admin/MachinesManagement.tsx` | Přidat tlačítko, drawer, logiku pro detekci a sloučení duplicit |
 
 ## Výsledek
 
-- Admin může klasifikovat každý stroj jako Stroj/Volnou váhu/Příslušenství
-- Cviky mohou mít přiřazené 2 vybavení (primární + sekundární)
-- Algoritmus bude respektovat preference uživatele a dostupnost vybavení v posilovně
+- Admin může jedním kliknutím najít všechny duplicitní stroje
+- Vidí kde je každý stroj použit (cviky, posilovny)
+- Může zvolit primární stroj a sloučit ostatní
+- Reference z `exercises.machine_id` a `gym_machines` se přesměrují
+- **`secondary_machine_id` zůstane beze změny**
+- Duplicitní záznamy se smažou
+
