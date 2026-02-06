@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Dumbbell, Cog, Box } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Dumbbell, Cog, Box, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
 import AdminPagination from '@/components/admin/AdminPagination';
+import DuplicateMachinesDrawer from '@/components/admin/DuplicateMachinesDrawer';
+import { useDuplicateMachines } from '@/hooks/useDuplicateMachines';
 
 interface Machine {
   id: string;
@@ -73,8 +75,9 @@ const MachinesManagement = () => {
     equipment_category: 'machine',
     is_cardio: false,
   });
+  const [duplicatesDrawerOpen, setDuplicatesDrawerOpen] = useState(false);
 
-  const fetchMachines = async () => {
+  const fetchMachines = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('machines')
@@ -87,7 +90,17 @@ const MachinesManagement = () => {
       setMachines(data || []);
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  const {
+    duplicateGroups,
+    selectedPrimary,
+    isLoading: isDuplicatesLoading,
+    isMerging,
+    findDuplicates,
+    mergeDuplicates,
+    selectPrimary,
+  } = useDuplicateMachines(machines, fetchMachines);
 
   useEffect(() => {
     fetchMachines();
@@ -113,6 +126,11 @@ const MachinesManagement = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, categoryFilter]);
+
+  const openDuplicatesDrawer = async () => {
+    setDuplicatesDrawerOpen(true);
+    await findDuplicates();
+  };
 
   const openAddDrawer = () => {
     setEditingMachine(null);
@@ -206,10 +224,16 @@ const MachinesManagement = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Stroje</h2>
-          <Button onClick={openAddDrawer} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Pridať
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={openDuplicatesDrawer} size="sm" variant="outline">
+              <GitMerge className="w-4 h-4 mr-1" />
+              Duplicity
+            </Button>
+            <Button onClick={openAddDrawer} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Pridať
+            </Button>
+          </div>
         </div>
 
         {/* Category Stats */}
@@ -371,6 +395,18 @@ const MachinesManagement = () => {
             </DrawerFooter>
           </DrawerContent>
         </Drawer>
+
+        {/* Duplicates Drawer */}
+        <DuplicateMachinesDrawer
+          open={duplicatesDrawerOpen}
+          onOpenChange={setDuplicatesDrawerOpen}
+          duplicateGroups={duplicateGroups}
+          selectedPrimary={selectedPrimary}
+          isLoading={isDuplicatesLoading}
+          isMerging={isMerging}
+          onSelectPrimary={selectPrimary}
+          onMerge={mergeDuplicates}
+        />
       </div>
     </AdminLayout>
   );
