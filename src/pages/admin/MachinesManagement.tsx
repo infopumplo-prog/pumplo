@@ -21,13 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Dumbbell, Cog, Box, GitMerge } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Dumbbell, Cog, Box, GitMerge, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
 import AdminPagination from '@/components/admin/AdminPagination';
 import DuplicateMachinesDrawer from '@/components/admin/DuplicateMachinesDrawer';
+import MachineExercisesList from '@/components/admin/MachineExercisesList';
 import { useDuplicateMachines } from '@/hooks/useDuplicateMachines';
+import { useMachineExercises } from '@/hooks/useMachineExercises';
 
 interface Machine {
   id: string;
@@ -101,6 +103,13 @@ const MachinesManagement = () => {
     mergeDuplicates,
     selectPrimary,
   } = useDuplicateMachines(machines, fetchMachines);
+
+  // Fetch exercises linked to the currently edited machine
+  const {
+    exercises: linkedExercises,
+    isLoading: isExercisesLoading,
+    updateSecondaryMachine,
+  } = useMachineExercises(editingMachine?.id || null);
 
   useEffect(() => {
     fetchMachines();
@@ -218,6 +227,59 @@ const MachinesManagement = () => {
     return stats;
   }, [machines]);
 
+  // Bulk fix categories based on name patterns
+  const handleFixCategories = async () => {
+    const updates: { id: string; category: string }[] = [];
+
+    machines.forEach((m) => {
+      const nameLower = m.name.toLowerCase();
+      let newCategory: string | null = null;
+
+      // Free weights
+      if (
+        nameLower.includes('dumbbell') ||
+        nameLower.includes('barbell') ||
+        nameLower.includes('kettlebell') ||
+        nameLower.includes('ez bar') ||
+        nameLower.includes('olympic bar')
+      ) {
+        newCategory = 'free_weight';
+      }
+      // Accessories
+      else if (
+        nameLower.includes('bench') ||
+        nameLower.includes('mat') ||
+        nameLower.includes('roller') ||
+        nameLower.includes('ball') ||
+        nameLower.includes('step')
+      ) {
+        newCategory = 'accessory';
+      }
+
+      if (newCategory && m.equipment_category !== newCategory) {
+        updates.push({ id: m.id, category: newCategory });
+      }
+    });
+
+    if (updates.length === 0) {
+      toast.info('Všechny kategorie jsou již správné');
+      return;
+    }
+
+    let successCount = 0;
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('machines')
+        .update({ equipment_category: update.category })
+        .eq('id', update.id);
+
+      if (!error) successCount++;
+    }
+
+    toast.success(`Opraveno ${successCount} z ${updates.length} strojů`);
+    fetchMachines();
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-4">
@@ -225,6 +287,10 @@ const MachinesManagement = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Stroje</h2>
           <div className="flex gap-2">
+            <Button onClick={handleFixCategories} size="sm" variant="outline">
+              <Wand2 className="w-4 h-4 mr-1" />
+              Fix
+            </Button>
             <Button onClick={openDuplicatesDrawer} size="sm" variant="outline">
               <GitMerge className="w-4 h-4 mr-1" />
               Duplicity
@@ -384,6 +450,19 @@ const MachinesManagement = () => {
                   rows={3}
                 />
               </div>
+
+              {/* Linked exercises section - only show when editing */}
+              {editingMachine && (
+                <div className="pt-4 border-t">
+                  <MachineExercisesList
+                    exercises={linkedExercises}
+                    machines={machines}
+                    currentMachineId={editingMachine.id}
+                    isLoading={isExercisesLoading}
+                    onUpdateSecondary={updateSecondaryMachine}
+                  />
+                </div>
+              )}
             </div>
             <DrawerFooter>
               <Button onClick={handleSave} className="w-full">

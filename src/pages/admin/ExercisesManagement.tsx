@@ -32,6 +32,7 @@ interface Exercise {
   category: string;
   difficulty: number;
   machine_id: string | null;
+  secondary_machine_id: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
   video_path: string | null;
@@ -103,6 +104,7 @@ const ExercisesManagement = () => {
     category: 'chest',
     difficulty: 5,
     machine_id: '',
+    secondary_machine_id: '',
     primary_muscles: [] as string[],
     secondary_muscles: [] as string[],
     video_path: '',
@@ -181,6 +183,7 @@ const ExercisesManagement = () => {
       category: 'chest',
       difficulty: 5,
       machine_id: '',
+      secondary_machine_id: '',
       primary_muscles: [],
       secondary_muscles: [],
       video_path: '',
@@ -199,6 +202,7 @@ const ExercisesManagement = () => {
       category: exercise.category,
       difficulty: exercise.difficulty,
       machine_id: exercise.machine_id || '',
+      secondary_machine_id: exercise.secondary_machine_id || '',
       primary_muscles: exercise.primary_muscles || [],
       secondary_muscles: exercise.secondary_muscles || [],
       video_path: exercise.video_path || '',
@@ -221,6 +225,7 @@ const ExercisesManagement = () => {
       category: form.category,
       difficulty: form.difficulty,
       machine_id: form.machine_id || null,
+      secondary_machine_id: form.secondary_machine_id || null,
       primary_muscles: form.primary_muscles,
       secondary_muscles: form.secondary_muscles,
       video_path: form.video_path || null,
@@ -468,26 +473,45 @@ const ExercisesManagement = () => {
                 </Select>
               </div>
 
-              {form.equipment_type === 'machine' && (
-                <div>
-                  <Label>Stroj</Label>
-                  <Select
-                    value={form.machine_id}
-                    onValueChange={(value) => setForm({ ...form, machine_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Vyber stroj" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {machines.map((machine) => (
-                        <SelectItem key={machine.id} value={machine.id}>
-                          {machine.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div>
+                <Label>Primární vybavení (machine_id)</Label>
+                <Select
+                  value={form.machine_id}
+                  onValueChange={(value) => setForm({ ...form, machine_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber vybavení" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Žádné</SelectItem>
+                    {machines.map((machine) => (
+                      <SelectItem key={machine.id} value={machine.id}>
+                        {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Sekundární vybavení (secondary_machine_id)</Label>
+                <Select
+                  value={form.secondary_machine_id}
+                  onValueChange={(value) => setForm({ ...form, secondary_machine_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber sekundární vybavení" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Žádné</SelectItem>
+                    {machines.map((machine) => (
+                      <SelectItem key={machine.id} value={machine.id}>
+                        {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="flex items-center justify-between">
                 <Label>Cvik s váhami</Label>
