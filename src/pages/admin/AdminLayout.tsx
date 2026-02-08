@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut } from 'lucide-react';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -94,6 +95,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
         </div>
       </nav>
+      <FeedbackButton />
     </div>
   );
 };
