@@ -40,6 +40,7 @@ interface Exercise {
   equipment_type: string | null;
   allowed_phase: string | null;
   exercise_with_weights: boolean | null;
+  required_bench_config: string | null;
   created_at: string;
 }
 
@@ -88,6 +89,12 @@ const ALLOWED_PHASES = [
   { value: 'warmup', label: 'Rozcvička' },
 ];
 
+const BENCH_CONFIGS = [
+  { value: 'flat', label: 'Flat (rovná)' },
+  { value: 'incline', label: 'Incline (šikmá nahoru)' },
+  { value: 'decline', label: 'Decline (šikmá dolů)' },
+];
+
 const ITEMS_PER_PAGE = 100;
 
 const ExercisesManagement = () => {
@@ -112,6 +119,7 @@ const ExercisesManagement = () => {
     equipment_type: 'bodyweight',
     allowed_phase: 'main',
     exercise_with_weights: true,
+    required_bench_config: '',
   });
 
   const fetchData = async () => {
@@ -205,6 +213,7 @@ const ExercisesManagement = () => {
       equipment_type: 'bodyweight',
       allowed_phase: 'main',
       exercise_with_weights: true,
+      required_bench_config: '',
     });
     setDrawerOpen(true);
   };
@@ -224,6 +233,7 @@ const ExercisesManagement = () => {
       equipment_type: exercise.equipment_type || 'bodyweight',
       allowed_phase: exercise.allowed_phase || 'main',
       exercise_with_weights: exercise.exercise_with_weights ?? true,
+      required_bench_config: exercise.required_bench_config || '',
     });
     setDrawerOpen(true);
   };
@@ -247,6 +257,7 @@ const ExercisesManagement = () => {
       equipment_type: form.equipment_type,
       allowed_phase: form.allowed_phase,
       exercise_with_weights: form.exercise_with_weights,
+      required_bench_config: form.required_bench_config || null,
     };
 
     if (editingExercise) {
@@ -521,6 +532,26 @@ const ExercisesManagement = () => {
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Požadovaná konfigurace lavice</Label>
+                <Select
+                  value={form.required_bench_config || '__none__'}
+                  onValueChange={(value) => setForm({ ...form, required_bench_config: value === '__none__' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nevyžaduje lavici" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nevyžaduje</SelectItem>
+                    {BENCH_CONFIGS.map((config) => (
+                      <SelectItem key={config.value} value={config.value}>
+                        {config.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
