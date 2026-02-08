@@ -1,114 +1,232 @@
 
 
-# Nástroj pro sloučení duplicitních strojů v Admin panelu
+# Řešení problému se zastaralými verzemi PWA - Jednou provždy
 
-## Přehled
+## Identifikované problémy
 
-Přidám do admin panelu strojů tlačítko **"Najít duplicity"**, které otevře drawer se seznamem duplicitních strojů a umožní je sloučit.
+### 1. Agresivní caching API dat (KRITICKÉ)
+Současný service worker používá **StaleWhileRevalidate** pro `user_profiles` a workout data. To znamená:
+- Uživatel dostane NEJDŘÍVE starou verzi z cache
+- Až POTOM se stahuje nová verze (ale uživatel ji nevidí okamžitě)
+- Pokud uživatel zavře aplikaci před dokončením update, vidí pořád starou verzi
 
-## Co se bude měnit při sloučení
-
-| Tabulka | Sloupec | Akce |
-|---------|---------|------|
-| `exercises` | `machine_id` | Přesměruje na primární ID |
-| `exercises` | `secondary_machine_id` | **NEBUDE SE MĚNIT** |
-| `gym_machines` | `machine_id` | Přesměruje na primární ID |
-| `machines` | - | Smaže duplicitní záznamy |
-
-## Funkce nástroje
-
-### 1. Detekce duplicit
-- Seskupí stroje podle názvu (case-insensitive)
-- Zobrazí pouze skupiny s 2+ záznamy
-
-### 2. Zobrazení použití každého duplicitního stroje
-Pro každý duplicitní stroj ukáže:
-- Počet cviků kde je použit jako `machine_id`
-- Počet posiloven kde je přiřazen (`gym_machines`)
-
-### 3. Sloučení (Merge)
-Uživatel vybere **primární** stroj (ten co zůstane) a systém:
-1. Přesune všechny reference z `exercises.machine_id` na primární ID
-2. Přesune všechny reference z `gym_machines.machine_id` na primární ID (s ošetřením konfliktů)
-3. Smaže duplicitní záznamy z `machines`
-
-**DŮLEŽITÉ**: `secondary_machine_id` zůstane nedotčen!
-
-## UI Design
-
-### Tlačítko v hlavičce
+### 2. CacheFirst pro exercises (KRITICKÉ)
+Pro katalog cviků se používá **CacheFirst** s 30denní expirací:
+```javascript
+registerRoute(/exercises.*/, new CacheFirst({ maxAgeSeconds: 60 * 60 * 24 * 30 }))
 ```
-[Najít duplicity]
+To znamená, že jakékoli změny v cvicích se projeví až za 30 dní!
+
+### 3. Chybí verzování aplikace
+Není implementováno žádné sledování verze buildu. Když se nasadí nová verze, uživatel nemá jak zjistit, že běží na staré.
+
+### 4. Prompt "Aktualizovat?" se snadno přehlédne
+Současná implementace v `main.tsx` používá `confirm()`, který:
+- Na iOS Safari PWA nefunguje správně
+- Uživatelé ho často odmítnou reflexivně
+- Po odmítnutí se nezobrazí znovu
+
+### 5. Hodinový interval kontroly updatů
+```javascript
+setInterval(() => registration.update(), 60 * 60 * 1000);
+```
+Když uživatel spustí PWA z plochy, může běžet hodinu na staré verzi.
+
+## Navrhované řešení
+
+### Fáze 1: Změna caching strategie pro kritická data
+
+**Změnit `public/sw.js`:**
+
+| Endpoint | Současná strategie | Nová strategie |
+|----------|-------------------|----------------|
+| `user_profiles` | StaleWhileRevalidate (24h) | **NetworkFirst** (fallback 5s) |
+| `user_workout_plans` | StaleWhileRevalidate (7d) | **NetworkFirst** (fallback 5s) |
+| `workout_sessions` | StaleWhileRevalidate (7d) | **NetworkFirst** (fallback 3s) |
+| `exercises` | CacheFirst (30d) | **StaleWhileRevalidate** (7d) |
+
+NetworkFirst = vždy se pokusí stáhnout čerstvá data, cache pouze jako fallback při offline.
+
+### Fáze 2: Automatická aktualizace při spuštění PWA
+
+**Nový přístup v `main.tsx`:**
+1. Kontrola updatů ihned při spuštění (ne až za hodinu)
+2. Místo `confirm()` použít vlastní UI komponentu
+3. Při kritickém updatu automaticky reload bez dotazu
+
+### Fáze 3: Verzování a force-refresh mechanismus
+
+**Nový soubor `src/lib/appVersion.ts`:**
+- Exportuje BUILD_TIMESTAMP generovaný při buildu
+- Ukládá do localStorage kdy naposledy proběhl refresh
+- Při neshodě verzí vynutí reload
+
+**Změna `vite.config.ts`:**
+- Přidat define plugin pro `__BUILD_TIMESTAMP__`
+
+### Fáze 4: Vylepšený Update Banner
+
+**Nová komponenta `src/components/UpdateBanner.tsx`:**
+- Zobrazí se jako sticky banner nahoře
+- Nelze ignorovat - pouze tlačítko "Aktualizovat"
+- Uloží do sessionStorage že update proběhl
+
+## Technické detaily implementace
+
+### 1. Úprava Service Workeru (`public/sw.js`)
+
+```javascript
+// ZMĚNA: user_profiles - NetworkFirst místo StaleWhileRevalidate
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
+  new NetworkFirst({
+    cacheName: 'user-profile-cache',
+    networkTimeoutSeconds: 5, // Fallback na cache po 5s
+    plugins: [...]
+  })
+);
+
+// ZMĚNA: exercises - StaleWhileRevalidate místo CacheFirst
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'exercises-catalog-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 dní místo 30
+      }),
+    ],
+  })
+);
+
+// ZMĚNA: workout_plans - NetworkFirst
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
+  new NetworkFirst({
+    cacheName: 'workout-plans-cache',
+    networkTimeoutSeconds: 5,
+    plugins: [...]
+  })
+);
 ```
 
-### Drawer s duplicitami
-```
-┌─────────────────────────────────────────┐
-│  Duplicitní stroje (4 skupiny)          │
-├─────────────────────────────────────────┤
-│                                         │
-│  📦 Ab roller (2 záznamy)               │
-│  ┌─────────────────────────────────┐    │
-│  │ ○ Ab roller (623edf0f...)       │    │
-│  │   Cviky: 0 | Posilovny: 1       │    │
-│  │ ○ Ab roller (9e6dcffc...)       │    │
-│  │   Cviky: 0 | Posilovny: 0       │    │
-│  │                                 │    │
-│  │ [Sloučit vybrané]               │    │
-│  └─────────────────────────────────┘    │
-│                                         │
-│  📦 Abductor machine (2 záznamy)        │
-│  ┌─────────────────────────────────┐    │
-│  │ ● Abductor machine (79820aad..) │    │
-│  │   Cviky: 1 | Posilovny: 1       │    │
-│  │ ○ Abductor machine (7ad2691a..) │    │
-│  │   Cviky: 0 | Posilovny: 1       │    │
-│  │                                 │    │
-│  │ [Sloučit vybrané]               │    │
-│  └─────────────────────────────────┘    │
-│                                         │
-└─────────────────────────────────────────┘
-```
+### 2. Verzování aplikace
 
-## Technická implementace
-
-### Logika sloučení (bez secondary_machine_id)
+**Nový soubor `src/lib/appVersion.ts`:**
 ```typescript
-const mergeDuplicates = async (groupName: string) => {
-  const primaryId = selectedPrimary[groupName];
-  const duplicateIds = group.items
-    .filter(m => m.id !== primaryId)
-    .map(m => m.id);
+// BUILD_TIMESTAMP je injektován při buildu
+export const BUILD_TIMESTAMP = __BUILD_TIMESTAMP__ || Date.now();
+
+const LAST_VERSION_KEY = 'pumplo_last_version';
+
+export function checkForVersionMismatch(): boolean {
+  const lastVersion = localStorage.getItem(LAST_VERSION_KEY);
+  const currentVersion = BUILD_TIMESTAMP.toString();
   
-  // 1. Přesunout POUZE exercises.machine_id
-  await supabase
-    .from('exercises')
-    .update({ machine_id: primaryId })
-    .in('machine_id', duplicateIds);
+  if (lastVersion && lastVersion !== currentVersion) {
+    return true; // Verze se neshodují
+  }
   
-  // 2. Přesunout gym_machines (s ošetřením konfliktů)
-  // ... logika pro přesměrování nebo smazání duplicitních vazeb
-  
-  // 3. Smazat duplicitní stroje
-  await supabase
-    .from('machines')
-    .delete()
-    .in('id', duplicateIds);
+  localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+  return false;
+}
+
+export function markVersionUpdated() {
+  localStorage.setItem(LAST_VERSION_KEY, BUILD_TIMESTAMP.toString());
+}
+```
+
+**Změna `vite.config.ts`:**
+```typescript
+export default defineConfig(({ mode }) => ({
+  define: {
+    __BUILD_TIMESTAMP__: Date.now(),
+  },
+  // ... zbytek konfigurace
+}));
+```
+
+### 3. Update Banner komponenta
+
+**Nový soubor `src/components/UpdateBanner.tsx`:**
+```typescript
+const UpdateBanner = ({ onUpdate }: { onUpdate: () => void }) => {
+  return (
+    <motion.div 
+      className="fixed top-0 left-0 right-0 z-[9999] bg-primary text-white px-4 py-3"
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+    >
+      <div className="flex items-center justify-between max-w-md mx-auto">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span className="font-medium">Nová verze je dostupná</span>
+        </div>
+        <Button size="sm" variant="secondary" onClick={onUpdate}>
+          Aktualizovat
+        </Button>
+      </div>
+    </motion.div>
+  );
 };
 ```
 
-## Soubor k úpravě
+### 4. Vylepšená registrace SW (`src/main.tsx`)
+
+```typescript
+import { checkForVersionMismatch, markVersionUpdated } from '@/lib/appVersion';
+
+// Kontrola verze při startu
+if (checkForVersionMismatch()) {
+  // Vymazat SW cache a reload
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    });
+  }
+  markVersionUpdated();
+  window.location.reload();
+}
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // Zobrazit UpdateBanner místo confirm()
+    showUpdateBanner();
+  },
+  onRegisteredSW(swUrl, registration) {
+    // Kontrola při každém spuštění, ne jen hodinově
+    if (registration) {
+      registration.update();
+      
+      // Pak kontrola každých 5 minut při aktivním používání
+      setInterval(() => {
+        if (!document.hidden) {
+          registration.update();
+        }
+      }, 5 * 60 * 1000);
+    }
+  },
+});
+```
+
+## Soubory k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| `src/pages/admin/MachinesManagement.tsx` | Přidat tlačítko, drawer, logiku pro detekci a sloučení duplicit |
+| `public/sw.js` | Změna caching strategií na NetworkFirst pro kritická data |
+| `vite.config.ts` | Přidat `define: { __BUILD_TIMESTAMP__ }` |
+| `src/lib/appVersion.ts` | NOVÝ - verzování a kontrola updatů |
+| `src/vite-env.d.ts` | Deklarace `__BUILD_TIMESTAMP__` typu |
+| `src/main.tsx` | Kontrola verze při startu, vylepšená SW registrace |
+| `src/components/UpdateBanner.tsx` | NOVÝ - UI pro update notifikaci |
+| `src/App.tsx` | Integrace UpdateBanner komponenty |
 
 ## Výsledek
 
-- Admin může jedním kliknutím najít všechny duplicitní stroje
-- Vidí kde je každý stroj použit (cviky, posilovny)
-- Může zvolit primární stroj a sloučit ostatní
-- Reference z `exercises.machine_id` a `gym_machines` se přesměrují
-- **`secondary_machine_id` zůstane beze změny**
-- Duplicitní záznamy se smažou
+Po implementaci:
+1. **Kritická data (profil, plán)** se vždy stahují čerstvá ze serveru
+2. **Při novém deployi** se uživatelům zobrazí banner s povinnou aktualizací
+3. **Při neshodě verzí** (staré PWA) proběhne automatický refresh
+4. **Offline režim** stále funguje díky fallback cache
+5. **Kontrola updatů** probíhá při každém spuštění, ne jen hodinově
 
