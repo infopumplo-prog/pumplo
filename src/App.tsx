@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,9 @@ import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppLayout from "@/components/AppLayout";
+import UpdateBanner from "@/components/UpdateBanner";
+import { setUpdateBannerCallback, updateSW } from "@/main";
+import { forceAppRefresh } from "@/lib/appVersion";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
@@ -165,20 +169,43 @@ const AppRoutes = () => (
   </Routes>
 );
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+const App = () => {
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
+  useEffect(() => {
+    // Register callback for update banner
+    setUpdateBannerCallback(() => {
+      setShowUpdateBanner(true);
+    });
+  }, []);
+
+  const handleUpdate = async () => {
+    try {
+      // Try to update via SW first
+      await updateSW(true);
+    } catch (e) {
+      console.error('[App] SW update failed, forcing refresh:', e);
+      // Fallback to force refresh
+      await forceAppRefresh();
+    }
+  };
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          {showUpdateBanner && <UpdateBanner onUpdate={handleUpdate} />}
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;

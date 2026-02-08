@@ -8,16 +8,74 @@ import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 // Precache static assets (Vite PWA injects manifest here)
 precacheAndRoute(self.__WB_MANIFEST || []);
 
-// Runtime caching for Supabase API
-// Cache workout plans and exercises - critical for offline
+// ============================================
+// CRITICAL DATA - NetworkFirst (always try network, cache as fallback)
+// ============================================
+
+// User profiles - MUST be fresh
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
+  new NetworkFirst({
+    cacheName: 'user-profile-cache',
+    networkTimeoutSeconds: 5,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 10,
+        maxAgeSeconds: 60 * 60 * 24, // 24 hours fallback
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Workout plans - MUST be fresh
 registerRoute(
   /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
-  new StaleWhileRevalidate({
+  new NetworkFirst({
     cacheName: 'workout-plans-cache',
+    networkTimeoutSeconds: 5,
     plugins: [
       new ExpirationPlugin({
         maxEntries: 50,
-        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days fallback
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Workout exercises - MUST be fresh
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_exercises.*/i,
+  new NetworkFirst({
+    cacheName: 'workout-exercises-cache',
+    networkTimeoutSeconds: 5,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days fallback
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Workout sessions/history - NetworkFirst for fresh data
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_sessions.*/i,
+  new NetworkFirst({
+    cacheName: 'workout-history-cache',
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days fallback
       }),
       new CacheableResponsePlugin({
         statuses: [0, 200],
@@ -27,9 +85,82 @@ registerRoute(
 );
 
 registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_exercises.*/i,
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_session_sets.*/i,
+  new NetworkFirst({
+    cacheName: 'workout-sets-cache',
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 500,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days fallback
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// ============================================
+// SEMI-STATIC DATA - StaleWhileRevalidate (show cache, update in background)
+// ============================================
+
+// Day templates - changes rarely
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/day_templates.*/i,
   new StaleWhileRevalidate({
-    cacheName: 'workout-exercises-cache',
+    cacheName: 'day-templates-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Exercises catalog - StaleWhileRevalidate instead of CacheFirst
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'exercises-catalog-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 500,
+        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days (was 30)
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Training goals/roles - static reference data
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/(training_goals|training_roles).*/i,
+  new CacheFirst({
+    cacheName: 'training-reference-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24 * 14, // 14 days
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// Machines catalog
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/machines.*/i,
+  new StaleWhileRevalidate({
+    cacheName: 'machines-cache',
     plugins: [
       new ExpirationPlugin({
         maxEntries: 200,
@@ -42,80 +173,14 @@ registerRoute(
   })
 );
 
-// Cache workout history
+// Gyms data
 registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_sessions.*/i,
+  /^https:\/\/.*\.supabase\.co\/rest\/v1\/(gyms|public_gyms|gym_machines).*/i,
   new StaleWhileRevalidate({
-    cacheName: 'workout-history-cache',
+    cacheName: 'gyms-cache',
     plugins: [
       new ExpirationPlugin({
         maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-  })
-);
-
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/workout_session_sets.*/i,
-  new StaleWhileRevalidate({
-    cacheName: 'workout-sets-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 500,
-        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-  })
-);
-
-// Cache day templates and exercises catalog
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/day_templates.*/i,
-  new CacheFirst({
-    cacheName: 'day-templates-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-  })
-);
-
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
-  new CacheFirst({
-    cacheName: 'exercises-catalog-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 500,
-        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-      }),
-      new CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-    ],
-  })
-);
-
-// Cache user profile
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
-  new StaleWhileRevalidate({
-    cacheName: 'user-profile-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 10,
         maxAgeSeconds: 60 * 60 * 24, // 24 hours
       }),
       new CacheableResponsePlugin({
@@ -125,11 +190,14 @@ registerRoute(
   })
 );
 
+// ============================================
 // Fallback for other Supabase requests
+// ============================================
 registerRoute(
   /^https:\/\/.*\.supabase\.co\/.*/i,
   new NetworkFirst({
     cacheName: 'supabase-cache',
+    networkTimeoutSeconds: 10,
     plugins: [
       new ExpirationPlugin({
         maxEntries: 100,
