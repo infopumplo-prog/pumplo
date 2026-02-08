@@ -1,232 +1,160 @@
 
 
-# Řešení problému se zastaralými verzemi PWA - Jednou provždy
+# Kompletní řešení správy strojů a cviků v Admin panelu
 
-## Identifikované problémy
+## Shrnutí strategie
 
-### 1. Agresivní caching API dat (KRITICKÉ)
-Současný service worker používá **StaleWhileRevalidate** pro `user_profiles` a workout data. To znamená:
-- Uživatel dostane NEJDŘÍVE starou verzi z cache
-- Až POTOM se stahuje nová verze (ale uživatel ji nevidí okamžitě)
-- Pokud uživatel zavře aplikaci před dokončením update, vidí pořád starou verzi
+### Kategorizace vybavení (machines tabulka)
 
-### 2. CacheFirst pro exercises (KRITICKÉ)
-Pro katalog cviků se používá **CacheFirst** s 30denní expirací:
-```javascript
-registerRoute(/exercises.*/, new CacheFirst({ maxAgeSeconds: 60 * 60 * 24 * 30 }))
+| equipment_category | Příklady | Popis |
+|-------------------|----------|-------|
+| `machine` | Leg press, Cable machine, Lat pulldown | Fitness stroje s vedením pohybu |
+| `free_weight` | Dumbbells, Barbell, Kettlebell, EZ bar | Volné váhy |
+| `accessory` | Adjustable Bench, Incline bench, Ab mat | Příslušenství/podpůrné vybavení |
+
+### Kategorizace cviků (exercises tabulka)
+
+| equipment_type | machine_id | secondary_machine_id | Příklad |
+|----------------|------------|---------------------|---------|
+| `dumbbell` | → Dumbbells | → Incline bench | Incline Dumbbell Press |
+| `barbell` | → Barbell | → Bench press | Bench Press |
+| `machine` | → Leg press | null | Leg Press |
+| `bodyweight` | null | null | Push-up |
+| `cable` | → Cable machine | null | Cable Fly |
+
+## Současný stav (problémy)
+
+1. **Stroje špatně kategorizované**: "Dumbbells", "Barbell", "Incline bench" mají `equipment_category: machine` místo `free_weight`/`accessory`
+2. **0 z 1028 cviků má `secondary_machine_id`**: Pole existuje ale není používáno
+3. **Admin panel cviků**: Chybí možnost nastavit `secondary_machine_id`
+4. **Admin panel strojů**: Nevidíme které cviky stroj používají
+
+## Plán implementace
+
+### Fáze 1: Rozšíření Admin panelu strojů
+
+**Změny v `MachinesManagement.tsx`:**
+- Při editaci stroje zobrazit seznam napojených cviků
+- Zobrazit počet cviků u každého stroje v seznamu
+- Při kliknutí na cvik přejít do editace cviku
+
 ```
-To znamená, že jakékoli změny v cvicích se projeví až za 30 dní!
-
-### 3. Chybí verzování aplikace
-Není implementováno žádné sledování verze buildu. Když se nasadí nová verze, uživatel nemá jak zjistit, že běží na staré.
-
-### 4. Prompt "Aktualizovat?" se snadno přehlédne
-Současná implementace v `main.tsx` používá `confirm()`, který:
-- Na iOS Safari PWA nefunguje správně
-- Uživatelé ho často odmítnou reflexivně
-- Po odmítnutí se nezobrazí znovu
-
-### 5. Hodinový interval kontroly updatů
-```javascript
-setInterval(() => registration.update(), 60 * 60 * 1000);
-```
-Když uživatel spustí PWA z plochy, může běžet hodinu na staré verzi.
-
-## Navrhované řešení
-
-### Fáze 1: Změna caching strategie pro kritická data
-
-**Změnit `public/sw.js`:**
-
-| Endpoint | Současná strategie | Nová strategie |
-|----------|-------------------|----------------|
-| `user_profiles` | StaleWhileRevalidate (24h) | **NetworkFirst** (fallback 5s) |
-| `user_workout_plans` | StaleWhileRevalidate (7d) | **NetworkFirst** (fallback 5s) |
-| `workout_sessions` | StaleWhileRevalidate (7d) | **NetworkFirst** (fallback 3s) |
-| `exercises` | CacheFirst (30d) | **StaleWhileRevalidate** (7d) |
-
-NetworkFirst = vždy se pokusí stáhnout čerstvá data, cache pouze jako fallback při offline.
-
-### Fáze 2: Automatická aktualizace při spuštění PWA
-
-**Nový přístup v `main.tsx`:**
-1. Kontrola updatů ihned při spuštění (ne až za hodinu)
-2. Místo `confirm()` použít vlastní UI komponentu
-3. Při kritickém updatu automaticky reload bez dotazu
-
-### Fáze 3: Verzování a force-refresh mechanismus
-
-**Nový soubor `src/lib/appVersion.ts`:**
-- Exportuje BUILD_TIMESTAMP generovaný při buildu
-- Ukládá do localStorage kdy naposledy proběhl refresh
-- Při neshodě verzí vynutí reload
-
-**Změna `vite.config.ts`:**
-- Přidat define plugin pro `__BUILD_TIMESTAMP__`
-
-### Fáze 4: Vylepšený Update Banner
-
-**Nová komponenta `src/components/UpdateBanner.tsx`:**
-- Zobrazí se jako sticky banner nahoře
-- Nelze ignorovat - pouze tlačítko "Aktualizovat"
-- Uloží do sessionStorage že update proběhl
-
-## Technické detaily implementace
-
-### 1. Úprava Service Workeru (`public/sw.js`)
-
-```javascript
-// ZMĚNA: user_profiles - NetworkFirst místo StaleWhileRevalidate
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_profiles.*/i,
-  new NetworkFirst({
-    cacheName: 'user-profile-cache',
-    networkTimeoutSeconds: 5, // Fallback na cache po 5s
-    plugins: [...]
-  })
-);
-
-// ZMĚNA: exercises - StaleWhileRevalidate místo CacheFirst
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/exercises.*/i,
-  new StaleWhileRevalidate({
-    cacheName: 'exercises-catalog-cache',
-    plugins: [
-      new ExpirationPlugin({
-        maxAgeSeconds: 60 * 60 * 24 * 7, // 7 dní místo 30
-      }),
-    ],
-  })
-);
-
-// ZMĚNA: workout_plans - NetworkFirst
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/rest\/v1\/user_workout_plans.*/i,
-  new NetworkFirst({
-    cacheName: 'workout-plans-cache',
-    networkTimeoutSeconds: 5,
-    plugins: [...]
-  })
-);
+┌─────────────────────────────────────────┐
+│  Upravit stroj                          │
+├─────────────────────────────────────────┤
+│  Název: [Dumbbells              ]       │
+│  Kategorie: [Volná váha ▼]              │
+│  □ Kardio vybavení                      │
+│                                         │
+│  ── Napojené cviky (45) ──              │
+│  ┌───────────────────────────────────┐  │
+│  │ Dumbbell Bench Press              │  │
+│  │ equipment_type: dumbbell          │  │
+│  │ secondary: Incline bench ❌       │  │
+│  └───────────────────────────────────┘  │
+│  ┌───────────────────────────────────┐  │
+│  │ Incline Dumbbell Fly              │  │
+│  │ equipment_type: dumbbell          │  │
+│  │ secondary: (žádný) [+ Přidat]     │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+└─────────────────────────────────────────┘
 ```
 
-### 2. Verzování aplikace
+### Fáze 2: Rozšíření Admin panelu cviků
 
-**Nový soubor `src/lib/appVersion.ts`:**
-```typescript
-// BUILD_TIMESTAMP je injektován při buildu
-export const BUILD_TIMESTAMP = __BUILD_TIMESTAMP__ || Date.now();
-
-const LAST_VERSION_KEY = 'pumplo_last_version';
-
-export function checkForVersionMismatch(): boolean {
-  const lastVersion = localStorage.getItem(LAST_VERSION_KEY);
-  const currentVersion = BUILD_TIMESTAMP.toString();
-  
-  if (lastVersion && lastVersion !== currentVersion) {
-    return true; // Verze se neshodují
-  }
-  
-  localStorage.setItem(LAST_VERSION_KEY, currentVersion);
-  return false;
-}
-
-export function markVersionUpdated() {
-  localStorage.setItem(LAST_VERSION_KEY, BUILD_TIMESTAMP.toString());
-}
-```
-
-**Změna `vite.config.ts`:**
-```typescript
-export default defineConfig(({ mode }) => ({
-  define: {
-    __BUILD_TIMESTAMP__: Date.now(),
-  },
-  // ... zbytek konfigurace
-}));
-```
-
-### 3. Update Banner komponenta
-
-**Nový soubor `src/components/UpdateBanner.tsx`:**
-```typescript
-const UpdateBanner = ({ onUpdate }: { onUpdate: () => void }) => {
-  return (
-    <motion.div 
-      className="fixed top-0 left-0 right-0 z-[9999] bg-primary text-white px-4 py-3"
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-    >
-      <div className="flex items-center justify-between max-w-md mx-auto">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-5 h-5 animate-spin" />
-          <span className="font-medium">Nová verze je dostupná</span>
-        </div>
-        <Button size="sm" variant="secondary" onClick={onUpdate}>
-          Aktualizovat
-        </Button>
-      </div>
-    </motion.div>
-  );
-};
-```
-
-### 4. Vylepšená registrace SW (`src/main.tsx`)
+**Změny v `ExercisesManagement.tsx`:**
+- Přidat pole pro `secondary_machine_id` (zobrazit vždy, ne jen pro typ machine)
+- Zobrazovat oba stroje v seznamu cviků
 
 ```typescript
-import { checkForVersionMismatch, markVersionUpdated } from '@/lib/appVersion';
-
-// Kontrola verze při startu
-if (checkForVersionMismatch()) {
-  // Vymazat SW cache a reload
-  if ('caches' in window) {
-    caches.keys().then(names => {
-      names.forEach(name => caches.delete(name));
-    });
-  }
-  markVersionUpdated();
-  window.location.reload();
-}
-
-const updateSW = registerSW({
-  onNeedRefresh() {
-    // Zobrazit UpdateBanner místo confirm()
-    showUpdateBanner();
-  },
-  onRegisteredSW(swUrl, registration) {
-    // Kontrola při každém spuštění, ne jen hodinově
-    if (registration) {
-      registration.update();
-      
-      // Pak kontrola každých 5 minut při aktivním používání
-      setInterval(() => {
-        if (!document.hidden) {
-          registration.update();
-        }
-      }, 5 * 60 * 1000);
-    }
-  },
+// Nový formulářový stav
+const [form, setForm] = useState({
+  // ... existující pole
+  machine_id: '',
+  secondary_machine_id: '',  // NOVÉ
 });
+
+// V draweru
+<div>
+  <Label>Primární vybavení (machine_id)</Label>
+  <Select value={form.machine_id} onValueChange={...}>
+    {machines.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+  </Select>
+</div>
+
+<div>
+  <Label>Sekundární vybavení (secondary_machine_id)</Label>
+  <Select value={form.secondary_machine_id} onValueChange={...}>
+    <SelectItem value="">Žádné</SelectItem>
+    {machines.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+  </Select>
+</div>
 ```
 
-## Soubory k úpravě
+### Fáze 3: Hromadná oprava kategorií strojů
+
+Přidat tlačítko "Opravit kategorie" které automaticky přenastaví:
+
+| Stroj obsahující | Nová kategorie |
+|-----------------|----------------|
+| "dumbbell", "jednoručky" | `free_weight` |
+| "barbell", "činka" | `free_weight` |
+| "kettlebell" | `free_weight` |
+| "bench", "lavička" | `accessory` |
+| "mat", "podložka" | `accessory` |
+| "roller", "válec" | `accessory` |
+
+### Fáze 4: Rychlé přidání secondary_machine_id
+
+V detailu stroje u každého cviku možnost rychle nastavit sekundární stroj:
+
+```
+Dumbbell Bench Press
+├─ machine_id: Dumbbells ✓
+├─ secondary_machine_id: [Vybrat ▼]
+│   ├─ Adjustable Bench
+│   ├─ Incline bench
+│   ├─ Decline bench
+│   └─ Flat bench
+```
+
+## Technické změny
+
+### Soubory k úpravě
 
 | Soubor | Změna |
 |--------|-------|
-| `public/sw.js` | Změna caching strategií na NetworkFirst pro kritická data |
-| `vite.config.ts` | Přidat `define: { __BUILD_TIMESTAMP__ }` |
-| `src/lib/appVersion.ts` | NOVÝ - verzování a kontrola updatů |
-| `src/vite-env.d.ts` | Deklarace `__BUILD_TIMESTAMP__` typu |
-| `src/main.tsx` | Kontrola verze při startu, vylepšená SW registrace |
-| `src/components/UpdateBanner.tsx` | NOVÝ - UI pro update notifikaci |
-| `src/App.tsx` | Integrace UpdateBanner komponenty |
+| `src/pages/admin/MachinesManagement.tsx` | Zobrazení napojených cviků, možnost rychle nastavit secondary_machine_id |
+| `src/pages/admin/ExercisesManagement.tsx` | Přidat pole pro secondary_machine_id |
+| Nový hook `useMachineExercises.ts` | Načtení cviků pro konkrétní stroj |
+
+### Dotazy na databázi
+
+```sql
+-- Načtení cviků pro stroj (jako primární NEBO sekundární)
+SELECT e.*, 
+  m1.name as primary_machine_name,
+  m2.name as secondary_machine_name
+FROM exercises e
+LEFT JOIN machines m1 ON e.machine_id = m1.id  
+LEFT JOIN machines m2 ON e.secondary_machine_id = m2.id
+WHERE e.machine_id = :machineId OR e.secondary_machine_id = :machineId
+
+-- Oprava kategorií strojů
+UPDATE machines SET equipment_category = 'free_weight' 
+WHERE LOWER(name) LIKE '%dumbbell%' OR LOWER(name) LIKE '%barbell%' OR LOWER(name) LIKE '%kettlebell%';
+
+UPDATE machines SET equipment_category = 'accessory'
+WHERE LOWER(name) LIKE '%bench%' OR LOWER(name) LIKE '%mat%' OR LOWER(name) LIKE '%roller%';
+```
 
 ## Výsledek
 
 Po implementaci:
-1. **Kritická data (profil, plán)** se vždy stahují čerstvá ze serveru
-2. **Při novém deployi** se uživatelům zobrazí banner s povinnou aktualizací
-3. **Při neshodě verzí** (staré PWA) proběhne automatický refresh
-4. **Offline režim** stále funguje díky fallback cache
-5. **Kontrola updatů** probíhá při každém spuštění, ne jen hodinově
+1. **Stroje správně kategorizované** - Dumbbells jako `free_weight`, Bench jako `accessory`
+2. **Viditelnost vazeb** - u každého stroje vidíme které cviky ho používají
+3. **Kompletní editace cviků** - možnost nastavit oba stroje (primary + secondary)
+4. **Rychlá oprava dat** - hromadná změna kategorií jedním kliknutím
+5. **Algoritmus výběru cviků** - bude moci správně kontrolovat dostupnost obou kusů vybavení
 
