@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Loader2, X, Plus, Link2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, X, Plus, Link2, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +35,7 @@ const MachineExercisesList = ({
   isLoading,
   onUpdateSecondary,
 }: MachineExercisesListProps) => {
+  const navigate = useNavigate();
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,7 +100,18 @@ const MachineExercisesList = ({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{exercise.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm truncate">{exercise.name}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => navigate(`/admin/exercises?edit=${exercise.id}`)}
+                    title="Otevřít cvik"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                </div>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   {exercise.equipment_type && (
                     <Badge variant="outline" className="text-xs">
