@@ -26,11 +26,13 @@ import BusinessLayout from './BusinessLayout';
 import { useGym, GymMachine } from '@/hooks/useGym';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import { BenchConfigSelector, BENCH_CONFIGS } from '@/components/business/BenchConfigSelector';
 
 interface Machine {
   id: string;
   name: string;
   description: string | null;
+  requires_bench_config: boolean | null;
 }
 
 const GymMachines = () => {
@@ -43,6 +45,7 @@ const GymMachines = () => {
   const [selectedGymMachine, setSelectedGymMachine] = useState<GymMachine | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [maxWeight, setMaxWeight] = useState<string>('');
+  const [benchConfigs, setBenchConfigs] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -51,7 +54,7 @@ const GymMachines = () => {
     const fetchMachines = async () => {
       const { data } = await supabase
         .from('machines')
-        .select('id, name, description')
+        .select('id, name, description, requires_bench_config')
         .order('name');
       
       if (data) {
@@ -72,7 +75,8 @@ const GymMachines = () => {
     const result = await addMachine(
       selectedMachine.id,
       quantity,
-      maxWeight ? parseFloat(maxWeight) : undefined
+      maxWeight ? parseFloat(maxWeight) : undefined,
+      selectedMachine.requires_bench_config ? benchConfigs : undefined
     );
     setIsSubmitting(false);
     if (result.success) {
@@ -80,21 +84,25 @@ const GymMachines = () => {
       setSelectedMachine(null);
       setQuantity(1);
       setMaxWeight('');
+      setBenchConfigs([]);
     }
   };
 
   const handleEditMachine = async () => {
     if (!selectedGymMachine) return;
     setIsSubmitting(true);
+    const requiresBenchConfig = selectedGymMachine.machine?.requires_bench_config;
     const result = await updateMachine(
       selectedGymMachine.id,
       quantity,
-      maxWeight ? parseFloat(maxWeight) : undefined
+      maxWeight ? parseFloat(maxWeight) : undefined,
+      requiresBenchConfig ? benchConfigs : undefined
     );
     setIsSubmitting(false);
     if (result.success) {
       setIsEditDrawerOpen(false);
       setSelectedGymMachine(null);
+      setBenchConfigs([]);
     }
   };
 
@@ -108,7 +116,13 @@ const GymMachines = () => {
     setSelectedGymMachine(gm);
     setQuantity(gm.quantity);
     setMaxWeight(gm.max_weight_kg?.toString() || '');
+    setBenchConfigs(gm.bench_configs || []);
     setIsEditDrawerOpen(true);
+  };
+
+  const getBenchConfigLabels = (configs: string[] | null) => {
+    if (!configs || configs.length === 0) return null;
+    return configs.map(c => BENCH_CONFIGS.find(bc => bc.value === c)?.label || c).join(', ');
   };
 
   if (isLoading) {
@@ -194,6 +208,11 @@ const GymMachines = () => {
                         {gm.max_weight_kg && (
                           <Badge variant="outline" className="text-xs">
                             max {gm.max_weight_kg} kg
+                          </Badge>
+                        )}
+                        {gm.bench_configs && gm.bench_configs.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            {getBenchConfigLabels(gm.bench_configs)}
                           </Badge>
                         )}
                       </div>
@@ -301,6 +320,12 @@ const GymMachines = () => {
                         onChange={(e) => setMaxWeight(e.target.value)}
                       />
                     </div>
+                    {selectedMachine?.requires_bench_config && (
+                      <BenchConfigSelector
+                        selectedConfigs={benchConfigs}
+                        onChange={setBenchConfigs}
+                      />
+                    )}
                     <Button 
                       className="w-full" 
                       onClick={handleAddMachine}
@@ -354,7 +379,13 @@ const GymMachines = () => {
                       onChange={(e) => setMaxWeight(e.target.value)}
                     />
                   </div>
-                  <Button 
+                  {selectedGymMachine.machine?.requires_bench_config && (
+                    <BenchConfigSelector
+                      selectedConfigs={benchConfigs}
+                      onChange={setBenchConfigs}
+                    />
+                  )}
+                  <Button
                     className="w-full" 
                     onClick={handleEditMachine}
                     disabled={isSubmitting}

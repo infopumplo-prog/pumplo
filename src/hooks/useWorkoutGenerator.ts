@@ -157,27 +157,39 @@ export const useWorkoutGenerator = () => {
   };
 
   /**
-   * Fetch gym equipment data
+   * Fetch gym equipment data including bench configurations
    */
   const fetchGymEquipment = async (gymId: string) => {
     const { data: gymMachines, error } = await supabase
       .from('gym_machines')
-      .select('machine_id')
+      .select('machine_id, bench_configs')
       .eq('gym_id', gymId);
 
     if (error) {
       console.error('[WorkoutGenerator] Error fetching gym machines:', error);
-      return { machineIds: new Set<string>(), equipmentTypes: new Set<string>() };
+      return { 
+        machineIds: new Set<string>(), 
+        equipmentTypes: new Set<string>(),
+        machineIdToBenchConfigs: new Map<string, string[]>()
+      };
     }
 
     const machineIds = new Set(
       gymMachines?.map(m => m.machine_id).filter(Boolean) || []
     );
 
+    // Build map of machine_id to bench_configs
+    const machineIdToBenchConfigs = new Map<string, string[]>();
+    for (const gm of gymMachines || []) {
+      if (gm.bench_configs && gm.bench_configs.length > 0) {
+        machineIdToBenchConfigs.set(gm.machine_id, gm.bench_configs);
+      }
+    }
+
     // For now, derive equipment types from available - this could be enhanced
     const equipmentTypes = new Set<string>(['machine', 'cable', 'bodyweight', 'free_weights']);
 
-    return { machineIds, equipmentTypes };
+    return { machineIds, equipmentTypes, machineIdToBenchConfigs };
   };
 
   /**
@@ -277,7 +289,7 @@ export const useWorkoutGenerator = () => {
       console.log('[WorkoutGenerator v2.0] Selection seed:', selectionSeed);
 
       // Fetch gym equipment
-      const { machineIds, equipmentTypes } = await fetchGymEquipment(gymId);
+      const { machineIds, equipmentTypes, machineIdToBenchConfigs } = await fetchGymEquipment(gymId);
       console.log('[WorkoutGenerator v2.0] Available machines:', machineIds.size);
 
       // Fetch exercise history for anti-repetition
@@ -333,6 +345,7 @@ export const useWorkoutGenerator = () => {
             equipmentPreference,
             equipmentAvailable: equipmentTypes,
             machineIdsAvailable: machineIds,
+            machineIdToBenchConfigs,
             coveredMusclesSession,
             usedExerciseIdsToday,
             usedEquipmentTypes,
