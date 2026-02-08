@@ -155,6 +155,20 @@ const ExercisesManagement = () => {
     fetchData();
   }, []);
 
+  // Handle deep link from machine exercises list
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (editId && exercises.length > 0) {
+      const exercise = exercises.find(e => e.id === editId);
+      if (exercise) {
+        openEditDrawer(exercise);
+        // Clean URL
+        window.history.replaceState({}, '', '/admin/exercises');
+      }
+    }
+  }, [exercises]);
+
   // Filter exercises based on search and category
   const filteredExercises = useMemo(() => {
     return exercises.filter((exercise) => {
@@ -476,14 +490,14 @@ const ExercisesManagement = () => {
               <div>
                 <Label>Primární vybavení (machine_id)</Label>
                 <Select
-                  value={form.machine_id}
-                  onValueChange={(value) => setForm({ ...form, machine_id: value })}
+                  value={form.machine_id || '__none__'}
+                  onValueChange={(value) => setForm({ ...form, machine_id: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Vyber vybavení" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Žádné</SelectItem>
+                    <SelectItem value="__none__">Žádné</SelectItem>
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}
@@ -496,14 +510,14 @@ const ExercisesManagement = () => {
               <div>
                 <Label>Sekundární vybavení (secondary_machine_id)</Label>
                 <Select
-                  value={form.secondary_machine_id}
-                  onValueChange={(value) => setForm({ ...form, secondary_machine_id: value })}
+                  value={form.secondary_machine_id || '__none__'}
+                  onValueChange={(value) => setForm({ ...form, secondary_machine_id: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Vyber sekundární vybavení" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Žádné</SelectItem>
+                    <SelectItem value="__none__">Žádné</SelectItem>
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}
