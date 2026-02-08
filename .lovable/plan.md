@@ -1,138 +1,68 @@
 
+# Oprava chybějících prvků v Admin panelu
 
-# Přidání konfigurace Bench Press do gym_machines
+## Nalezené problémy
 
-## Problém
+### 1. Chybí Feedback tlačítko v Admin panelu
+- `FeedbackButton` je pouze v `AppLayout.tsx` (řádek 13)
+- Admin stránky používají vlastní `AdminLayout.tsx`, který FeedbackButton neobsahuje
 
-Aktuálně máme jeden stroj "Bench press" (`acbf79b8-...`), ale posilovny mohou mít různé typy:
-- Pouze **flat** (rovná lavice)
-- **Incline** lavice (šikmo nahoru)
-- **Decline** lavice (šikmo dolů)  
-- **Adjustable** (nastavitelná - všechny konfigurace)
+### 2. Tlačítko odhlášení
+- Tlačítko odhlášení v AdminLayout **existuje** (řádek 46-51) - malá ikona LogOut v pravém horním rohu
+- Pokud nefunguje, je to bug v logout funkci
 
-Uživatel s běžnou flat lavicí by neměl dostávat incline/decline cviky.
+### 3. Proč se zobrazuje "Dokonči svůj profil"
+- Screenshot ukazuje preview na `/` (Home page), ne na `/admin/exercises`
+- Po deploy změn se preview pravděpodobně refreshlo na domovskou stránku
+- Řešení: ručně navigovat zpět na `/admin/exercises`
 
-## Navrhované řešení
+### 4. Chybí pole pro `required_bench_config` ve formuláři cviků
+- Sloupec `exercises.required_bench_config` v databázi existuje (text)
+- Ve formuláři v `ExercisesManagement.tsx` chybí UI pro jeho editaci
 
-### 1. Rozšířit tabulku `gym_machines` o konfigurace
+## Plán oprav
 
-```sql
-ALTER TABLE gym_machines 
-ADD COLUMN bench_configs text[] DEFAULT NULL;
+### Krok 1: Přidat FeedbackButton do AdminLayout
 
--- bench_configs obsahuje kombinaci: 'flat', 'incline', 'decline'
--- NULL = stroj nepotřebuje konfiguraci (není bench press)
--- '{flat}' = pouze rovná
--- '{flat,incline,decline}' = adjustable, podporuje vše
+```tsx
+// src/pages/admin/AdminLayout.tsx
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
+
+// V return JSX přidat před </div> na konci:
+<FeedbackButton />
 ```
 
-### 2. Přidat flagy na cviky, jakou konfiguraci vyžadují
+### Krok 2: Přidat pole required_bench_config do formuláře cviků
 
-```sql
-ALTER TABLE exercises 
-ADD COLUMN required_bench_config text DEFAULT NULL;
+Přidat nové pole do formuláře v `ExercisesManagement.tsx`:
 
--- 'flat' pro Barbell Bench Press
--- 'incline' pro Barbell Bench Press Incline  
--- 'decline' pro Barbell Bench Press Decline
--- NULL pro cviky které bench nepotřebují
-```
+| Pozice | Změna |
+|--------|-------|
+| Interface Exercise | Přidat `required_bench_config: string \| null` |
+| form state | Přidat `required_bench_config: ''` |
+| openEditDrawer | Přidat `required_bench_config: exercise.required_bench_config \|\| ''` |
+| handleSave | Přidat `required_bench_config: form.required_bench_config \|\| null` |
+| JSX formuláře | Přidat Select s hodnotami `flat`, `incline`, `decline` |
 
-### 3. Nastavit required_bench_config pro existující cviky
-
-| Cvik | required_bench_config |
-|------|----------------------|
-| Barbell Bench Press | flat |
-| Barbell Bench Press Incline | incline |
-| Barbell Bench Press Decline | decline |
-| Dumbbell Incline Bench Press | incline |
-| Dumbbell Decline Bench Press | decline |
-
-### 4. Upravit algoritmus výběru cviků
+### Krok 3: Konstanty pro bench config
 
 ```typescript
-// V selectionAlgorithm.ts - getCandidates()
-
-// Přidat kontrolu bench konfigurace
-if (ex.required_bench_config && ex.machine_id) {
-  // Najdi gym_machine pro tento stroj
-  const gymMachine = await getGymMachineConfig(context.gymId, ex.machine_id);
-  if (!gymMachine?.bench_configs?.includes(ex.required_bench_config)) {
-    return false; // Posilovna nemá tuto konfiguraci
-  }
-}
-```
-
-### 5. UI pro B2B - výběr konfigurace při přidání bench press
-
-```
-┌─────────────────────────────────────────┐
-│  Bench press                            │
-│                                         │
-│  Konfigurace lavice:                    │
-│  ☑ Flat (rovná)                         │
-│  ☐ Incline (šikmá nahoru)               │
-│  ☐ Decline (šikmá dolů)                 │
-│                                         │
-│  Počet kusov: [1]                       │
-│  Max váha: [___] kg                     │
-│                                         │
-│  [Pridať stroj]                         │
-└─────────────────────────────────────────┘
+const BENCH_CONFIGS = [
+  { value: 'flat', label: 'Flat (rovná)' },
+  { value: 'incline', label: 'Incline (šikmá nahoru)' },
+  { value: 'decline', label: 'Decline (šikmá dolů)' },
+];
 ```
 
 ## Změny v souborech
 
 | Soubor | Změna |
 |--------|-------|
-| **Migrace SQL** | Přidání sloupců `gym_machines.bench_configs` a `exercises.required_bench_config` |
-| `src/contexts/GymContext.tsx` | Rozšířit `GymMachine` interface, upravit `addMachine` a `updateMachine` |
-| `src/pages/business/GymMachines.tsx` | Přidat checkbox UI pro bench konfigurace |
-| `src/lib/selectionAlgorithm.ts` | Přidat kontrolu bench konfigurace do filtru |
-| `src/integrations/supabase/types.ts` | Auto-aktualizace po migraci |
-
-## Technické detaily
-
-### Nový interface GymMachine
-
-```typescript
-export interface GymMachine {
-  id: string;
-  gym_id: string;
-  machine_id: string;
-  quantity: number;
-  max_weight_kg: number | null;
-  bench_configs: string[] | null;  // NEW: ['flat', 'incline', 'decline']
-  machine?: {
-    id: string;
-    name: string;
-    description: string | null;
-    image_url: string | null;
-  };
-}
-```
-
-### Seznam strojů vyžadujících konfiguraci
-
-Pro určení kdy zobrazit UI pro konfiguraci, označíme v `machines` tabulce:
-
-```sql
-ALTER TABLE machines 
-ADD COLUMN requires_bench_config boolean DEFAULT false;
-
-UPDATE machines SET requires_bench_config = true 
-WHERE name ILIKE '%bench press%';
-```
-
-### Dumbbell cviky s adjustable bench
-
-Pro dumbbell cviky jako "Dumbbell Incline Bench Press" nastavíme:
-- `required_bench_config = 'incline'`
-- Algoritmus zkontroluje `secondary_machine_id` (Adjustable Bench) nebo jakýkoliv bench s příslušnou konfigurací
+| `src/pages/admin/AdminLayout.tsx` | Přidat import a FeedbackButton |
+| `src/pages/admin/ExercisesManagement.tsx` | Přidat `required_bench_config` do interface, form state, save handler a UI |
 
 ## Výsledek
 
-1. Posilovna označí při přidání bench press jaké konfigurace podporuje
-2. Algoritmus automaticky vyfiltruje incline/decline cviky pokud posilovna nemá příslušnou konfiguraci
-3. Uživatelé dostanou jen cviky, které mohou reálně provést na dostupném vybavení
-
+1. Feedback tlačítko bude viditelné i v admin panelu
+2. Admin může nastavit `required_bench_config` pro jednotlivé cviky (flat/incline/decline)
+3. Algoritmus výběru pak bude správně filtrovat cviky podle dostupné konfigurace bench press v posilovně
