@@ -20,6 +20,7 @@ export interface Exercise {
   is_compound?: boolean;
   stability_rating?: number;
   slot_type?: string;
+  required_bench_config?: string | null;
 }
 
 export interface TargetMuscles {
@@ -50,6 +51,7 @@ export interface SelectionContext {
   equipmentPreference: string | null;
   equipmentAvailable: Set<string>; // equipment_types available at gym
   machineIdsAvailable: Set<string>; // actual machine UUIDs
+  machineIdToBenchConfigs: Map<string, string[]>; // machine_id -> bench configs available
   coveredMusclesSession: Set<string>;
   usedExerciseIdsToday: string[];
   usedEquipmentTypes: Set<string>;
@@ -389,6 +391,15 @@ export const getCandidates = async (
     if (options.strictEquipment) {
       if (ex.machine_id && !context.machineIdsAvailable.has(ex.machine_id)) {
         return false;
+      }
+      
+      // Check bench config requirements
+      if (ex.required_bench_config && ex.machine_id) {
+        const benchConfigs = context.machineIdToBenchConfigs.get(ex.machine_id);
+        if (!benchConfigs || !benchConfigs.includes(ex.required_bench_config)) {
+          // Gym doesn't have the required bench configuration for this exercise
+          return false;
+        }
       }
       
       // Check equipment type availability (unless bodyweight)

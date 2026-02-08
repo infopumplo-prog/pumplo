@@ -46,11 +46,13 @@ export interface GymMachine {
   machine_id: string;
   quantity: number;
   max_weight_kg: number | null;
+  bench_configs: string[] | null;
   machine?: {
     id: string;
     name: string;
     description: string | null;
     image_url: string | null;
+    requires_bench_config?: boolean;
   };
 }
 
@@ -72,8 +74,8 @@ interface GymContextType {
   }) => Promise<{ success: boolean; error?: string }>;
   updateGym: (updates: Partial<Gym>) => Promise<{ success: boolean; error?: string }>;
   togglePublish: () => Promise<void>;
-  addMachine: (machineId: string, quantity: number, maxWeight?: number) => Promise<{ success: boolean; error?: string }>;
-  updateMachine: (gymMachineId: string, quantity: number, maxWeight?: number) => Promise<{ success: boolean }>;
+  addMachine: (machineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => Promise<{ success: boolean; error?: string }>;
+  updateMachine: (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => Promise<{ success: boolean }>;
   removeMachine: (gymMachineId: string) => Promise<{ success: boolean }>;
   refetch: () => Promise<void>;
 }
@@ -156,7 +158,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       .from('gym_machines')
       .select(`
         *,
-        machine:machines(id, name, description, image_url)
+        machine:machines(id, name, description, image_url, requires_bench_config)
       `)
       .eq('gym_id', selectedGym.id);
 
@@ -267,7 +269,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addMachine = async (machineId: string, quantity: number, maxWeight?: number) => {
+  const addMachine = async (machineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => {
     if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
 
     const { error } = await supabase
@@ -277,6 +279,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
         machine_id: machineId,
         quantity,
         max_weight_kg: maxWeight || null,
+        bench_configs: benchConfigs || null,
       });
 
     if (error) {
@@ -291,12 +294,13 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
     return { success: true };
   };
 
-  const updateMachine = async (gymMachineId: string, quantity: number, maxWeight?: number) => {
+  const updateMachine = async (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => {
     const { error } = await supabase
       .from('gym_machines')
       .update({
         quantity,
         max_weight_kg: maxWeight || null,
+        bench_configs: benchConfigs || null,
       })
       .eq('id', gymMachineId);
 

@@ -196,6 +196,7 @@ export type Database = {
           name: string
           primary_muscles: string[]
           primary_role: string | null
+          required_bench_config: string | null
           secondary_machine_id: string | null
           secondary_muscles: string[]
           slot_type: string | null
@@ -217,6 +218,7 @@ export type Database = {
           name: string
           primary_muscles?: string[]
           primary_role?: string | null
+          required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
           slot_type?: string | null
@@ -238,6 +240,7 @@ export type Database = {
           name?: string
           primary_muscles?: string[]
           primary_role?: string | null
+          required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
           slot_type?: string | null
@@ -271,6 +274,7 @@ export type Database = {
       }
       gym_machines: {
         Row: {
+          bench_configs: string[] | null
           created_at: string
           gym_id: string
           id: string
@@ -280,6 +284,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bench_configs?: string[] | null
           created_at?: string
           gym_id: string
           id?: string
@@ -289,6 +294,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bench_configs?: string[] | null
           created_at?: string
           gym_id?: string
           id?: string
@@ -420,6 +426,7 @@ export type Database = {
           image_url: string | null
           is_cardio: boolean | null
           name: string
+          requires_bench_config: boolean | null
           updated_at: string
         }
         Insert: {
@@ -430,6 +437,7 @@ export type Database = {
           image_url?: string | null
           is_cardio?: boolean | null
           name: string
+          requires_bench_config?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -440,6 +448,7 @@ export type Database = {
           image_url?: string | null
           is_cardio?: boolean | null
           name?: string
+          requires_bench_config?: boolean | null
           updated_at?: string
         }
         Relationships: []
