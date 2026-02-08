@@ -28,8 +28,10 @@ import MobileCard from '@/components/admin/MobileCard';
 import AdminPagination from '@/components/admin/AdminPagination';
 import DuplicateMachinesDrawer from '@/components/admin/DuplicateMachinesDrawer';
 import MachineExercisesList from '@/components/admin/MachineExercisesList';
+import MachineGymsList from '@/components/admin/MachineGymsList';
 import { useDuplicateMachines } from '@/hooks/useDuplicateMachines';
 import { useMachineExercises } from '@/hooks/useMachineExercises';
+import { useMachineGyms } from '@/hooks/useMachineGyms';
 
 interface Machine {
   id: string;
@@ -110,6 +112,11 @@ const MachinesManagement = () => {
     isLoading: isExercisesLoading,
     updateSecondaryMachine,
   } = useMachineExercises(editingMachine?.id || null);
+
+  // Fetch gyms that have this machine
+  const { gyms: linkedGyms, isLoading: isGymsLoading } = useMachineGyms(
+    editingMachine?.id || null
+  );
 
   useEffect(() => {
     fetchMachines();
@@ -460,6 +467,16 @@ const MachinesManagement = () => {
                     currentMachineId={editingMachine.id}
                     isLoading={isExercisesLoading}
                     onUpdateSecondary={updateSecondaryMachine}
+                  />
+                </div>
+              )}
+
+              {/* Linked gyms section - only show when editing */}
+              {editingMachine && (
+                <div className="pt-4 border-t">
+                  <MachineGymsList
+                    gyms={linkedGyms}
+                    isLoading={isGymsLoading}
                   />
                 </div>
               )}
