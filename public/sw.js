@@ -9,6 +9,17 @@ import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 precacheAndRoute(self.__WB_MANIFEST || []);
 
 // ============================================
+// HTML Navigation - ALWAYS NetworkFirst (never serve stale index.html)
+// ============================================
+registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  new NetworkFirst({
+    cacheName: 'navigation-cache',
+    networkTimeoutSeconds: 3,
+  })
+);
+
+// ============================================
 // CRITICAL DATA - NetworkFirst (always try network, cache as fallback)
 // ============================================
 
