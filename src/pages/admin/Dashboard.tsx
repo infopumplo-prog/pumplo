@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing, Send, Loader2 } from 'lucide-react';
+import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
@@ -13,6 +13,13 @@ interface Stats {
   totalMachines: number;
 }
 
+interface DataQuality {
+  exercisesNoRole: number;
+  exercisesNoVideo: number;
+  machinesNoExercises: number;
+  rolesNoEquipment: number;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -21,6 +28,9 @@ const Dashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [dataQuality, setDataQuality] = useState<DataQuality>({
+    exercisesNoRole: 0, exercisesNoVideo: 0, machinesNoExercises: 0, rolesNoEquipment: 0,
+  });
   
   const { 
     isSupported, 
@@ -52,6 +62,23 @@ const Dashboard = () => {
         completedOnboarding: completedCount || 0,
         totalMachines: machineCount || 0,
       });
+
+      // Data quality checks
+      const [noRoleRes, noVideoRes, rolesRes] = await Promise.all([
+        supabase.from('exercises').select('id', { count: 'exact', head: true }).is('primary_role', null).eq('allowed_phase', 'main'),
+        supabase.from('exercises').select('id', { count: 'exact', head: true }).is('video_path', null).not('allowed_phase', 'eq', 'cooldown'),
+        supabase.from('training_roles').select('id, allowed_equipment_categories'),
+      ]);
+
+      const rolesNoEquip = (rolesRes.data || []).filter(r => !r.allowed_equipment_categories || r.allowed_equipment_categories.length === 0).length;
+
+      setDataQuality({
+        exercisesNoRole: noRoleRes.count || 0,
+        exercisesNoVideo: noVideoRes.count || 0,
+        machinesNoExercises: 0,
+        rolesNoEquipment: rolesNoEquip,
+      });
+
       setIsLoading(false);
     };
 
@@ -210,6 +237,34 @@ const Dashboard = () => {
               </Button>
             </div>
           )}
+        </Card>
+
+        {/* Data Quality Card */}
+        <Card className="p-4 border-orange-500/30">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-5 h-5 text-orange-500" />
+            <h3 className="font-semibold text-foreground">Kvalita dat</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Hlavní cviky bez role</span>
+              <span className={dataQuality.exercisesNoRole > 0 ? 'text-destructive font-bold' : 'text-green-500'}>
+                {isLoading ? '...' : dataQuality.exercisesNoRole}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cviky bez videa</span>
+              <span className={dataQuality.exercisesNoVideo > 0 ? 'text-orange-500 font-bold' : 'text-green-500'}>
+                {isLoading ? '...' : dataQuality.exercisesNoVideo}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Role bez vybavení</span>
+              <span className={dataQuality.rolesNoEquipment > 0 ? 'text-destructive font-bold' : 'text-green-500'}>
+                {isLoading ? '...' : dataQuality.rolesNoEquipment}
+              </span>
+            </div>
+          </div>
         </Card>
 
         {/* Broadcast Push Notification */}

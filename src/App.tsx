@@ -25,6 +25,8 @@ import AdminGymDetail from "@/pages/admin/AdminGymDetail";
 import MachinesManagement from "@/pages/admin/MachinesManagement";
 import ExercisesManagement from "@/pages/admin/ExercisesManagement";
 import ExerciseSkipFeedback from "@/pages/admin/ExerciseSkipFeedback";
+import DayTemplatesManagement from "@/pages/admin/DayTemplatesManagement";
+import TrainingRolesManagement from "@/pages/admin/TrainingRolesManagement";
 import AppFeedbackList from "@/pages/admin/AppFeedbackList";
 import UserFeedbackList from "@/pages/admin/UserFeedbackList";
 import GymDashboard from "@/pages/business/GymDashboard";
@@ -152,6 +154,8 @@ const AppRoutes = () => (
     <Route path="/admin/gym/:id" element={<AdminRoute><AdminGymDetail /></AdminRoute>} />
     <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
     <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
+    <Route path="/admin/templates" element={<AdminRoute><DayTemplatesManagement /></AdminRoute>} />
+    <Route path="/admin/roles" element={<AdminRoute><TrainingRolesManagement /></AdminRoute>} />
     <Route path="/admin/feedback/skipped" element={<AdminRoute><ExerciseSkipFeedback /></AdminRoute>} />
     <Route path="/admin/feedback/app" element={<AdminRoute><AppFeedbackList /></AdminRoute>} />
     <Route path="/admin/feedback/user" element={<AdminRoute><UserFeedbackList /></AdminRoute>} />
