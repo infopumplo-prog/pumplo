@@ -33,7 +33,7 @@ interface TrainingGoal {
   name: string;
 }
 
-const SPLIT_TYPES = ['FB_AB', 'UL_AB', 'PPL_ABC'];
+const SPLIT_TYPES = ['full_body', 'upper_lower', 'ppl'];
 
 const DayTemplatesManagement = () => {
   const [templates, setTemplates] = useState<DayTemplate[]>([]);
