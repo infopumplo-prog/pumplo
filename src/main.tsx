@@ -32,9 +32,13 @@ function triggerUpdateBanner() {
 
 // Register service worker for PWA with injectManifest strategy
 const updateSW = registerSW({
-  onNeedRefresh() {
-    console.log('[Main] New version available, showing update banner');
+onNeedRefresh() {
+    console.log('[Main] New version available, auto-updating...');
     triggerUpdateBanner();
+    // Auto-update after 1.5s delay (banner shows countdown)
+    setTimeout(() => {
+      updateSW(true).catch(() => window.location.reload());
+    }, 1500);
   },
   onOfflineReady() {
     console.log("[Main] Pumplo je připravená na offline použitie!");
@@ -47,7 +51,17 @@ const updateSW = registerSW({
         console.warn('[Main] SW update check failed:', err);
       });
       
-      // Check every 5 minutes when app is active (instead of 1 hour)
+      // Check immediately when app becomes visible (e.g. user switches back)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && registration) {
+          console.log('[Main] App became visible, checking for updates...');
+          registration.update().catch(err => {
+            console.warn('[Main] SW update check failed:', err);
+          });
+        }
+      });
+
+      // Check every 5 minutes when app is active
       setInterval(() => {
         if (!document.hidden) {
           console.log('[Main] Checking for SW updates...');
@@ -55,7 +69,7 @@ const updateSW = registerSW({
             console.warn('[Main] SW update check failed:', err);
           });
         }
-      }, 5 * 60 * 1000); // 5 minutes
+      }, 5 * 60 * 1000);
     }
   },
   onRegisterError(error) {
