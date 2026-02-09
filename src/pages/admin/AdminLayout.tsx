@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut, Layout, Target } from 'lucide-react';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 interface AdminLayoutProps {
@@ -34,6 +34,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/gyms', icon: Building2, label: 'Posilovny' },
     { path: '/admin/machines', icon: Dumbbell, label: 'Stroje' },
     { path: '/admin/exercises', icon: Activity, label: 'Cviky' },
+    { path: '/admin/templates', icon: Layout, label: 'Šablony' },
+    { path: '/admin/roles', icon: Target, label: 'Role' },
     { path: '/admin/feedback/skipped', icon: SkipForward, label: 'Přeskočené' },
     { path: '/admin/feedback/user', icon: MessageSquare, label: 'User FB' },
   ];
