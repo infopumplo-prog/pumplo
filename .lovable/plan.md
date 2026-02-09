@@ -1,100 +1,104 @@
 
-# Přidání seznamu posiloven ke stroji v Admin panelu
+# Oprava problému se starou verzí aplikace (PWA cache)
 
-## Problém
+## Kořenová příčina
 
-V admin panelu `/admin/machines` při úpravě stroje není vidět, které posilovny tento stroj používají. To ztěžuje identifikaci strojů bez videí - admin neví, do které posilovny stroj patří.
+Service Worker cachuje `index.html` jako součást precache manifestu. Když se nasadí nová verze:
+1. Starý SW stále servíruje starý `index.html` z cache
+2. `__BUILD_TIMESTAMP__` v tom starém HTML je taky starý -- takže version check nic nedetekuje
+3. SW update check běží jen každých 5 minut a jen pokud tab není skrytý
+4. Uživatel musí manuálně kliknout na banner -- pokud ho nevidí, zůstane na staré verzi
 
-## Řešení
+## Plán opravy
 
-Přidám novou sekci "Posilovny používající tento stroj" do editačního draweru podobně jako již existuje sekce "Napojené cviky".
+### 1. Přidat `visibilitychange` listener pro okamžitou kontrolu
 
-## Implementace
+Když uživatel přepne zpět do aplikace (např. swipne z jiné appky), okamžitě zkontrolovat SW update -- ne čekat 5 minut.
 
-### 1. Vytvořit nový hook `useMachineGyms`
-
-```typescript
-// src/hooks/useMachineGyms.ts
-export interface MachineGymEntry {
-  gym_id: string;
-  gym_name: string;
-  quantity: number;
-  max_weight_kg: number | null;
-  bench_configs: string[] | null;
-}
-
-export const useMachineGyms = (machineId: string | null) => {
-  // Fetch all gyms that have this machine
-  // Returns: { gyms, isLoading }
-}
-```
-
-### 2. Vytvořit komponentu `MachineGymsList`
+**Soubor:** `src/main.tsx`
 
 ```typescript
-// src/components/admin/MachineGymsList.tsx
-
-// Zobrazí seznam posiloven s:
-// - Název posilovny (kliknutelný link na /admin/gyms/:id)
-// - Počet kusů
-// - Max váha (pokud je nastavena)
-// - Bench konfigurace (pokud má stroj requires_bench_config)
+// V onRegisteredSW callbacku přidat:
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && registration) {
+    console.log('[Main] App became visible, checking for updates...');
+    registration.update();
+  }
+});
 ```
 
-### 3. Přidat do editačního draweru v MachinesManagement.tsx
+### 2. Automatický update bez čekání na banner
 
-Sekce se zobrazí pod "Napojené cviky" a bude obsahovat:
+Změnit chování tak, aby se SW aktivoval okamžitě (bez čekání na klik uživatele). Banner zůstane jen jako notifikace, že se appka refreshne.
 
+**Soubor:** `src/main.tsx` -- v `onNeedRefresh`:
+
+```typescript
+onNeedRefresh() {
+  console.log('[Main] New version available, auto-updating...');
+  // Ukázat banner a automaticky refreshnout po 1.5s
+  triggerUpdateBanner();
+  setTimeout(() => {
+    updateSW(true).catch(() => window.location.reload());
+  }, 1500);
+},
 ```
-┌─────────────────────────────────────────┐
-│ 🏢 Posilovny s tímto strojem (2)        │
-├─────────────────────────────────────────┤
-│ Fitness Boby Centrum                  → │
-│ 2x • max 120 kg                         │
-├─────────────────────────────────────────┤
-│ Motivace                              → │
-│ 1x • max 100 kg • Flat, Incline         │
-└─────────────────────────────────────────┘
+
+### 3. Přidat `navigationPreload` a NetworkFirst pro HTML
+
+Zajistit, že `index.html` se VŽDY načítá ze sítě (ne z cache).
+
+**Soubor:** `public/sw.js` -- přidat route pro navigační requesty:
+
+```javascript
+import { NavigationRoute } from 'workbox-routing';
+import { NetworkFirst } from 'workbox-strategies';
+
+// HTML navigace - vždy network first
+const navigationHandler = new NetworkFirst({
+  cacheName: 'navigation-cache',
+  networkTimeoutSeconds: 3,
+});
+
+registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  navigationHandler
+);
 ```
 
-## Změny v souborech
+### 4. Přidat `Cache-Control` meta tag
+
+Zabránit agresivnímu cachování HTML souboru.
+
+**Soubor:** `index.html` -- přidat do `<head>`:
+
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+```
+
+### 5. Vylepšit UpdateBanner
+
+Změnit banner tak, aby ukazoval odpočet a uživatel věděl, že se appka za chvíli aktualizuje.
+
+**Soubor:** `src/components/UpdateBanner.tsx`
+
+- Přidat odpočet (3, 2, 1...)
+- Text: "Aktualizace za 3s..." s možností kliknout "Aktualizovat teď"
+
+## Souhrn změn
 
 | Soubor | Změna |
 |--------|-------|
-| `src/hooks/useMachineGyms.ts` | **NOVÝ** - hook pro načtení posiloven používajících stroj |
-| `src/components/admin/MachineGymsList.tsx` | **NOVÝ** - komponenta pro zobrazení seznamu posiloven |
-| `src/pages/admin/MachinesManagement.tsx` | Přidat import a zobrazit `MachineGymsList` v draweru |
-
-## Technické detaily
-
-### SQL dotaz v hooku
-
-```sql
-SELECT 
-  gm.gym_id,
-  g.name as gym_name,
-  gm.quantity,
-  gm.max_weight_kg,
-  gm.bench_configs
-FROM gym_machines gm
-JOIN gyms g ON g.id = gm.gym_id
-WHERE gm.machine_id = $machineId
-ORDER BY g.name
-```
-
-### Zobrazení v UI
-
-- Každá posilovna jako karta s možností kliknutí pro přechod na `/admin/gyms/:id`
-- Badge s počtem kusů
-- Badge s max váhou (pokud je nastavena)
-- Badge s bench konfigurací (pokud stroj `requires_bench_config = true`)
-- Prázdný stav: "Žádná posilovna nemá tento stroj"
+| `src/main.tsx` | Přidat visibilitychange listener, auto-update logiku |
+| `public/sw.js` | NetworkFirst pro navigační requesty (HTML) |
+| `index.html` | Cache-Control meta tagy |
+| `src/components/UpdateBanner.tsx` | Odpočet a auto-refresh |
 
 ## Výsledek
 
-Admin uvidí v editaci stroje:
-1. Základní údaje (název, kategorie, kardio)
-2. Napojené cviky (existující)
-3. **NOVÉ:** Seznam posiloven, které mají tento stroj
-
-To umožní rychle identifikovat, kam patří stroje bez videí/cviků.
+- Uživatel **vždy** dostane novou verzi při návratu do aplikace
+- HTML se nikdy neservíruje ze staré cache
+- Pokud je dostupná nová verze SW, automaticky se aktivuje s krátkým upozorněním
+- Žádné "zaseknutí" na staré verzi
