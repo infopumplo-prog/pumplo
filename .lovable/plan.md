@@ -1,104 +1,109 @@
 
-# Oprava problému se starou verzí aplikace (PWA cache)
+# Admin Panel pro editaci tréninků + Oprava fází cviků (warmup/cooldown)
 
-## Kořenová příčina
+## Co se změní
 
-Service Worker cachuje `index.html` jako součást precache manifestu. Když se nasadí nová verze:
-1. Starý SW stále servíruje starý `index.html` z cache
-2. `__BUILD_TIMESTAMP__` v tom starém HTML je taky starý -- takže version check nic nedetekuje
-3. SW update check běží jen každých 5 minut a jen pokud tab není skrytý
-4. Uživatel musí manuálně kliknout na banner -- pokud ho nevidí, zůstane na staré verzi
+### A. Oprava kategorizace fází cviků v databázi
 
-## Plán opravy
+Aktuálně jsou všechny cviky bez `primary_role` označeny jako `allowed_phase = 'warmup'`, ale ve skutečnosti:
 
-### 1. Přidat `visibilitychange` listener pro okamžitou kontrolu
+- **Kardio cviky** (68 ks, category='cardio') = skutečný **warmup** (rozehřátí celého těla)
+- **Stretche a mobilita** (102 abdominals + 23 shoulders + 16 legs + 2 back = 143 ks) = **cooldown** (po hlavním tréninku)
 
-Když uživatel přepne zpět do aplikace (např. swipne z jiné appky), okamžitě zkontrolovat SW update -- ne čekat 5 minut.
+Migrace přidá novou hodnotu `cooldown` do `allowed_phase` a přeřadí stretche/mobilitu:
 
-**Soubor:** `src/main.tsx`
-
-```typescript
-// V onRegisteredSW callbacku přidat:
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && registration) {
-    console.log('[Main] App became visible, checking for updates...');
-    registration.update();
-  }
-});
+```sql
+UPDATE exercises 
+SET allowed_phase = 'cooldown' 
+WHERE primary_role IS NULL 
+  AND allowed_phase = 'warmup' 
+  AND category != 'cardio';
 ```
 
-### 2. Automatický update bez čekání na banner
+Warmup generátor pak bude vybírat jen kardio cviky (celotělové rozehřátí), a v budoucnu se přidá cooldown fáze s protahovacími cviky.
 
-Změnit chování tak, aby se SW aktivoval okamžitě (bez čekání na klik uživatele). Banner zůstane jen jako notifikace, že se appka refreshne.
+Zbývajících **20 hlavních cviků** bez `primary_role` (allowed_phase='main') potřebuje ruční opravu -- ty uvidíš v diagnostice.
 
-**Soubor:** `src/main.tsx` -- v `onNeedRefresh`:
+### B. Nové admin stránky
 
-```typescript
-onNeedRefresh() {
-  console.log('[Main] New version available, auto-updating...');
-  // Ukázat banner a automaticky refreshnout po 1.5s
-  triggerUpdateBanner();
-  setTimeout(() => {
-    updateSW(true).catch(() => window.location.reload());
-  }, 1500);
-},
+#### 1. Editace Day Templates (`/admin/templates`)
+
+Stránka pro správu tréninkových šablon -- jaké role jsou v kterém dni, kolik sérií a opakování. Seskupeno podle split typu.
+
+Funkce:
+- Zobrazení šablon seskupených podle split_type (FB_AB, UL_AB, PPL_ABC) a day_letter (A, B, C)
+- Editace slotů: role_id, beginner/intermediate/advanced sets, rep_min, rep_max
+- Přidání a odebrání slotů
+- Vizuální přehled struktury každého dne
+
+#### 2. Editace Training Roles (`/admin/roles`)
+
+Stránka pro správu tréninkových rolí s jejich metadaty.
+
+Funkce:
+- Editace `allowed_equipment_categories` (machine, cable, barbell, dumbbell...)
+- Editace `banned_injury_tags` (shoulder, knees, lower_back...)
+- Editace `difficulty_level` a `phase_type`
+- Zobrazení napojených svalů z `role_muscles`
+
+#### 3. Diagnostická karta na Dashboard
+
+Na hlavní admin dashboard přidáme kartu "Kvalita dat":
+- Počet hlavních cviků bez primary_role (aktuálně 20)
+- Počet cviků bez videa
+- Počet strojů bez napojených cviků
+- Počet rolí s prázdnými `allowed_equipment_categories`
+
+### C. RLS migrace
+
+Přidání admin-only INSERT/UPDATE/DELETE policies pro tabulky:
+- `day_templates`
+- `training_roles`
+- `role_muscles`
+
+## Technické detaily
+
+### Databázová migrace
+
+```sql
+-- 1. Cooldown fáze pro stretche
+UPDATE exercises 
+SET allowed_phase = 'cooldown' 
+WHERE primary_role IS NULL AND allowed_phase = 'warmup' AND category != 'cardio';
+
+-- 2. RLS pro day_templates (admin CRUD)
+CREATE POLICY "Admins can insert day_templates" ON day_templates FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update day_templates" ON day_templates FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete day_templates" ON day_templates FOR DELETE USING (has_role(auth.uid(), 'admin'));
+
+-- 3. RLS pro training_roles (admin CRUD)
+CREATE POLICY "Admins can insert training_roles" ON training_roles FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update training_roles" ON training_roles FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete training_roles" ON training_roles FOR DELETE USING (has_role(auth.uid(), 'admin'));
+
+-- 4. RLS pro role_muscles (admin CRUD)
+CREATE POLICY "Admins can insert role_muscles" ON role_muscles FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update role_muscles" ON role_muscles FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete role_muscles" ON role_muscles FOR DELETE USING (has_role(auth.uid(), 'admin'));
 ```
 
-### 3. Přidat `navigationPreload` a NetworkFirst pro HTML
+### Nové soubory
 
-Zajistit, že `index.html` se VŽDY načítá ze sítě (ne z cache).
+| Soubor | Popis |
+|--------|-------|
+| `src/pages/admin/DayTemplatesManagement.tsx` | Editace tréninkových šablon |
+| `src/pages/admin/TrainingRolesManagement.tsx` | Editace tréninkových rolí |
 
-**Soubor:** `public/sw.js` -- přidat route pro navigační requesty:
-
-```javascript
-import { NavigationRoute } from 'workbox-routing';
-import { NetworkFirst } from 'workbox-strategies';
-
-// HTML navigace - vždy network first
-const navigationHandler = new NetworkFirst({
-  cacheName: 'navigation-cache',
-  networkTimeoutSeconds: 3,
-});
-
-registerRoute(
-  ({ request }) => request.mode === 'navigate',
-  navigationHandler
-);
-```
-
-### 4. Přidat `Cache-Control` meta tag
-
-Zabránit agresivnímu cachování HTML souboru.
-
-**Soubor:** `index.html` -- přidat do `<head>`:
-
-```html
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-```
-
-### 5. Vylepšit UpdateBanner
-
-Změnit banner tak, aby ukazoval odpočet a uživatel věděl, že se appka za chvíli aktualizuje.
-
-**Soubor:** `src/components/UpdateBanner.tsx`
-
-- Přidat odpočet (3, 2, 1...)
-- Text: "Aktualizace za 3s..." s možností kliknout "Aktualizovat teď"
-
-## Souhrn změn
+### Upravené soubory
 
 | Soubor | Změna |
 |--------|-------|
-| `src/main.tsx` | Přidat visibilitychange listener, auto-update logiku |
-| `public/sw.js` | NetworkFirst pro navigační requesty (HTML) |
-| `index.html` | Cache-Control meta tagy |
-| `src/components/UpdateBanner.tsx` | Odpočet a auto-refresh |
+| `src/pages/admin/AdminLayout.tsx` | 2 nové nav položky (Šablony, Role) |
+| `src/App.tsx` | 2 nové admin routes |
+| `src/pages/admin/Dashboard.tsx` | Diagnostická karta |
 
-## Výsledek
+### Navigace admin panelu (rozšířená)
 
-- Uživatel **vždy** dostane novou verzi při návratu do aplikace
-- HTML se nikdy neservíruje ze staré cache
-- Pokud je dostupná nová verze SW, automaticky se aktivuje s krátkým upozorněním
-- Žádné "zaseknutí" na staré verzi
+Stávající: Dashboard, Uživatelé, Posilovny, Stroje, Cviky, Přeskočené, User FB
+
+Nové: + **Šablony**, + **Role**
