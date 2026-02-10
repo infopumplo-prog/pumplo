@@ -1,54 +1,39 @@
 
 
-# Oprava UI šablon tréninků
+# Oprava nefunkčních inputů B/I/A a opakování
 
-## Problem
+## Problém
 
-1. **Chybí označení cíle** — 4 řádky na slot vypadají identicky, není vidět který patří strength/muscle_gain/fat_loss/general_fitness
-2. **Inputy B/I/A nefungují** — pravděpodobně problém s `onChange` handlerem (parsuje `parseInt` a prázdný string vrátí `NaN`/`0`)
-3. **UI je nepřehledné** pro komunikaci s trenérem
+Základní `Input` komponenta (`src/components/ui/input.tsx`) má ve výchozích stylech:
+- `px-4` (16px padding vlevo + 16px vpravo = 32px)
+- `py-3` (12px padding nahoře + dole)
+- `h-12` (48px výška)
+
+Inputy v šablonách mají `w-12` (48px šířka) a `h-8` (32px výška). Problém:
+- 48px šířka minus 32px padding = **pouze 16px pro text** -- prakticky nelze psát
+- Výška `h-8` přepíše `h-12`, ale `py-3` padding zůstává a stlačuje obsah
 
 ## Řešení
 
 ### Soubor: `src/pages/admin/DayTemplatesManagement.tsx`
 
-#### 1. Přidat štítek cíle ke každému řádku
+Ke všem numerickým inputům (B, I, A, rep_min, rep_max) přidat explicitní override paddingu v `className`:
 
-Ke každému slotu přidat barevný badge s názvem cíle:
-- strength = fialový badge
-- muscle_gain = modrý badge  
-- fat_loss = oranžový badge
-- general_fitness = zelený badge
-
-#### 2. Seskupit řádky vizuálně podle slot_order
-
-Oddělit skupiny slotů (4 řádky se stejným `slot_order`) vizuálním separátorem, aby bylo jasné že patří k jednomu cviku.
-
-#### 3. Opravit inputy B/I/A
-
-Změnit `onChange` handler aby správně zpracovával prázdné hodnoty a umožnil editaci:
-- Prázdný input = dočasně `''` (ne `0`)
-- Při uložení se validuje na číslo
-
-#### 4. Přidat zobrazení rep range
-
-Aktuální hodnoty `rep_min` a `rep_max` z DB zobrazit v inputech (teď jsou prázdné protože mají `value={slot.rep_min ?? ''}` ale data tam jsou).
-
-### Výsledek
-
-Každý slot bude vypadat takto:
 ```
-#1  Drep  [strength]   B: 3  I: 4  A: 5  | 4 - 6
-#1  Drep  [muscle]     B: 3  I: 3  A: 4  | 8 - 12
-#1  Drep  [fat_loss]   B: 3  I: 3  A: 3  | 10 - 15
-#1  Drep  [kondice]    B: 3  I: 3  A: 3  | 10 - 12
-───────────────────────────────────────────
-#2  Horiz. tlak  [strength]   B: 3  I: 4  A: 5  | 4 - 6
-...
+// Změna z:
+className="w-12 h-8 text-xs text-center"
+
+// Na:
+className="w-14 h-8 text-xs text-center px-1 py-0"
 ```
 
-Trenér tak uvidí celou strukturu dne a může ověřit:
-- Pořadí cviků (role ve slotech)
-- Objemy podle úrovně (B/I/A série)
-- Rozsahy opakování podle cíle
+Konkrétně:
+- `px-1` -- minimální horizontální padding (4px), aby zbylo místo pro čísla
+- `py-0` -- žádný vertikální padding, protože `h-8` je malá výška
+- `w-14` -- mírně širší (56px místo 48px) pro pohodlnější zadávání
 
+Toto se týká 5 inputů na každém řádku (beginner_sets, intermediate_sets, advanced_sets, rep_min, rep_max).
+
+## Rozsah změn
+
+Pouze jeden soubor, pouze CSS třídy na existujících elementech. Žádná změna logiky.
