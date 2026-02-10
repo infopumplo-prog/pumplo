@@ -4,6 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, Save, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
@@ -35,6 +37,24 @@ interface TrainingGoal {
 
 const SPLIT_TYPES = ['full_body', 'upper_lower', 'ppl'];
 
+const GOAL_STYLES: Record<string, { label: string; className: string }> = {
+  strength: { label: 'Síla', className: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700' },
+  muscle_gain: { label: 'Svaly', className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700' },
+  fat_loss: { label: 'Hubnutí', className: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700' },
+  general_fitness: { label: 'Kondice', className: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700' },
+};
+
+// Local state uses strings to allow empty inputs
+interface LocalValues {
+  [id: string]: {
+    beginner_sets?: string;
+    intermediate_sets?: string;
+    advanced_sets?: string;
+    rep_min?: string;
+    rep_max?: string;
+  };
+}
+
 const DayTemplatesManagement = () => {
   const [templates, setTemplates] = useState<DayTemplate[]>([]);
   const [roles, setRoles] = useState<TrainingRole[]>([]);
@@ -42,7 +62,7 @@ const DayTemplatesManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [editingSlot, setEditingSlot] = useState<DayTemplate | null>(null);
+  const [localValues, setLocalValues] = useState<LocalValues>({});
 
   useEffect(() => {
     fetchAll();
@@ -78,17 +98,37 @@ const DayTemplatesManagement = () => {
     return acc;
   }, {});
 
+  const getLocalNum = (id: string, field: string, dbValue: number | null): string => {
+    const local = localValues[id]?.[field as keyof typeof localValues[string]];
+    if (local !== undefined) return local;
+    return dbValue !== null && dbValue !== undefined ? String(dbValue) : '';
+  };
+
+  const setLocalField = (id: string, field: string, value: string) => {
+    setLocalValues(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
+  };
+
   const handleSave = async (template: DayTemplate) => {
+    const local = localValues[template.id] || {};
+    const beginner_sets = parseInt(local.beginner_sets ?? String(template.beginner_sets)) || 0;
+    const intermediate_sets = parseInt(local.intermediate_sets ?? String(template.intermediate_sets)) || 0;
+    const advanced_sets = parseInt(local.advanced_sets ?? String(template.advanced_sets)) || 0;
+    const rep_min = parseInt(local.rep_min ?? String(template.rep_min ?? '')) || null;
+    const rep_max = parseInt(local.rep_max ?? String(template.rep_max ?? '')) || null;
+
     setSaving(template.id);
     const { error } = await supabase
       .from('day_templates')
       .update({
         role_id: template.role_id,
-        beginner_sets: template.beginner_sets,
-        intermediate_sets: template.intermediate_sets,
-        advanced_sets: template.advanced_sets,
-        rep_min: template.rep_min,
-        rep_max: template.rep_max,
+        beginner_sets,
+        intermediate_sets,
+        advanced_sets,
+        rep_min,
+        rep_max,
         day_name: template.day_name,
       })
       .eq('id', template.id);
@@ -97,7 +137,8 @@ const DayTemplatesManagement = () => {
       toast.error(`Chyba: ${error.message}`);
     } else {
       toast.success('Uloženo');
-      setEditingSlot(null);
+      setTemplates(prev => prev.map(t => t.id === template.id ? { ...t, beginner_sets, intermediate_sets, advanced_sets, rep_min, rep_max } : t));
+      setLocalValues(prev => { const next = { ...prev }; delete next[template.id]; return next; });
     }
     setSaving(null);
   };
@@ -138,14 +179,11 @@ const DayTemplatesManagement = () => {
     }
   };
 
-  const updateLocal = (id: string, field: keyof DayTemplate, value: string | number | null) => {
-    setTemplates(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
-    if (editingSlot?.id === id) {
-      setEditingSlot(prev => prev ? { ...prev, [field]: value } : null);
-    }
+  const updateRoleLocal = (id: string, value: string) => {
+    setTemplates(prev => prev.map(t => t.id === id ? { ...t, role_id: value } : t));
   };
 
-  const getRoleName = (roleId: string) => roles.find(r => r.id === roleId)?.name || roleId;
+  const getGoalStyle = (goalId: string) => GOAL_STYLES[goalId] || { label: goalId, className: 'bg-muted text-muted-foreground' };
 
   if (isLoading) {
     return (
@@ -189,6 +227,14 @@ const DayTemplatesManagement = () => {
                 const isDayExpanded = expandedGroups.has(dayKey);
                 const firstSlot = slots[0];
 
+                // Group slots by slot_order
+                const byOrder: Record<number, DayTemplate[]> = {};
+                slots.forEach(s => {
+                  if (!byOrder[s.slot_order]) byOrder[s.slot_order] = [];
+                  byOrder[s.slot_order].push(s);
+                });
+                const sortedOrders = Object.keys(byOrder).map(Number).sort((a, b) => a - b);
+
                 return (
                   <div key={dayLetter} className="mt-3 ml-4">
                     <button
@@ -203,93 +249,113 @@ const DayTemplatesManagement = () => {
                     </button>
 
                     {isDayExpanded && (
-                      <div className="space-y-2 ml-4">
-                        {slots.sort((a, b) => a.slot_order - b.slot_order).map(slot => (
-                          <div key={slot.id} className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
-                            <span className="text-muted-foreground w-6 text-center font-mono">
-                              #{slot.slot_order}
-                            </span>
+                      <div className="space-y-1 ml-4">
+                        {sortedOrders.map((order, orderIdx) => {
+                          const group = byOrder[order];
+                          const goalOrder = ['strength', 'muscle_gain', 'fat_loss', 'general_fitness'];
+                          const sorted = [...group].sort((a, b) => goalOrder.indexOf(a.goal_id) - goalOrder.indexOf(b.goal_id));
 
-                            <Select
-                              value={slot.role_id}
-                              onValueChange={(v) => updateLocal(slot.id, 'role_id', v)}
-                            >
-                              <SelectTrigger className="w-44 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {roles.map(r => (
-                                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          return (
+                            <div key={order}>
+                              {orderIdx > 0 && <Separator className="my-2" />}
+                              <div className="space-y-1">
+                                {sorted.map(slot => {
+                                  const goalStyle = getGoalStyle(slot.goal_id);
+                                  return (
+                                    <div key={slot.id} className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
+                                      <span className="text-muted-foreground w-6 text-center font-mono">
+                                        #{slot.slot_order}
+                                      </span>
 
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-muted-foreground">B:</span>
-                              <Input
-                                type="number"
-                                value={slot.beginner_sets}
-                                onChange={(e) => updateLocal(slot.id, 'beginner_sets', parseInt(e.target.value) || 0)}
-                                className="w-12 h-8 text-xs text-center"
-                              />
-                              <span className="text-xs text-muted-foreground">I:</span>
-                              <Input
-                                type="number"
-                                value={slot.intermediate_sets}
-                                onChange={(e) => updateLocal(slot.id, 'intermediate_sets', parseInt(e.target.value) || 0)}
-                                className="w-12 h-8 text-xs text-center"
-                              />
-                              <span className="text-xs text-muted-foreground">A:</span>
-                              <Input
-                                type="number"
-                                value={slot.advanced_sets}
-                                onChange={(e) => updateLocal(slot.id, 'advanced_sets', parseInt(e.target.value) || 0)}
-                                className="w-12 h-8 text-xs text-center"
-                              />
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 min-w-[52px] text-center justify-center ${goalStyle.className}`}>
+                                        {goalStyle.label}
+                                      </Badge>
+
+                                      <Select
+                                        value={slot.role_id}
+                                        onValueChange={(v) => updateRoleLocal(slot.id, v)}
+                                      >
+                                        <SelectTrigger className="w-44 h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {roles.map(r => (
+                                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs text-muted-foreground">B:</span>
+                                        <Input
+                                          type="number"
+                                          value={getLocalNum(slot.id, 'beginner_sets', slot.beginner_sets)}
+                                          onChange={(e) => setLocalField(slot.id, 'beginner_sets', e.target.value)}
+                                          className="w-12 h-8 text-xs text-center"
+                                        />
+                                        <span className="text-xs text-muted-foreground">I:</span>
+                                        <Input
+                                          type="number"
+                                          value={getLocalNum(slot.id, 'intermediate_sets', slot.intermediate_sets)}
+                                          onChange={(e) => setLocalField(slot.id, 'intermediate_sets', e.target.value)}
+                                          className="w-12 h-8 text-xs text-center"
+                                        />
+                                        <span className="text-xs text-muted-foreground">A:</span>
+                                        <Input
+                                          type="number"
+                                          value={getLocalNum(slot.id, 'advanced_sets', slot.advanced_sets)}
+                                          onChange={(e) => setLocalField(slot.id, 'advanced_sets', e.target.value)}
+                                          className="w-12 h-8 text-xs text-center"
+                                        />
+                                      </div>
+
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          type="number"
+                                          value={getLocalNum(slot.id, 'rep_min', slot.rep_min)}
+                                          onChange={(e) => setLocalField(slot.id, 'rep_min', e.target.value)}
+                                          className="w-12 h-8 text-xs text-center"
+                                          placeholder="min"
+                                        />
+                                        <span className="text-muted-foreground">-</span>
+                                        <Input
+                                          type="number"
+                                          value={getLocalNum(slot.id, 'rep_max', slot.rep_max)}
+                                          onChange={(e) => setLocalField(slot.id, 'rep_max', e.target.value)}
+                                          className="w-12 h-8 text-xs text-center"
+                                          placeholder="max"
+                                        />
+                                      </div>
+
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleSave(slot)}
+                                        disabled={saving === slot.id}
+                                      >
+                                        {saving === slot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0 text-destructive"
+                                        onClick={() => handleDelete(slot.id)}
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                value={slot.rep_min ?? ''}
-                                onChange={(e) => updateLocal(slot.id, 'rep_min', parseInt(e.target.value) || null)}
-                                className="w-12 h-8 text-xs text-center"
-                                placeholder="min"
-                              />
-                              <span className="text-muted-foreground">-</span>
-                              <Input
-                                type="number"
-                                value={slot.rep_max ?? ''}
-                                onChange={(e) => updateLocal(slot.id, 'rep_max', parseInt(e.target.value) || null)}
-                                className="w-12 h-8 text-xs text-center"
-                                placeholder="max"
-                              />
-                            </div>
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleSave(slot)}
-                              disabled={saving === slot.id}
-                            >
-                              {saving === slot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-destructive"
-                              onClick={() => handleDelete(slot.id)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 text-xs"
+                          className="h-8 text-xs mt-2"
                           onClick={() => handleAddSlot(splitType, dayLetter, firstSlot.goal_id, firstSlot.day_name)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
