@@ -291,21 +291,21 @@ const DayTemplatesManagement = () => {
                                           type="number"
                                           value={getLocalNum(slot.id, 'beginner_sets', slot.beginner_sets)}
                                           onChange={(e) => setLocalField(slot.id, 'beginner_sets', e.target.value)}
-                                          className="w-12 h-8 text-xs text-center"
+                                          className="w-14 h-8 text-xs text-center px-1 py-0"
                                         />
                                         <span className="text-xs text-muted-foreground">I:</span>
                                         <Input
                                           type="number"
                                           value={getLocalNum(slot.id, 'intermediate_sets', slot.intermediate_sets)}
                                           onChange={(e) => setLocalField(slot.id, 'intermediate_sets', e.target.value)}
-                                          className="w-12 h-8 text-xs text-center"
+                                          className="w-14 h-8 text-xs text-center px-1 py-0"
                                         />
                                         <span className="text-xs text-muted-foreground">A:</span>
                                         <Input
                                           type="number"
                                           value={getLocalNum(slot.id, 'advanced_sets', slot.advanced_sets)}
                                           onChange={(e) => setLocalField(slot.id, 'advanced_sets', e.target.value)}
-                                          className="w-12 h-8 text-xs text-center"
+                                          className="w-14 h-8 text-xs text-center px-1 py-0"
                                         />
                                       </div>
 
@@ -314,7 +314,7 @@ const DayTemplatesManagement = () => {
                                           type="number"
                                           value={getLocalNum(slot.id, 'rep_min', slot.rep_min)}
                                           onChange={(e) => setLocalField(slot.id, 'rep_min', e.target.value)}
-                                          className="w-12 h-8 text-xs text-center"
+                                          className="w-14 h-8 text-xs text-center px-1 py-0"
                                           placeholder="min"
                                         />
                                         <span className="text-muted-foreground">-</span>
@@ -322,7 +322,7 @@ const DayTemplatesManagement = () => {
                                           type="number"
                                           value={getLocalNum(slot.id, 'rep_max', slot.rep_max)}
                                           onChange={(e) => setLocalField(slot.id, 'rep_max', e.target.value)}
-                                          className="w-12 h-8 text-xs text-center"
+                                          className="w-14 h-8 text-xs text-center px-1 py-0"
                                           placeholder="max"
                                         />
                                       </div>
