@@ -1,39 +1,36 @@
 
 
-# Oprava nefunkčních inputů B/I/A a opakování
+# Oprava chyby generování tréninku (ambiguous relationship)
 
-## Problém
+## Problem
 
-Základní `Input` komponenta (`src/components/ui/input.tsx`) má ve výchozích stylech:
-- `px-4` (16px padding vlevo + 16px vpravo = 32px)
-- `py-3` (12px padding nahoře + dole)
-- `h-12` (48px výška)
+Dotaz na cviky v plánu (`useWorkoutPlan.ts`, řádek 127) používá:
+```
+exercises (id, name, video_path, machine_id, machines (name))
+```
 
-Inputy v šablonách mají `w-12` (48px šířka) a `h-8` (32px výška). Problém:
-- 48px šířka minus 32px padding = **pouze 16px pro text** -- prakticky nelze psát
-- Výška `h-8` přepíše `h-12`, ale `py-3` padding zůstává a stlačuje obsah
+Tabulka `exercises` má ale DVA cizí klíče na tabulku `machines`:
+- `exercises_machine_id_fkey` (hlavní stroj)
+- `exercises_secondary_machine_id_fkey` (sekundární stroj)
+
+PostgREST neví, kterou relaci použít, a vrací chybu **300** (Multiple Choices). Kvůli tomu se cviky nenačtou a plán se tváří jako neexistující -- proto se zobrazuje "Vytvoř si plán" místo aktuálního plánu.
 
 ## Řešení
 
-### Soubor: `src/pages/admin/DayTemplatesManagement.tsx`
+### Soubor: `src/hooks/useWorkoutPlan.ts` (řádek 127)
 
-Ke všem numerickým inputům (B, I, A, rep_min, rep_max) přidat explicitní override paddingu v `className`:
-
+Změna z:
 ```
-// Změna z:
-className="w-12 h-8 text-xs text-center"
-
-// Na:
-className="w-14 h-8 text-xs text-center px-1 py-0"
+exercises (id, name, video_path, machine_id, machines (name))
 ```
 
-Konkrétně:
-- `px-1` -- minimální horizontální padding (4px), aby zbylo místo pro čísla
-- `py-0` -- žádný vertikální padding, protože `h-8` je malá výška
-- `w-14` -- mírně širší (56px místo 48px) pro pohodlnější zadávání
+Na:
+```
+exercises (id, name, video_path, machine_id, machines!exercises_machine_id_fkey (name))
+```
 
-Toto se týká 5 inputů na každém řádku (beginner_sets, intermediate_sets, advanced_sets, rep_min, rep_max).
+Tím se explicitně specifikuje, že chceme relaci přes `machine_id`, ne přes `secondary_machine_id`.
 
-## Rozsah změn
+## Rozsah
 
-Pouze jeden soubor, pouze CSS třídy na existujících elementech. Žádná změna logiky.
+Jeden soubor, jeden řádek. Žádná změna logiky, jen disambiguace PostgREST dotazu.
