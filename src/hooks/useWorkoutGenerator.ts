@@ -13,10 +13,11 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  TrainingGoalId, 
-  UserLevel, 
-  DayTemplate, 
+  TrainingGoalId,
+  UserLevel,
+  DayTemplate,
   DayTemplateSlot,
+  SlotCategory,
   PlanInputsSnapshot,
   ValidationReport,
   SplitType,
@@ -82,7 +83,7 @@ export const useWorkoutGenerator = () => {
         id: row.id,
         slotOrder: row.slot_order,
         roleId: row.role_id,
-        slotCategory: row.slot_category || 'secondary',
+        slotCategory: (row.slot_category || 'secondary') as SlotCategory,
         beginnerSets: row.beginner_sets,
         intermediateSets: row.intermediate_sets,
         advancedSets: row.advanced_sets,
