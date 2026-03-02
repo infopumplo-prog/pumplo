@@ -78,15 +78,19 @@ export const useWorkoutGenerator = () => {
           slots: []
         };
       }
-      acc[row.day_letter].slots.push({
+     acc[row.day_letter].slots.push({
         id: row.id,
         slotOrder: row.slot_order,
         roleId: row.role_id,
+        slotCategory: row.slot_category || 'secondary',
         beginnerSets: row.beginner_sets,
         intermediateSets: row.intermediate_sets,
         advancedSets: row.advanced_sets,
         repMin: row.rep_min || 8,
         repMax: row.rep_max || 12,
+        rirMin: row.rir_min ?? null,
+        rirMax: row.rir_max ?? null,
+        notes: row.notes ?? null,
       });
       return acc;
     }, {} as Record<string, DayTemplate>);
@@ -331,11 +335,22 @@ export const useWorkoutGenerator = () => {
         const dayRoleOccurrences = new Map<string, number>();
 
         for (const slot of adjustedSlots) {
+          // Skip conditioning slots (kardio) - uživatel si přidá sám
+          if (slot.slotCategory === 'conditioning') {
+            console.log(`[WorkoutGenerator v2.1] Skipping conditioning slot ${slot.slotOrder}`);
+            continue;
+          }
+
+          // Log core/compensatory slots
+          if (slot.slotCategory === 'core_or_compensatory') {
+            console.log(`[WorkoutGenerator v2.1] Core/compensatory slot: ${slot.roleId}`);
+          }
+
           // Count role occurrence
           const currentOccurrence = (dayRoleOccurrences.get(slot.roleId) || 0) + 1;
           dayRoleOccurrences.set(slot.roleId, currentOccurrence);
 
-          console.log(`[WorkoutGenerator v2.0] Slot ${slot.slotOrder}: Role = ${slot.roleId} (occurrence: ${currentOccurrence})`);
+          console.log(`[WorkoutGenerator v2.1] Slot ${slot.slotOrder}: Role = ${slot.roleId} (${slot.slotCategory}) (occurrence: ${currentOccurrence})`);
 
           // Build selection context
           const context: SelectionContext = {

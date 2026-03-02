@@ -89,8 +89,8 @@ export interface ExerciseHistoryEntry {
 
 // ============ CONSTANTS ============
 
-export const GENERATOR_VERSION = '2.0.0';
-export const METHODOLOGY_VERSION = '2.0.0';
+export const GENERATOR_VERSION = '2.1.0';
+export const METHODOLOGY_VERSION = '2.1.0';
 
 const SCORE_ROLE_MATCH = 100;
 const SCORE_PRIMARY_MUSCLE = 3;

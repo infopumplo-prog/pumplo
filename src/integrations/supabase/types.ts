@@ -64,6 +64,10 @@ export type Database = {
           rep_min: number | null
           role_id: string
           slot_order: number
+          slot_category: string | null
+          rir_min: number | null
+          rir_max: number | null
+          notes: string | null
           split_type: string | null
         }
         Insert: {
@@ -79,6 +83,10 @@ export type Database = {
           rep_min?: number | null
           role_id: string
           slot_order: number
+          slot_category?: string | null
+          rir_min?: number | null
+          rir_max?: number | null
+          notes?: string | null
           split_type?: string | null
         }
         Update: {
@@ -94,6 +102,10 @@ export type Database = {
           rep_min?: number | null
           role_id?: string
           slot_order?: number
+          slot_category?: string | null
+          rir_min?: number | null
+          rir_max?: number | null
+          notes?: string | null
           split_type?: string | null
         }
         Relationships: [

@@ -110,15 +110,21 @@ export const USER_LEVELS: { id: UserLevel; name: string; description: string }[]
   { id: 'advanced', name: 'Expert', description: 'Více než 3 roky intenzivního tréninku' },
 ];
 
+export type SlotCategory = 'main' | 'secondary' | 'isolation' | 'core_or_compensatory' | 'conditioning';
+
 export interface DayTemplateSlot {
   id: string;
   slotOrder: number;
-  roleId: string; // Can be any role from DB
+  roleId: string;
+  slotCategory: SlotCategory;
   beginnerSets: number;
   intermediateSets: number;
   advancedSets: number;
   repMin: number;
   repMax: number;
+  rirMin: number | null;
+  rirMax: number | null;
+  notes: string | null;
 }
 
 export interface DayTemplate {
