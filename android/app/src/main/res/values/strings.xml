@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pumplo</string>
+    <string name="title_activity_main">Pumplo</string>
+    <string name="package_name">com.pumplo.app</string>
+    <string name="custom_url_scheme">com.pumplo.app</string>
+</resources>
