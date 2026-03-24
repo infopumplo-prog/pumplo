@@ -144,19 +144,23 @@ export const useWorkoutPlan = () => {
         || (planData.inputs_snapshot_json as any)?.split_type
         || deriveSplitTypeFromExercises(exercisesData || []);
 
-      // 6. Get day templates for day names - by split_type
+      // 6. Get day templates for day names and slot categories - by split_type and goal_id
       const { data: dayTemplatesData } = await supabase
         .from('day_templates')
-        .select('day_letter, day_name')
-        .eq('split_type', splitType);
-      
+        .select('day_letter, day_name, slot_order, slot_category, role_id')
+        .eq('split_type', splitType)
+        .eq('goal_id', planData.goal_id);
+
       // Create a map of day_letter -> day_name
       const dayNameMap: Record<string, string> = {};
+      // Create a map of "day_letter:slot_order" -> slot_category for exercise category display
+      const slotCategoryMap: Record<string, string> = {};
       if (dayTemplatesData) {
         dayTemplatesData.forEach(dt => {
           if (!dayNameMap[dt.day_letter]) {
             dayNameMap[dt.day_letter] = dt.day_name;
           }
+          slotCategoryMap[`${dt.day_letter}:${dt.slot_order}`] = dt.slot_category || 'secondary';
         });
       }
 
@@ -175,7 +179,8 @@ export const useWorkoutPlan = () => {
         repMax: ex.rep_max || 12,
         isFallback: ex.is_fallback || false,
         fallbackReason: ex.fallback_reason,
-        selectionScore: ex.selection_score
+        selectionScore: ex.selection_score,
+        slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as any,
       }));
 
       // 6. Check if gym equipment has changed (needs_regeneration check)
@@ -320,6 +325,17 @@ export const useWorkoutPlan = () => {
 
   useEffect(() => {
     fetchActivePlan();
+  }, [fetchActivePlan]);
+
+  // Refetch when tab/page becomes visible again (e.g., navigating back from Training)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchActivePlan();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [fetchActivePlan]);
 
   return {

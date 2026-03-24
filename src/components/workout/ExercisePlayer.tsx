@@ -1,13 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, ChevronDown, Info, SkipForward, Check, Dumbbell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { SetTracker } from './SetTracker';
+import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
+import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
-import { cn } from '@/lib/utils';
+
+const categoryLabels: Record<string, string> = {
+  chest: 'Hrudník', back: 'Záda', shoulders: 'Ramena', arms: 'Paže',
+  legs: 'Nohy', core: 'Střed těla', cardio: 'Kardio',
+  full_body: 'Celé tělo', abdominals: 'Břicho', strength: 'Síla',
+};
+
+const equipmentLabels: Record<string, string> = {
+  bodyweight: 'Vlastní váha', barbell: 'Činka', dumbbell: 'Jednoručky',
+  kettlebell: 'Kettlebell', machine: 'Stroj', cable: 'Kladka',
+  free_weight: 'Volné závaží', plate_loaded: 'Kotouče', other: 'Jiné',
+};
 
 interface SetData {
   completed: boolean;
@@ -16,6 +25,7 @@ interface SetData {
 }
 
 interface ExercisePlayerProps {
+  exerciseId?: string;
   exerciseName: string;
   exerciseDescription?: string;
   videoUrl: string | null;
@@ -30,7 +40,18 @@ interface ExercisePlayerProps {
   totalExercises: number;
   onCompleteExercise: (setsData: SetData[]) => void;
   onSkipExercise?: () => void;
+  onSwapExercise?: () => void;
+  isSwapping?: boolean;
+  onSwitchToList?: () => void;
+  onClose?: () => void;
+  onGoPrevious?: () => void;
+  onGoNext?: () => void;
+  isCompleted?: boolean;
   showWeightInput?: boolean;
+  category?: string;
+  equipmentType?: string | null;
+  primaryMuscles?: string[];
+  secondaryMuscles?: string[];
   restBetweenSets?: number;
   initialSetIndex?: number;
   initialSetsData?: SetData[];
@@ -38,13 +59,11 @@ interface ExercisePlayerProps {
 }
 
 export const ExercisePlayer = ({
+  exerciseId,
   exerciseName,
-  exerciseDescription,
   videoUrl,
   roleId,
-  equipment,
   machineName,
-  difficulty,
   totalSets,
   repMin,
   repMax,
@@ -52,44 +71,74 @@ export const ExercisePlayer = ({
   totalExercises,
   onCompleteExercise,
   onSkipExercise,
+  onSwapExercise,
+  isSwapping = false,
+  onSwitchToList,
+  onClose,
+  onGoPrevious,
+  onGoNext,
+  isCompleted = false,
   showWeightInput = true,
+  category = '',
+  equipmentType,
+  primaryMuscles = [],
+  secondaryMuscles = [],
   restBetweenSets = 90,
   initialSetIndex = 0,
   initialSetsData,
   onSetChange
 }: ExercisePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
     initialSetsData || Array.from({ length: totalSets }, () => ({ completed: false }))
   );
-  const [showDescription, setShowDescription] = useState(false);
-  const [showFullName, setShowFullName] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [weight, setWeight] = useState<string>('');
+  const [reps, setReps] = useState<string>(`${repMax}`);
+  const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [infoVideoError, setInfoVideoError] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  const completedSets = setsData.filter(s => s.completed).length;
+  const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+
+  // Sync weight/reps inputs when navigating between sets (e.g. going back)
+  useEffect(() => {
+    const setData = setsData[currentSet];
+    if (setData?.completed) {
+      setWeight(setData.weight != null ? `${setData.weight}` : '');
+      setReps(setData.reps != null ? `${setData.reps}` : `${repMax}`);
+    }
+  }, [currentSet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (videoRef.current && videoUrl) {
       videoRef.current.muted = true;
-      if (isPlaying && !showRestTimer) {
+      if (!showRestTimer) {
         videoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
       }
     }
-  }, [isPlaying, showRestTimer, videoUrl]);
+  }, [showRestTimer, videoUrl]);
 
-  const handleCompleteSet = (setIndex: number, weight?: number, reps?: number) => {
+  const handleCompleteSet = () => {
+    const weightNum = weight ? parseFloat(weight) : undefined;
+    const repsNum = reps ? parseInt(reps) : repMax;
+
     const newSetsData = [...setsData];
-    newSetsData[setIndex] = { completed: true, weight, reps };
+    newSetsData[currentSet] = { completed: true, weight: weightNum, reps: repsNum };
     setSetsData(newSetsData);
-    
-    // Notify parent about set change for pause tracking
+
     if (onSetChange) {
-      onSetChange(setIndex + 1, newSetsData);
+      onSetChange(currentSet + 1, newSetsData);
     }
-    
-    if (setIndex + 1 >= totalSets) {
+
+    setReps(`${repMax}`);
+
+    if (currentSet + 1 >= totalSets) {
       onCompleteExercise(newSetsData);
     } else {
       setShowRestTimer(true);
@@ -100,40 +149,24 @@ export const ExercisePlayer = ({
     setShowRestTimer(false);
     const newSetIndex = currentSet + 1;
     setCurrentSet(newSetIndex);
-    // Notify parent about set change
+    // Pre-fill weight from previous set for convenience (keep current reps default)
+    const prevSet = setsData[currentSet];
+    if (prevSet?.weight != null) {
+      setWeight(`${prevSet.weight}`);
+    }
+    setReps(`${repMax}`);
     if (onSetChange) {
       onSetChange(newSetIndex, setsData);
     }
   };
 
-  const togglePlay = () => {
-    setIsPlaying(prev => !prev);
+  const handleGoBack = () => {
+    if (currentSet > 0) {
+      setCurrentSet(prev => prev - 1);
+    } else if (onGoPrevious) {
+      onGoPrevious();
+    }
   };
-
-  const equipmentDisplay = machineName || equipment.map(eq => {
-    const eqNames: Record<string, string> = {
-      'barbell': 'Veľká činka',
-      'dumbbell': 'Jednoručky',
-      'kettlebell': 'Kettlebell',
-      'cable': 'Kladka',
-      'machine': 'Stroj',
-      'bodyweight': 'Vlastná váha',
-      'free_weights': 'Voľné váhy',
-      'plate_loaded': 'Kotúčový stroj',
-      'resistance_band': 'Guma',
-      'exercise_ball': 'Fitlopta',
-      'trx': 'TRX',
-      'ez_bar': 'EZ činka',
-      'smith_machine': 'Smithov stroj',
-      'pull_up_bar': 'Hrazda',
-      'bench': 'Lavička',
-      'foam_roller': 'Valec',
-      'medicine_ball': 'Medicinbal'
-    };
-    return eqNames[eq] || eq.replace(/_/g, ' ');
-  }).join(', ');
-
-  const completedSets = setsData.filter(s => s.completed).length;
 
   if (showRestTimer) {
     return (
@@ -145,176 +178,241 @@ export const ExercisePlayer = ({
     );
   }
 
-  // Get difficulty color based on value (1-10 scale)
-  const getDifficultyColor = (diff?: number) => {
-    if (!diff) return 'bg-muted text-muted-foreground';
-    if (diff <= 3) return 'bg-green-500/10 text-green-600';
-    if (diff <= 6) return 'bg-yellow-500/10 text-yellow-600';
-    return 'bg-red-500/10 text-red-600';
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-y-auto">
-      {/* Header - with left padding for X button */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border pl-14 pr-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-primary/10 text-primary font-semibold">
-              {exerciseIndex + 1} / {totalExercises}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              Série {completedSets}/{totalSets}
-            </span>
-          </div>
-          {onSkipExercise && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={onSkipExercise}
-            >
-              <SkipForward className="w-4 h-4 mr-1" />
-              Přeskočit
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 pb-32 space-y-4">
-        {/* Video Card */}
-        <Card className="overflow-hidden shadow-card">
-          <div className="relative aspect-video bg-muted" onClick={togglePlay}>
-            {videoUrl ? (
-              <>
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="w-full h-full object-cover"
-                  loop
-                  muted
-                  autoPlay
-                  playsInline
-                />
-                {/* Play/pause overlay */}
-                <AnimatePresence>
-                  {!isPlaying && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/30"
-                    >
-                      <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                        <Play className="w-8 h-8 text-foreground ml-1" />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <Dumbbell className="w-12 h-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Video není dostupné</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* Exercise Info Card */}
-        <Card className="shadow-card">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h2 
-                  className={cn(
-                    "text-xl font-bold text-foreground cursor-pointer",
-                    !showFullName && "truncate"
-                  )}
-                  onClick={() => setShowFullName(!showFullName)}
-                >
-                  {exerciseName}
-                </h2>
-                {machineName && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Stroj: {machineName}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <Badge variant="outline" className="text-xs">
-                    {TRAINING_ROLE_NAMES[roleId as keyof typeof TRAINING_ROLE_NAMES] || roleId}
-                  </Badge>
-                  {equipmentDisplay && (
-                    <Badge variant="secondary" className="text-xs">
-                      {equipmentDisplay}
-                    </Badge>
-                  )}
-                  {difficulty && (
-                    <Badge className={cn("text-xs", getDifficultyColor(difficulty))}>
-                      Obtížnost: {difficulty}/10
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <Badge className="bg-primary text-primary-foreground shrink-0">
-                {repMin}-{repMax} opak.
-              </Badge>
-            </div>
-
-            {/* Description toggle */}
-            {exerciseDescription && (
-              <div className="mt-4">
-                <button
-                  onClick={() => setShowDescription(!showDescription)}
-                  className="flex items-center gap-2 text-sm text-primary font-medium w-full"
-                >
-                  <Info className="w-4 h-4" />
-                  <span>Instrukce</span>
-                  <ChevronDown className={cn(
-                    "w-4 h-4 ml-auto transition-transform",
-                    showDescription && "rotate-180"
-                  )} />
-                </button>
-                <AnimatePresence>
-                  {showDescription && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <p className="text-sm text-muted-foreground mt-3 bg-muted/50 rounded-lg p-3">
-                        {exerciseDescription}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Set Tracker Card */}
-        <Card className="shadow-card">
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" />
-              Sledování sérií
-            </h3>
-            <SetTracker
-              totalSets={totalSets}
-              repMin={repMin}
-              repMax={repMax}
-              currentSet={currentSet}
-              setsData={setsData}
-              onCompleteSet={handleCompleteSet}
-              showWeightInput={showWeightInput}
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+      <motion.div
+        key={`exercise-${exerciseIndex}-${currentSet}`}
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -30 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex flex-col relative"
+      >
+        {/* Full-screen video */}
+        <div className="flex-1 relative">
+          {videoUrl && !videoError ? (
+            <video
+              ref={videoRef}
+              key={videoUrl}
+              src={videoUrl}
+              autoPlay loop muted playsInline
+              preload="auto"
+              className="w-full h-full object-cover"
+              onError={() => setVideoError(true)}
             />
-          </CardContent>
-        </Card>
-      </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-neutral-900">
+              <div className="text-center">
+                <Dumbbell className="w-12 h-12 mx-auto mb-2 text-white/20" />
+                <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Top overlay: back + progress + counter + skip */}
+          <div className="absolute top-0 left-0 right-0 safe-top">
+            <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+              {(exerciseIndex > 0 || currentSet > 0) && (
+                <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              )}
+              <div className="flex-1">
+                <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-[#5BC8F5] rounded-full"
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
+                {exerciseIndex + 1}/{totalExercises}
+              </span>
+              {onSwapExercise && (
+                <button onClick={onSwapExercise} disabled={isSwapping} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white disabled:opacity-50">
+                  <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
+                </button>
+              )}
+              {onSkipExercise && (
+                <button onClick={onSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <SkipForward className="w-5 h-5" />
+                </button>
+              )}
+              {onSwitchToList && (
+                <button onClick={onSwitchToList} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <List className="w-5 h-5" />
+                </button>
+              )}
+              {onClose && (
+                <button onClick={onClose} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Top-left: exercise name + set info */}
+          <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[70vw]">
+              <p className="text-white font-bold text-base leading-tight truncate">{exerciseName}</p>
+              <p className="text-white/70 text-sm mt-0.5">
+                Série {currentSet + 1} / {totalSets}
+                {isCompleted && ' · Hotovo'}
+              </p>
+              {machineName && (
+                <p className="text-white/50 text-xs mt-0.5 truncate">{machineName}</p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowInfoDrawer(!showInfoDrawer)}
+              className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Bottom overlay: inputs + complete button */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-6 px-5">
+            {/* Previous sets summary */}
+            {setsData.some(s => s.completed && s.weight) && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {setsData.map((set, i) =>
+                  set.completed && set.weight ? (
+                    <span key={i} className="text-xs bg-white/15 backdrop-blur-sm text-white/80 px-2 py-1 rounded-lg">
+                      S{i + 1}: {set.weight}kg × {set.reps || repMax}
+                    </span>
+                  ) : null
+                )}
+              </div>
+            )}
+
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                {/* Reps display */}
+                <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
+                  <p className="text-white text-2xl font-bold leading-tight">
+                    {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
+                  </p>
+                </div>
+
+                {/* Weight and reps inputs */}
+                {showWeightInput && currentSet < totalSets && (
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="např. 60"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                        className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={reps}
+                        onChange={(e) => setReps(e.target.value)}
+                        className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Complete set button */}
+              {currentSet < totalSets && (
+                <button
+                  onClick={handleCompleteSet}
+                  className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
+                >
+                  <ChevronRight className="w-8 h-8 text-white" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Info drawer */}
+      <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>{exerciseName}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6 overflow-y-auto">
+            {videoUrl ? (
+              <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                {infoVideoError ? (
+                  <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video nedostupné</div>
+                ) : (
+                  <video
+                    key={videoUrl}
+                    src={videoUrl}
+                    controls playsInline autoPlay loop muted preload="auto"
+                    className="w-full h-full object-contain"
+                    onError={() => setInfoVideoError(true)}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Bez videa</p>
+              </div>
+            )}
+
+            <p className="text-sm text-muted-foreground mb-4">
+              {categoryLabels[category] || category}
+              {equipmentType && ` · ${equipmentLabels[equipmentType] || equipmentType}`}
+              {machineName && ` · ${machineName}`}
+            </p>
+
+            <button
+              onClick={() => {
+                setShowInfoDrawer(false);
+                setTimeout(() => setFeedbackOpen(true), 300);
+              }}
+              className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
+              Zpětná vazba k tomuto cviku
+            </button>
+
+            {primaryMuscles.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {primaryMuscles.map((m) => (
+                    <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {secondaryMuscles.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {secondaryMuscles.map((m) => (
+                    <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Feedback modal */}
+      <FeedbackModal
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        exercises={exerciseId ? [{ id: exerciseId, name: exerciseName }] : []}
+        workoutContext={{ exercise_id: exerciseId }}
+      />
     </div>
   );
 };

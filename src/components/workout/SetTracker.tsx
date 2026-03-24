@@ -76,7 +76,7 @@ export const SetTracker = ({
         <p className="text-lg font-semibold">
           Série {currentSet + 1} z {totalSets}
         </p>
-        <p className="text-muted-foreground">
+        <p className="text-xl font-bold text-foreground">
           {repMin}-{repMax} opakování
         </p>
       </div>

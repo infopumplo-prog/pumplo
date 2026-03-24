@@ -8,6 +8,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; userId?: string }>;
+  loginWithProvider: (provider: 'google' | 'apple') => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
@@ -83,12 +85,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { success: true, userId: data.user?.id };
   };
 
+  const loginWithProvider = async (provider: 'google' | 'apple'): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  };
+
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, register, loginWithProvider, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,10 +1,15 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageSquarePlus } from 'lucide-react';
 import { FeedbackModal } from './FeedbackModal';
 
 export const FeedbackButton = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+
+  // Hide during active workout - feedback is accessible via info button there
+  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training') return null;
 
   return (
     <>

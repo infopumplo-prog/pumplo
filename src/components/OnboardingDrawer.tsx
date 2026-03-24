@@ -9,6 +9,7 @@ import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -289,9 +290,15 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const renderStep = () => {
     switch (currentStep) {
       case 0:
-        return <OnboardingGoalStep value={primaryGoal} onChange={setPrimaryGoal} />;
+        return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {
+          setPrimaryGoal(goal);
+          if (userLevel === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(goal));
+        }} />;
       case 1:
-        return <OnboardingLevelStep value={userLevel} onChange={setUserLevel} />;
+        return <OnboardingLevelStep value={userLevel} onChange={(level) => {
+          setUserLevel(level);
+          if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
+        }} />;
       case 2:
         return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
       case 3:
@@ -301,6 +308,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             duration={trainingDuration}
             onTimeChange={setPreferredTime}
             onDurationChange={setTrainingDuration}
+            userLevel={userLevel}
+            goalId={primaryGoal}
           />
         );
       case 4:

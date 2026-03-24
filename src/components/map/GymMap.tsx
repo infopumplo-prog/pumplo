@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { OpeningHours } from '@/hooks/useGym';
@@ -13,12 +13,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+export interface GymMapHandle {
+  centerOnUser: () => void;
+}
+
 interface GymMapProps {
   gyms: PublicGym[];
   userLocation: { lat: number; lng: number } | null;
   onGymSelect: (gym: PublicGym) => void;
   selectedGymId?: string;
-  onCenterUser?: () => void;
+  mapHandleRef?: React.MutableRefObject<GymMapHandle | null>;
 }
 
 const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false) => {
@@ -62,7 +66,7 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false) => 
           align-items: center;
           justify-content: center;
         ">
-          <img src="${logoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
+          <img src="${logoUrl}" style="width: 75%; height: 75%; object-fit: contain;" />
           ${warningBadge}
         </div>
       `,
@@ -133,7 +137,7 @@ const createUserIcon = () => {
   });
 };
 
-const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapProps, 'onCenterUser'>) => {
+const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }: GymMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -142,11 +146,18 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
   const [hasCenteredOnUser, setHasCenteredOnUser] = useState(false);
 
   // Function to center on user location
-  const centerOnUser = () => {
+  const centerOnUser = useCallback(() => {
     if (mapRef.current && userLocation) {
       mapRef.current.setView([userLocation.lat, userLocation.lng], 15, { animate: true });
     }
-  };
+  }, [userLocation]);
+
+  // Expose handle to parent
+  useEffect(() => {
+    if (mapHandleRef) {
+      mapHandleRef.current = { centerOnUser };
+    }
+  }, [mapHandleRef, centerOnUser]);
 
   // Default center (Czechia)
   const defaultCenter: [number, number] = [49.8, 15.5];
@@ -170,12 +181,15 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
       minZoom: 7,
       maxZoom: 18,
       attributionControl: false,
-      zoomControl: true,
+      zoomControl: false,
     });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(map);
+
+    // Add zoom control to top-left so it doesn't overlap center button
+    L.control.zoom({ position: 'topleft' }).addTo(map);
 
     // Set view to show all of Czechia centered
     map.setView(defaultCenter, 7);
@@ -282,28 +296,11 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId }: Omit<GymMapP
   }, [isMapReady]);
 
   return (
-    <div className="relative w-full h-full">
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-full overflow-hidden relative z-0"
-        style={{ background: '#f0f0f0' }}
-      />
-      {/* Center on user button - top right - always show */}
-      <button
-        onClick={centerOnUser}
-        disabled={!userLocation}
-        className="absolute top-4 right-4 z-10 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label="Vycentrovat na mou polohu"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "#4CC9FF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v4"/>
-          <path d="M12 18v4"/>
-          <path d="M2 12h4"/>
-          <path d="M18 12h4"/>
-        </svg>
-      </button>
-    </div>
+    <div
+      ref={mapContainerRef}
+      className="w-full h-full overflow-hidden relative z-0"
+      style={{ background: '#f0f0f0' }}
+    />
   );
 };
 

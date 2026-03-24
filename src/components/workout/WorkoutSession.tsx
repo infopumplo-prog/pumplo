@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button';
 import { ExercisePlayer } from './ExercisePlayer';
 import { RestTimer } from './RestTimer';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
+import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
+import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
+import { CompactWorkoutView } from './CompactWorkoutView';
+import { toast } from 'sonner';
 
 interface SetData {
   completed: boolean;
@@ -39,26 +43,53 @@ interface WorkoutSessionProps {
   initialCurrentExerciseSets?: SetData[];
 }
 
-// Rest times in seconds based on goal and situation
-const REST_TIMES = {
-  muscle_gain: { betweenSets: 90, betweenExercises: 180 },
-  fat_loss: { betweenSets: 45, betweenExercises: 90 },
-  strength: { betweenSets: 180, betweenExercises: 240 },
-  general_fitness: { betweenSets: 60, betweenExercises: 120 },
+// Per-category rest times (seconds) per goal
+// Trainer rules v3: main gets full rest, secondary reduced, isolation/core short
+const getRestSecondsForCategory = (goalId: string, slotCategory?: string | null): number => {
+  const cat = slotCategory || 'secondary';
+  switch (goalId) {
+    case 'strength':
+      if (cat === 'main') return 300;              // 5 min
+      if (cat === 'secondary') return 180;          // 3 min
+      return 120;                                   // isolation/core/conditioning: 2 min
+    case 'muscle_gain':
+      if (cat === 'main') return 180;              // 3 min
+      if (cat === 'secondary') return 120;          // 2 min
+      return 90;                                    // isolation/core/conditioning: 1.5 min
+    case 'fat_loss':
+    case 'general_fitness':
+    default:
+      return 60;                                    // 1 min for all categories
+  }
+};
+
+/**
+ * Extract relative file path from video_path which may be a full URL or relative path.
+ * DB stores full URLs like: https://xxx.supabase.co/storage/v1/object/public/exercise-videos/file.mp4
+ * But createSignedUrl() needs just: file.mp4
+ */
+const extractVideoFilePath = (videoPath: string): string => {
+  const bucketMarker = '/exercise-videos/';
+  const idx = videoPath.indexOf(bucketMarker);
+  if (idx !== -1) {
+    return videoPath.substring(idx + bucketMarker.length);
+  }
+  return videoPath;
 };
 
 const getSignedVideoUrl = async (videoPath: string | null): Promise<string | null> => {
   if (!videoPath) return null;
-  
+
+  const filePath = extractVideoFilePath(videoPath);
   const { data, error } = await supabase.storage
     .from('exercise-videos')
-    .createSignedUrl(videoPath, 3600); // 1 hour expiry
-  
+    .createSignedUrl(filePath, 3600);
+
   if (error) {
     console.error('Error getting signed video URL:', error);
     return null;
   }
-  
+
   return data?.signedUrl || null;
 };
 
@@ -82,21 +113,155 @@ export const WorkoutSession = ({
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(0);
   const [restLabel, setRestLabel] = useState('');
-  const [results, setResults] = useState<ExerciseResult[]>(initialResults);
+  // Results stored by exercise index for back-navigation support
+  const [resultsByIndex, setResultsByIndex] = useState<Map<number, ExerciseResult>>(() => {
+    const map = new Map<number, ExerciseResult>();
+    initialResults.forEach((r, i) => map.set(i, r));
+    return map;
+  });
   const [showSummary, setShowSummary] = useState(false);
   const [workoutStartTime] = useState(new Date());
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [gymName, setGymName] = useState<string>('');
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [viewMode, setViewMode] = useState<'video' | 'list'>('video');
+  // Mutable exercises array for live swap
+  const [liveExercises, setLiveExercises] = useState<WorkoutExercise[]>(exercises);
+  // Track sets data per exercise for compact mode
+  const [setsDataByExercise, setSetsDataByExercise] = useState<Map<number, SetData[]>>(new Map());
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
+  // Track the highest exercise index reached (for forward progress)
+  const [highestIndexReached, setHighestIndexReached] = useState(initialExerciseIndex);
+
+  // Fetch gym name for share card
+  useEffect(() => {
+    if (!gymId) return;
+    supabase
+      .from('gyms')
+      .select('name')
+      .eq('id', gymId)
+      .single()
+      .then(({ data }) => {
+        if (data?.name) setGymName(data.name);
+      });
+  }, [gymId]);
   
+  /**
+   * Swap current exercise for the closest alternative with same role.
+   * Queries DB for exercises matching role_id, available at gym, excluding used exercises.
+   */
+  const handleSwapExercise = useCallback(async () => {
+    if (isSwapping) return;
+    setIsSwapping(true);
+
+    try {
+      const exercise = liveExercises[currentExerciseIndex];
+      if (!exercise) return;
+
+      const roleId = exercise.roleId;
+      const isCardio = CARDIO_ROLE_IDS.includes(roleId);
+
+      // IDs to exclude: all exercises currently in workout
+      const excludeIds = liveExercises
+        .map(e => e.exerciseId)
+        .filter((id): id is string => !!id);
+
+      // Fetch gym machine IDs for equipment filtering
+      const { data: gymMachines } = await supabase
+        .from('gym_machines')
+        .select('machine_id')
+        .eq('gym_id', gymId);
+      const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
+
+      // Query candidates with same role
+      let query = supabase
+        .from('exercises')
+        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
+        .eq('allowed_phase', 'main');
+
+      if (isCardio) {
+        query = query.eq('category', 'cardio');
+      } else {
+        query = query.eq('primary_role', roleId);
+      }
+
+      const { data: candidates, error } = await query;
+      if (error || !candidates || candidates.length === 0) {
+        toast.error('Žádná náhrada nenalezena');
+        return;
+      }
+
+      // Filter: exclude current exercises, must be available at gym (machine check)
+      const valid = candidates.filter(c => {
+        if (excludeIds.includes(c.id)) return false;
+        if (c.machine_id && !machineIds.has(c.machine_id)) return false;
+        return true;
+      });
+
+      if (valid.length === 0) {
+        toast.error('Žádná náhrada nenalezena');
+        return;
+      }
+
+      // Pick random from top candidates
+      const pick = valid[Math.floor(Math.random() * Math.min(3, valid.length))];
+
+      // Fetch machine name if applicable
+      let newMachineName: string | null = null;
+      if (pick.machine_id) {
+        const { data: machine } = await supabase
+          .from('machines')
+          .select('name')
+          .eq('id', pick.machine_id)
+          .single();
+        newMachineName = machine?.name || null;
+      }
+
+      // Update DB
+      if (planId && exercise.exerciseId) {
+        await supabase
+          .from('user_workout_exercises')
+          .update({
+            exercise_id: pick.id,
+            is_fallback: true,
+            fallback_reason: 'user_swap',
+          })
+          .eq('plan_id', planId)
+          .eq('day_letter', dayLetter)
+          .eq('slot_order', exercise.slotOrder);
+      }
+
+      // Update in-memory
+      setLiveExercises(prev => {
+        const updated = [...prev];
+        updated[currentExerciseIndex] = {
+          ...exercise,
+          exerciseId: pick.id,
+          exerciseName: pick.name,
+          machineName: newMachineName,
+          isFallback: true,
+          fallbackReason: 'user_swap',
+        };
+        return updated;
+      });
+
+      toast.success(`Vyměněno za: ${pick.name}`);
+    } catch (err) {
+      console.error('[Swap] Error:', err);
+      toast.error('Chyba při výměně cviku');
+    } finally {
+      setIsSwapping(false);
+    }
+  }, [currentExerciseIndex, liveExercises, gymId, planId, dayLetter, isSwapping]);
+
   // Track current set state for pause functionality
   const [currentSetIndex, setCurrentSetIndex] = useState(initialSetIndex);
   const [currentExerciseSets, setCurrentExerciseSets] = useState<SetData[]>(
     initialCurrentExerciseSets || []
   );
 
-  const currentExercise = exercises[currentExerciseIndex];
-  const restTimes = REST_TIMES[goalId] || REST_TIMES.general_fitness;
+  const currentExercise = liveExercises[currentExerciseIndex];
 
   // Note: weight tracking is now determined by exercise_with_weights field from DB
 
@@ -106,19 +271,23 @@ export const WorkoutSession = ({
       exerciseName: currentExercise.exerciseName || '',
       sets: setsData
     };
-    
-    setResults(prev => [...prev, newResult]);
 
-    if (currentExerciseIndex < exercises.length - 1) {
-      // Show rest timer before next exercise
-      setRestDuration(restTimes.betweenExercises);
+    setResultsByIndex(prev => new Map(prev).set(currentExerciseIndex, newResult));
+    setSetsDataByExercise(prev => new Map(prev).set(currentExerciseIndex, setsData));
+
+    if (currentExerciseIndex < liveExercises.length - 1) {
+      // Show rest timer before next exercise — use the NEXT exercise's category for rest
+      const nextExercise = liveExercises[currentExerciseIndex + 1];
+      const nextRest = getRestSecondsForCategory(goalId, nextExercise?.slotCategory);
+      setRestDuration(nextRest);
       setRestLabel('Příprava na další cvik');
       setShowRestTimer(true);
+      setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
       // Workout complete
       setShowSummary(true);
     }
-  }, [currentExercise, currentExerciseIndex, exercises.length, restTimes.betweenExercises]);
+  }, [currentExercise, currentExerciseIndex, liveExercises.length, goalId, liveExercises]);
 
   const handleRestComplete = useCallback(() => {
     setShowRestTimer(false);
@@ -135,16 +304,40 @@ export const WorkoutSession = ({
       exerciseName: currentExercise.exerciseName || '',
       sets: []
     };
-    setResults(prev => [...prev, newResult]);
+    setResultsByIndex(prev => new Map(prev).set(currentExerciseIndex, newResult));
 
-    if (currentExerciseIndex < exercises.length - 1) {
+    if (currentExerciseIndex < liveExercises.length - 1) {
       setCurrentExerciseIndex(prev => prev + 1);
+      setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
       setShowSummary(true);
     }
-  }, [currentExercise, currentExerciseIndex, exercises.length]);
+  }, [currentExercise, currentExerciseIndex, liveExercises.length]);
+
+  // Navigate to previous exercise
+  const handleGoPrevious = useCallback(() => {
+    if (currentExerciseIndex > 0) {
+      setShowRestTimer(false);
+      setCurrentExerciseIndex(prev => prev - 1);
+    }
+  }, [currentExerciseIndex]);
+
+  // Navigate to next exercise (only if already visited)
+  const handleGoNext = useCallback(() => {
+    if (currentExerciseIndex < highestIndexReached) {
+      setShowRestTimer(false);
+      setCurrentExerciseIndex(prev => prev + 1);
+    }
+  }, [currentExerciseIndex, highestIndexReached]);
+
+  // Convert indexed results to ordered array
+  const results = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
+    .filter((r): r is ExerciseResult => r !== undefined);
 
   const handleFinishWorkout = useCallback(async () => {
+    const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
+      .filter((r): r is ExerciseResult => r !== undefined);
+
     // Save workout to history
     await saveWorkoutSession({
       planId,
@@ -152,83 +345,98 @@ export const WorkoutSession = ({
       dayLetter,
       goalId,
       startedAt: workoutStartTime,
-      results,
+      results: orderedResults,
       isBonus
     });
-    
-    onComplete(results);
+
+    onComplete(orderedResults);
     navigate('/');
-  }, [onComplete, results, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus, navigate]);
+  }, [onComplete, resultsByIndex, liveExercises.length, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus, navigate]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
   const totalSets = results.reduce((sum, r) => sum + r.sets.filter(s => s.completed).length, 0);
-  const totalWeight = results.reduce((sum, r) => 
+  const totalWeight = results.reduce((sum, r) =>
     sum + r.sets.reduce((setSum, s) => setSum + ((s.weight || 0) * (s.reps || 0)), 0), 0
   );
 
-  // Summary screen
+  // Calculate total reps for share card
+  const totalReps = results.reduce((sum, r) =>
+    sum + r.sets.reduce((setSum, s) => setSum + (s.completed ? (s.reps || 0) : 0), 0), 0
+  );
+
+  // Compact mode: complete a single set for any exercise
+  const handleCompactCompleteSet = useCallback((exerciseIndex: number, setIndex: number, weight?: number, reps?: number) => {
+    const exercise = liveExercises[exerciseIndex];
+    if (!exercise) return;
+
+    setSetsDataByExercise(prev => {
+      const updated = new Map(prev);
+      const existing = updated.get(exerciseIndex) ||
+        Array.from({ length: exercise.sets }, () => ({ completed: false }));
+      const newSets = [...existing];
+      newSets[setIndex] = { completed: true, weight, reps };
+      updated.set(exerciseIndex, newSets);
+
+      // Check if all sets for this exercise are done
+      const allDone = newSets.every(s => s.completed);
+      if (allDone) {
+        // Save result
+        const result: ExerciseResult = {
+          exerciseId: exercise.exerciseId || '',
+          exerciseName: exercise.exerciseName || '',
+          sets: newSets
+        };
+        setResultsByIndex(prev2 => new Map(prev2).set(exerciseIndex, result));
+
+        // Auto-advance to next incomplete exercise
+        const nextIdx = liveExercises.findIndex((_, i) => {
+          if (i <= exerciseIndex) return false;
+          const sets = updated.get(i);
+          if (!sets) return true;
+          return sets.some(s => !s.completed);
+        });
+        if (nextIdx !== -1) {
+          setCurrentExerciseIndex(nextIdx);
+          setHighestIndexReached(prev2 => Math.max(prev2, nextIdx));
+        } else {
+          // Check if ALL exercises done
+          const allExercisesDone = liveExercises.every((_, i) => {
+            const sets = updated.get(i);
+            return sets && sets.every(s => s.completed);
+          });
+          if (allExercisesDone) {
+            setShowSummary(true);
+          }
+        }
+      }
+
+      return updated;
+    });
+  }, [liveExercises]);
+
+  const handleCompactSelectExercise = useCallback((index: number) => {
+    setCurrentExerciseIndex(index);
+    setHighestIndexReached(prev => Math.max(prev, index));
+  }, []);
+
+  // Summary / Share screen
   if (showSummary) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6 pb-32"
-      >
-        <motion.div
-          initial={{ scale: 0.8, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center w-full max-w-sm"
-        >
-          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Trophy className="w-12 h-12 text-primary" />
-          </div>
-          
-          <h1 className="text-3xl font-bold mb-2">Skvělá práce!</h1>
-          <p className="text-muted-foreground mb-8">
-            {isBonus ? 'Bonusový trénink' : `Den ${dayLetter.replace('_EXT', '+')}`} dokončen
-          </p>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-muted rounded-xl p-4">
-              <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{totalDuration}</p>
-              <p className="text-xs text-muted-foreground">minut</p>
-            </div>
-            <div className="bg-muted rounded-xl p-4">
-              <Weight className="w-6 h-6 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{Math.round(totalWeight)}</p>
-              <p className="text-xs text-muted-foreground">kg</p>
-            </div>
-          </div>
-
-          {/* Exercise breakdown */}
-          <div className="w-full mb-6">
-            <p className="text-sm text-muted-foreground mb-3 text-left">Přehled cviků:</p>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {results.map((result, i) => (
-                <div key={i} className="flex items-center justify-between text-sm bg-muted/50 rounded-lg px-3 py-2">
-                  <span className="truncate flex-1 text-left">{result.exerciseName}</span>
-                  <span className="text-muted-foreground ml-2">
-                    {result.sets.filter(s => s.completed).length} sérií
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Button 
-            size="lg" 
-            className="w-full" 
-            onClick={handleFinishWorkout}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Ukládám...' : 'Dokončit trénink'}
-          </Button>
-        </motion.div>
-      </motion.div>
+      <WorkoutShareCard
+        dayLetter={dayLetter}
+        goalId={goalId}
+        gymName={gymName}
+        totalDuration={totalDuration}
+        totalSets={totalSets}
+        totalWeight={totalWeight}
+        totalReps={totalReps}
+        exerciseCount={results.length}
+        isBonus={isBonus}
+        onClose={() => setShowSummary(false)}
+        onFinish={handleFinishWorkout}
+        isSaving={isSaving}
+      />
     );
   }
 
@@ -246,26 +454,73 @@ export const WorkoutSession = ({
   // Main exercise player
   if (!currentExercise) return null;
 
-  return (
-    <div className="fixed inset-0 z-50">
-      {/* Cancel button - positioned for card layout */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-3 left-4 z-[60] text-foreground hover:bg-muted"
-        onClick={() => setShowExitDialog(true)}
-      >
-        <X className="w-5 h-5" />
-      </Button>
+  // Compact list mode
+  if (viewMode === 'list') {
+    return (
+      <div className="fixed inset-0 z-[60]">
+        <CompactWorkoutView
+          exercises={liveExercises}
+          currentExerciseIndex={currentExerciseIndex}
+          setsDataByExercise={setsDataByExercise}
+          onCompleteSet={handleCompactCompleteSet}
+          onSelectExercise={handleCompactSelectExercise}
+          onSwitchToVideo={() => setViewMode('video')}
+          onClose={() => setShowExitDialog(true)}
+          onSkipExercise={handleSkipClick}
+          onSwapExercise={handleSwapExercise}
+          isSwapping={isSwapping}
+          totalExercises={liveExercises.length}
+        />
 
+        {/* Skip Dialog */}
+        <ExerciseSkipDialog
+          open={showSkipDialog}
+          onOpenChange={setShowSkipDialog}
+          exerciseId={currentExercise.exerciseId}
+          exerciseName={currentExercise.exerciseName || 'Cvik'}
+          gymId={gymId}
+          planId={planId || undefined}
+          dayLetter={dayLetter}
+          onConfirmSkip={handleConfirmSkip}
+        />
+
+        {/* Exit Dialog */}
+        <WorkoutExitDialog
+          open={showExitDialog}
+          onOpenChange={setShowExitDialog}
+          onEnd={() => {
+            onCancel();
+            navigate('/');
+          }}
+          onPause={() => {
+            if (onPause) {
+              onPause(currentExerciseIndex, results, currentSetIndex, currentExerciseSets);
+            }
+            navigate('/');
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60]">
       <ExercisePlayerWithVideo
+        key={currentExerciseIndex}
         exercise={currentExercise}
         exerciseIndex={currentExerciseIndex}
-        totalExercises={exercises.length}
+        totalExercises={liveExercises.length}
         onCompleteExercise={handleCompleteExercise}
         onSkipExercise={handleSkipClick}
+        onSwapExercise={handleSwapExercise}
+        isSwapping={isSwapping}
+        onSwitchToList={() => setViewMode('list')}
+        onClose={() => setShowExitDialog(true)}
+        onGoPrevious={currentExerciseIndex > 0 ? handleGoPrevious : undefined}
+        onGoNext={currentExerciseIndex < highestIndexReached ? handleGoNext : undefined}
+        isCompleted={resultsByIndex.has(currentExerciseIndex)}
         showWeightInput={true}
-        restBetweenSets={restTimes.betweenSets}
+        restBetweenSets={getRestSecondsForCategory(goalId, currentExercise?.slotCategory)}
         gymId={gymId}
         planId={planId || undefined}
         dayLetter={dayLetter}
@@ -315,6 +570,13 @@ const ExercisePlayerWithVideo = ({
   totalExercises,
   onCompleteExercise,
   onSkipExercise,
+  onSwapExercise,
+  isSwapping,
+  onSwitchToList,
+  onClose,
+  onGoPrevious,
+  onGoNext,
+  isCompleted,
   showWeightInput,
   restBetweenSets,
   gymId,
@@ -329,6 +591,13 @@ const ExercisePlayerWithVideo = ({
   totalExercises: number;
   onCompleteExercise: (setsData: SetData[]) => void;
   onSkipExercise: () => void;
+  onSwapExercise?: () => void;
+  isSwapping?: boolean;
+  onSwitchToList?: () => void;
+  onClose?: () => void;
+  onGoPrevious?: () => void;
+  onGoNext?: () => void;
+  isCompleted?: boolean;
   showWeightInput: boolean;
   restBetweenSets: number;
   gymId?: string;
@@ -338,42 +607,38 @@ const ExercisePlayerWithVideo = ({
   initialSetsData?: SetData[];
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
 }) => {
-  const [videoData, setVideoData] = useState<{ 
-    url: string | null; 
-    description: string | null; 
+  const [videoData, setVideoData] = useState<{
+    url: string | null;
+    description: string | null;
     difficulty: number | null;
     exerciseWithWeights: boolean;
-  }>({ url: null, description: null, difficulty: null, exerciseWithWeights: true });
+    category: string;
+    equipmentType: string | null;
+    primaryMuscles: string[];
+    secondaryMuscles: string[];
+  }>({ url: null, description: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
 
-  // Fetch video path from exercise on mount
+  // Fetch video path + detail from exercise on mount
   useEffect(() => {
     const fetchVideoData = async () => {
       if (!exercise.exerciseId) return;
-      
+
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, difficulty, exercise_with_weights')
+        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles')
         .eq('id', exercise.exerciseId)
         .single();
-      
+
       if (data) {
-        let url = null;
-        if (data.video_path) {
-          // Use signed URL for private bucket
-          const { data: signedData, error } = await supabase.storage
-            .from('exercise-videos')
-            .createSignedUrl(data.video_path, 3600); // 1 hour expiry
-          
-          if (!error && signedData) {
-            url = signedData.signedUrl;
-          }
-        }
-        
-        setVideoData({ 
-          url,
-          description: null, // description column was removed
+        setVideoData({
+          url: data.video_path || null,
+          description: null,
           difficulty: data.difficulty,
-          exerciseWithWeights: data.exercise_with_weights ?? true
+          exerciseWithWeights: data.exercise_with_weights ?? true,
+          category: data.category || '',
+          equipmentType: data.equipment_type || null,
+          primaryMuscles: data.primary_muscles || [],
+          secondaryMuscles: data.secondary_muscles || [],
         });
       }
     };
@@ -382,6 +647,7 @@ const ExercisePlayerWithVideo = ({
 
   return (
     <ExercisePlayer
+      exerciseId={exercise.exerciseId || undefined}
       exerciseName={exercise.exerciseName || 'Cvik'}
       exerciseDescription={videoData.description || undefined}
       videoUrl={videoData.url}
@@ -396,7 +662,18 @@ const ExercisePlayerWithVideo = ({
       totalExercises={totalExercises}
       onCompleteExercise={onCompleteExercise}
       onSkipExercise={onSkipExercise}
+      onSwapExercise={onSwapExercise}
+      isSwapping={isSwapping}
+      onSwitchToList={onSwitchToList}
+      onClose={onClose}
+      onGoPrevious={onGoPrevious}
+      onGoNext={onGoNext}
+      isCompleted={isCompleted}
       showWeightInput={videoData.exerciseWithWeights}
+      category={videoData.category}
+      equipmentType={videoData.equipmentType}
+      primaryMuscles={videoData.primaryMuscles}
+      secondaryMuscles={videoData.secondaryMuscles}
       restBetweenSets={restBetweenSets}
       initialSetIndex={initialSetIndex}
       initialSetsData={initialSetsData}

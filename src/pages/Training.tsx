@@ -130,6 +130,7 @@ const Training = () => {
   // Missing exercises dialog
   const [showMissingExercisesDialog, setShowMissingExercisesDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   
   // Workout preview and warmup state
   const [showWorkoutPreview, setShowWorkoutPreview] = useState(false);
@@ -368,8 +369,9 @@ const Training = () => {
       setSearchParams(searchParams, { replace: true });
       
       // Start workout flow directly (gym already confirmed in Home)
-      const exercisesFromPlan = getCurrentDayExercises();
-      
+      const exercisesFromPlan = getCurrentDayExercises()
+        .filter(ex => ex.exerciseId); // Remove F5 skipped slots
+
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(profile.selected_gym_id);
@@ -702,7 +704,14 @@ const Training = () => {
 
   // Create a plan structure - generates exercises if gym is selected
   const handleCreatePlanSchedule = async () => {
-    if (!selectedGoalId || !profile?.user_level) return;
+    console.log('[handleCreatePlanSchedule] selectedGoalId:', selectedGoalId, 'user_level:', profile?.user_level, 'gym:', profile?.selected_gym_id);
+    if (!selectedGoalId || !profile?.user_level) {
+      console.warn('[handleCreatePlanSchedule] BLOCKED — missing:', !selectedGoalId ? 'selectedGoalId' : 'user_level');
+      if (!profile?.user_level) {
+        toast.error('Chybí úroveň zkušenosti. Vyplňte prosím profil.');
+      }
+      return;
+    }
     
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
@@ -789,17 +798,53 @@ const Training = () => {
     }
   }, [plan, profile, getCurrentDayExercises]);
 
-  // Calculate workout duration - unified with useWorkoutGenerator's calculateSlotsForDuration
-  // New formula: warmup (dynamic 30s per exercise) + exercises × 8 min
-  const calculateWorkoutDuration = (exercises: WorkoutExercise[], warmupCount: number = 4): number => {
-    // Warmup: each exercise is 30 seconds = 0.5 min (round up)
-    const WARMUP_MINUTES = Math.ceil(warmupCount * 0.5);
-    const MINUTES_PER_EXERCISE = 8;
-    
-    const exerciseCount = exercises.length;
-    const estimatedDuration = (exerciseCount * MINUTES_PER_EXERCISE) + WARMUP_MINUTES;
-    
-    return estimatedDuration;
+  // Per-category rest times (seconds) per goal — must match WorkoutSession.tsx
+  // Trainer rules v3: main gets full rest, secondary reduced, isolation/core short
+  const getRestSecondsForCategory = (goalId: string, slotCategory?: string | null): number => {
+    const cat = slotCategory || 'secondary';
+    switch (goalId) {
+      case 'strength':
+        if (cat === 'main') return 300;
+        if (cat === 'secondary') return 180;
+        return 120;
+      case 'muscle_gain':
+        if (cat === 'main') return 180;
+        if (cat === 'secondary') return 120;
+        return 90;
+      case 'fat_loss':
+      case 'general_fitness':
+      default:
+        return 60;
+    }
+  };
+
+  // Calculate workout duration using per-category rest times
+  // No warmup/cooldown included yet (will be added later)
+  const calculateWorkoutDuration = (exercises: WorkoutExercise[], _warmupCount: number = 4, goalId?: string): number => {
+    const WORK_PER_SET_SEC = 40;
+    const goal = goalId || 'general_fitness';
+
+    let totalSeconds = 0;
+    exercises.forEach((ex, i) => {
+      const sets = ex.sets || 3;
+      const isCardio = ex.slotCategory === 'conditioning';
+      const restSec = getRestSecondsForCategory(goal, ex.slotCategory);
+
+      if (isCardio) {
+        // Cardio: fixed 5 min per set (user chooses actual duration themselves)
+        totalSeconds += sets * 5 * 60;
+      } else {
+        // Strength: work + rest between sets
+        totalSeconds += sets * WORK_PER_SET_SEC;
+        totalSeconds += (sets - 1) * restSec;
+      }
+      // Transition to next exercise (not after last)
+      if (i < exercises.length - 1) {
+        totalSeconds += restSec;
+      }
+    });
+
+    return Math.round(totalSeconds / 60);
   };
 
   const getTargetExerciseCount = (trainingDurationMinutes: number | null, userLevel: string): number => {
@@ -871,8 +916,9 @@ const Training = () => {
   const handleConfirmGymAndStart = async () => {
     setShowGymConfirmDialog(false);
     
-    const exercisesFromPlan = getCurrentDayExercises();
-    
+    const exercisesFromPlan = getCurrentDayExercises()
+      .filter(ex => ex.exerciseId); // Remove F5 skipped slots (no exercise assigned)
+
     if (exercisesFromPlan.length > 0) {
       setGeneratedExercises(exercisesFromPlan);
       setSelectedWorkoutGymId(profile!.selected_gym_id!);
@@ -1177,8 +1223,9 @@ const Training = () => {
     
     try {
       // Reload exercises from plan
-      const exercisesFromPlan = getCurrentDayExercises();
-      
+      const exercisesFromPlan = getCurrentDayExercises()
+        .filter(ex => ex.exerciseId); // Remove F5 skipped slots
+
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
         toast.success('Cviky byly načteny!');
@@ -1398,10 +1445,13 @@ const Training = () => {
         exercises={generatedExercises}
         dayLetter={plan?.currentDayLetter || 'A'}
         dayName={getTodayDayName()}
-        estimatedDuration={calculateWorkoutDuration(generatedExercises)}
+        estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
+        gymId={selectedWorkoutGymId || plan?.gymId}
+        planId={plan?.id}
         onStartWarmup={handleStartWarmup}
         onClose={handleEndFromPreview}
         onPause={handlePauseFromPreview}
+        onExercisesChange={setGeneratedExercises}
         isLoading={isGeneratingWarmup}
       />
     );
@@ -1793,9 +1843,9 @@ const Training = () => {
                   <p className="text-xs text-muted-foreground mt-1">
                     Dle aktuální metodiky by trénink měl mít max 7 cviků. Regeneruj plán pro optimální rozložení.
                   </p>
-                  <Button 
-                    onClick={handleRegeneratePlan} 
-                    variant="outline" 
+                  <Button
+                    onClick={() => setShowRegenerateConfirm(true)}
+                    variant="outline"
                     size="sm"
                     className="mt-2 h-8 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
                     disabled={isRegeneratingPlan}
@@ -2134,7 +2184,7 @@ const Training = () => {
                   </div>
                   {generatedExercises.length > 0 && (
                     <Badge variant="secondary">
-                      ~{calculateWorkoutDuration(generatedExercises)} min
+                      ~{calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)} min
                     </Badge>
                   )}
                 </div>
@@ -2259,7 +2309,7 @@ const Training = () => {
                   </div>
                 )}
                 <p className="text-sm">
-                  Automaticky ti vygenerujeme nový plán podle tvého profilu.
+                  Vygenerujeme ti nový plán podle tvého profilu. Aktuální plán bude nahrazen a nepůjde obnovit.
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -2335,8 +2385,8 @@ const Training = () => {
                     <li>Změnila se dostupná vybavení v posilovně</li>
                     <li>Plán byl vytvořen bez vybrané posilovny</li>
                   </ul>
-                  <p className="text-sm">
-                    Klikni na tlačítko níže pro vygenerování nového plánu.
+                  <p className="text-sm font-medium text-amber-600">
+                    Aktuální plán bude smazán a nepůjde obnovit.
                   </p>
                 </div>
               </AlertDialogDescription>
@@ -2357,6 +2407,52 @@ const Training = () => {
                   <>
                     <RefreshCw className="w-4 h-4" />
                     Regenerovat plán
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Regenerate Plan Confirmation Dialog */}
+        <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Regenerovat plán?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2" asChild>
+                <div>
+                  <p>
+                    Aktuální tréninkový plán bude <strong>smazán a nepůjde obnovit</strong>.
+                    Vytvoří se nový plán podle tvého profilu a aktuální posilovny.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Tvůj streak a historie tréninků zůstanou zachovány.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowRegenerateConfirm(false);
+                  handleRegeneratePlan();
+                }}
+                disabled={isRegeneratingPlan}
+                className="gap-2 bg-amber-500 hover:bg-amber-600"
+              >
+                {isRegeneratingPlan ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Generuji plán...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Ano, regenerovat
                   </>
                 )}
               </AlertDialogAction>

@@ -27,14 +27,16 @@ const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) =
       {/* Logo */}
       <div className="relative flex-shrink-0">
         {gym.logo_url ? (
-          <img 
-            src={gym.logo_url}
-            alt={gym.name}
-            className={cn(
-              "w-12 h-12 rounded-full object-cover border-2 border-border",
-              !isOpen && "grayscale"
-            )}
-          />
+          <div className={cn(
+            "w-12 h-12 rounded-full border-2 border-border bg-white flex items-center justify-center overflow-hidden",
+            !isOpen && "grayscale"
+          )}>
+            <img
+              src={gym.logo_url}
+              alt={gym.name}
+              className="w-9 h-9 object-contain"
+            />
+          </div>
         ) : (
           <div className={cn(
             "w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center",

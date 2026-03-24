@@ -1,18 +1,22 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, MapPin, User } from 'lucide-react';
+import { Home, MapPin, BarChart3, User } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Domů', icon: Home },
   { path: '/map', label: 'Mapa', icon: MapPin },
+  { path: '/statistics', label: 'Statistiky', icon: BarChart3 },
   { path: '/profile', label: 'Profil', icon: User },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
 
+  // Hide bottom nav during active workout
+  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training') return null;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6" style={{ touchAction: 'none' }}>
       <nav className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg max-w-md mx-auto">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -7,8 +7,9 @@ import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
+import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy } from 'lucide-react';
+import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
 import pumploLogo from '@/assets/pumplo-logo.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -20,6 +21,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
+import CustomPlansTab from '@/components/home/CustomPlansTab';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -55,55 +57,74 @@ const Home = () => {
   } = useUserRole();
   const {
     plan,
-    isLoading: planLoading
+    isLoading: planLoading,
+    refetch: refetchPlan
   } = useWorkoutPlan();
   const {
-    stats
+    stats,
+    refetch: refetchStats
   } = useWorkoutStats();
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
+  const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
+  const location = useLocation();
+  const [favoriteTab, setFavoriteTab] = useState<'pumplo' | 'custom'>(() => {
+    return (localStorage.getItem('pumplo_favorite_tab') as 'pumplo' | 'custom') || 'pumplo';
+  });
+  const [activeTab, setActiveTab] = useState<'pumplo' | 'custom'>(
+    pausedCustomWorkout ? 'custom' : favoriteTab
+  );
+
+  const toggleFavorite = (tab: 'pumplo' | 'custom') => {
+    setFavoriteTab(tab);
+    localStorage.setItem('pumplo_favorite_tab', tab);
+  };
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [showSessionDetail, setShowSessionDetail] = useState(false);
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
-  // Check if workout was completed today
-  const todaySession = stats.today.totalWorkouts > 0 ? stats.lastDays.find(d => {
-    const sessionDate = new Date(d.date);
-    const today = new Date();
-    return sessionDate.getFullYear() === today.getFullYear() && sessionDate.getMonth() === today.getMonth() && sessionDate.getDate() === today.getDate() && d.completed;
-  }) || null : null;
-  const completedTodayDayLetter = todaySession?.dayLetter || null;
+  // Refetch plan and stats when navigating back to Home
+  useEffect(() => {
+    refetchPlan();
+    refetchStats();
+  }, [location.key]);
+
+  // Completed today is derived from todayWorkoutSession (filtered by current plan)
+  const completedTodayDayLetter = todayWorkoutSession?.day_letter || null;
   const wasCompletedToday = completedTodayDayLetter !== null;
 
-  // Fetch today's completed workout session
+  // Fetch today's completed workout session for the CURRENT plan
   useEffect(() => {
     const fetchTodaySession = async () => {
-      if (!user || !wasCompletedToday) {
+      if (!user || !plan) {
         setTodayWorkoutSession(null);
         return;
       }
-      
+
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-      
+
       const { data } = await supabase
         .from('workout_sessions')
         .select('id, day_letter, goal_id, started_at, completed_at, duration_seconds, total_sets, total_reps, total_weight_kg')
         .eq('user_id', user.id)
+        .eq('plan_id', plan.id)
         .gte('started_at', startOfDay.toISOString())
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (data) {
         setTodayWorkoutSession(data);
+      } else {
+        setTodayWorkoutSession(null);
       }
     };
     
     fetchTodaySession();
-  }, [user, wasCompletedToday]);
+  }, [user, plan?.id]);
 
   if (isLoading) {
     return <HomePageSkeleton />;
@@ -132,7 +153,7 @@ const Home = () => {
   const goalDurationWeeks = 8; // default
   const totalPlanDays = goalDurationWeeks * trainingDaysCount;
   const weekProgress = plan ? (plan.currentDayIndex || 0) / totalPlanDays * 100 : 0;
-  const currentWeek = plan ? Math.floor((plan.currentDayIndex || 0) / (plan.dayCount || 2)) + 1 : 1;
+  const currentWeek = plan ? Math.floor((plan.currentDayIndex || 0) / trainingDaysCount) + 1 : 1;
   const containerVariants = {
     hidden: {
       opacity: 0
@@ -155,10 +176,23 @@ const Home = () => {
     }
   };
   return <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-24">
+      <div className="min-h-screen bg-background safe-top pb-24 relative">
+        {/* Blue wave decoration */}
+        <div className="absolute top-0 left-0 right-0 h-24 overflow-hidden pointer-events-none z-0">
+          <svg viewBox="0 0 400 150" preserveAspectRatio="none" className="w-full h-full">
+            <defs>
+              <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#5BC8F5" stopOpacity="0.15" />
+                <stop offset="100%" stopColor="#5BC8F5" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M0,0 L400,0 L400,80 Q300,130 200,90 Q100,50 0,100 Z" fill="url(#waveGrad)" />
+          </svg>
+        </div>
+
         {/* Header */}
-        <div className="px-6 pt-8 pb-4">
-          <motion.div className="flex items-center justify-between" initial={{
+        <div className="relative z-10 px-6 pt-8 pb-4">
+          <motion.div className="flex flex-col items-center" initial={{
           opacity: 0,
           y: -10
         }} animate={{
@@ -167,10 +201,8 @@ const Home = () => {
         }} transition={{
           duration: 0.4
         }}>
-            <div className="flex items-center gap-4">
-              <img src={pumploLogo} alt="Pumplo" className="h-12 w-auto object-contain" />
-            </div>
-            <div className="flex items-center gap-3">
+            <img src={pumploLogo} alt="Pumplo" className="h-20 w-auto object-contain" />
+            <div className="flex items-center gap-3 mt-3">
               {role === 'business' && <Link to="/business" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Building2 className="w-4 h-4" />
                   Business
@@ -205,10 +237,75 @@ const Home = () => {
             <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
           </div>}
 
+        {/* Tab Switch */}
+        {isOnboardingComplete && (
+          <div className="px-6 pt-2">
+            <div className="flex gap-1 border-b border-border/50">
+              <button
+                onClick={() => setActiveTab('pumplo')}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  activeTab === 'pumplo'
+                    ? "border-[#5BC8F5] text-[#1A2744]"
+                    : "border-transparent text-[#6B7280]"
+                )}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Pumplo trénink
+                {activeTab === 'pumplo' && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite('pumplo'); }}
+                    className="ml-1"
+                  >
+                    <Star className={cn(
+                      "w-3.5 h-3.5 transition-colors",
+                      favoriteTab === 'pumplo'
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-gray-300"
+                    )} />
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('custom')}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  activeTab === 'custom'
+                    ? "border-[#5BC8F5] text-[#1A2744]"
+                    : "border-transparent text-[#6B7280]"
+                )}
+              >
+                <Dumbbell className="w-3.5 h-3.5" />
+                Vlastní trénink
+                {activeTab === 'custom' && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite('custom'); }}
+                    className="ml-1"
+                  >
+                    <Star className={cn(
+                      "w-3.5 h-3.5 transition-colors",
+                      favoriteTab === 'custom'
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-gray-300"
+                    )} />
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <motion.div className="px-6 py-6 space-y-6" variants={containerVariants} initial="hidden" animate="visible">
-          {/* My Plan Section */}
-          {isOnboardingComplete && <>
+          {/* Custom Plans Tab */}
+          {isOnboardingComplete && activeTab === 'custom' && (
+            <motion.div variants={itemVariants}>
+              <CustomPlansTab />
+            </motion.div>
+          )}
+
+          {/* My Plan Section (Pumplo plán) */}
+          {isOnboardingComplete && activeTab === 'pumplo' && <>
               {/* No gym selected */}
               {!profile?.selected_gym_id ? <motion.div variants={itemVariants}>
                   <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6">
@@ -251,35 +348,35 @@ const Home = () => {
                   </div>
                 </motion.div>) : plan ? (/* Active plan */
           <>
-                  {/* Week Progress Card */}
+                  {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants}>
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-accent p-6">
-                      <div className="absolute right-0 top-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                      <div className="absolute left-0 bottom-0 w-32 h-32 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-                      
-                      <div className="relative">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="rounded-3xl bg-[#5BC8F5] overflow-hidden">
+                      {/* Top section: Week + Goal */}
+                      <div className="p-6 pb-4">
+                        <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                              <Sparkles className="w-6 h-6 text-white" />
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                              <Flame className="w-6 h-6 text-white" />
                             </div>
                             <div>
                               <h3 className="text-2xl font-bold text-white">Týden {currentWeek}</h3>
                               <p className="text-white/70 text-sm">{plan.goalName}</p>
                             </div>
                           </div>
-                          <button onClick={() => navigate('/profile/plan')} className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                          <button onClick={() => navigate('/profile/plan')} className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-white/70">Celkový progress</span>
-                            <span className="text-white font-semibold">{Math.round(weekProgress)}%</span>
-                          </div>
-                          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                            <motion.div className="h-full bg-white rounded-full" initial={{
+                      {/* Progress section */}
+                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] px-4 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white/80 text-xs font-medium">Celkový progress</span>
+                          <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
+                        </div>
+                        <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                          <motion.div className="h-full rounded-full bg-white" initial={{
                         width: 0
                       }} animate={{
                         width: `${Math.min(weekProgress, 100)}%`
@@ -287,121 +384,104 @@ const Home = () => {
                         duration: 1,
                         ease: "easeOut"
                       }} />
-                          </div>
                         </div>
                       </div>
+
+                      {/* Next training / Completed today card */}
+                      <div className="mx-3 mb-3">
+                        {(() => {
+                          const nextDay = schedule[0];
+                          if (!nextDay) return null;
+                          const isCurrentDay = nextDay.dayOfWeek === today;
+                          const isCompletedToday = isCurrentDay && completedTodayDayLetter === nextDay.dayLetter;
+                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === nextDay.dayLetter);
+                          const dayTypeName = dayTemplate?.dayName || '';
+
+                          if (isCompletedToday) {
+                            const durationMin = todayWorkoutSession ? Math.round((todayWorkoutSession.duration_seconds || 0) / 60) : 0;
+                            return (
+                              <div
+                                className="rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                                onClick={() => setShowSessionDetail(true)}
+                              >
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                    <Trophy className="w-6 h-6 text-white" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-white text-base">
+                                      Trénink dokončen!
+                                    </p>
+                                    <p className="text-white/70 text-xs">
+                                      {dayNamesCz[nextDay.dayOfWeek] || nextDay.dayOfWeek}
+                                      {dayTypeName && ` – ${dayTypeName}`}
+                                    </p>
+                                  </div>
+                                  <ChevronRight className="w-5 h-5 text-white/60 shrink-0" />
+                                </div>
+                                {todayWorkoutSession && (
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                                      <p className="text-white font-bold text-lg">{durationMin}</p>
+                                      <p className="text-white/60 text-[10px] font-medium">minut</p>
+                                    </div>
+                                    <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                                      <p className="text-white font-bold text-lg">{todayWorkoutSession.total_sets || 0}</p>
+                                      <p className="text-white/60 text-[10px] font-medium">sérií</p>
+                                    </div>
+                                    <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                                      <p className="text-white font-bold text-lg">{todayWorkoutSession.total_weight_kg || 0}</p>
+                                      <p className="text-white/60 text-[10px] font-medium">kg celkem</p>
+                                    </div>
+                                  </div>
+                                )}
+                                <p className="text-white/50 text-[10px] text-center mt-2">Klikni pro zobrazení detailů</p>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white">
+                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] text-white">
+                                {nextDay.dayLetter}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-[#1F2937]">
+                                  {dayTypeName || `Den ${nextDay.dayLetter}`}
+                                </p>
+                                <p className="text-xs text-[#6B7280]">
+                                  {isCurrentDay ? 'Dnešní trénink' : 'Další trénink'}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </motion.div>
 
-                  {/* Upcoming Training Days */}
-                  <motion.div variants={itemVariants}>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-foreground">Nadcházející tréninky</h3>
-                      <button onClick={() => navigate('/profile/plan')} className="text-sm text-primary flex items-center gap-1 hover:underline">
-                        Vše
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {schedule.length === 0 ? <div className="bg-muted/50 rounded-2xl p-6 text-center">
-                        <Calendar className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">Nastav si tréninkové dny v profilu</p>
-                      </div> : <div className="space-y-3">
-                        {schedule.slice(0, 4).map((day, index) => {
-                  const isCurrentDay = index === 0 && day.dayOfWeek === today;
-                  const isNextUp = index === 0;
-                  const isCompletedToday = isCurrentDay && completedTodayDayLetter === day.dayLetter;
-                  const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
-                  const dayTypeName = dayTemplate?.dayName || '';
-                  
-                  // Only completed trainings are clickable
-                  const isClickable = isCompletedToday;
-                  
-                  return <motion.div 
-                    key={`${day.dayOfWeek}-${index}`} 
-                    className={cn(
-                      "w-full p-4 rounded-2xl text-left transition-all flex items-center justify-between",
-                      isCompletedToday ? "bg-green-500/10 border-2 border-green-500/30 cursor-pointer" : 
-                      isNextUp ? "bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30" : 
-                      "bg-card border border-border"
-                    )} 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={isClickable ? () => setShowSessionDetail(true) : undefined}
-                    whileTap={isClickable ? { scale: 0.98 } : undefined}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg", 
-                        isCompletedToday ? "bg-green-500 text-white" : 
-                        isNextUp ? "bg-primary text-white" : 
-                        "bg-muted text-muted-foreground"
-                      )}>
-                        {isCompletedToday ? <Check className="w-6 h-6" /> : day.dayLetter}
-                      </div>
-                      
-                      <div>
-                        <h4 className={cn(
-                          "font-semibold", 
-                          isCompletedToday ? "text-green-600" : 
-                          isNextUp ? "text-foreground" : 
-                          "text-muted-foreground"
-                        )}>
-                          {dayNamesCz[day.dayOfWeek] || day.dayOfWeek}
-                        </h4>
-                        {dayTypeName && (
-                          <p className={cn(
-                            "text-sm", 
-                            isCompletedToday ? "text-green-600/70" : "text-muted-foreground"
-                          )}>
-                            {dayTypeName}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {isCompletedToday && (
-                        <span className="text-xs font-medium text-green-600 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Hotovo
-                        </span>
-                      )}
-                      {isCurrentDay && !isCompletedToday && (
-                        <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-                          Dnes
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>;
-                })}
-                      </div>}
-
-                    {/* Paused Workout Card */}
-                    {pausedWorkout && pausedWorkout.planId === plan?.id && (
-                      <motion.div
-                        variants={itemVariants}
-                        className="mt-6"
-                      >
-                        <PausedWorkoutCard
-                          pausedWorkout={pausedWorkout}
-                          onResume={() => {
-                            navigate('/training?resume=true');
-                          }}
-                          onDiscard={clearPausedWorkout}
-                        />
-                      </motion.div>
-                    )}
-
-                    {/* Start Training Button */}
-                    {plan && !wasCompletedToday && !pausedWorkout && (
-                      <StartWorkoutButton 
-                        selectedGymId={profile?.selected_gym_id || null}
-                        className="mt-6"
+                  {/* Paused Workout Card */}
+                  {pausedWorkout && pausedWorkout.planId === plan?.id && (
+                    <motion.div variants={itemVariants}>
+                      <PausedWorkoutCard
+                        pausedWorkout={pausedWorkout}
+                        onResume={() => {
+                          navigate('/training?resume=true');
+                        }}
+                        onDiscard={clearPausedWorkout}
                       />
-                    )}
-                  </motion.div>
+                    </motion.div>
+                  )}
+
+                  {/* Start Training Button */}
+                  {plan && !wasCompletedToday && !pausedWorkout && (
+                    <motion.div variants={itemVariants}>
+                      <StartWorkoutButton
+                        selectedGymId={profile?.selected_gym_id || null}
+                        className="[&_button]:bg-[#1A2744] [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-[#1A2744]/25"
+                      />
+                    </motion.div>
+                  )}
 
                 </>) : null}
             </>}
@@ -413,17 +493,19 @@ const Home = () => {
         {/* Today's Workout Detail Drawer */}
         <Drawer open={showSessionDetail} onOpenChange={setShowSessionDetail}>
           <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader>
+            <DrawerHeader className="pb-2">
               <DrawerTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-green-500" />
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-green-500" />
+                </div>
                 Dnešní trénink dokončen
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto">
               {todayWorkoutSession && (
-                <WorkoutSessionCard 
-                  session={todayWorkoutSession} 
-                  variant="full" 
+                <WorkoutSessionCard
+                  session={todayWorkoutSession}
+                  variant="full"
                 />
               )}
             </div>

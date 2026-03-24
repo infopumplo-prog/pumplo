@@ -51,7 +51,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const totalExercises = exercises.length;
   const progressPercentage = ((currentIndex + 1) / totalExercises) * 100;
 
-  // Fetch signed video URL
+  // Use video_path directly (it's a full public URL)
   useEffect(() => {
     const fetchVideoUrl = async () => {
       if (!currentExercise?.videoPath) {
@@ -59,15 +59,8 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
         return;
       }
 
-      const { data, error } = await supabase.storage
-        .from('exercise-videos')
-        .createSignedUrl(currentExercise.videoPath, 3600);
-
-      if (!error && data) {
-        setVideoUrl(data.signedUrl);
-      } else {
-        setVideoUrl(null);
-      }
+      // video_path is already a full public URL
+      setVideoUrl(currentExercise.videoPath);
     };
 
     fetchVideoUrl();

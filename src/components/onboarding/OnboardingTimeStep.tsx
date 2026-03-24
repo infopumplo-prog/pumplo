@@ -1,19 +1,27 @@
 import { Slider } from '@/components/ui/slider';
-import { TIMES } from '@/lib/onboardingTypes';
+import { TIMES, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
+import { UserLevel, TrainingGoalId } from '@/lib/trainingGoals';
 
 interface OnboardingTimeStepProps {
   preferredTime: string | null;
   duration: number;
   onTimeChange: (time: string) => void;
   onDurationChange: (duration: number) => void;
+  userLevel?: UserLevel | null;
+  goalId?: TrainingGoalId | null;
 }
 
-const OnboardingTimeStep = ({ 
-  preferredTime, 
-  duration, 
-  onTimeChange, 
-  onDurationChange 
+const OnboardingTimeStep = ({
+  preferredTime,
+  duration,
+  onTimeChange,
+  onDurationChange,
+  userLevel,
+  goalId
 }: OnboardingTimeStepProps) => {
+  const isBeginner = userLevel === 'beginner';
+  const beginnerDuration = getBeginnerDefaultDuration(goalId || null);
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-center">V jaký čas nejraději cvičíš?</h2>
@@ -38,30 +46,38 @@ const OnboardingTimeStep = ({
           </button>
         ))}
       </div>
-      
-      <div className="space-y-4 pt-4">
-        <h3 className="text-lg font-semibold text-center">Kolik minut chceš mít jeden trénink?</h3>
-        <div className="px-4">
-          <div className="text-center mb-4">
-            <span className="text-4xl font-bold text-primary">{duration}</span>
-            <span className="text-muted-foreground ml-1">min</span>
-          </div>
-          <Slider
-            value={[duration]}
-            onValueChange={(value) => onDurationChange(value[0])}
-            min={30}
-            max={120}
-            step={5}
-            className="w-full"
-          />
-          <div className="relative w-full mt-2 h-5 text-sm text-muted-foreground">
-            <span className="absolute left-0">30</span>
-            <span className="absolute left-1/3 -translate-x-1/2">60</span>
-            <span className="absolute left-2/3 -translate-x-1/2">90</span>
-            <span className="absolute right-0">120 min</span>
+
+      {isBeginner ? (
+        <div className="bg-muted/50 rounded-xl p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Délku tréninku nastavíme automaticky na <strong>{beginnerDuration} minut</strong> — ideální pro začátečníky.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4 pt-4">
+          <h3 className="text-lg font-semibold text-center">Kolik minut chceš mít jeden trénink?</h3>
+          <div className="px-4">
+            <div className="text-center mb-4">
+              <span className="text-4xl font-bold text-primary">{duration}</span>
+              <span className="text-muted-foreground ml-1">min</span>
+            </div>
+            <Slider
+              value={[duration]}
+              onValueChange={(value) => onDurationChange(value[0])}
+              min={30}
+              max={120}
+              step={5}
+              className="w-full"
+            />
+            <div className="relative w-full mt-2 h-5 text-sm text-muted-foreground">
+              <span className="absolute left-0">30</span>
+              <span className="absolute left-1/3 -translate-x-1/2">60</span>
+              <span className="absolute left-2/3 -translate-x-1/2">90</span>
+              <span className="absolute right-0">120 min</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

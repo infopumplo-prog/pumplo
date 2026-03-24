@@ -23,6 +23,15 @@ export interface OnboardingData {
   equipmentPreference: string | null;
 }
 
+// Default beginner duration per goal — strength needs more time due to longer rest periods
+export const getBeginnerDefaultDuration = (goalId: TrainingGoalId | string | null): number => {
+  switch (goalId) {
+    case 'strength': return 60;
+    case 'muscle_gain': return 50;
+    default: return 45; // fat_loss, general_fitness
+  }
+};
+
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   primaryGoal: null,
   userLevel: null,

@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useWorkoutStats } from '@/hooks/useWorkoutStats';
-import { useIsPWA } from '@/hooks/useIsPWA';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Smartphone, Calendar } from 'lucide-react';
+import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -27,14 +26,44 @@ const getRoleLabel = (role: string | null): string => {
 const Profile = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { profile, isLoading } = useUserProfile();
+  const { profile, isLoading, updateProfile, refetch } = useUserProfile();
   const { role, isLoading: roleLoading } = useUserRole();
-  const { stats, isLoading: statsLoading } = useWorkoutStats();
-  const isPWA = useIsPWA();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (isLoading || roleLoading || statsLoading) {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    e.target.value = '';
+
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path);
+
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+      await updateProfile({ avatar_url: avatarUrl } as any);
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  if (isLoading || roleLoading) {
     return <ProfilePageSkeleton />;
   }
 
@@ -42,8 +71,6 @@ const Profile = () => {
     { icon: Calendar, label: 'Můj plán', onClick: () => navigate('/profile/plan') },
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
-    // Only show install option if not already running as PWA
-    ...(!isPWA ? [{ icon: Smartphone, label: 'Nainstalovat aplikaci', onClick: () => navigate('/install') }] : []),
     { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
     { icon: MessageSquare, label: 'Zpětná vazba', onClick: () => setFeedbackOpen(true) },
   ];
@@ -97,9 +124,37 @@ const Profile = () => {
           className="bg-card border border-border rounded-2xl p-6 shadow-card"
         >
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-primary" />
-            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="relative shrink-0"
+              disabled={avatarUploading}
+            >
+              <div className="w-16 h-16 rounded-full overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-8 h-8 text-primary" />
+                  </div>
+                )}
+              </div>
+              {(!profile?.avatar_url || avatarUploading) && (
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary rounded-full flex items-center justify-center border-2 border-card shadow-sm">
+                  {avatarUploading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  )}
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </button>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-foreground truncate">
                 {profile?.first_name && profile?.last_name 
@@ -110,29 +165,6 @@ const Profile = () => {
               <Badge variant="secondary" className="mt-2 text-xs">
                 {getRoleLabel(role)}
               </Badge>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Stats Summary */}
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Statistiky</h3>
-            <button 
-              onClick={() => navigate('/profile/history')}
-              className="text-sm text-primary font-medium"
-            >
-              Zobrazit vše
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{stats.allTime.totalWorkouts}</p>
-              <p className="text-sm text-muted-foreground">Tréninků</p>
-            </div>
-            <div className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border border-chart-2/20 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{Math.round(stats.allTime.totalDuration / 60)}</p>
-              <p className="text-sm text-muted-foreground">Hodin cvičení</p>
             </div>
           </div>
         </motion.div>
@@ -162,7 +194,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Logout */}
-        <motion.div variants={itemVariants}>
+        <motion.div variants={itemVariants} className="pb-24">
           <Button
             variant="outline"
             size="lg"

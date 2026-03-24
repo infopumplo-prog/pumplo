@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2, Flame, Zap, Leaf, Activity } from 'lucide-react';
+import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2, Flame, Zap, Leaf, Activity, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -166,6 +167,8 @@ const MyPlan = () => {
     
     fetchGymName();
   }, [plan?.gymId, profile?.selected_gym_id]);
+
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   // Handle plan regeneration
   const handleRegeneratePlan = useCallback(async () => {
@@ -542,7 +545,7 @@ const MyPlan = () => {
             <Button
               className="w-full"
               size="lg"
-              onClick={handleRegeneratePlan}
+              onClick={() => setShowRegenerateConfirm(true)}
               disabled={isRegenerating || isGenerating}
             >
               {(isRegenerating || isGenerating) ? (
@@ -572,6 +575,52 @@ const MyPlan = () => {
 
         {/* Onboarding Drawer */}
         <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+
+        {/* Regenerate Plan Confirmation */}
+        <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Regenerovat plán?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2" asChild>
+                <div>
+                  <p>
+                    Aktuální tréninkový plán bude <strong>smazán a nepůjde obnovit</strong>.
+                    Vytvoří se nový plán podle tvého profilu a aktuální posilovny.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Tvůj streak a historie tréninků zůstanou zachovány.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowRegenerateConfirm(false);
+                  handleRegeneratePlan();
+                }}
+                disabled={isRegenerating || isGenerating}
+                className="gap-2 bg-amber-500 hover:bg-amber-600"
+              >
+                {(isRegenerating || isGenerating) ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generuji plán...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Ano, regenerovat
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PageTransition>
   );

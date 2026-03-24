@@ -17,8 +17,8 @@ export const getNextDayLetter = (
   const safeDayCount = Math.max(1, Math.min(dayCount, 26)); // max 26 dní (A-Z)
   
   const letter = ALPHABET[safeIndex % safeDayCount];
-  const nextIndex = (safeIndex + 1) % safeDayCount;
-  
+  const nextIndex = safeIndex + 1; // Monotonically increasing — modulo only for letter
+
   return { letter, nextIndex };
 };
 

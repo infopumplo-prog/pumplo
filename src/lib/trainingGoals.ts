@@ -158,6 +158,7 @@ export interface WorkoutExercise {
   fallbackReason: string | null;
   isExtension?: boolean; // Flag for extension exercises added after workout completion
   selectionScore?: number | null; // v2.0: Score used to select this exercise
+  slotCategory?: SlotCategory | null; // v3: Category for display (main/secondary/isolation/etc.)
 }
 
 // ============ NEW v2.0 AUDIT INTERFACES ============
@@ -177,6 +178,9 @@ export interface PlanInputsSnapshot {
   equipment_available_snapshot: string[]; // machine_ids at time of generation
   training_days: string[];
   generated_at: string;
+  // BMI data (v2.1)
+  bmi?: number | null;
+  bmi_category?: string | null;
 }
 
 /**

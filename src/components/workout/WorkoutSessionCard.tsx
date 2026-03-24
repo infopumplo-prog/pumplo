@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { estimateCalories } from '@/lib/calorieEstimation';
 
 interface WorkoutSet {
   id: string;
@@ -88,8 +90,16 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
     return acc;
   }, {} as Record<string, { exerciseName: string; exerciseId: string | null; sets: WorkoutSet[] }>);
 
+  const { profile } = useUserProfile();
   const durationMinutes = Math.round((session.duration_seconds || 0) / 60);
-  const estimatedCalories = Math.round(durationMinutes * 5);
+  const estimatedCalories = estimateCalories({
+    durationSeconds: session.duration_seconds || 0,
+    totalSets: session.total_sets || 0,
+    goalId: session.goal_id,
+    weightKg: profile?.weight_kg || 75,
+    gender: profile?.gender,
+    age: profile?.age,
+  });
 
   return (
     <Card 

@@ -3,6 +3,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { UserLevel } from './trainingGoals';
+import { CARDIO_ROLE_IDS } from './bmiUtils';
 
 // ============ TYPES ============
 
@@ -57,6 +58,10 @@ export interface SelectionContext {
   usedEquipmentTypes: Set<string>;
   roleOccurrence: number; // 1 = first time this role appears, 2+ = duplicate
   durationMinutes: number;
+  // BMI-based adjustments for obese users
+  bmiPreferMachines?: boolean;
+  bmiPenaltyHighImpact?: number;
+  bmiMaxDifficultyOverride?: number | null;
 }
 
 export interface SelectionOptions {
@@ -106,14 +111,18 @@ const PENALTY_REPETITION_3 = -30;
 // ============ UTILITY FUNCTIONS ============
 
 /**
- * Map user level to max difficulty (beginner=1-3, intermediate=4-6, advanced=7-10)
+ * Map user level to max difficulty (scale 1-4, set by trainer)
+ * 1 = stroje, vedené pohyby
+ * 2 = jednoručky, kladky, základní cviky
+ * 3 = bench, dřep s osou, pullup
+ * 4 = olympijské lifty, pokročilé varianty
  */
 export const getMaxDifficulty = (level: UserLevel): number => {
   switch (level) {
-    case 'beginner': return 3;
-    case 'intermediate': return 6;
-    case 'advanced': return 10;
-    default: return 3;
+    case 'beginner': return 2;
+    case 'intermediate': return 3;
+    case 'advanced': return 4;
+    default: return 2;
   }
 };
 
@@ -227,16 +236,30 @@ export const calculateExerciseScore = (
   const equipmentRepetitionPenalty = context.usedEquipmentTypes.has(equipmentType) 
     ? PENALTY_EQUIPMENT_REPETITION : 0;
 
+  // BMI-based scoring adjustments
+  let bmiBonus = 0;
+  if (context.bmiPreferMachines) {
+    // Prefer machines/cables for obese users
+    const exType = exercise.equipment_type || 'bodyweight';
+    if (['machine', 'cable', 'plate_loaded'].includes(exType)) {
+      bmiBonus += 10;
+    }
+  }
+  if (context.bmiPenaltyHighImpact && exercise.stability_rating && exercise.stability_rating >= 7) {
+    // Penalize high-impact exercises for obese users
+    bmiBonus += context.bmiPenaltyHighImpact;
+  }
+
   const scores: ExerciseScores = {
     roleMatch: SCORE_ROLE_MATCH,
     muscleScore: calculateMuscleScore(exercise, context.coveredMusclesSession, targetMuscles),
-    equipmentBonus: matchesEquipmentPreference(exercise, context.equipmentPreference) 
+    equipmentBonus: matchesEquipmentPreference(exercise, context.equipmentPreference)
       ? SCORE_EQUIPMENT_PREFERENCE : 0,
-    difficultyBonus: context.userLevel === 'beginner' && (exercise.difficulty || 5) <= 3 
+    difficultyBonus: context.userLevel === 'beginner' && (exercise.difficulty || 2) <= 1
       ? SCORE_BEGINNER_FRIENDLY : 0,
     repetitionPenalty: getRepetitionPenalty(exercise.id, exercise.primary_role || '', history),
     injuryPenalty: isContraindicated(exercise, context.injuries) ? PENALTY_INJURY : 0,
-    varietyBonus: getVarietyBonus(exercise, context) + equipmentRepetitionPenalty,
+    varietyBonus: getVarietyBonus(exercise, context) + equipmentRepetitionPenalty + bmiBonus,
   };
   
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
@@ -358,15 +381,25 @@ export const getCandidates = async (
   targetMuscles: TargetMuscles,
   history: Map<string, Date[]>
 ): Promise<ExerciseCandidate[]> => {
-  const maxDifficulty = getMaxDifficulty(context.userLevel);
+  let maxDifficulty = getMaxDifficulty(context.userLevel);
+  // BMI override: cap difficulty for severely obese users
+  if (context.bmiMaxDifficultyOverride !== undefined && context.bmiMaxDifficultyOverride !== null) {
+    maxDifficulty = Math.min(maxDifficulty, context.bmiMaxDifficultyOverride);
+  }
 
-  // Build query
+  // Build query — cardio roles use category filter instead of primary_role
+  const isCardioRole = CARDIO_ROLE_IDS.includes(role);
   let query = supabase
     .from('exercises')
     .select('*')
-    .eq('primary_role', role)
     .eq('allowed_phase', 'main')
     .lte('difficulty', maxDifficulty);
+
+  if (isCardioRole) {
+    query = query.eq('category', 'cardio');
+  } else {
+    query = query.eq('primary_role', role);
+  }
 
   // Bodyweight only filter
   if (options.bodyweightOnly) {

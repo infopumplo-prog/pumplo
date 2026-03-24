@@ -24,7 +24,9 @@ export const isGymCurrentlyOpen = (openingHours: OpeningHours): boolean => {
   const [closeHour, closeMin] = dayHours.close.split(':').map(Number);
   
   const openTime = openHour * 60 + openMin;
-  const closeTime = closeHour * 60 + closeMin;
+  let closeTime = closeHour * 60 + closeMin;
+  // 00:00 means midnight (end of day)
+  if (closeTime === 0) closeTime = 24 * 60;
 
   return currentTime >= openTime && currentTime < closeTime;
 };
@@ -43,7 +45,8 @@ export const getMinutesUntilClose = (openingHours: OpeningHours): number | null 
   const [closeHour, closeMin] = dayHours.close.split(':').map(Number);
   
   const openTime = openHour * 60 + openMin;
-  const closeTime = closeHour * 60 + closeMin;
+  let closeTime = closeHour * 60 + closeMin;
+  if (closeTime === 0) closeTime = 24 * 60;
 
   if (currentTime >= openTime && currentTime < closeTime) {
     return closeTime - currentTime;
@@ -77,7 +80,8 @@ export const getTodayOpeningStatus = (openingHours: OpeningHours): { isOpen: boo
         closingSoon: true 
       };
     }
-    return { isOpen: true, text: `Otevřeno do ${dayHours.close}` };
+    const displayClose = dayHours.close === '00:00' ? '24:00' : dayHours.close;
+    return { isOpen: true, text: `Otevřeno do ${displayClose}` };
   } else {
     const currentTime = now.getHours() * 60 + now.getMinutes();
     const [openHour, openMin] = dayHours.open.split(':').map(Number);

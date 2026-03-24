@@ -1,4 +1,4 @@
-import { MapPin, Clock, Navigation, Info } from 'lucide-react';
+import { MapPin, Clock, Navigation, Info, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
@@ -10,13 +10,15 @@ interface GymQuickPreviewProps {
   distance?: number;
   onDetailClick: () => void;
   onNavigateClick: () => void;
+  onClose: () => void;
 }
 
-const GymQuickPreview = ({ 
-  gym, 
-  distance, 
-  onDetailClick, 
-  onNavigateClick
+const GymQuickPreview = ({
+  gym,
+  distance,
+  onDetailClick,
+  onNavigateClick,
+  onClose
 }: GymQuickPreviewProps) => {
   const hours = gym.opening_hours as OpeningHours;
   const isOpen = isGymCurrentlyOpen(hours);
@@ -29,18 +31,28 @@ const GymQuickPreview = ({
   };
 
   return (
-    <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 relative">
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-muted/80 hover:bg-muted transition-colors"
+      >
+        <X className="w-4 h-4 text-muted-foreground" />
+      </button>
+
       {/* Content */}
       <div className="p-4">
         <div className="flex gap-3">
           {/* Logo */}
           <div className="shrink-0">
             {gym.logo_url ? (
-              <img 
-                src={gym.logo_url}
-                alt={`${gym.name} logo`}
-                className="w-16 h-16 rounded-lg object-cover border border-border"
-              />
+              <div className="w-16 h-16 rounded-lg bg-white border border-border flex items-center justify-center overflow-hidden">
+                <img
+                  src={gym.logo_url}
+                  alt={`${gym.name} logo`}
+                  className="w-12 h-12 object-contain"
+                />
+              </div>
             ) : (
               <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center border border-border">
                 <MapPin className="w-6 h-6 text-primary" />

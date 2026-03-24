@@ -1,21 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Heart, Check, Play } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
-import GymMap from '@/components/map/GymMap';
+import GymMap, { GymMapHandle } from '@/components/map/GymMap';
 import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
 import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
-import { cn } from '@/lib/utils';
 import PageTransition from '@/components/PageTransition';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
 
@@ -56,7 +54,8 @@ const Map = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [hasGpsAccess, setHasGpsAccess] = useState<boolean | null>(null);
   const [isSelectingGym, setIsSelectingGym] = useState(false);
-  
+  const mapHandleRef = useRef<GymMapHandle | null>(null);
+
   // State for two-step interaction
   const [quickPreviewGym, setQuickPreviewGym] = useState<PublicGym | null>(null);
   const [detailGym, setDetailGym] = useState<PublicGym | null>(null);
@@ -142,11 +141,50 @@ const Map = () => {
     }
   };
 
-  const detailGymIsOpen = detailGym 
+  // Center on user - re-request location if needed
+  const handleCenterOnUser = () => {
+    if (userLocation) {
+      mapHandleRef.current?.centerOnUser();
+      return;
+    }
+
+    // Try to get location again
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolokace není podporována', variant: 'destructive' });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setUserLocation(loc);
+        setHasGpsAccess(true);
+        // Center after state update - use small timeout
+        setTimeout(() => mapHandleRef.current?.centerOnUser(), 100);
+      },
+      (error) => {
+        console.log('Geolocation error:', error.code, error.message);
+        if (error.code === 1) {
+          toast({
+            title: 'Přístup k poloze zamítnut',
+            description: 'Povol přístup k poloze v nastavení prohlížeče.',
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Nepodařilo se získat polohu',
+            description: 'Zkontroluj připojení nebo nastavení GPS.',
+            variant: 'destructive'
+          });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const detailGymIsOpen = detailGym
     ? isGymCurrentlyOpen(detailGym.opening_hours as OpeningHours)
     : false;
-
-  const isCurrentlySelectedGym = detailGym?.id === profile?.selected_gym_id;
 
   const handleSelectGymForTraining = async () => {
     if (!detailGym || !detailGymIsOpen) return;
@@ -222,7 +260,23 @@ const Map = () => {
             userLocation={userLocation}
             onGymSelect={handleGymSelect}
             selectedGymId={quickPreviewGym?.id || detailGym?.id}
+            mapHandleRef={mapHandleRef}
           />
+
+          {/* Center on user button */}
+          <button
+            onClick={handleCenterOnUser}
+            className="absolute top-4 right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
+            aria-label="Vycentrovat na mou polohu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "#4CC9FF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v4"/>
+              <path d="M12 18v4"/>
+              <path d="M2 12h4"/>
+              <path d="M18 12h4"/>
+            </svg>
+          </button>
         </div>
 
         {/* Quick Preview Card - positioned above bottom nav */}
@@ -233,6 +287,7 @@ const Map = () => {
               distance={getGymDistance(quickPreviewGym)}
               onDetailClick={handleDetailClick}
               onNavigateClick={handleNavigateClick}
+              onClose={() => setQuickPreviewGym(null)}
             />
           </div>
         )}
@@ -242,62 +297,20 @@ const Map = () => {
           <DrawerContent className="max-h-[90vh] border-0 z-[100]">
             <div className="overflow-y-auto max-h-[85vh] -mt-6">
               {detailGym && (
-                <>
-                  <GymProfilePreview 
-                    gym={detailGym} 
-                    variant="drawer" 
-                    showBadge={false}
-                    onBack={() => {
-                      setDetailGym(null);
-                      setQuickPreviewGym(detailGym);
-                    }}
-                  />
-                  
-                  {/* Action Buttons */}
-                  <div className="px-4 pb-6 pt-2 flex gap-3">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="flex-shrink-0"
-                      onClick={() => toggleFavorite(detailGym.id)}
-                    >
-                      <Heart 
-                        className={cn(
-                          "w-5 h-5",
-                          isFavorite(detailGym.id) && "fill-destructive text-destructive"
-                        )} 
-                      />
-                    </Button>
-                    <Button
-                      size="lg"
-                      className={cn(
-                        "flex-1 gap-2",
-                        isCurrentlySelectedGym && "bg-green-500 hover:bg-green-600"
-                      )}
-                      disabled={!detailGymIsOpen || isSelectingGym}
-                      onClick={handleSelectGymForTraining}
-                    >
-                      {isSelectingGym ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Vybírám...
-                        </>
-                      ) : isCurrentlySelectedGym ? (
-                        <>
-                          <Check className="w-5 h-5" />
-                          Aktuální posilovna
-                        </>
-                      ) : detailGymIsOpen ? (
-                        <>
-                          <Play className="w-5 h-5" />
-                          Zahájit trénink
-                        </>
-                      ) : (
-                        'Posilovna je zavřená'
-                      )}
-                    </Button>
-                  </div>
-                </>
+                <GymProfilePreview
+                  gym={detailGym}
+                  variant="drawer"
+                  showBadge={false}
+                  onSelectGym={handleSelectGymForTraining}
+                  isSelectingGym={isSelectingGym}
+                  isGymOpen={detailGymIsOpen}
+                  isFavorite={isFavorite(detailGym.id)}
+                  onToggleFavorite={() => toggleFavorite(detailGym.id)}
+                  onBack={() => {
+                    setDetailGym(null);
+                    setQuickPreviewGym(detailGym);
+                  }}
+                />
               )}
             </div>
           </DrawerContent>

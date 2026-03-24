@@ -7,12 +7,15 @@ export interface ExerciseInsert {
   plan_id?: string;
   day_letter: string;
   slot_order: number;
+  slot_category?: string | null;
   role_id: string;
   exercise_id: string | null;
   machine_id?: string | null;
   sets: number;
   rep_min: number;
   rep_max: number;
+  rir_min?: number | null;
+  rir_max?: number | null;
   is_fallback: boolean;
   fallback_reason: string | null;
   selection_score: number | null;
@@ -21,6 +24,7 @@ export interface ExerciseInsert {
 export interface ValidationContext {
   machineIdsAvailable: Set<string>;
   durationMinutes: number;
+  isFatLoss?: boolean;
 }
 
 export interface ValidationResult {
@@ -34,6 +38,7 @@ const PUSH_ROLES = ['horizontal_push', 'vertical_push', 'push_general', 'chest_p
 const PULL_ROLES = ['horizontal_pull', 'vertical_pull', 'pulldown_variant', 'pullup_variant'];
 const SQUAT_HINGE_ROLES = ['squat', 'hinge', 'lunge', 'squat_light', 'hip_hinge_light'];
 const CORE_ROLES = ['anti_extension', 'anti_flexion', 'anti_rotation', 'rotation', 'lateral_flexion', 'anti_lateral_flexion', 'core_anti_extension', 'core_rotation'];
+const CARDIO_ROLES = ['cyclical_cardio', 'cyclical_pull', 'cyclical_push'];
 
 /**
  * Check if a role belongs to a pattern category
@@ -140,6 +145,21 @@ export const validatePlan = (
     const skippedCount = dayExercises.filter(e => e.exercise_id === null).length;
     if (skippedCount > 2) {
       warnings.push(`Den ${day.dayLetter}: ${skippedCount} přeskočených slotů - možná nedostatek cviků v DB`);
+    }
+  }
+
+  // Fat loss cardio validation: each day must have ~1/3 cardio exercises
+  if (context.isFatLoss) {
+    for (const day of templates) {
+      const dayExercises = exercisesByDay.get(day.dayLetter) || [];
+      const cardioCount = dayExercises.filter(e => isRoleInCategory(e.role_id, CARDIO_ROLES)).length;
+      const totalCount = dayExercises.length;
+
+      if (cardioCount === 0) {
+        errors.push(`Den ${day.dayLetter} (${day.dayName}): Hubnutí vyžaduje alespoň 1 kardio cvik`);
+      } else if (totalCount > 0 && cardioCount / totalCount < 0.2) {
+        warnings.push(`Den ${day.dayLetter}: Kardio tvoří jen ${Math.round(cardioCount / totalCount * 100)}% (cíl: 33%)`);
+      }
     }
   }
 

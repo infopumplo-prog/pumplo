@@ -59,7 +59,7 @@ class ErrorBoundary extends Component<Props, State> {
                 Hlavní stránka
               </Button>
             </div>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {this.state.error && (
               <details className="text-left mt-4 p-3 bg-muted rounded-lg text-xs">
                 <summary className="cursor-pointer font-medium">Detaily chyby</summary>
                 <pre className="mt-2 overflow-auto whitespace-pre-wrap text-destructive">

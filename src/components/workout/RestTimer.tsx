@@ -14,22 +14,23 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek' }
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isPaused, setIsPaused] = useState(false);
 
+  // Countdown timer
   useEffect(() => {
     if (isPaused || timeLeft <= 0) return;
 
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft(prev => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPaused, timeLeft, onComplete]);
+  }, [isPaused, timeLeft]);
+
+  // Fire onComplete when timer reaches 0 — kept outside state setter to avoid React 18 batching issues
+  useEffect(() => {
+    if (timeLeft === 0) {
+      onComplete();
+    }
+  }, [timeLeft, onComplete]);
 
   const handleReset = useCallback(() => {
     setTimeLeft(duration);

@@ -36,6 +36,7 @@ export interface UserProfile {
   notification_closing_soon: boolean;
   notification_onboarding_shown: boolean;
   push_subscription: Record<string, unknown> | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }

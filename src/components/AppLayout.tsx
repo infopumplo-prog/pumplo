@@ -5,9 +5,9 @@ import { FeedbackButton } from './feedback/FeedbackButton';
 
 const AppLayout = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <OfflineIndicator />
-      <main className="pb-nav">
+      <main className="flex-1 overflow-y-auto pb-nav" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <Outlet />
       </main>
       <FeedbackButton />

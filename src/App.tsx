@@ -38,6 +38,9 @@ import WorkoutHistory from "@/pages/WorkoutHistory";
 import MyPlan from "@/pages/MyPlan";
 import Install from "@/pages/Install";
 import Settings from "@/pages/Settings";
+import Statistics from "@/pages/Statistics";
+import CustomPlanDetail from "@/pages/CustomPlanDetail";
+import CustomWorkoutPlayer from "@/pages/CustomWorkoutPlayer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,11 +143,14 @@ const AppRoutes = () => (
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
+      <Route path="/statistics" element={<Statistics />} />
       <Route path="/training" element={<Training />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/history" element={<WorkoutHistory />} />
       <Route path="/profile/plan" element={<MyPlan />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
+      <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
     </Route>
     
     {/* Admin Routes */}

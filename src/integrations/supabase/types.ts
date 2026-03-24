@@ -50,6 +50,101 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_plan_days: {
+        Row: {
+          id: string
+          plan_id: string
+          day_number: number
+          name: string | null
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          day_number: number
+          name?: string | null
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          day_number?: number
+          name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_plan_days_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "custom_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_plan_exercises: {
+        Row: {
+          id: string
+          day_id: string
+          exercise_id: string
+          sets: number
+          reps: number
+          weight_kg: number | null
+          order_index: number
+        }
+        Insert: {
+          id?: string
+          day_id: string
+          exercise_id: string
+          sets?: number
+          reps?: number
+          weight_kg?: number | null
+          order_index?: number
+        }
+        Update: {
+          id?: string
+          day_id?: string
+          exercise_id?: string
+          sets?: number
+          reps?: number
+          weight_kg?: number | null
+          order_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_plan_exercises_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "custom_plan_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_plan_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_plans: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       day_templates: {
         Row: {
           advanced_sets: number
