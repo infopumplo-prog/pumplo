@@ -19,16 +19,7 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Business uživatel → /business
-  if (role === 'business') {
-    return <Navigate to="/business" replace />;
-  }
-
-  // Admin uživatel → /admin
-  if (role === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
-
+  // All roles see the member Home — admin panel is at pumplo-admin.vercel.app
   return <Home />;
 };
 
