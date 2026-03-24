@@ -123,13 +123,6 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (user) {
-    // Přesměrování podle role
-    if (role === 'admin') {
-      return <Navigate to="/admin" replace />;
-    }
-    if (role === 'business') {
-      return <Navigate to="/business" replace />;
-    }
     return <Navigate to="/" replace />;
   }
   
@@ -153,26 +146,9 @@ const AppRoutes = () => (
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
     </Route>
     
-    {/* Admin Routes */}
-    <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
-    <Route path="/admin/users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
-    <Route path="/admin/gyms" element={<AdminRoute><GymsManagement /></AdminRoute>} />
-    <Route path="/admin/gym/:id" element={<AdminRoute><AdminGymDetail /></AdminRoute>} />
-    <Route path="/admin/machines" element={<AdminRoute><MachinesManagement /></AdminRoute>} />
-    <Route path="/admin/exercises" element={<AdminRoute><ExercisesManagement /></AdminRoute>} />
-    <Route path="/admin/templates" element={<AdminRoute><DayTemplatesManagement /></AdminRoute>} />
-    <Route path="/admin/roles" element={<AdminRoute><TrainingRolesManagement /></AdminRoute>} />
-    <Route path="/admin/feedback/skipped" element={<AdminRoute><ExerciseSkipFeedback /></AdminRoute>} />
-    <Route path="/admin/feedback/app" element={<AdminRoute><AppFeedbackList /></AdminRoute>} />
-    <Route path="/admin/feedback/user" element={<AdminRoute><UserFeedbackList /></AdminRoute>} />
-    
-    {/* Business Routes - share GymProvider via BusinessLayout */}
-    <Route element={<BusinessLayout />}>
-      <Route path="/business" element={<GymDashboard />} />
-      <Route path="/business/machines" element={<GymMachines />} />
-      <Route path="/business/stats" element={<GymStats />} />
-      <Route path="/business/settings" element={<GymSettings />} />
-    </Route>
+    {/* Admin & Business routes removed — use pumplo-admin.vercel.app */}
+    <Route path="/admin/*" element={<Navigate to="/" replace />} />
+    <Route path="/business/*" element={<Navigate to="/" replace />} />
     
     {/* Fallback */}
     <Route path="*" element={<NotFound />} />
