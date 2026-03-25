@@ -72,6 +72,7 @@ export const MessageDetailDrawer = ({
       .single();
 
     let conversationId = existing?.id;
+    let isNew = false;
 
     if (!conversationId) {
       const { data: created } = await supabase
@@ -85,6 +86,20 @@ export const MessageDetailDrawer = ({
         .select('id')
         .single();
       conversationId = created?.id;
+      isNew = true;
+    }
+
+    // Send context message referencing the original announcement
+    if (conversationId && isNew) {
+      await supabase.from('direct_messages').insert({
+        conversation_id: conversationId,
+        sender_type: 'member',
+        sender_id: user.id,
+        body: `📢 Odpověď na oznámení "${message.title}":\n\n„${message.body.slice(0, 200)}${message.body.length > 200 ? '...' : ''}"`,
+      });
+      await supabase.from('conversations').update({
+        last_message_at: new Date().toISOString(),
+      }).eq('id', conversationId);
     }
 
     setReplying(false);

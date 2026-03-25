@@ -113,6 +113,13 @@ export const useConversations = () => {
       }
     }
 
+    // Fetch gym info for conversations without trainer (gym reply)
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('id, name, logo_url')
+      .eq('id', profile.selected_gym_id)
+      .single();
+
     // Assemble enriched conversations
     const enriched: Conversation[] = convos.map((c: any) => ({
       id: c.id,
@@ -123,8 +130,12 @@ export const useConversations = () => {
       other_user_id: c.other_user_id,
       last_message_at: c.last_message_at,
       created_at: c.created_at,
-      trainerName: c.trainer_id ? trainerMap[c.trainer_id]?.name : undefined,
-      trainerPhotoUrl: c.trainer_id ? trainerMap[c.trainer_id]?.photo_url ?? undefined : undefined,
+      trainerName: c.trainer_id
+        ? trainerMap[c.trainer_id]?.name
+        : gymData?.name || 'Posilovna',
+      trainerPhotoUrl: c.trainer_id
+        ? trainerMap[c.trainer_id]?.photo_url ?? undefined
+        : gymData?.logo_url ?? undefined,
       lastMessagePreview: lastMsgMap[c.id] || undefined,
       unreadCount: unreadMap[c.id] || 0,
     }));
@@ -159,7 +170,7 @@ export const useConversations = () => {
       .insert({
         gym_id: gymId,
         participant_user_id: user.id,
-        participant_type: 'user',
+        participant_type: 'trainer',
         trainer_id: trainerId,
         last_message_at: new Date().toISOString(),
       })
