@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type AppRole = 'user' | 'business' | 'admin';
+export type AppRole = 'user' | 'business' | 'admin' | 'trainer';
 
 export const useUserRole = () => {
   const { user } = useAuth();
@@ -35,10 +35,11 @@ export const useUserRole = () => {
 
   const isAdmin = role === 'admin';
   const isBusiness = role === 'business' || role === 'admin';
+  const isTrainer = role === 'trainer';
 
   useEffect(() => {
     fetchRole();
   }, [user]);
 
-  return { role, isAdmin, isBusiness, isLoading, refetch: fetchRole };
+  return { role, isAdmin, isBusiness, isTrainer, isLoading, refetch: fetchRole };
 };

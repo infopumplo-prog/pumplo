@@ -43,6 +43,8 @@ import CustomPlanDetail from "@/pages/CustomPlanDetail";
 import CustomWorkoutPlayer from "@/pages/CustomWorkoutPlayer";
 import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
+import BecomeTrainer from "@/pages/BecomeTrainer";
+import TrainerProfile from "@/pages/TrainerProfile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -148,6 +150,8 @@ const AppRoutes = () => (
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
       <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
+      <Route path="/become-trainer" element={<BecomeTrainer />} />
+      <Route path="/trainer-profile" element={<TrainerProfile />} />
     </Route>
     
     {/* Admin & Business routes removed — use pumplo-admin.vercel.app */}

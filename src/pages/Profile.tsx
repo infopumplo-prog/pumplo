@@ -7,7 +7,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera, Mail } from 'lucide-react';
+import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera, Mail, GraduationCap } from 'lucide-react';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -19,6 +19,7 @@ const getRoleLabel = (role: string | null): string => {
   switch (role) {
     case 'admin': return 'Administrátor';
     case 'business': return 'Business';
+    case 'trainer': return 'Trenér';
     case 'user': return 'Uživatel';
     default: return 'Uživatel';
   }
@@ -69,10 +70,15 @@ const Profile = () => {
     return <ProfilePageSkeleton />;
   }
 
+  const trainerMenuItem = role === 'trainer'
+    ? { icon: GraduationCap, label: 'Můj trenérský profil', onClick: () => navigate('/trainer-profile') }
+    : { icon: GraduationCap, label: 'Stát se trenérem', onClick: () => navigate('/become-trainer') };
+
   const menuItems = [
     { icon: Mail, label: 'Zprávy', onClick: () => navigate('/messages'), badge: unreadCount },
     { icon: Calendar, label: 'Můj plán', onClick: () => navigate('/profile/plan') },
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
+    trainerMenuItem,
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
     { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
     { icon: MessageSquare, label: 'Zpětná vazba', onClick: () => setFeedbackOpen(true) },
