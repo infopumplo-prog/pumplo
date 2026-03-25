@@ -617,6 +617,7 @@ const ExercisePlayerWithVideo = ({
     primaryMuscles: string[];
     secondaryMuscles: string[];
   }>({ url: null, description: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
+  const [lastWeight, setLastWeight] = useState<number | undefined>(undefined);
 
   // Fetch video path + detail from exercise on mount
   useEffect(() => {
@@ -643,6 +644,28 @@ const ExercisePlayerWithVideo = ({
       }
     };
     fetchVideoData();
+  }, [exercise.exerciseId]);
+
+  // Fetch last weight used for this exercise
+  useEffect(() => {
+    const fetchLastWeight = async () => {
+      if (!exercise.exerciseId) return;
+
+      const { data } = await supabase
+        .from('workout_session_sets')
+        .select('weight_kg')
+        .eq('exercise_id', exercise.exerciseId)
+        .not('weight_kg', 'is', null)
+        .gt('weight_kg', 0)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data?.weight_kg) {
+        setLastWeight(data.weight_kg);
+      }
+    };
+    fetchLastWeight();
   }, [exercise.exerciseId]);
 
   return (
@@ -675,6 +698,7 @@ const ExercisePlayerWithVideo = ({
       primaryMuscles={videoData.primaryMuscles}
       secondaryMuscles={videoData.secondaryMuscles}
       restBetweenSets={restBetweenSets}
+      lastWeight={lastWeight}
       initialSetIndex={initialSetIndex}
       initialSetsData={initialSetsData}
       onSetChange={onSetChange}

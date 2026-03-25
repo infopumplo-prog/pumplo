@@ -53,6 +53,7 @@ interface ExercisePlayerProps {
   primaryMuscles?: string[];
   secondaryMuscles?: string[];
   restBetweenSets?: number;
+  lastWeight?: number;
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
@@ -84,6 +85,7 @@ export const ExercisePlayer = ({
   primaryMuscles = [],
   secondaryMuscles = [],
   restBetweenSets = 90,
+  lastWeight,
   initialSetIndex = 0,
   initialSetsData,
   onSetChange
@@ -95,7 +97,7 @@ export const ExercisePlayer = ({
   );
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [weight, setWeight] = useState<string>('');
+  const [weight, setWeight] = useState<string>(lastWeight ? `${lastWeight}` : '');
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [infoVideoError, setInfoVideoError] = useState(false);
@@ -103,6 +105,13 @@ export const ExercisePlayer = ({
 
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+
+  // Pre-fill weight from last workout when it loads (async)
+  useEffect(() => {
+    if (lastWeight && !weight) {
+      setWeight(`${lastWeight}`);
+    }
+  }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
