@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, MapPin, BarChart3, User } from 'lucide-react';
+import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 
 const navItems = [
   { path: '/', label: 'Domů', icon: Home },
@@ -11,6 +12,7 @@ const navItems = [
 
 const BottomNav = () => {
   const location = useLocation();
+  const { unreadCount } = useUnreadMessageCount();
 
   // Hide bottom nav during active workout
   if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training') return null;
@@ -37,11 +39,16 @@ const BottomNav = () => {
                   />
                 )}
                 <div className="relative flex flex-col items-center justify-center z-10">
-                  <Icon 
-                    className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
-                      isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                    }`} 
-                  />
+                  <div className="relative">
+                    <Icon
+                      className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
+                        isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                      }`}
+                    />
+                    {item.path === '/profile' && unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-background z-20" />
+                    )}
+                  </div>
                   <span 
                     className={`text-xs mt-1 font-medium relative z-10 transition-colors duration-200 ${
                       isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'

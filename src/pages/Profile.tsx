@@ -7,7 +7,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera } from 'lucide-react';
+import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera, Mail } from 'lucide-react';
+import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -28,6 +29,7 @@ const Profile = () => {
   const { user, logout } = useAuth();
   const { profile, isLoading, updateProfile, refetch } = useUserProfile();
   const { role, isLoading: roleLoading } = useUserRole();
+  const { unreadCount } = useUnreadMessageCount();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -68,6 +70,7 @@ const Profile = () => {
   }
 
   const menuItems = [
+    { icon: Mail, label: 'Zprávy', onClick: () => navigate('/messages'), badge: unreadCount },
     { icon: Calendar, label: 'Můj plán', onClick: () => navigate('/profile/plan') },
     { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
     { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
@@ -186,6 +189,11 @@ const Profile = () => {
                     <Icon className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <span className="flex-1 text-left font-medium text-foreground">{item.label}</span>
+                  {'badge' in item && (item as any).badge > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-primary-foreground">
+                      {(item as any).badge}
+                    </span>
+                  )}
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
               );
