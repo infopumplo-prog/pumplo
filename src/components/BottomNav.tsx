@@ -14,8 +14,8 @@ const BottomNav = () => {
   const location = useLocation();
   const { unreadCount } = useUnreadMessageCount();
 
-  // Hide bottom nav during active workout
-  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training') return null;
+  // Hide bottom nav during active workout and chat
+  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training' || location.pathname.startsWith('/messages/chat/')) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6" style={{ touchAction: 'none' }}>
