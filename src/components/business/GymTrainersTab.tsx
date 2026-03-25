@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import TrainerDetailDrawer from './TrainerDetailDrawer';
 
 export interface Trainer {
@@ -18,55 +19,59 @@ export interface Trainer {
   };
 }
 
-// Static trainers data - will be moved to DB later
-const STATIC_TRAINERS: Record<string, Trainer[]> = {
-  // Default trainers for any gym (Eurogym)
-  default: [
-    {
-      id: 'jarmila-valentova',
-      name: 'Jarmila Valentová',
-      photo: 'https://udqwjqgdsjobdufdxbpn.supabase.co/storage/v1/object/public/gym-assets/39684b2f-9e5a-484b-bf84-d30eae18691c/trainers/jarmila-valentova.jpg',
-      bio: 'Mám dlouholeté zkušenosti ve fitness světě i mimo něj. Aktivně se věnuji cyklistice a turistice. Kromě silového tréninku se zaměřuji i na kondiční trénink, takže tě dokážu skvěle podpořit i v jiných fyzických aktivitách, kterým se věnuješ.',
-      specializations: [
-        'Redukce tuku – pomohu ti shodit přebytečná kila zdravou a udržitelnou cestou.',
-        'Nabírání svalové hmoty – sestavím ti tréninkový plán pro budování silného a funkčního těla.',
-        'Jídelníček – napíšu ti jídelníček na míru pro redukci, nabírání svalové hmoty nebo udržování.',
-        'Zlepšení fyzické kondice – zvýšíme tvoji vytrvalost i sílu tak, aby sis užil/a nejen trénink, ale i běh, kolo, turistiku nebo jakoukoli jinou aktivitu.',
-      ],
-      certifications: [
-        {
-          name: 'Osobní trenérka ve fitness',
-          description: 'Certifikace od Ronnie.cz',
-          date: '2024',
-        },
-      ],
-      pricing: [
-        { name: 'Individuální trénink (60 min)', price: 500 },
-        { name: 'Tréninkový plán na míru', price: 1500 },
-        { name: 'Jídelníček na míru', price: 1200 },
-        { name: 'Balíček 10 tréninků', price: 4500 },
-      ],
-      contact: {
-        phone: '+420 735 831 247',
-        email: 'trenerkajarmila@seznam.cz',
-        facebook: 'Facebook',
-        instagram: 'Instagram',
-      },
-    },
-  ],
-};
-
 interface GymTrainersTabProps {
   gymId?: string;
 }
 
 const GymTrainersTab = ({ gymId }: GymTrainersTabProps) => {
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get trainers for this gym (fallback to default)
-  const trainers = (gymId && STATIC_TRAINERS[gymId]) || STATIC_TRAINERS.default;
+  useEffect(() => {
+    if (!gymId) {
+      setTrainers([]);
+      setIsLoading(false);
+      return;
+    }
 
-  if (!trainers || trainers.length === 0) {
+    const fetchTrainers = async () => {
+      const { data } = await supabase
+        .from('gym_trainers')
+        .select('*')
+        .eq('gym_id', gymId)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (data && data.length > 0) {
+        setTrainers(data.map(t => ({
+          id: t.id,
+          name: t.name,
+          photo: t.photo_url || '',
+          bio: t.bio || '',
+          specializations: t.specializations || [],
+          certifications: (t.certifications as any[]) || [],
+          pricing: (t.pricing as any[]) || [],
+          contact: (t.contact as any) || {},
+        })));
+      } else {
+        setTrainers([]);
+      }
+      setIsLoading(false);
+    };
+
+    fetchTrainers();
+  }, [gymId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (trainers.length === 0) {
     return (
       <div className="text-sm text-muted-foreground py-4 text-center">
         Žádní trenéři nejsou uvedeni
