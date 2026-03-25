@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { supabase } from '@/integrations/supabase/client';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -105,14 +106,39 @@ export const CompactWorkoutView = ({
     setTimerSeconds(0);
   }, [currentExerciseIndex, currentSetIndex]);
 
-  // Pre-fill reps for current exercise
+  // Pre-fill reps and weight for current exercise
   useEffect(() => {
-    if (currentExercise) {
-      setReps(`${currentExercise.repMax}`);
-      // Pre-fill weight from last completed set
-      const sets = setsDataByExercise.get(currentExerciseIndex);
-      const lastCompleted = sets?.filter(s => s.completed).pop();
-      setWeight(lastCompleted?.weight != null ? `${lastCompleted.weight}` : '');
+    if (!currentExercise) return;
+    setReps(`${currentExercise.repMax}`);
+
+    // First try weight from current session's completed sets
+    const sets = setsDataByExercise.get(currentExerciseIndex);
+    const lastCompleted = sets?.filter(s => s.completed).pop();
+    if (lastCompleted?.weight != null) {
+      setWeight(`${lastCompleted.weight}`);
+      return;
+    }
+
+    // Otherwise fetch last weight from workout history
+    if (currentExercise.exerciseId) {
+      supabase
+        .from('workout_session_sets')
+        .select('weight_kg')
+        .eq('exercise_id', currentExercise.exerciseId)
+        .not('weight_kg', 'is', null)
+        .gt('weight_kg', 0)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data?.weight_kg) {
+            setWeight(`${data.weight_kg}`);
+          } else {
+            setWeight('');
+          }
+        });
+    } else {
+      setWeight('');
     }
   }, [currentExerciseIndex, currentExercise]); // eslint-disable-line react-hooks/exhaustive-deps
 
