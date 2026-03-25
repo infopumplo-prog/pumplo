@@ -1,13 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Users, User } from 'lucide-react';
+import { Mail, Users, User, MessageCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface MessageDetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   message: {
     id: string;
+    gym_id?: string;
     title: string;
     body: string;
     target_type: 'all' | 'individual';
@@ -37,12 +42,57 @@ export const MessageDetailDrawer = ({
   message,
   onMarkAsRead,
 }: MessageDetailDrawerProps) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
+  const [replying, setReplying] = useState(false);
+
   // Mark as read when drawer opens
   useEffect(() => {
     if (open && message && !message.isRead) {
       onMarkAsRead(message.id);
     }
   }, [open, message?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleReply = async () => {
+    if (!user || !message || !profile?.selected_gym_id) return;
+    setReplying(true);
+
+    const gymId = message.gym_id || profile.selected_gym_id;
+
+    // Find or create a conversation with the gym (no trainer - gym_owner type)
+    const { data: existing } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('participant_user_id', user.id)
+      .eq('gym_id', gymId)
+      .is('trainer_id', null)
+      .eq('participant_type', 'user')
+      .limit(1)
+      .single();
+
+    let conversationId = existing?.id;
+
+    if (!conversationId) {
+      const { data: created } = await supabase
+        .from('conversations')
+        .insert({
+          gym_id: gymId,
+          participant_user_id: user.id,
+          participant_type: 'user',
+          trainer_id: null,
+        })
+        .select('id')
+        .single();
+      conversationId = created?.id;
+    }
+
+    setReplying(false);
+    if (conversationId) {
+      onOpenChange(false);
+      navigate(`/messages/chat/${conversationId}`);
+    }
+  };
 
   if (!message) return null;
 
@@ -73,9 +123,19 @@ export const MessageDetailDrawer = ({
           <p className="text-xs text-muted-foreground">{formatDate(message.created_at)}</p>
         </DrawerHeader>
         <div className="px-4 pb-6 overflow-y-auto">
-          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed mb-4">
             {message.body}
           </p>
+
+          {/* Reply button */}
+          <button
+            onClick={handleReply}
+            disabled={replying}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <MessageCircle className="w-4 h-4" />
+            {replying ? 'Otevírám...' : 'Odpovědět'}
+          </button>
         </div>
       </DrawerContent>
     </Drawer>

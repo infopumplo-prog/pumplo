@@ -45,29 +45,49 @@ const ChatThread = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch trainer info from conversation
+  // Fetch conversation partner info (trainer or gym)
   const fetchTrainerInfo = useCallback(async () => {
     if (!conversationId) return;
 
     const { data: conv } = await supabase
       .from('conversations')
-      .select('trainer_id')
+      .select('trainer_id, gym_id, participant_type')
       .eq('id', conversationId)
       .single();
 
-    if (!conv || !(conv as any).trainer_id) return;
+    if (!conv) return;
 
-    const { data: trainer } = await supabase
-      .from('gym_trainers')
-      .select('name, photo_url')
-      .eq('id', (conv as any).trainer_id)
-      .single();
+    // If it's a trainer conversation
+    if ((conv as any).trainer_id) {
+      const { data: trainer } = await supabase
+        .from('gym_trainers')
+        .select('name, photo_url')
+        .eq('id', (conv as any).trainer_id)
+        .single();
 
-    if (trainer) {
-      setTrainerInfo({
-        name: (trainer as any).name,
-        photoUrl: (trainer as any).photo_url || null,
-      });
+      if (trainer) {
+        setTrainerInfo({
+          name: (trainer as any).name,
+          photoUrl: (trainer as any).photo_url || null,
+        });
+        return;
+      }
+    }
+
+    // If it's a gym conversation (reply to gym message)
+    if ((conv as any).gym_id) {
+      const { data: gym } = await supabase
+        .from('gyms')
+        .select('name, logo_url')
+        .eq('id', (conv as any).gym_id)
+        .single();
+
+      if (gym) {
+        setTrainerInfo({
+          name: (gym as any).name,
+          photoUrl: (gym as any).logo_url || null,
+        });
+      }
     }
   }, [conversationId]);
 
