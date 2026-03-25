@@ -48,9 +48,27 @@ export const useUnreadMessageCount = () => {
 
     const readIds = new Set((reads || []).map(r => r.message_id));
     const msgIds = msgs.map(m => m.id);
-    const unread = msgIds.filter(id => !readIds.has(id)).length;
+    const gymUnread = msgIds.filter(id => !readIds.has(id)).length;
 
-    setUnreadCount(unread);
+    // Also count unread DMs
+    let dmUnread = 0;
+    const { data: convs } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('participant_user_id', user.id);
+
+    if (convs && convs.length > 0) {
+      const convIds = convs.map(c => c.id);
+      const { count } = await supabase
+        .from('direct_messages')
+        .select('id', { count: 'exact', head: true })
+        .in('conversation_id', convIds)
+        .neq('sender_type', 'member')
+        .is('read_at', null);
+      dmUnread = count || 0;
+    }
+
+    setUnreadCount(gymUnread + dmUnread);
   }, [user]);
 
   useEffect(() => {

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Phone, Mail, Facebook, Instagram } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Phone, Mail, Facebook, Instagram, MessageCircle } from 'lucide-react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useConversations } from '@/hooks/useConversations';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Trainer } from './GymTrainersTab';
 
 interface TrainerDetailDrawerProps {
@@ -11,6 +14,22 @@ interface TrainerDetailDrawerProps {
 }
 
 const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawerProps) => {
+  const navigate = useNavigate();
+  const { getOrCreateConversation } = useConversations();
+  const { profile } = useUserProfile();
+  const [startingChat, setStartingChat] = useState(false);
+
+  const handleStartChat = async () => {
+    if (!trainer || !profile?.selected_gym_id) return;
+    setStartingChat(true);
+    const conversationId = await getOrCreateConversation(trainer.id, profile.selected_gym_id);
+    setStartingChat(false);
+    if (conversationId) {
+      onOpenChange(false);
+      navigate(`/messages/chat/${conversationId}`);
+    }
+  };
+
   if (!trainer) return null;
 
   return (
@@ -46,6 +65,16 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
           {/* Content */}
           <div className="px-4 pb-8">
             <p className="text-sm text-muted-foreground mb-4">{trainer.bio}</p>
+
+            {/* Message button */}
+            <button
+              onClick={handleStartChat}
+              disabled={startingChat}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 mb-4"
+            >
+              <MessageCircle className="w-4 h-4" />
+              {startingChat ? 'Otevírám...' : 'Napsat zprávu'}
+            </button>
 
             {/* Contact icons */}
             <div className="flex items-center gap-3 mb-6">

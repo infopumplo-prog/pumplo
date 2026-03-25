@@ -42,6 +42,7 @@ import Statistics from "@/pages/Statistics";
 import CustomPlanDetail from "@/pages/CustomPlanDetail";
 import CustomWorkoutPlayer from "@/pages/CustomWorkoutPlayer";
 import Messages from "@/pages/Messages";
+import ChatThread from "@/pages/ChatThread";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -144,6 +145,7 @@ const AppRoutes = () => (
       <Route path="/profile/plan" element={<MyPlan />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/messages" element={<Messages />} />
+      <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
       <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
     </Route>
