@@ -46,26 +46,50 @@ export const useDirectMessages = (conversationId: string | undefined) => {
     if (!user || !conversationId || !body.trim()) return;
 
     const trimmedBody = body.trim();
+    const now = new Date().toISOString();
+
+    // Optimistic update — show message immediately
+    const optimisticMsg: DirectMessage = {
+      id: `temp-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_type: 'member',
+      sender_id: user.id,
+      body: trimmedBody,
+      read_at: null,
+      created_at: now,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
 
     // Insert the message
-    const { error: msgError } = await supabase
+    const { data: inserted, error: msgError } = await supabase
       .from('direct_messages')
       .insert({
         conversation_id: conversationId,
         sender_type: 'member',
         sender_id: user.id,
         body: trimmedBody,
-      });
+      })
+      .select('*')
+      .single();
 
     if (msgError) {
       console.error('Error sending message:', msgError);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
       return;
+    }
+
+    // Replace optimistic message with real one
+    if (inserted) {
+      setMessages(prev => prev.map(m =>
+        m.id === optimisticMsg.id ? (inserted as DirectMessage) : m
+      ));
     }
 
     // Update conversation last_message_at
     await supabase
       .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
+      .update({ last_message_at: now })
       .eq('id', conversationId);
   }, [user, conversationId]);
 
