@@ -16,6 +16,8 @@ interface GymMessage {
 
 interface GymMessageWithRead extends GymMessage {
   isRead: boolean;
+  gymName: string | null;
+  gymLogoUrl: string | null;
 }
 
 export const useGymMessages = () => {
@@ -34,6 +36,13 @@ export const useGymMessages = () => {
     }
 
     const gymId = profile.selected_gym_id;
+
+    // Fetch gym info for sender display
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('name, logo_url')
+      .eq('id', gymId)
+      .single();
 
     // Fetch messages for this gym (broadcast + targeted at user)
     const { data: msgs } = await supabase
@@ -54,6 +63,8 @@ export const useGymMessages = () => {
     const messagesWithRead: GymMessageWithRead[] = (msgs || []).map(m => ({
       ...m,
       isRead: readIds.has(m.id),
+      gymName: gymData?.name || null,
+      gymLogoUrl: gymData?.logo_url || null,
     }));
 
     setMessages(messagesWithRead);

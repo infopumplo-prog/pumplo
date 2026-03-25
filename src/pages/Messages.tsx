@@ -92,26 +92,38 @@ const Messages = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Unread indicator */}
-                    <div className="mt-1.5 shrink-0">
-                      {!msg.isRead ? (
-                        <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    {/* Gym logo */}
+                    <div className="shrink-0">
+                      {msg.gymLogoUrl ? (
+                        <div className="relative">
+                          <img src={msg.gymLogoUrl} alt="" className="w-10 h-10 rounded-xl object-contain bg-white border border-border" />
+                          {!msg.isRead && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                          )}
+                        </div>
                       ) : (
-                        <div className="w-2.5 h-2.5" />
+                        <div className="relative w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-primary" />
+                          {!msg.isRead && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                          )}
+                        </div>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className={`text-sm font-semibold truncate ${
-                          msg.isRead ? 'text-foreground' : 'text-primary'
-                        }`}>
-                          {msg.title}
-                        </h3>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-medium text-muted-foreground">{msg.gymName || 'Posilovna'}</span>
+                        <span className="text-xs text-muted-foreground">·</span>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {formatRelativeDate(msg.created_at)}
                         </span>
                       </div>
+                      <h3 className={`text-sm font-semibold truncate mb-1 ${
+                        msg.isRead ? 'text-foreground' : 'text-primary'
+                      }`}>
+                        {msg.title}
+                      </h3>
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {msg.body}
                       </p>

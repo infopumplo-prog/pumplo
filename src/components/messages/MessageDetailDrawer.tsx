@@ -13,6 +13,8 @@ interface MessageDetailDrawerProps {
     target_type: 'all' | 'individual';
     created_at: string;
     isRead: boolean;
+    gymName?: string | null;
+    gymLogoUrl?: string | null;
   } | null;
   onMarkAsRead: (messageId: string) => void;
 }
@@ -49,9 +51,16 @@ export const MessageDetailDrawer = ({
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="pb-2">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Mail className="w-4 h-4 text-primary" />
-            </div>
+            {message.gymLogoUrl ? (
+              <img src={message.gymLogoUrl} alt="" className="w-8 h-8 rounded-lg object-contain bg-white border border-border" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Mail className="w-4 h-4 text-primary" />
+              </div>
+            )}
+            {message.gymName && (
+              <span className="text-sm font-medium text-foreground">{message.gymName}</span>
+            )}
             <Badge variant="secondary" className="text-xs">
               {message.target_type === 'all' ? (
                 <><Users className="w-3 h-3 mr-1" /> Všem</>
