@@ -119,12 +119,35 @@ const CustomWorkoutPlayer = () => {
   const totalExercises = exercises.length;
   const totalSets = exercises.reduce((sum, e) => sum + e.sets, 0);
 
-  // Initialize weight/reps inputs when exercise changes
+  // Initialize weight/reps inputs when exercise changes, with history fallback
   useEffect(() => {
-    if (currentExercise) {
-      setWeight(currentExercise.weight_kg ? String(currentExercise.weight_kg) : '');
-      setReps(String(currentExercise.reps || ''));
+    if (!currentExercise) return;
+
+    // Use planned weight if set, otherwise fetch last used weight from history
+    if (currentExercise.weight_kg) {
+      setWeight(String(currentExercise.weight_kg));
+    } else if (currentExercise.exercise_id) {
+      // Fetch last weight from workout history
+      supabase
+        .from('workout_session_sets')
+        .select('weight_kg')
+        .eq('exercise_id', currentExercise.exercise_id)
+        .not('weight_kg', 'is', null)
+        .gt('weight_kg', 0)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data?.weight_kg) {
+            setWeight(String(data.weight_kg));
+          } else {
+            setWeight('');
+          }
+        });
+    } else {
+      setWeight('');
     }
+    setReps(String(currentExercise.reps || ''));
   }, [currentExerciseIndex, currentExercise?.exercise_id]);
 
   // Compute progress: sets done / total sets
