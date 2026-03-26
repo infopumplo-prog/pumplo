@@ -13,7 +13,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
-import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
+import { getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
@@ -169,11 +169,17 @@ const MyPlan = () => {
   // Progress calculation based on actual sessions
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
-  // Get schedule for viewing
-  const schedule = useMemo(() => {
-    if (!plan) return [];
-    return getTrainingSchedule(trainingDays, plan.dayCount, plan.currentDayIndex || 0);
-  }, [plan, trainingDays]);
+  // Build week schedule: training days in calendar order with day letters for the viewing week
+  const weekSchedule = useMemo(() => {
+    if (!plan || trainingDays.length === 0) return [];
+    const dayCount = plan.dayCount || 2;
+    // Starting rotation index for this week
+    const weekStartIndex = (viewingWeek - 1) * trainingDaysCount;
+    return trainingDays.map((dayOfWeek, i) => ({
+      dayOfWeek,
+      dayLetter: getCurrentDayLetter(dayCount, weekStartIndex + i),
+    }));
+  }, [plan, trainingDays, trainingDaysCount, viewingWeek]);
 
   const today = getCurrentWeekday();
 
@@ -522,12 +528,12 @@ const MyPlan = () => {
 
                       {/* Days list */}
                       <div className="space-y-2">
-                        {schedule.length === 0 ? (
+                        {weekSchedule.length === 0 ? (
                           <div className="text-center py-4 text-muted-foreground">
                             <p className="text-sm">Nastav si tréninkové dny</p>
                           </div>
                         ) : (
-                          schedule.slice(0, trainingDaysCount).map((day, index) => {
+                          weekSchedule.map((day, index) => {
                             const isDayCompleted = index < weekCompletedCount;
                             const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
