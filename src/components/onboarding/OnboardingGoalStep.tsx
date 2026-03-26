@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check } from 'lucide-react';
 import { MVP_GOALS, TrainingGoalId, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
@@ -11,9 +11,16 @@ interface OnboardingGoalStepProps {
 
 const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps) => {
   const [expandedGoal, setExpandedGoal] = useState<TrainingGoalId | null>(null);
+  const expandedRef = useRef<HTMLDivElement>(null);
 
   const handleGoalTap = (goalId: TrainingGoalId) => {
-    setExpandedGoal(expandedGoal === goalId ? null : goalId);
+    const isOpening = expandedGoal !== goalId;
+    setExpandedGoal(isOpening ? goalId : null);
+    if (isOpening) {
+      setTimeout(() => {
+        expandedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 250);
+    }
   };
 
   const handleConfirm = (goalId: TrainingGoalId) => {
@@ -72,7 +79,7 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="mx-2 mt-1 p-4 rounded-xl bg-muted/50 border border-border/50">
+                    <div ref={expandedRef} className="mx-2 mt-1 p-4 rounded-xl bg-muted/50 border border-border/50">
                       <p className="text-sm font-medium text-foreground mb-3">
                         {goal.detail.summary}
                       </p>
