@@ -124,7 +124,7 @@ export const WorkoutPreview = ({
         return;
       }
 
-      const pick = valid[Math.floor(Math.random() * Math.min(3, valid.length))];
+      const pick = valid[Math.floor(Math.random() * valid.length)];
 
       let newMachineName: string | null = null;
       if (pick.machine_id) {
@@ -162,7 +162,7 @@ export const WorkoutPreview = ({
       };
       onExercisesChange?.(updated);
 
-      toast.success(`Vyměněno za: ${pick.name}`);
+      toast.success(`Vyměněno za: ${pick.name} (z ${valid.length} možností)`);
     } catch (err) {
       console.error('[PreviewSwap] Error:', err);
       toast.error('Chyba při výměně cviku');
