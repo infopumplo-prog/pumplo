@@ -199,6 +199,9 @@ export const WorkoutSession = ({
         return true;
       });
 
+      console.log(`[Swap] Role: ${roleId}, DB candidates: ${candidates?.length}, after gym/exclude filter: ${valid.length}`);
+      console.log(`[Swap] Valid exercises:`, valid.map(v => v.name));
+
       if (valid.length === 0) {
         toast.error('Žádná náhrada nenalezena');
         return;
