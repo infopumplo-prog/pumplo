@@ -619,7 +619,8 @@ const Training = () => {
       // 2. Its actual calendar date is in the PAST (not future)
       // 3. Not before plan start date
       // 4. Not already completed
-      const isMissed = !isExtraWeek && isActuallyInPast && !isBeforePlanStart && !isCompleted;
+      // 5. User has at least 1 completed workout (don't show X marks for brand new users)
+      const isMissed = !isExtraWeek && isActuallyInPast && !isBeforePlanStart && !isCompleted && totalCompletedDays > 0;
       
       // Is this the current day to train (next up)?
       const isCurrentDay = isToday && !isCompleted;
@@ -661,7 +662,7 @@ const Training = () => {
     }
     
     return daysWithBaseProps;
-  }, [plan, viewingWeek, currentWeek, totalWeeks, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, firstWeekEffectiveDays, firstWeekSkippedDays, skippedDaysCount, effectiveFirstWeekDayCount]);
+  }, [plan, viewingWeek, currentWeek, totalWeeks, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, firstWeekEffectiveDays, firstWeekSkippedDays, skippedDaysCount, effectiveFirstWeekDayCount, totalCompletedDays]);
 
   // Fetch available goals
   useEffect(() => {

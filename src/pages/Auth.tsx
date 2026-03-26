@@ -330,24 +330,27 @@ const Auth = () => {
                   required
                 />
               </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type={showRegPassword ? 'text' : 'password'}
-                  placeholder="Heslo (min. 6 znaků)"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  className="pl-12 pr-12"
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowRegPassword(!showRegPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+              <div>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    type={showRegPassword ? 'text' : 'password'}
+                    placeholder="Heslo"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="pl-12 pr-12"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 pl-1">Minimálně 6 znaků</p>
               </div>
 
               {error && (
