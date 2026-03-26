@@ -133,22 +133,22 @@ export const useStreak = () => {
   }, [user, profile, getConsecutiveTrainingDays]);
 
   /**
-   * Check if streak should be reset (called on app load or page visit)
-   * Resets streak if user missed a training day since last update
+   * Sync streak on app load — recalculate from actual sessions
+   * Fixes both wrongly reset streaks and stale values
    */
   const checkAndResetStreakIfNeeded = useCallback(async (): Promise<boolean> => {
-    if (!user || !profile?.training_days || !profile.current_streak) {
-      return false;
-    }
+    if (!user || !profile?.training_days) return false;
 
     const consecutiveDays = await getConsecutiveTrainingDays(profile.training_days);
-    const shouldReset = consecutiveDays === 0 && profile.current_streak > 0;
+    const currentStored = profile.current_streak || 0;
 
-    if (shouldReset) {
+    if (consecutiveDays !== currentStored) {
+      const maxStreak = Math.max(profile.max_streak || 0, consecutiveDays);
       await supabase
         .from('user_profiles')
         .update({
-          current_streak: 0,
+          current_streak: consecutiveDays,
+          max_streak: maxStreak,
           streak_updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id);
