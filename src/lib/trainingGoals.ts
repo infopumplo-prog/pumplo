@@ -59,29 +59,73 @@ export const getSplitFromFrequency = (
 // Split is determined by training frequency (getSplitFromFrequency)
 // Plan duration: 12 weeks for ALL goals (per methodology section 10)
 export const MVP_GOALS = [
-  { 
-    id: 'muscle_gain' as TrainingGoalId, 
-    label: 'Nabrat svaly', 
+  {
+    id: 'muscle_gain' as TrainingGoalId,
+    label: 'Nabrat svaly',
     emoji: '💪',
     description: 'Hypertrofie - více objemu',
+    detail: {
+      summary: 'Trénink zaměřený na maximální růst svalové hmoty.',
+      bullets: [
+        '8–15 opakování na sérii',
+        'Střední až těžké váhy, RIR 1–3 (1–3 opakování v zásobě)',
+        'Vyšší objem — více sérií na svalovou skupinu',
+        'Mix compound a izolačních cviků',
+        'Odpočinek 60–120 s mezi sériemi',
+      ],
+      whoIsItFor: 'Pro ty, kteří chtějí budovat viditelné svaly a zlepšit stavbu těla.',
+    },
   },
-  { 
-    id: 'fat_loss' as TrainingGoalId, 
-    label: 'Zhubnout', 
+  {
+    id: 'fat_loss' as TrainingGoalId,
+    label: 'Zhubnout',
     emoji: '🔥',
     description: 'Spalování tuků + udržení svalů',
+    detail: {
+      summary: 'Silový trénink doplněný o kondičku pro maximální spalování.',
+      bullets: [
+        '10–15 opakování na sérii',
+        'Kratší odpočinky 45–90 s pro vyšší tepovou frekvenci',
+        'Kombinace silových cviků a kondičních bloků',
+        'Důraz na udržení svalů při kalorickém deficitu',
+        'Vyšší celkový objem práce za trénink',
+      ],
+      whoIsItFor: 'Pro ty, kteří chtějí shodit tuk a zároveň si udržet (nebo i získat) svaly.',
+    },
   },
-  { 
-    id: 'strength' as TrainingGoalId, 
-    label: 'Získat sílu', 
+  {
+    id: 'strength' as TrainingGoalId,
+    label: 'Získat sílu',
     emoji: '🏋️',
     description: 'Nižší opakování, vyšší váhy',
+    detail: {
+      summary: 'Trénink zaměřený na maximální sílu v klíčových cvicích.',
+      bullets: [
+        '3–6 opakování na sérii',
+        'Těžké váhy, RIR 1–2 (blízko maxima)',
+        'Důraz na compound cviky (dřep, bench, mrtvý tah)',
+        'Delší odpočinky 2–4 min mezi sériemi',
+        'Nižší objem, ale vyšší intenzita',
+      ],
+      whoIsItFor: 'Pro ty, kteří chtějí zvedat těžší a budovat raw sílu.',
+    },
   },
-  { 
-    id: 'general_fitness' as TrainingGoalId, 
-    label: 'Celková kondice', 
+  {
+    id: 'general_fitness' as TrainingGoalId,
+    label: 'Celková kondice',
     emoji: '✨',
     description: 'Vyvážený trénink celého těla',
+    detail: {
+      summary: 'Univerzální trénink kombinující sílu, svaly i kondici.',
+      bullets: [
+        '8–12 opakování na sérii',
+        'Střední váhy, RIR 2–3',
+        'Vyvážený mix compound a izolačních cviků',
+        'Odpočinek 60–120 s mezi sériemi',
+        'Vhodný jako základ pro jakýkoliv další cíl',
+      ],
+      whoIsItFor: 'Pro ty, kteří chtějí být celkově fit bez úzké specializace.',
+    },
   },
 ];
 
