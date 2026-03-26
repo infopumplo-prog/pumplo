@@ -177,8 +177,7 @@ export const WorkoutSession = ({
       // Query candidates with same role
       let query = supabase
         .from('exercises')
-        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
-        .eq('allowed_phase', 'main');
+        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category');
 
       if (isCardio) {
         query = query.eq('category', 'cardio');
@@ -204,8 +203,8 @@ export const WorkoutSession = ({
         return;
       }
 
-      // Pick random from top candidates
-      const pick = valid[Math.floor(Math.random() * Math.min(3, valid.length))];
+      // Pick random from all valid candidates
+      const pick = valid[Math.floor(Math.random() * valid.length)];
 
       // Fetch machine name if applicable
       let newMachineName: string | null = null;
