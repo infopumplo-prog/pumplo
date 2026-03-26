@@ -251,7 +251,7 @@ const Auth = () => {
         return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {
           setPrimaryGoal(goal);
           if (userLevel === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(goal));
-        }} onNext={handleNextStep} />;
+        }} onNext={() => setOnboardingStep(prev => prev + 1)} />;
       case 1:
         return <OnboardingLevelStep value={userLevel} onChange={(level) => {
           setUserLevel(level);
