@@ -57,6 +57,8 @@ interface ExercisePlayerProps {
   setupInstructions?: string | null;
   commonMistakes?: string | null;
   tips?: string | null;
+  rirMin?: number | null;
+  rirMax?: number | null;
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
@@ -92,6 +94,8 @@ export const ExercisePlayer = ({
   setupInstructions,
   commonMistakes,
   tips,
+  rirMin,
+  rirMax,
   initialSetIndex = 0,
   initialSetsData,
   onSetChange
@@ -304,11 +308,24 @@ export const ExercisePlayer = ({
 
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                {/* Reps display */}
+                {/* Reps + RIR display */}
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
                   <p className="text-white text-2xl font-bold leading-tight">
                     {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
                   </p>
+                  {(rirMin != null || rirMax != null) && (
+                    <p className="text-amber-400 text-xs font-medium mt-0.5">
+                      RPE {rirMin != null && rirMax != null
+                        ? `${10 - rirMax}–${10 - rirMin}`
+                        : rirMin != null ? `${10 - rirMin}` : `${10 - (rirMax || 0)}`}
+                      <span className="text-white/40 ml-1.5">
+                        ({rirMin != null && rirMax != null
+                          ? `RIR ${rirMin}–${rirMax}`
+                          : rirMin != null ? `RIR ${rirMin}` : `RIR ${rirMax}`}
+                        {rirMax != null && rirMax >= 3 ? ' · pohodlné' : rirMax === 2 ? ' · náročné' : rirMax != null && rirMax <= 1 ? ' · těžké' : ''})
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Weight and reps inputs */}

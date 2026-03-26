@@ -159,6 +159,8 @@ export interface WorkoutExercise {
   isExtension?: boolean; // Flag for extension exercises added after workout completion
   selectionScore?: number | null; // v2.0: Score used to select this exercise
   slotCategory?: SlotCategory | null; // v3: Category for display (main/secondary/isolation/etc.)
+  rirMin?: number | null;
+  rirMax?: number | null;
 }
 
 // ============ NEW v2.0 AUDIT INTERFACES ============

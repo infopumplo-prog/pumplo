@@ -181,6 +181,8 @@ export const useWorkoutPlan = () => {
         fallbackReason: ex.fallback_reason,
         selectionScore: ex.selection_score,
         slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as any,
+        rirMin: (ex as any).rir_min ?? null,
+        rirMax: (ex as any).rir_max ?? null,
       }));
 
       // 6. Check if gym equipment has changed (needs_regeneration check)
