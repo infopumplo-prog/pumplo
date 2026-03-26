@@ -13,7 +13,7 @@ const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satu
  */
 export const useStreak = () => {
   const { user } = useAuth();
-  const { profile, updateProfile } = useUserProfile();
+  const { profile, updateProfile, refetch: refetchProfile } = useUserProfile();
 
   /**
    * Get the weekday string from a Date object
@@ -128,6 +128,7 @@ export const useStreak = () => {
         streak_updated_at: new Date().toISOString()
       })
       .eq('user_id', user.id);
+    await refetchProfile();
 
     return { newStreak, isNewRecord, justActivated };
   }, [user, profile, getConsecutiveTrainingDays]);
@@ -152,6 +153,7 @@ export const useStreak = () => {
           streak_updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id);
+      await refetchProfile();
       return true;
     }
 
