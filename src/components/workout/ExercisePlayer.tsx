@@ -67,6 +67,7 @@ interface ExercisePlayerProps {
 export const ExercisePlayer = ({
   exerciseId,
   exerciseName,
+  exerciseDescription,
   videoUrl,
   roleId,
   machineName,
