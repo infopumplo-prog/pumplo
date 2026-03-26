@@ -54,6 +54,9 @@ interface ExercisePlayerProps {
   secondaryMuscles?: string[];
   restBetweenSets?: number;
   lastWeight?: number;
+  setupInstructions?: string | null;
+  commonMistakes?: string | null;
+  tips?: string | null;
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
@@ -86,6 +89,9 @@ export const ExercisePlayer = ({
   secondaryMuscles = [],
   restBetweenSets = 90,
   lastWeight,
+  setupInstructions,
+  commonMistakes,
+  tips,
   initialSetIndex = 0,
   initialSetsData,
   onSetChange
@@ -409,6 +415,31 @@ export const ExercisePlayer = ({
                     <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {exerciseDescription && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-xl">
+                <p className="text-xs font-semibold text-foreground mb-1">Popis & technika</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDescription}</p>
+              </div>
+            )}
+            {setupInstructions && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-foreground mb-1">Nastavení</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{setupInstructions}</p>
+              </div>
+            )}
+            {commonMistakes && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-amber-600 mb-1">Časté chyby</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{commonMistakes}</p>
+              </div>
+            )}
+            {tips && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-green-600 mb-1">Tipy</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tips}</p>
               </div>
             )}
           </div>

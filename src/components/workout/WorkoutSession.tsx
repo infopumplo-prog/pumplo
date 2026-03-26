@@ -610,13 +610,16 @@ const ExercisePlayerWithVideo = ({
   const [videoData, setVideoData] = useState<{
     url: string | null;
     description: string | null;
+    setupInstructions: string | null;
+    commonMistakes: string | null;
+    tips: string | null;
     difficulty: number | null;
     exerciseWithWeights: boolean;
     category: string;
     equipmentType: string | null;
     primaryMuscles: string[];
     secondaryMuscles: string[];
-  }>({ url: null, description: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
+  }>({ url: null, description: null, setupInstructions: null, commonMistakes: null, tips: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
   const [lastWeight, setLastWeight] = useState<number | undefined>(undefined);
 
   // Fetch video path + detail from exercise on mount
@@ -626,14 +629,17 @@ const ExercisePlayerWithVideo = ({
 
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles')
+        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, description, setup_instructions, common_mistakes, tips')
         .eq('id', exercise.exerciseId)
         .single();
 
       if (data) {
         setVideoData({
           url: data.video_path || null,
-          description: null,
+          description: (data as any).description || null,
+          setupInstructions: (data as any).setup_instructions || null,
+          commonMistakes: (data as any).common_mistakes || null,
+          tips: (data as any).tips || null,
           difficulty: data.difficulty,
           exerciseWithWeights: data.exercise_with_weights ?? true,
           category: data.category || '',
@@ -673,6 +679,9 @@ const ExercisePlayerWithVideo = ({
       exerciseId={exercise.exerciseId || undefined}
       exerciseName={exercise.exerciseName || 'Cvik'}
       exerciseDescription={videoData.description || undefined}
+      setupInstructions={videoData.setupInstructions || undefined}
+      commonMistakes={videoData.commonMistakes || undefined}
+      tips={videoData.tips || undefined}
       videoUrl={videoData.url}
       roleId={exercise.roleId}
       equipment={exercise.equipment || []}
