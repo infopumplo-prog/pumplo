@@ -168,6 +168,7 @@ const Statistics = () => {
                 <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
                 <p className="text-xl font-bold text-foreground">{stats.streak.current}</p>
                 <p className="text-[10px] text-muted-foreground">Streak</p>
+                <p className="text-[9px] text-muted-foreground/60">po sobě jdoucích</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
@@ -175,6 +176,7 @@ const Statistics = () => {
                 <Dumbbell className="w-5 h-5 text-primary mx-auto mb-1" />
                 <p className="text-xl font-bold text-foreground">{stats.thisMonth.workouts}</p>
                 <p className="text-[10px] text-muted-foreground">Tento měsíc</p>
+                <p className="text-[9px] text-muted-foreground/60">dokončených</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
@@ -182,6 +184,7 @@ const Statistics = () => {
                 <TrendingUp className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
                 <p className="text-xl font-bold text-foreground">{stats.allTime.workouts}</p>
                 <p className="text-[10px] text-muted-foreground">Celkem</p>
+                <p className="text-[9px] text-muted-foreground/60">tréninků</p>
               </CardContent>
             </Card>
           </motion.div>

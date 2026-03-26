@@ -62,31 +62,35 @@ export const useStreak = () => {
       workoutDates.add(dateKey);
     });
 
-    // Count consecutive training days backward from today
+    // Count consecutive training days backward
+    // Start from today: if today is a training day, only count it if user already worked out
+    // (don't break the streak just because user hasn't trained yet today)
     let consecutiveDays = 0;
     let checkDate = new Date(endDate);
-    
-    // Start from today and go backward
+
     while (true) {
       const dateKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
       const dayOfWeek = getWeekdayFromDate(checkDate);
-      
+      const isToday = checkDate.toDateString() === endDate.toDateString();
+
       const wasTrainingDay = isTrainingDay(dayOfWeek, trainingDays);
       const didWorkout = workoutDates.has(dateKey);
-      
+
       if (wasTrainingDay) {
         if (didWorkout) {
           consecutiveDays++;
+        } else if (isToday) {
+          // Today is a training day but no workout yet — skip, don't break
         } else {
-          // Missed a training day - streak broken
+          // Past training day without workout — streak broken
           break;
         }
       }
       // Non-training days don't affect streak
-      
+
       // Move to previous day
       checkDate.setDate(checkDate.getDate() - 1);
-      
+
       // Don't go back more than 30 days
       if (checkDate < thirtyDaysAgo) break;
     }
@@ -109,12 +113,12 @@ export const useStreak = () => {
 
     const consecutiveDays = await getConsecutiveTrainingDays(profile.training_days);
     
-    // Streak activates after 3 consecutive days
-    const newStreak = consecutiveDays >= 3 ? consecutiveDays : 0;
+    // Streak activates from the first consecutive training day
+    const newStreak = consecutiveDays;
     const previousStreak = profile.current_streak || 0;
     const maxStreak = Math.max(profile.max_streak || 0, newStreak);
     const isNewRecord = newStreak > (profile.max_streak || 0);
-    const justActivated = previousStreak < 3 && newStreak >= 3;
+    const justActivated = previousStreak === 0 && newStreak >= 1;
 
     await supabase
       .from('user_profiles')
@@ -138,7 +142,7 @@ export const useStreak = () => {
     }
 
     const consecutiveDays = await getConsecutiveTrainingDays(profile.training_days);
-    const shouldReset = consecutiveDays < 3 && profile.current_streak > 0;
+    const shouldReset = consecutiveDays === 0 && profile.current_streak > 0;
 
     if (shouldReset) {
       await supabase
@@ -157,7 +161,7 @@ export const useStreak = () => {
   return {
     currentStreak: profile?.current_streak || 0,
     maxStreak: profile?.max_streak || 0,
-    isStreakActive: (profile?.current_streak || 0) >= 3,
+    isStreakActive: (profile?.current_streak || 0) >= 1,
     updateStreakOnWorkoutComplete,
     checkAndResetStreakIfNeeded,
     getConsecutiveTrainingDays
