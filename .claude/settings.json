@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://192.168.68.135:8080/)",
+      "Bash(find /Users/davidnovotny/Desktop/pumplo/supabase -type f -name *.ts)",
+      "Bash(find /Users/davidnovotny/Desktop/pumplo/supabase -name *.sql)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Read(//Users/davidnovotny/Desktop/pumplo/**)",
+      "Bash(curl -s \"https://udqwjqgdsjobdufdxbpn.supabase.co/rest/v1/gyms?select=id,name,pricing,description&is_published=eq.true\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY\")",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}
