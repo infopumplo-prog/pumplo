@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2, Flame, Zap, Leaf, Activity, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Target, Dumbbell, MapPin, Calendar, RefreshCw, Settings, Check, Loader2, Flame, Zap, Leaf, Activity, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -113,7 +113,7 @@ const MyPlan = () => {
   
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [viewingWeek, setViewingWeek] = useState<number>(1);
 
   const totalWeeks = PLAN_DURATION_WEEKS;
   
@@ -132,6 +132,11 @@ const MyPlan = () => {
     const completedDays = plan.currentDayIndex || 0;
     return Math.min(Math.floor(completedDays / trainingDaysCount) + 1, totalWeeks);
   }, [plan, trainingDaysCount, totalWeeks]);
+
+  // Initialize viewing week to current week
+  useEffect(() => {
+    setViewingWeek(currentWeek);
+  }, [currentWeek]);
 
   // Progress calculation
   const completedSessions = plan?.currentDayIndex || 0;
@@ -399,143 +404,142 @@ const MyPlan = () => {
             </Card>
           </motion.div>
 
-          {/* Card 2: Kalendář plánu + Tréninky týdne */}
+          {/* Card 2: Týdenní přehled s přepínáním */}
           <motion.div variants={itemVariants}>
             <Card className="border-border rounded-2xl shadow-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  Kalendář plánu
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Kalendář týdnů - grid 4x3 */}
-                <div className="grid grid-cols-4 gap-2">
-                  {Array.from({ length: totalWeeks }, (_, i) => {
-                    const weekNumber = i + 1;
-                    const isCompleted = weekNumber < currentWeek;
-                    const isCurrent = weekNumber === currentWeek;
-                    const isSelected = weekNumber === selectedWeek;
-                    const weekType = getWeekType(weekNumber);
-                    const styles = weekTypeStyles[weekType];
-                    
-                    return (
-                      <button
-                        key={weekNumber}
-                        onClick={() => setSelectedWeek(selectedWeek === weekNumber ? null : weekNumber)}
-                        className={cn(
-                          "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all border-2",
-                          styles.bg,
-                          isSelected ? "ring-2 ring-primary ring-offset-2" : "",
-                          isCompleted ? "opacity-60" : "",
-                          isCurrent ? `${styles.border} border-2` : styles.border
-                        )}
-                      >
-                        {isCompleted && (
-                          <Check className={cn("w-4 h-4 absolute top-1 right-1", styles.text)} />
-                        )}
-                        <span className={cn("text-xs", styles.text)}>{styles.icon}</span>
-                        <span className={cn("text-lg font-bold", isCurrent ? "text-primary" : styles.text)}>
-                          {weekNumber}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <CardContent className="p-4">
+                {/* Week navigation header */}
+                {(() => {
+                  const weekType = getWeekType(viewingWeek);
+                  const styles = weekTypeStyles[weekType];
+                  const isCompleted = viewingWeek < currentWeek;
+                  const isCurrent = viewingWeek === currentWeek;
 
-                {/* Legend */}
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
-                  {(Object.keys(weekTypeStyles) as WeekType[]).map((type) => {
-                    const styles = weekTypeStyles[type];
-                    return (
-                      <div key={type} className="flex items-center gap-2">
-                        <div className={cn("w-4 h-4 rounded", styles.bg, "border", styles.border)} />
-                        <span className={cn("text-xs", styles.text)}>{weekTypeLabels[type]}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setViewingWeek(Math.max(1, viewingWeek - 1))}
+                          disabled={viewingWeek <= 1}
+                          className="h-9 w-9 rounded-xl"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </Button>
 
-                {/* Tréninky vybraného týdne - zobrazí se po kliknutí na týden */}
-                {selectedWeek && (
-                  <div className={cn(
-                    "mt-2 p-4 rounded-xl border-2",
-                    weekTypeStyles[getWeekType(selectedWeek)].bg,
-                    weekTypeStyles[getWeekType(selectedWeek)].border
-                  )}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        {weekTypeStyles[getWeekType(selectedWeek)].icon}
-                        <span className={cn("font-semibold", weekTypeStyles[getWeekType(selectedWeek)].text)}>
-                          Týden {selectedWeek} - {weekTypeLabels[getWeekType(selectedWeek)]}
-                        </span>
-                        <Badge className={cn(
-                          "text-xs",
-                          weekTypeStyles[getWeekType(selectedWeek)].bg,
-                          weekTypeStyles[getWeekType(selectedWeek)].text,
-                          "border",
-                          weekTypeStyles[getWeekType(selectedWeek)].border
-                        )}>
-                          RIR {getRIRGuidance(selectedWeek).rir}
-                        </Badge>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setSelectedWeek(null)}
-                        className="h-7 px-2 text-xs"
-                      >
-                        Zavřít
-                      </Button>
-                    </div>
-                    
-                    {/* Seznam tréninků */}
-                    <div className="space-y-2">
-                      {schedule.length === 0 ? (
-                        <div className="text-center py-4 text-muted-foreground">
-                          <p className="text-sm">Nastav si tréninkové dny</p>
-                        </div>
-                      ) : (
-                        schedule.slice(0, trainingDaysCount).map((day, index) => {
-                          const isCurrentWeekAndDay = selectedWeek === currentWeek && index === 0 && day.dayOfWeek === today;
-                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
-                          
-                          return (
-                            <div
-                              key={`${day.dayOfWeek}-${index}`}
-                              className={cn(
-                                "flex items-center justify-between p-2 rounded-lg",
-                                isCurrentWeekAndDay 
-                                  ? "bg-primary/20 border border-primary/30" 
-                                  : "bg-background/50"
-                              )}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-                                  isCurrentWeekAndDay 
-                                    ? "bg-primary text-white" 
-                                    : "bg-background"
-                                )}>
-                                  {day.dayLetter}
-                                </div>
-                                <div>
-                                  <p className="font-medium text-sm">{DAY_NAMES_CZ[day.dayOfWeek]}</p>
-                                  {dayTemplate?.dayName && (
-                                    <p className="text-xs text-muted-foreground">{dayTemplate.dayName}</p>
-                                  )}
-                                </div>
-                              </div>
-                              {isCurrentWeekAndDay && (
-                                <Badge className="bg-primary/20 text-primary border-0 text-xs">Dnes</Badge>
-                              )}
+                        <div className="flex items-center gap-2">
+                          {isCompleted && (
+                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
                             </div>
+                          )}
+                          <span className="text-lg font-bold">
+                            Týden {viewingWeek}
+                          </span>
+                          <span className={cn("text-sm", styles.text)}>
+                            {weekTypeLabels[weekType]}
+                          </span>
+                          <Badge className={cn(
+                            "text-xs",
+                            styles.bg, styles.text,
+                            "border", styles.border
+                          )}>
+                            RIR {getRIRGuidance(viewingWeek).rir}
+                          </Badge>
+                          {isCurrent && (
+                            <Badge className="text-xs bg-primary/15 text-primary border-0">Aktuální</Badge>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setViewingWeek(Math.min(totalWeeks, viewingWeek + 1))}
+                          disabled={viewingWeek >= totalWeeks}
+                          className="h-9 w-9 rounded-xl"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </Button>
+                      </div>
+
+                      {/* Week progress dots */}
+                      <div className="flex justify-center gap-1 mb-4">
+                        {Array.from({ length: totalWeeks }, (_, i) => {
+                          const wn = i + 1;
+                          const wCompleted = wn < currentWeek;
+                          const wCurrent = wn === currentWeek;
+                          const wViewing = wn === viewingWeek;
+                          return (
+                            <button
+                              key={wn}
+                              onClick={() => setViewingWeek(wn)}
+                              className={cn(
+                                "h-2 rounded-full transition-all",
+                                wViewing ? "w-6" : "w-2",
+                                wCompleted
+                                  ? "bg-green-500"
+                                  : wCurrent
+                                  ? "bg-primary"
+                                  : "bg-muted-foreground/20"
+                              )}
+                            />
                           );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
+                        })}
+                      </div>
+
+                      {/* Days list */}
+                      <div className="space-y-2">
+                        {schedule.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <p className="text-sm">Nastav si tréninkové dny</p>
+                          </div>
+                        ) : (
+                          schedule.slice(0, trainingDaysCount).map((day, index) => {
+                            const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
+                            const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
+
+                            return (
+                              <div
+                                key={`${day.dayOfWeek}-${index}`}
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-xl",
+                                  isCompleted
+                                    ? "bg-green-500/10 border border-green-500/20"
+                                    : isToday
+                                    ? "bg-primary/10 border border-primary/30"
+                                    : "bg-muted/50 border border-border/50"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={cn(
+                                    "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm",
+                                    isCompleted
+                                      ? "bg-green-500 text-white"
+                                      : isToday
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-background text-foreground"
+                                  )}>
+                                    {isCompleted ? <Check className="w-4 h-4" /> : day.dayLetter}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">{DAY_NAMES_CZ[day.dayOfWeek]}</p>
+                                    {dayTemplate?.dayName && (
+                                      <p className="text-xs text-muted-foreground">{dayTemplate.dayName}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                {isToday && (
+                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">Dnes</Badge>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           </motion.div>
