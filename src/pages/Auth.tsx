@@ -17,6 +17,7 @@ import {
   OnboardingDemographicsStep,
   OnboardingInjuriesStep,
   OnboardingEquipmentStep,
+  OnboardingTrainerTip,
 } from '@/components/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +55,7 @@ const Auth = () => {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword } = useAuth();
@@ -225,13 +227,25 @@ const Auth = () => {
     }
   };
 
+  const hasRealInjuries = injuries.length > 0 && !injuries.includes('none');
+
   const handleNextStep = () => {
     if (isStepValid() && onboardingStep < ONBOARDING_TOTAL_STEPS) {
+      // After injuries step, show trainer tip if user has injuries
+      if (onboardingStep === 5 && hasRealInjuries && !showTrainerTip) {
+        setShowTrainerTip(true);
+        return;
+      }
+      setShowTrainerTip(false);
       setOnboardingStep(onboardingStep + 1);
     }
   };
 
   const handlePrevStep = () => {
+    if (showTrainerTip) {
+      setShowTrainerTip(false);
+      return;
+    }
     if (onboardingStep > 0) {
       setOnboardingStep(onboardingStep - 1);
     }
@@ -246,6 +260,13 @@ const Auth = () => {
   const progress = ((onboardingStep + 1) / (ONBOARDING_TOTAL_STEPS + 1)) * 100;
 
   const renderOnboardingStep = () => {
+    if (showTrainerTip) {
+      return <OnboardingTrainerTip onContinue={() => {
+        setShowTrainerTip(false);
+        setOnboardingStep(prev => prev + 1);
+      }} />;
+    }
+
     switch (onboardingStep) {
       case 0:
         return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {

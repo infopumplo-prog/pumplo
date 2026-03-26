@@ -18,6 +18,7 @@ import {
   OnboardingDemographicsStep,
   OnboardingInjuriesStep,
   OnboardingEquipmentStep,
+  OnboardingTrainerTip,
 } from '@/components/onboarding';
 
 const TOTAL_STEPS = 7; // 0-6 (no registration step in edit mode)
@@ -43,6 +44,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [hasJustCompleted, setHasJustCompleted] = useState(false);
 
@@ -147,17 +149,29 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     onOpenChange(isOpen);
   };
 
+  const hasRealInjuries = injuries.length > 0 && !injuries.includes('none');
+
   const handleNext = () => {
     // In edit mode, allow navigation even if step is not valid
     // For new users, require valid step to proceed
     if (currentStep < TOTAL_STEPS - 1) {
       if (isEditMode || isStepValid()) {
+        // After injuries step, show trainer tip if user has injuries
+        if (currentStep === 5 && hasRealInjuries && !showTrainerTip && !isEditMode) {
+          setShowTrainerTip(true);
+          return;
+        }
+        setShowTrainerTip(false);
         setCurrentStep(currentStep + 1);
       }
     }
   };
 
   const handlePrev = () => {
+    if (showTrainerTip) {
+      setShowTrainerTip(false);
+      return;
+    }
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
@@ -288,6 +302,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   };
 
   const renderStep = () => {
+    if (showTrainerTip) {
+      return <OnboardingTrainerTip onContinue={() => {
+        setShowTrainerTip(false);
+        setCurrentStep(prev => prev + 1);
+      }} />;
+    }
+
     switch (currentStep) {
       case 0:
         return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {
