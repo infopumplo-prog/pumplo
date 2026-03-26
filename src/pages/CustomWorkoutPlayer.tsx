@@ -42,6 +42,10 @@ interface ExerciseDetail {
   secondary_muscles: string[];
   video_path: string | null;
   machine_name: string | null;
+  description: string | null;
+  setup_instructions: string | null;
+  common_mistakes: string | null;
+  tips: string | null;
 }
 
 interface UnavailableExercise {
@@ -431,7 +435,7 @@ const CustomWorkoutPlayer = () => {
     setInfoVideoError(false);
     const { data } = await supabase
       .from('exercises')
-      .select('name, category, equipment_type, primary_muscles, secondary_muscles, video_path, machines!exercises_machine_id_fkey(name)')
+      .select('name, category, equipment_type, primary_muscles, secondary_muscles, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
@@ -443,6 +447,10 @@ const CustomWorkoutPlayer = () => {
         secondary_muscles: data.secondary_muscles || [],
         video_path: data.video_path,
         machine_name: (data as any).machines?.name || null,
+        description: (data as any).description || null,
+        setup_instructions: (data as any).setup_instructions || null,
+        common_mistakes: (data as any).common_mistakes || null,
+        tips: (data as any).tips || null,
       });
       setInfoDrawerOpen(true);
     }
@@ -889,6 +897,30 @@ const CustomWorkoutPlayer = () => {
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                       ))}
                     </div>
+                  </div>
+                )}
+                {exerciseDetail.description && (
+                  <div className="mb-4 p-3 bg-muted/50 rounded-xl">
+                    <p className="text-xs font-semibold text-foreground mb-1">Popis & technika</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.description}</p>
+                  </div>
+                )}
+                {exerciseDetail.setup_instructions && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-foreground mb-1">Nastavení</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.setup_instructions}</p>
+                  </div>
+                )}
+                {exerciseDetail.common_mistakes && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-amber-600 mb-1">Časté chyby</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.common_mistakes}</p>
+                  </div>
+                )}
+                {exerciseDetail.tips && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-green-600 mb-1">Tipy</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.tips}</p>
                   </div>
                 )}
               </div>
