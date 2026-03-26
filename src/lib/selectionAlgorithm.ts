@@ -549,7 +549,7 @@ export const selectExerciseWithFallbacks = async (
 
   if (candidates.length > 0) {
     console.log(`[SelectionAlgorithm] F0: Found ${candidates.length} candidates`);
-    return selectFromTop(candidates, 5);
+    return selectFromTop(candidates, 10);
   }
 
   // F1: Relax anti-repetition ONLY
