@@ -114,7 +114,7 @@ const MyPlan = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [viewingWeek, setViewingWeek] = useState<number>(1);
-  const [actualCompletedSessions, setActualCompletedSessions] = useState<number>(0);
+  const [planSessions, setPlanSessions] = useState<{ day_letter: string; started_at: string }[]>([]);
 
   const totalWeeks = PLAN_DURATION_WEEKS;
 
@@ -127,26 +127,40 @@ const MyPlan = () => {
   const trainingDaysCount = trainingDays.length || 3;
   const totalPlanSessions = totalWeeks * trainingDaysCount;
 
-  // Fetch actual completed session count from DB (source of truth)
+  // Fetch actual completed sessions from DB (source of truth)
   useEffect(() => {
-    const fetchCompleted = async () => {
-      if (!plan?.id) { setActualCompletedSessions(0); return; }
-      const { count } = await supabase
+    const fetchSessions = async () => {
+      if (!plan?.id) { setPlanSessions([]); return; }
+      const { data } = await supabase
         .from('workout_sessions')
-        .select('id', { count: 'exact', head: true })
+        .select('day_letter, started_at')
         .eq('plan_id', plan.id)
         .not('completed_at', 'is', null)
-        .eq('is_bonus', false);
-      setActualCompletedSessions(count || 0);
+        .eq('is_bonus', false)
+        .order('started_at', { ascending: true });
+      setPlanSessions(data || []);
     };
-    fetchCompleted();
+    fetchSessions();
   }, [plan?.id]);
+
+  const completedSessions = planSessions.length;
+
+  // Map sessions to weeks: session 0..n-1 → week 1, n..2n-1 → week 2, etc.
+  const completedByWeek = useMemo(() => {
+    const map = new Map<number, Set<string>>();
+    planSessions.forEach((s, i) => {
+      const week = Math.floor(i / trainingDaysCount) + 1;
+      if (!map.has(week)) map.set(week, new Set());
+      map.get(week)!.add(s.day_letter);
+    });
+    return map;
+  }, [planSessions, trainingDaysCount]);
 
   // Current week based on actual completed sessions
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
-    return Math.min(Math.floor(actualCompletedSessions / trainingDaysCount) + 1, totalWeeks);
-  }, [plan, actualCompletedSessions, trainingDaysCount, totalWeeks]);
+    return Math.min(Math.floor(completedSessions / trainingDaysCount) + 1, totalWeeks);
+  }, [plan, completedSessions, trainingDaysCount, totalWeeks]);
 
   // Initialize viewing week to current week
   useEffect(() => {
@@ -154,7 +168,6 @@ const MyPlan = () => {
   }, [currentWeek]);
 
   // Progress calculation based on actual sessions
-  const completedSessions = actualCompletedSessions;
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
   // Get schedule for viewing
@@ -431,8 +444,9 @@ const MyPlan = () => {
                 {(() => {
                   const weekType = getWeekType(viewingWeek);
                   const styles = weekTypeStyles[weekType];
-                  const isCompleted = viewingWeek < currentWeek;
+                  const isWeekCompleted = viewingWeek < currentWeek;
                   const isCurrent = viewingWeek === currentWeek;
+                  const weekCompletedDays = completedByWeek.get(viewingWeek) || new Set<string>();
 
                   return (
                     <>
@@ -448,7 +462,7 @@ const MyPlan = () => {
                         </Button>
 
                         <div className="flex items-center gap-2">
-                          {isCompleted && (
+                          {isWeekCompleted && (
                             <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                               <Check className="w-3 h-3 text-white" />
                             </div>
@@ -515,6 +529,7 @@ const MyPlan = () => {
                           </div>
                         ) : (
                           schedule.slice(0, trainingDaysCount).map((day, index) => {
+                            const isDayCompleted = weekCompletedDays.has(day.dayLetter);
                             const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
 
@@ -523,34 +538,36 @@ const MyPlan = () => {
                                 key={`${day.dayOfWeek}-${index}`}
                                 className={cn(
                                   "flex items-center justify-between p-3 rounded-xl",
-                                  isCompleted
+                                  isDayCompleted
                                     ? "bg-green-500/10 border border-green-500/20"
                                     : isToday
                                     ? "bg-primary/10 border border-primary/30"
-                                    : "bg-muted/50 border border-border/50"
+                                    : "bg-background/60 border border-border/50"
                                 )}
                               >
                                 <div className="flex items-center gap-3">
                                   <div className={cn(
                                     "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm",
-                                    isCompleted
+                                    isDayCompleted
                                       ? "bg-green-500 text-white"
                                       : isToday
                                       ? "bg-primary text-primary-foreground"
                                       : "bg-background text-foreground"
                                   )}>
-                                    {isCompleted ? <Check className="w-4 h-4" /> : day.dayLetter}
+                                    {isDayCompleted ? <Check className="w-4 h-4" /> : day.dayLetter}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-sm">{DAY_NAMES_CZ[day.dayOfWeek]}</p>
+                                    <p className={cn("font-medium text-sm", isDayCompleted && "text-green-700")}>{DAY_NAMES_CZ[day.dayOfWeek]}</p>
                                     {dayTemplate?.dayName && (
                                       <p className="text-xs text-muted-foreground">{dayTemplate.dayName}</p>
                                     )}
                                   </div>
                                 </div>
-                                {isToday && (
+                                {isDayCompleted ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : isToday ? (
                                   <Badge className="bg-primary/20 text-primary border-0 text-xs">Dnes</Badge>
-                                )}
+                                ) : null}
                               </div>
                             );
                           })
