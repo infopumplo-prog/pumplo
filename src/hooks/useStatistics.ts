@@ -293,7 +293,7 @@ export const useStatistics = () => {
           short: DAY_SHORTS[day],
           trained: wasTrained,
           planned: isPlanned,
-          missed: isPlanned && !wasTrained && (isPast || (isToday && !wasTrained)),
+          missed: isPlanned && !wasTrained && (isPast || (isToday && !wasTrained)) && allSessions.length > 0,
         };
       });
 
