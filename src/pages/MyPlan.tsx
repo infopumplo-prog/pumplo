@@ -145,13 +145,12 @@ const MyPlan = () => {
 
   const completedSessions = planSessions.length;
 
-  // Map sessions to weeks: session 0..n-1 → week 1, n..2n-1 → week 2, etc.
-  const completedByWeek = useMemo(() => {
-    const map = new Map<number, Set<string>>();
-    planSessions.forEach((s, i) => {
+  // Map sessions to weeks: count how many sessions completed per week
+  const completedCountByWeek = useMemo(() => {
+    const map = new Map<number, number>();
+    planSessions.forEach((_, i) => {
       const week = Math.floor(i / trainingDaysCount) + 1;
-      if (!map.has(week)) map.set(week, new Set());
-      map.get(week)!.add(s.day_letter);
+      map.set(week, (map.get(week) || 0) + 1);
     });
     return map;
   }, [planSessions, trainingDaysCount]);
@@ -444,9 +443,9 @@ const MyPlan = () => {
                 {(() => {
                   const weekType = getWeekType(viewingWeek);
                   const styles = weekTypeStyles[weekType];
-                  const isWeekCompleted = viewingWeek < currentWeek;
+                  const weekCompletedCount = completedCountByWeek.get(viewingWeek) || 0;
+                  const isWeekCompleted = weekCompletedCount >= trainingDaysCount;
                   const isCurrent = viewingWeek === currentWeek;
-                  const weekCompletedDays = completedByWeek.get(viewingWeek) || new Set<string>();
 
                   return (
                     <>
@@ -500,7 +499,7 @@ const MyPlan = () => {
                       <div className="flex justify-center gap-1 mb-4">
                         {Array.from({ length: totalWeeks }, (_, i) => {
                           const wn = i + 1;
-                          const wCompleted = wn < currentWeek;
+                          const wCompleted = (completedCountByWeek.get(wn) || 0) >= trainingDaysCount;
                           const wCurrent = wn === currentWeek;
                           const wViewing = wn === viewingWeek;
                           return (
@@ -529,7 +528,7 @@ const MyPlan = () => {
                           </div>
                         ) : (
                           schedule.slice(0, trainingDaysCount).map((day, index) => {
-                            const isDayCompleted = weekCompletedDays.has(day.dayLetter);
+                            const isDayCompleted = index < weekCompletedCount;
                             const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
 
