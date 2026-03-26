@@ -314,19 +314,20 @@ export const ExercisePlayer = ({
                   <p className="text-white text-2xl font-bold leading-tight">
                     {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
                   </p>
-                  {(rirMin != null || rirMax != null) && (
-                    <p className="text-amber-400 text-xs font-medium mt-0.5">
-                      RPE {rirMin != null && rirMax != null
-                        ? `${10 - rirMax}–${10 - rirMin}`
-                        : rirMin != null ? `${10 - rirMin}` : `${10 - (rirMax || 0)}`}
-                      <span className="text-white/40 ml-1.5">
-                        ({rirMin != null && rirMax != null
-                          ? `RIR ${rirMin}–${rirMax}`
-                          : rirMin != null ? `RIR ${rirMin}` : `RIR ${rirMax}`}
-                        {rirMax != null && rirMax >= 3 ? ' · pohodlné' : rirMax === 2 ? ' · náročné' : rirMax != null && rirMax <= 1 ? ' · těžké' : ''})
-                      </span>
-                    </p>
-                  )}
+                  {(rirMin != null || rirMax != null) && (() => {
+                    const rir = rirMax ?? rirMin ?? 2;
+                    const label = rir >= 4 ? 'Lehké' : rir >= 3 ? 'Pohodlné' : rir >= 2 ? 'Náročné' : rir >= 1 ? 'Těžké' : 'Maximum';
+                    const desc = rir >= 3 ? `Nechte si ${rir} opak. v zásobě`
+                      : rir >= 1 ? `Nechte si ${rir} opak. v zásobě`
+                      : 'Dejte do toho vše';
+                    const color = rir >= 3 ? 'text-green-400' : rir >= 2 ? 'text-amber-400' : 'text-red-400';
+                    return (
+                      <div className={`mt-1 flex items-center gap-2 ${color}`}>
+                        <span className="text-xs font-bold">{label}</span>
+                        <span className="text-[10px] text-white/40">{desc}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Weight and reps inputs */}

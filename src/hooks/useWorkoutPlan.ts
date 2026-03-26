@@ -147,20 +147,22 @@ export const useWorkoutPlan = () => {
       // 6. Get day templates for day names and slot categories - by split_type and goal_id
       const { data: dayTemplatesData } = await supabase
         .from('day_templates')
-        .select('day_letter, day_name, slot_order, slot_category, role_id')
+        .select('day_letter, day_name, slot_order, slot_category, role_id, rir_min, rir_max')
         .eq('split_type', splitType)
         .eq('goal_id', planData.goal_id);
 
-      // Create a map of day_letter -> day_name
+      // Create maps from day templates
       const dayNameMap: Record<string, string> = {};
-      // Create a map of "day_letter:slot_order" -> slot_category for exercise category display
       const slotCategoryMap: Record<string, string> = {};
+      const rirMap: Record<string, { min: number | null; max: number | null }> = {};
       if (dayTemplatesData) {
         dayTemplatesData.forEach(dt => {
           if (!dayNameMap[dt.day_letter]) {
             dayNameMap[dt.day_letter] = dt.day_name;
           }
-          slotCategoryMap[`${dt.day_letter}:${dt.slot_order}`] = dt.slot_category || 'secondary';
+          const key = `${dt.day_letter}:${dt.slot_order}`;
+          slotCategoryMap[key] = dt.slot_category || 'secondary';
+          rirMap[key] = { min: (dt as any).rir_min ?? null, max: (dt as any).rir_max ?? null };
         });
       }
 
@@ -181,8 +183,8 @@ export const useWorkoutPlan = () => {
         fallbackReason: ex.fallback_reason,
         selectionScore: ex.selection_score,
         slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as any,
-        rirMin: (ex as any).rir_min ?? null,
-        rirMax: (ex as any).rir_max ?? null,
+        rirMin: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null,
+        rirMax: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null,
       }));
 
       // 6. Check if gym equipment has changed (needs_regeneration check)
