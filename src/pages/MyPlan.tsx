@@ -114,9 +114,10 @@ const MyPlan = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [viewingWeek, setViewingWeek] = useState<number>(1);
+  const [actualCompletedSessions, setActualCompletedSessions] = useState<number>(0);
 
   const totalWeeks = PLAN_DURATION_WEEKS;
-  
+
   // Training days from plan or profile
   const trainingDays = useMemo(() => {
     const days = plan?.trainingDays || profile?.training_days || [];
@@ -126,20 +127,34 @@ const MyPlan = () => {
   const trainingDaysCount = trainingDays.length || 3;
   const totalPlanSessions = totalWeeks * trainingDaysCount;
 
-  // Current week calculation
+  // Fetch actual completed session count from DB (source of truth)
+  useEffect(() => {
+    const fetchCompleted = async () => {
+      if (!plan?.id) { setActualCompletedSessions(0); return; }
+      const { count } = await supabase
+        .from('workout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('plan_id', plan.id)
+        .not('completed_at', 'is', null)
+        .eq('is_bonus', false);
+      setActualCompletedSessions(count || 0);
+    };
+    fetchCompleted();
+  }, [plan?.id]);
+
+  // Current week based on actual completed sessions
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
-    const completedDays = plan.currentDayIndex || 0;
-    return Math.min(Math.floor(completedDays / trainingDaysCount) + 1, totalWeeks);
-  }, [plan, trainingDaysCount, totalWeeks]);
+    return Math.min(Math.floor(actualCompletedSessions / trainingDaysCount) + 1, totalWeeks);
+  }, [plan, actualCompletedSessions, trainingDaysCount, totalWeeks]);
 
   // Initialize viewing week to current week
   useEffect(() => {
     setViewingWeek(currentWeek);
   }, [currentWeek]);
 
-  // Progress calculation
-  const completedSessions = plan?.currentDayIndex || 0;
+  // Progress calculation based on actual sessions
+  const completedSessions = actualCompletedSessions;
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
   // Get schedule for viewing
@@ -406,7 +421,11 @@ const MyPlan = () => {
 
           {/* Card 2: Týdenní přehled s přepínáním */}
           <motion.div variants={itemVariants}>
-            <Card className="border-border rounded-2xl shadow-card">
+            <Card className={cn(
+              "rounded-2xl shadow-card border-2 transition-colors",
+              weekTypeStyles[getWeekType(viewingWeek)].bg,
+              weekTypeStyles[getWeekType(viewingWeek)].border
+            )}>
               <CardContent className="p-4">
                 {/* Week navigation header */}
                 {(() => {
