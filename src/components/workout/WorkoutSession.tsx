@@ -177,7 +177,8 @@ export const WorkoutSession = ({
       // Query candidates with same role
       let query = supabase
         .from('exercises')
-        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category');
+        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
+        .eq('allowed_phase', 'main');
 
       if (isCardio) {
         query = query.eq('category', 'cardio');
