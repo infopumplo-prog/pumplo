@@ -242,7 +242,7 @@ const ChatThread = () => {
         </div>
 
         {/* Fixed bottom input bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 safe-bottom z-10">
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-6 safe-bottom z-10">
           <div className="flex items-center gap-2">
             <Input
               value={inputText}

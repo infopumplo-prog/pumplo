@@ -1007,7 +1007,7 @@ const CustomWorkoutPlayer = () => {
               </div>
 
               {/* Bottom overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-6 px-5">
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
                 {/* Previous sets summary */}
                 {(completedSetsMap.get(currentExerciseIndex) || []).some(s => s.completed && s.weight) && (
                   <div className="flex flex-wrap gap-1.5 mb-3">
