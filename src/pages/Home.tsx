@@ -340,7 +340,7 @@ const Home = () => {
                       <p className="text-muted-foreground mb-6">
                         Vyber si tréninkový cíl a začni cvičit podle personalizovaného plánu
                       </p>
-                      <Button onClick={() => navigate('/training')} size="lg" className="gap-2 rounded-xl">
+                      <Button onClick={() => navigate('/my-plan')} size="lg" className="gap-2 rounded-xl">
                         <Target className="w-5 h-5" />
                         Vytvořit plán
                       </Button>

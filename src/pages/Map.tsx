@@ -197,7 +197,7 @@ const Map = () => {
         description: `${detailGym.name} byla nastavena jako tvoje posilovna pro trénink.`
       });
       setDetailGym(null);
-      navigate('/training');
+      navigate('/');
     } catch (error) {
       toast({
         title: 'Chyba',

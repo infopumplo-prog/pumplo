@@ -147,6 +147,15 @@ const Training = () => {
   // Resume workout state
   const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
   const [initialResults, setInitialResults] = useState<any[]>([]);
+
+  // Redirect to Home if user navigates to /training without start/resume params
+  useEffect(() => {
+    const hasStart = searchParams.get('start') === 'true';
+    const hasResume = searchParams.get('resume') === 'true';
+    if (!hasStart && !hasResume && !isWorkoutActive && !showWorkoutPreview) {
+      navigate('/', { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [initialWarmupIndex, setInitialWarmupIndex] = useState(0);
   const [initialSetIndex, setInitialSetIndex] = useState(0);
   const [initialCurrentExerciseSets, setInitialCurrentExerciseSets] = useState<any[]>([]);
