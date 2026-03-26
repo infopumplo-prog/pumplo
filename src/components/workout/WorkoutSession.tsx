@@ -249,7 +249,7 @@ export const WorkoutSession = ({
         return updated;
       });
 
-      toast.success(`Vyměněno za: ${pick.name}`);
+      toast.success(`Vyměněno za: ${pick.name} (z ${valid.length} možností)`);
     } catch (err) {
       console.error('[Swap] Error:', err);
       toast.error('Chyba při výměně cviku');
