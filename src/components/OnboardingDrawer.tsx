@@ -293,7 +293,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {
           setPrimaryGoal(goal);
           if (userLevel === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(goal));
-        }} />;
+        }} onNext={handleNext} />;
       case 1:
         return <OnboardingLevelStep value={userLevel} onChange={(level) => {
           setUserLevel(level);

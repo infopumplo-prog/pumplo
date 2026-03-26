@@ -6,9 +6,10 @@ import { MVP_GOALS, TrainingGoalId, PLAN_DURATION_WEEKS } from '@/lib/trainingGo
 interface OnboardingGoalStepProps {
   value: TrainingGoalId | null;
   onChange: (goal: TrainingGoalId) => void;
+  onNext?: () => void;
 }
 
-const OnboardingGoalStep = ({ value, onChange }: OnboardingGoalStepProps) => {
+const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps) => {
   const [expandedGoal, setExpandedGoal] = useState<TrainingGoalId | null>(null);
 
   const handleGoalTap = (goalId: TrainingGoalId) => {
@@ -17,6 +18,7 @@ const OnboardingGoalStep = ({ value, onChange }: OnboardingGoalStepProps) => {
 
   const handleConfirm = (goalId: TrainingGoalId) => {
     onChange(goalId);
+    if (onNext) onNext();
   };
 
   return (
