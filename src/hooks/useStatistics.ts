@@ -283,8 +283,27 @@ export const useStatistics = () => {
       // Determine today's index in DAY_ORDER (0=monday .. 6=sunday)
       const todayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1;
 
+      // Fetch active plan start date to hide days before plan started
+      const { data: activePlan } = await supabase
+        .from('user_workout_plans')
+        .select('started_at')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      // If plan started this week, days before plan start should be empty (not planned, not missed)
+      let planStartDayIndex = -1;
+      if (activePlan?.started_at) {
+        const planStart = new Date(activePlan.started_at);
+        planStart.setHours(0, 0, 0, 0);
+        if (planStart >= weekStart) {
+          planStartDayIndex = planStart.getDay() === 0 ? 6 : planStart.getDay() - 1;
+        }
+      }
+
       const weekdayActivity: WeekdayActivity[] = DAY_ORDER.map((day, i) => {
-        const isPlanned = trainingDays.has(day);
+        const isBeforePlanStart = planStartDayIndex >= 0 && i < planStartDayIndex;
+        const isPlanned = trainingDays.has(day) && !isBeforePlanStart;
         const wasTrained = trainedDays.has(day);
         const isPast = i < todayIndex;
         const isToday = i === todayIndex;
