@@ -16,34 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-// Audio helpers for rest timer
-let audioCtx: AudioContext | null = null;
-const getAudioContext = () => {
-  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  return audioCtx;
-};
-const playBeep = (freq: number = 880, ms: number = 150) => {
-  try {
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = freq; gain.gain.value = 0.3;
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
-    osc.stop(ctx.currentTime + ms / 1000);
-  } catch {}
-};
-const playFinishSound = () => { playBeep(1047, 200); setTimeout(() => playBeep(1319, 300), 200); };
-const speakText = (text: string) => {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'cs-CZ'; u.rate = 0.9; u.volume = 0.8;
-    speechSynthesis.speak(u);
-  } catch {}
-};
+import { playBeep, playFinishSound, speakText, unlockAudio } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -312,6 +285,7 @@ const CustomWorkoutPlayer = () => {
 
   // Start day
   const handleStartDay = (dayId: string) => {
+    unlockAudio(); // Unlock audio on user gesture for mobile browsers
     setSelectedDayId(dayId);
     loadDayExercises(dayId);
   };

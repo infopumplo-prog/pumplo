@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { playBeep, playFinishSound, speakText } from '@/lib/workoutAudio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -10,51 +11,6 @@ interface RestTimerProps {
   label?: string;
   nextExerciseName?: string;
 }
-
-// Audio context singleton for beep sounds
-let audioCtx: AudioContext | null = null;
-const getAudioContext = () => {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  return audioCtx;
-};
-
-const playBeep = (frequency: number = 880, durationMs: number = 150) => {
-  try {
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = frequency;
-    gain.gain.value = 0.3;
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
-    osc.stop(ctx.currentTime + durationMs / 1000);
-  } catch {
-    // Audio not available — silently ignore
-  }
-};
-
-const playFinishSound = () => {
-  playBeep(1047, 200); // High C
-  setTimeout(() => playBeep(1319, 300), 200); // E
-};
-
-const speakText = (text: string) => {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
-    speechSynthesis.speak(utterance);
-  } catch {
-    // Speech not available
-  }
-};
 
 export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', nextExerciseName }: RestTimerProps) => {
   const [isPaused, setIsPaused] = useState(false);
@@ -71,9 +27,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
   useEffect(() => {
     if (nextExerciseName && !spokenRef.current) {
       spokenRef.current = true;
-      setTimeout(() => {
-        speakText(`Další cvik: ${nextExerciseName}`);
-      }, 500);
+      setTimeout(() => speakText(`Další cvik: ${nextExerciseName}`), 500);
     }
   }, [nextExerciseName]);
 
@@ -86,7 +40,6 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
 
-      // Countdown beeps
       if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playBeep(660, 120); }
       if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playBeep(660, 120); }
       if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playBeep(660, 120); }
@@ -98,14 +51,9 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       }
     };
 
-    // Tick immediately + every 250ms (more responsive than 1s)
     tick();
     const interval = setInterval(tick, 250);
-
-    // Also tick on visibility change (phone wakes up)
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') tick();
-    };
+    const handleVisibility = () => { if (document.visibilityState === 'visible') tick(); };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
@@ -116,11 +64,9 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
 
   const handlePause = useCallback(() => {
     if (isPaused) {
-      // Resume: shift endTime forward by the paused duration
       const pausedDuration = Date.now() - (pausedAtRef.current || Date.now());
       endTimeRef.current += pausedDuration;
       pausedAtRef.current = null;
-      // Reset beep refs based on new timeLeft
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
       beeped3Ref.current = remaining < 3;
       beeped2Ref.current = remaining < 2;
@@ -166,27 +112,18 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
         </p>
       )}
 
-      {/* Circular progress */}
       <div className="relative w-64 h-64 mb-8">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50" cy="50" r="45"
-            fill="none"
-            stroke="hsl(var(--muted))"
-            strokeWidth="8"
-          />
+          <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
           <motion.circle
-            cx="50" cy="50" r="45"
-            fill="none"
+            cx="50" cy="50" r="45" fill="none"
             stroke={timeLeft <= 3 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
-            strokeWidth="8"
-            strokeLinecap="round"
+            strokeWidth="8" strokeLinecap="round"
             strokeDasharray={`${2 * Math.PI * 45}`}
             strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
             transition={{ duration: 0.3 }}
           />
         </svg>
-
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
             key={timeLeft}
@@ -196,48 +133,23 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
           >
             {formatTime(timeLeft)}
           </motion.span>
-          {isPaused && (
-            <span className="text-sm text-muted-foreground mt-2">Pozastaveno</span>
-          )}
+          {isPaused && <span className="text-sm text-muted-foreground mt-2">Pozastaveno</span>}
         </div>
       </div>
 
-      {/* Controls */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="icon"
-          className="w-14 h-14 rounded-full"
-          onClick={handleReset}
-        >
+        <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={handleReset}>
           <RotateCcw className="w-6 h-6" />
         </Button>
-
-        <Button
-          size="icon"
-          className="w-20 h-20 rounded-full"
-          onClick={handlePause}
-        >
-          {isPaused ? (
-            <Play className="w-10 h-10 ml-1" />
-          ) : (
-            <Pause className="w-10 h-10" />
-          )}
+        <Button size="icon" className="w-20 h-20 rounded-full" onClick={handlePause}>
+          {isPaused ? <Play className="w-10 h-10 ml-1" /> : <Pause className="w-10 h-10" />}
         </Button>
-
-        <Button
-          variant="outline"
-          size="icon"
-          className="w-14 h-14 rounded-full"
-          onClick={onSkip || onComplete}
-        >
+        <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={onSkip || onComplete}>
           <SkipForward className="w-6 h-6" />
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mt-6">
-        Klikni pro přeskočení
-      </p>
+      <p className="text-sm text-muted-foreground mt-6">Klikni pro přeskočení</p>
     </motion.div>
   );
 };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { unlockAudio } from '@/lib/workoutAudio';
 import { motion } from 'framer-motion';
 import { Play, MapPin, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
   };
 
   const handleConfirmGymAndStart = () => {
+    unlockAudio(); // Unlock audio on user gesture for mobile
     setShowGymConfirmDialog(false);
     // Navigate to training with auto-start parameter
     navigate('/training?start=true');

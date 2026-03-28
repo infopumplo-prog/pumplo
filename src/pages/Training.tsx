@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -924,6 +925,7 @@ const Training = () => {
 
   // Potvrzení posilovny a start tréninku
   const handleConfirmGymAndStart = async () => {
+    unlockAudio(); // Unlock audio on user gesture for mobile
     setShowGymConfirmDialog(false);
     
     const exercisesFromPlan = getCurrentDayExercises()
