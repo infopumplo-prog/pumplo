@@ -16,6 +16,35 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
+// Audio helpers for rest timer
+let audioCtx: AudioContext | null = null;
+const getAudioContext = () => {
+  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  return audioCtx;
+};
+const playBeep = (freq: number = 880, ms: number = 150) => {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = freq; gain.gain.value = 0.3;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
+    osc.stop(ctx.currentTime + ms / 1000);
+  } catch {}
+};
+const playFinishSound = () => { playBeep(1047, 200); setTimeout(() => playBeep(1319, 300), 200); };
+const speakText = (text: string) => {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'cs-CZ'; u.rate = 0.9; u.volume = 0.8;
+    speechSynthesis.speak(u);
+  } catch {}
+};
+
 interface ExerciseWithVideo {
   id: string;
   exercise_id: string;
@@ -319,18 +348,53 @@ const CustomWorkoutPlayer = () => {
     }
   }, [plan, playerState]);
 
-  // Rest timer countdown
+  // Rest timer — uses real clock so it survives phone sleep
+  const restEndTimeRef = useRef<number>(0);
+  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false, spoken: false });
+
+  // Set end time when rest starts
+  useEffect(() => {
+    if (playerState === 'rest') {
+      restEndTimeRef.current = Date.now() + restSeconds * 1000;
+      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
+      // Announce next exercise
+      const nextInfo = getNextInfo();
+      if (nextInfo && !restBeepsRef.current.spoken) {
+        restBeepsRef.current.spoken = true;
+        setTimeout(() => speakText(`Další: ${nextInfo}`), 500);
+      }
+    }
+  }, [playerState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tick rest timer
   useEffect(() => {
     if (playerState !== 'rest') return;
-    if (restSeconds <= 0) {
-      advanceAfterRest();
-      return;
-    }
-    timerRef.current = setTimeout(() => {
-      setRestSeconds(prev => prev - 1);
-    }, 1000);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [playerState, restSeconds]);
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000));
+      setRestSeconds(remaining);
+
+      const b = restBeepsRef.current;
+      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(660, 120); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(660, 120); }
+      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(660, 120); }
+      if (remaining <= 0 && !b.done) {
+        b.done = true;
+        playFinishSound();
+        advanceAfterRest();
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
+    const handleVisibility = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [playerState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // What happens after rest ends
   const advanceAfterRest = () => {
@@ -1090,7 +1154,7 @@ const CustomWorkoutPlayer = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-5xl font-bold tabular-nums text-[#1A2744]">{formatTime(restSeconds)}</span>
+                <span className={`text-5xl font-bold tabular-nums ${restSeconds <= 3 ? 'text-red-500' : 'text-[#1A2744]'}`}>{formatTime(restSeconds)}</span>
               </div>
             </div>
 
