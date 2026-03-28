@@ -1128,7 +1128,11 @@ const CustomWorkoutPlayer = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-5xl font-bold tabular-nums ${restSeconds <= 3 ? 'text-red-500' : 'text-[#1A2744]'}`}>{formatTime(restSeconds)}</span>
+                {restSeconds <= 3 && restSeconds > 0 ? (
+                  <span className="text-7xl font-black text-red-500 animate-pulse">{restSeconds}</span>
+                ) : (
+                  <span className={`text-5xl font-bold tabular-nums text-[#1A2744]`}>{formatTime(restSeconds)}</span>
+                )}
               </div>
             </div>
 

@@ -125,14 +125,25 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.span
-            key={timeLeft}
-            initial={{ scale: 1.05 }}
-            animate={{ scale: 1 }}
-            className={`text-5xl font-bold tabular-nums ${timeLeft <= 3 ? 'text-destructive' : ''}`}
-          >
-            {formatTime(timeLeft)}
-          </motion.span>
+          {timeLeft <= 3 && timeLeft > 0 ? (
+            <motion.span
+              key={timeLeft}
+              initial={{ scale: 1.5, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-7xl font-black text-destructive"
+            >
+              {timeLeft}
+            </motion.span>
+          ) : (
+            <motion.span
+              key={timeLeft}
+              initial={{ scale: 1.05 }}
+              animate={{ scale: 1 }}
+              className="text-5xl font-bold tabular-nums"
+            >
+              {formatTime(timeLeft)}
+            </motion.span>
+          )}
           {isPaused && <span className="text-sm text-muted-foreground mt-2">Pozastaveno</span>}
         </div>
       </div>
