@@ -461,6 +461,7 @@ export const WorkoutSession = ({
         duration={restDuration}
         onComplete={handleRestComplete}
         label={restLabel}
+        nextExerciseName={liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined}
       />
     );
   }
