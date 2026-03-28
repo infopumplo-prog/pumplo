@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, speakText, unlockAudio, announceExercise, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, unlockAudio, announceExercise, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -336,12 +336,7 @@ const CustomWorkoutPlayer = () => {
     if (playerState === 'rest') {
       restEndTimeRef.current = Date.now() + restSeconds * 1000;
       restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
-      // Announce next exercise
-      const nextInfo = getNextInfo();
-      if (nextInfo && !restBeepsRef.current.spoken) {
-        restBeepsRef.current.spoken = true;
-        setTimeout(() => speakText(`Další: ${nextInfo}`), 500);
-      }
+      // No speech during rest — announcement happens when next exercise starts
     }
   }, [playerState]); // eslint-disable-line react-hooks/exhaustive-deps
 

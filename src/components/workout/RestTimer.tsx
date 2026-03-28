@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { playBeep, playFinishSound, speakText } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound } from '@/lib/workoutAudio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -23,13 +23,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
   const beeped2Ref = useRef(false);
   const beeped1Ref = useRef(false);
 
-  // Announce next exercise at start
-  useEffect(() => {
-    if (nextExerciseName && !spokenRef.current) {
-      spokenRef.current = true;
-      setTimeout(() => speakText(`Další cvik: ${nextExerciseName}`), 500);
-    }
-  }, [nextExerciseName]);
+  // No speech during rest — exercise announcement happens when next exercise loads
 
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
