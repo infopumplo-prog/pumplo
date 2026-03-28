@@ -337,24 +337,35 @@ export const WorkoutSession = ({
   const results = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
     .filter((r): r is ExerciseResult => r !== undefined);
 
+  // Auto-save workout as soon as all exercises are completed
+  const [workoutSaved, setWorkoutSaved] = useState(false);
+
+  useEffect(() => {
+    if (showSummary && !workoutSaved) {
+      const autoSave = async () => {
+        const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
+          .filter((r): r is ExerciseResult => r !== undefined);
+
+        await saveWorkoutSession({
+          planId,
+          gymId,
+          dayLetter,
+          goalId,
+          startedAt: workoutStartTime,
+          results: orderedResults,
+          isBonus
+        });
+
+        onComplete(orderedResults);
+        setWorkoutSaved(true);
+      };
+      autoSave();
+    }
+  }, [showSummary, workoutSaved]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFinishWorkout = useCallback(async () => {
-    const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
-      .filter((r): r is ExerciseResult => r !== undefined);
-
-    // Save workout to history
-    await saveWorkoutSession({
-      planId,
-      gymId,
-      dayLetter,
-      goalId,
-      startedAt: workoutStartTime,
-      results: orderedResults,
-      isBonus
-    });
-
-    onComplete(orderedResults);
     navigate('/');
-  }, [onComplete, resultsByIndex, liveExercises.length, saveWorkoutSession, planId, gymId, dayLetter, goalId, workoutStartTime, isBonus, navigate]);
+  }, [navigate]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
