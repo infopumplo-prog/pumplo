@@ -130,14 +130,68 @@ export const playFinishSound = () => {
   } catch {}
 };
 
+// Find the best Czech voice available on the device
+let cachedCzechVoice: SpeechSynthesisVoice | null = null;
+let voiceSearchDone = false;
+
+const getCzechVoice = (): SpeechSynthesisVoice | null => {
+  if (voiceSearchDone) return cachedCzechVoice;
+  if (!('speechSynthesis' in window)) return null;
+
+  const voices = speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  voiceSearchDone = true;
+
+  const czechVoices = voices.filter(v => v.lang.startsWith('cs'));
+  // Prefer premium Czech voices (Zuzana on iOS, enhanced variants)
+  cachedCzechVoice =
+    czechVoices.find(v => v.name.toLowerCase().includes('zuzana')) ||
+    czechVoices.find(v => v.name.toLowerCase().includes('enhanced')) ||
+    czechVoices.find(v => v.name.toLowerCase().includes('premium')) ||
+    czechVoices.find(v => !v.name.toLowerCase().includes('compact')) ||
+    czechVoices[0] || null;
+
+  return cachedCzechVoice;
+};
+
+// Pre-load voices
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  speechSynthesis.getVoices();
+  speechSynthesis.addEventListener?.('voiceschanged', () => {
+    voiceSearchDone = false;
+    getCzechVoice();
+  });
+}
+
 export const speakText = (text: string) => {
   try {
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
+    const voice = getCzechVoice();
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    } else {
+      utterance.lang = 'cs-CZ';
+    }
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
     speechSynthesis.speak(utterance);
   } catch {}
+};
+
+/** Announce exercise: name, weight, reps */
+export const announceExercise = (name: string, weight?: number, reps?: string) => {
+  let text = name;
+  if (weight && weight > 0) text += `. ${weight} kilo`;
+  if (reps) text += `. ${reps} opakování`;
+  speakText(text);
+};
+
+/** Announce workout complete */
+export const announceWorkoutComplete = () => {
+  speakText('Trénink dokončen. Skvělá práce!');
 };

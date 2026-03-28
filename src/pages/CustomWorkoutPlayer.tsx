@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, speakText, unlockAudio } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, speakText, unlockAudio, announceExercise, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -279,6 +279,11 @@ const CustomWorkoutPlayer = () => {
     setCurrentSet(1);
     setTotalSetsCompleted(0);
 
+    // Announce first exercise
+    if (loaded[0]) {
+      setTimeout(() => announceExercise(loaded[0].exercise_name, loaded[0].weight_kg || undefined, `${loaded[0].reps}`), 500);
+    }
+
     // Check equipment compatibility
     await checkEquipmentCompatibility(loaded);
   }, [plan, checkEquipmentCompatibility]);
@@ -380,11 +385,17 @@ const CustomWorkoutPlayer = () => {
     } else {
       // Next exercise
       if (currentExerciseIndex < exercises.length - 1) {
+        const nextEx = exercises[currentExerciseIndex + 1];
         setCurrentExerciseIndex(prev => prev + 1);
         setCurrentSet(1);
         setPlayerState('exercise');
+        // Announce next exercise
+        if (nextEx) {
+          announceExercise(nextEx.exercise_name, nextEx.weight_kg || undefined, `${nextEx.reps}`);
+        }
       } else {
         setPlayerState('completed');
+        announceWorkoutComplete();
       }
     }
   };

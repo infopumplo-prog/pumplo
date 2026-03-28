@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
+import { announceExercise } from '@/lib/workoutAudio';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 
@@ -123,6 +124,12 @@ export const ExercisePlayer = ({
       setWeight(`${lastWeight}`);
     }
   }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Announce exercise when it first loads
+  useEffect(() => {
+    const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
+    announceExercise(exerciseName, lastWeight || undefined, repText);
+  }, [exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
