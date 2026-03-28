@@ -22,6 +22,15 @@ export const unlockAudio = () => {
   }
 };
 
+/** Auto-unlock on first user interaction anywhere on the page */
+const autoUnlockHandler = () => {
+  unlockAudio();
+  document.removeEventListener('click', autoUnlockHandler);
+  document.removeEventListener('touchstart', autoUnlockHandler);
+};
+document.addEventListener('click', autoUnlockHandler, { passive: true });
+document.addEventListener('touchstart', autoUnlockHandler, { passive: true });
+
 const getAudioCtx = (): AudioContext => {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
