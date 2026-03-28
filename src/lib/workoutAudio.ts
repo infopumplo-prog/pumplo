@@ -1,76 +1,78 @@
 // Workout audio utilities — beeps, countdown, speech
-// AudioContext must be unlocked via a user gesture before it can play.
+// Uses HTML Audio element with base64 WAV for maximum mobile compatibility
 
-let audioCtx: AudioContext | null = null;
-let unlocked = false;
+// Short beep as base64 WAV (440Hz, 100ms)
+const BEEP_WAV = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACA' +
+  Array(200).fill('f/9/').join('') + 'gICAgA==';
 
-/** Call this from any click/tap handler to unlock audio on mobile */
+// Higher beep (880Hz) for finish
+const HIGH_BEEP_WAV = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACA' +
+  Array(200).fill('//8A').join('') + 'gICAgA==';
+
+let beepAudio: HTMLAudioElement | null = null;
+let highBeepAudio: HTMLAudioElement | null = null;
+
+// Pre-load on first import
+try {
+  beepAudio = new Audio(BEEP_WAV);
+  beepAudio.volume = 0.5;
+  highBeepAudio = new Audio(HIGH_BEEP_WAV);
+  highBeepAudio.volume = 0.5;
+} catch {
+  // Audio not available
+}
+
+/** Unlock audio on first user interaction (required by mobile browsers) */
 export const unlockAudio = () => {
-  if (unlocked) return;
   try {
-    const ctx = getAudioCtx();
-    // Play a silent buffer to unlock
-    const buffer = ctx.createBuffer(1, 1, 22050);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    source.start(0);
-    if (ctx.state === 'suspended') ctx.resume();
-    unlocked = true;
-  } catch {
-    // Silently ignore
-  }
+    // Play + immediately pause to unlock audio playback
+    if (beepAudio) {
+      beepAudio.play().then(() => { beepAudio!.pause(); beepAudio!.currentTime = 0; }).catch(() => {});
+    }
+  } catch {}
 };
 
-/** Auto-unlock on first user interaction anywhere on the page */
-const autoUnlockHandler = () => {
+// Auto-unlock on first user interaction
+const autoUnlock = () => {
   unlockAudio();
-  document.removeEventListener('click', autoUnlockHandler);
-  document.removeEventListener('touchstart', autoUnlockHandler);
+  document.removeEventListener('click', autoUnlock);
+  document.removeEventListener('touchstart', autoUnlock);
 };
-document.addEventListener('click', autoUnlockHandler, { passive: true });
-document.addEventListener('touchstart', autoUnlockHandler, { passive: true });
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', autoUnlock, { passive: true });
+  document.addEventListener('touchstart', autoUnlock, { passive: true });
+}
 
-const getAudioCtx = (): AudioContext => {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  return audioCtx;
-};
-
-export const playBeep = (frequency: number = 880, durationMs: number = 150) => {
+export const playBeep = () => {
   try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = frequency;
-    gain.gain.value = 0.3;
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
-    osc.stop(ctx.currentTime + durationMs / 1000);
-  } catch {
-    // Audio not available
-  }
+    if (!beepAudio) return;
+    beepAudio.currentTime = 0;
+    beepAudio.play().catch(() => {});
+  } catch {}
 };
 
 export const playFinishSound = () => {
-  playBeep(1047, 200);
-  setTimeout(() => playBeep(1319, 300), 200);
+  try {
+    if (!highBeepAudio) return;
+    highBeepAudio.currentTime = 0;
+    highBeepAudio.play().catch(() => {});
+    // Second beep after 200ms
+    setTimeout(() => {
+      if (!highBeepAudio) return;
+      highBeepAudio.currentTime = 0;
+      highBeepAudio.play().catch(() => {});
+    }, 250);
+  } catch {}
 };
 
 export const speakText = (text: string) => {
   try {
     if (!('speechSynthesis' in window)) return;
-    speechSynthesis.cancel(); // Cancel any pending speech
+    speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'cs-CZ';
     utterance.rate = 0.9;
     utterance.volume = 0.8;
     speechSynthesis.speak(utterance);
-  } catch {
-    // Speech not available
-  }
+  } catch {}
 };

@@ -349,9 +349,9 @@ const CustomWorkoutPlayer = () => {
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(660, 120); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(660, 120); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(660, 120); }
+      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(); }
+      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(); }
       if (remaining <= 0 && !b.done) {
         b.done = true;
         playFinishSound();

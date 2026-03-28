@@ -40,9 +40,9 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
 
-      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playBeep(660, 120); }
-      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playBeep(660, 120); }
-      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playBeep(660, 120); }
+      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playBeep(); }
+      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playBeep(); }
+      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playBeep(); }
 
       if (remaining <= 0 && !completedRef.current) {
         completedRef.current = true;
