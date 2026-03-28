@@ -104,20 +104,50 @@ try { beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200); }
 export const playBeep = () => { if(!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 export const playFinishSound = () => { if(!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 
-// --- Announce functions (single MP3 per announcement) ---
+// --- SpeechSynthesis for short dynamic text (weight + reps) ---
+function speakShort(text: string) {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'cs-CZ';
+    u.rate = 1.0;
+    u.volume = 1.0;
+    // Try to find Czech voice
+    const voices = speechSynthesis.getVoices();
+    const cz = voices.find(v => v.lang.startsWith('cs'));
+    if (cz) { u.voice = cz; u.lang = cz.lang; }
+    speechSynthesis.speak(u);
+  } catch {}
+}
 
-/** Announce exercise name only — one clean MP3 */
-export const announceExercise = (name: string, _weight?: number, _reps?: string) => {
-  play(getExerciseAudioUrl(name));
+// --- Announce functions ---
+
+/** Announce exercise: MP3 name + spoken weight/reps */
+export const announceExercise = (name: string, weight?: number, reps?: string) => {
+  if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
+  audioEl.src = getExerciseAudioUrl(name);
+  audioEl.onended = () => {
+    // After name MP3 finishes, speak weight + reps
+    let detail = '';
+    if (weight && weight > 0) detail += `${weight} kilo, `;
+    if (reps) detail += `${reps} opakování`;
+    if (detail) speakShort(detail.trim().replace(/,\s*$/, ''));
+  };
+  audioEl.play().catch(() => {});
 };
 
-/** Speak text — for "Další cvik: X" plays two MP3s quickly */
+/** Speak text — for rest timer "Další cvik: X" */
 export const speakText = (text: string) => {
   const match = text.match(/(?:Další cvik:|Další:)\s*(.+)/);
   if (match) {
-    play(PHRASES.next_exercise);
-    // Play exercise name after short delay (next_exercise is ~1s long)
-    setTimeout(() => play(getExerciseAudioUrl(match[1].trim())), 1200);
+    if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
+    audioEl.src = PHRASES.next_exercise;
+    audioEl.onended = () => {
+      // Play exercise name right after "Další cvik"
+      play(getExerciseAudioUrl(match[1].trim()));
+    };
+    audioEl.play().catch(() => {});
   } else {
     play(getExerciseAudioUrl(text));
   }
