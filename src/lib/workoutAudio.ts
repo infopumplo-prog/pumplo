@@ -104,56 +104,46 @@ try { beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200); }
 export const playBeep = () => { if(!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 export const playFinishSound = () => { if(!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 
-// --- SpeechSynthesis for short dynamic text (weight + reps) ---
-function speakShort(text: string) {
+// --- TTS via Supabase Edge Function (full sentence, one MP3) ---
+const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
+
+async function playTts(text: string) {
   try {
-    if (!('speechSynthesis' in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'cs-CZ';
-    u.rate = 1.0;
-    u.volume = 1.0;
-    // Try to find Czech voice
-    const voices = speechSynthesis.getVoices();
-    const cz = voices.find(v => v.lang.startsWith('cs'));
-    if (cz) { u.voice = cz; u.lang = cz.lang; }
-    speechSynthesis.speak(u);
-  } catch {}
+    const resp = await fetch(TTS_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY',
+      },
+      body: JSON.stringify({ text }),
+    });
+    if (!resp.ok) return;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    play(url);
+    // Clean up blob URL after playback
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch {
+    // Fallback to pre-recorded name only
+  }
 }
 
 // --- Announce functions ---
 
-/** Announce exercise: MP3 name + spoken weight/reps */
+/** Announce exercise: full sentence via TTS edge function */
 export const announceExercise = (name: string, weight?: number, reps?: string) => {
-  if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
-  audioEl.src = getExerciseAudioUrl(name);
-  audioEl.onended = () => {
-    // After name MP3 finishes, speak weight + reps
-    let detail = '';
-    if (weight && weight > 0) detail += `${weight} kilo, `;
-    if (reps) detail += `${reps} opakování`;
-    if (detail) speakShort(detail.trim().replace(/,\s*$/, ''));
-  };
-  audioEl.play().catch(() => {});
+  let text = name;
+  if (weight && weight > 0) text += `, ${weight} kilo`;
+  if (reps) text += `, ${reps} opakování`;
+  playTts(text);
 };
 
 /** Speak text — for rest timer "Další cvik: X" */
 export const speakText = (text: string) => {
-  const match = text.match(/(?:Další cvik:|Další:)\s*(.+)/);
-  if (match) {
-    if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
-    audioEl.src = PHRASES.next_exercise;
-    audioEl.onended = () => {
-      // Play exercise name right after "Další cvik"
-      play(getExerciseAudioUrl(match[1].trim()));
-    };
-    audioEl.play().catch(() => {});
-  } else {
-    play(getExerciseAudioUrl(text));
-  }
+  playTts(text);
 };
 
 /** Announce workout complete */
 export const announceWorkoutComplete = () => {
-  play(PHRASES.workout_complete);
+  playTts('Trénink dokončen, skvělá práce!');
 };
