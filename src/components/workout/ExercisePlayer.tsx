@@ -125,33 +125,23 @@ export const ExercisePlayer = ({
     }
   }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Announce exercise when it loads — wait for lastWeight to be fetched
+  // Announce exercise when it loads — wait briefly for lastWeight from DB
   const announcedRef = useRef<number>(-1);
-  useEffect(() => {
-    // Reset when exercise changes
-    if (exerciseIndex !== announcedRef.current) {
-      announcedRef.current = -1;
-    }
-  }, [exerciseIndex]);
 
   useEffect(() => {
-    if (announcedRef.current === exerciseIndex) return; // Already announced
-    // Wait for lastWeight to load (it's async), or announce after 1s timeout
-    if (lastWeight !== undefined && lastWeight !== null) {
+    // Reset flag when exercise changes
+    announcedRef.current = -1;
+
+    // Wait 800ms for lastWeight to load from DB, then announce with whatever we have
+    const timeout = setTimeout(() => {
+      if (announcedRef.current === exerciseIndex) return;
       announcedRef.current = exerciseIndex;
       const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
-      announceExercise(exerciseName, lastWeight, repText);
-    } else {
-      // Fallback: announce without weight after 1s if weight never loads
-      const timeout = setTimeout(() => {
-        if (announcedRef.current === exerciseIndex) return;
-        announcedRef.current = exerciseIndex;
-        const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
-        announceExercise(exerciseName, undefined, repText);
-      }, 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, [exerciseIndex, lastWeight, exerciseName, repMin, repMax]);
+      const w = lastWeight || (weight ? parseFloat(weight) : undefined);
+      announceExercise(exerciseName, w && w > 0 ? w : undefined, repText);
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
