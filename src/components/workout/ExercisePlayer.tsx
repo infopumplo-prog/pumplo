@@ -125,11 +125,33 @@ export const ExercisePlayer = ({
     }
   }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Announce exercise when it first loads
+  // Announce exercise when it loads — wait for lastWeight to be fetched
+  const announcedRef = useRef<number>(-1);
   useEffect(() => {
-    const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
-    announceExercise(exerciseName, lastWeight || undefined, repText);
-  }, [exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Reset when exercise changes
+    if (exerciseIndex !== announcedRef.current) {
+      announcedRef.current = -1;
+    }
+  }, [exerciseIndex]);
+
+  useEffect(() => {
+    if (announcedRef.current === exerciseIndex) return; // Already announced
+    // Wait for lastWeight to load (it's async), or announce after 1s timeout
+    if (lastWeight !== undefined && lastWeight !== null) {
+      announcedRef.current = exerciseIndex;
+      const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
+      announceExercise(exerciseName, lastWeight, repText);
+    } else {
+      // Fallback: announce without weight after 1s if weight never loads
+      const timeout = setTimeout(() => {
+        if (announcedRef.current === exerciseIndex) return;
+        announcedRef.current = exerciseIndex;
+        const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
+        announceExercise(exerciseName, undefined, repText);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [exerciseIndex, lastWeight, exerciseName, repMin, repMax]);
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
