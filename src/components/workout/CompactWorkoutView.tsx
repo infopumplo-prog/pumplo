@@ -81,20 +81,23 @@ export const CompactWorkoutView = ({
   const currentSetIndex = currentSets.findIndex(s => !s.completed);
   const allSetsComplete = currentSetIndex === -1;
 
-  // Scroll to active exercise + announce
+  // Scroll to active exercise
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Announce current exercise with weight from input or history
-    if (currentExercise) {
-      const repText = `${currentExercise.repMin} až ${currentExercise.repMax}`;
-      const w = weight ? parseFloat(weight) : undefined;
-      setTimeout(() => announceExercise(
-        currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '',
-        w && w > 0 ? w : undefined,
-        repText
-      ), 500);
-    }
-  }, [currentExerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentExerciseIndex]);
+
+  // Announce exercise AFTER weight and reps are loaded (watch state changes)
+  const announcedExRef = useRef<number>(-1);
+  useEffect(() => {
+    // Only announce once per exercise change, after weight/reps are set
+    if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
+    if (!weight && !reps) return; // Wait for pre-fill
+
+    announcedExRef.current = currentExerciseIndex;
+    const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
+    const w = weight ? parseFloat(weight) : undefined;
+    announceExercise(name, w && w > 0 ? w : undefined, reps || undefined);
+  }, [currentExerciseIndex, weight, reps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer tick
   useEffect(() => {

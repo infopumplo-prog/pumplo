@@ -125,23 +125,16 @@ export const ExercisePlayer = ({
     }
   }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Announce exercise when it loads — wait briefly for lastWeight from DB
+  // Announce exercise AFTER weight input is pre-filled (matches what user sees)
   const announcedRef = useRef<number>(-1);
-
   useEffect(() => {
-    // Reset flag when exercise changes
-    announcedRef.current = -1;
+    if (announcedRef.current === exerciseIndex) return;
+    if (!weight && lastWeight === undefined) return; // Wait for pre-fill
 
-    // Wait 800ms for lastWeight to load from DB, then announce with whatever we have
-    const timeout = setTimeout(() => {
-      if (announcedRef.current === exerciseIndex) return;
-      announcedRef.current = exerciseIndex;
-      const repText = repMin === repMax ? `${repMin}` : `${repMin} až ${repMax}`;
-      const w = lastWeight || (weight ? parseFloat(weight) : undefined);
-      announceExercise(exerciseName, w && w > 0 ? w : undefined, repText);
-    }, 800);
-    return () => clearTimeout(timeout);
-  }, [exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+    announcedRef.current = exerciseIndex;
+    const w = weight ? parseFloat(weight) : undefined;
+    announceExercise(exerciseName, w && w > 0 ? w : undefined, reps || `${repMax}`);
+  }, [exerciseIndex, weight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
