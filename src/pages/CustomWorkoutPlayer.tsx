@@ -785,8 +785,88 @@ const CustomWorkoutPlayer = () => {
     );
   }
 
+  // --- List Mode Rest Screen ---
+  if (viewMode === 'list' && playerState === 'rest') {
+    return (
+      <div className="h-[100dvh] bg-background flex flex-col items-center justify-center px-6">
+        <button onClick={() => setShowExitDialog(true)} className="absolute top-4 right-4 safe-top p-2 rounded-xl bg-muted text-muted-foreground">
+          <X className="w-5 h-5" />
+        </button>
+        <p className="text-muted-foreground text-sm font-medium mb-4">Odpočinek</p>
+
+        <div className="relative w-48 h-48 mb-6">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted" />
+            <circle
+              cx="100" cy="100" r="90" fill="none" stroke="hsl(var(--primary))" strokeWidth="6"
+              strokeDasharray={565.5}
+              strokeDashoffset={565.5 * (1 - restSeconds / restDurationSetting)}
+              strokeLinecap="round"
+              className="transition-all duration-300"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            {restSeconds <= 3 && restSeconds > 0 ? (
+              <span className="text-7xl font-black text-destructive animate-pulse">{restSeconds}</span>
+            ) : (
+              <span className="text-5xl font-bold tabular-nums">{formatTime(restSeconds)}</span>
+            )}
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-6">
+          Další: {getNextInfo()}
+        </p>
+
+        {/* Rest duration buttons */}
+        <div className="flex items-center gap-3 mb-6">
+          {[60, 90, 120, 180].map(sec => (
+            <button
+              key={sec}
+              onClick={() => {
+                setRestDurationSetting(sec);
+                localStorage.setItem('pumplo_rest_duration', String(sec));
+              }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                restDurationSetting === sec
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {sec >= 60 ? `${Math.floor(sec / 60)}min` : `${sec}s`}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleSkipRest}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border text-muted-foreground"
+        >
+          <SkipForward className="w-4 h-4" />
+          Přeskočit pauzu
+        </button>
+
+        {/* Exit dialog */}
+        <AnimatePresence>
+          {showExitDialog && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+              <div className="bg-background rounded-2xl p-6 max-w-sm w-full">
+                <h3 className="text-lg font-bold mb-2">Ukončit trénink?</h3>
+                <p className="text-sm text-muted-foreground mb-4">Tvůj postup bude ztracen.</p>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowExitDialog(false)}>Zpět</Button>
+                  <Button variant="destructive" className="flex-1" onClick={() => navigate(-1)}>Ukončit</Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   // --- Compact List Mode ---
-  if (viewMode === 'list' && (playerState === 'exercise' || playerState === 'rest')) {
+  if (viewMode === 'list' && playerState === 'exercise') {
     // Map custom workout data to CompactWorkoutView format
     const compactExercises = exercises.map(ex => ({
       id: ex.id,
