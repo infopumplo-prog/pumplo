@@ -818,26 +818,6 @@ const CustomWorkoutPlayer = () => {
           Další: {getNextInfo()}
         </p>
 
-        {/* Rest duration buttons */}
-        <div className="flex items-center gap-3 mb-6">
-          {[60, 90, 120, 180].map(sec => (
-            <button
-              key={sec}
-              onClick={() => {
-                setRestDurationSetting(sec);
-                localStorage.setItem('pumplo_rest_duration', String(sec));
-              }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                restDurationSetting === sec
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {sec >= 60 ? `${Math.floor(sec / 60)}min` : `${sec}s`}
-            </button>
-          ))}
-        </div>
-
         <button
           onClick={handleSkipRest}
           className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border text-muted-foreground"
@@ -1283,28 +1263,6 @@ const CustomWorkoutPlayer = () => {
               Další: {getNextInfo()}
             </p>
 
-            {/* Rest duration setting */}
-            <div className="flex items-center gap-3 mb-4">
-              {[60, 90, 120, 180].map(sec => (
-                <button
-                  key={sec}
-                  onClick={() => {
-                    setRestDurationSetting(sec);
-                    localStorage.setItem('pumplo_rest_duration', String(sec));
-                    // Update current rest end time
-                    const elapsed = sec - restSeconds;
-                    restEndTimeRef.current = Date.now() + (sec > restSeconds ? sec - (restDurationSetting - restSeconds) : restSeconds) * 1000;
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    restDurationSetting === sec
-                      ? 'bg-[#5BC8F5] text-white'
-                      : 'bg-neutral-100 text-neutral-500'
-                  }`}
-                >
-                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
-                </button>
-              ))}
-            </div>
 
             {/* Skip button */}
             <button

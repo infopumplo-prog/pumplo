@@ -86,18 +86,19 @@ export const CompactWorkoutView = ({
     activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [currentExerciseIndex]);
 
-  // Announce exercise AFTER weight and reps are loaded (watch state changes)
+  // Announce exercise — delay to let pre-fill effects set correct weight/reps
   const announcedExRef = useRef<number>(-1);
   useEffect(() => {
-    // Only announce once per exercise change, after weight/reps are set
-    if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
-    if (!weight && !reps) return; // Wait for pre-fill
-
-    announcedExRef.current = currentExerciseIndex;
-    const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
-    const w = weight ? parseFloat(weight) : undefined;
-    announceExercise(name, w && w > 0 ? w : undefined, reps || undefined);
-  }, [currentExerciseIndex, weight, reps]); // eslint-disable-line react-hooks/exhaustive-deps
+    announcedExRef.current = -1; // Reset on exercise change
+    const timeout = setTimeout(() => {
+      if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
+      announcedExRef.current = currentExerciseIndex;
+      const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
+      const w = weight ? parseFloat(weight) : undefined;
+      announceExercise(name, w && w > 0 ? w : undefined, reps || undefined);
+    }, 1000); // Wait 1s for weight/reps pre-fill from DB
+    return () => clearTimeout(timeout);
+  }, [currentExerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer tick
   useEffect(() => {
