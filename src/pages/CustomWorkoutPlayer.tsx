@@ -114,6 +114,13 @@ const CustomWorkoutPlayer = () => {
   const [completedSetsMap, setCompletedSetsMap] = useState<Map<number, CompletedSetData[]>>(new Map());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Rest duration setting (saved in localStorage)
+  const [restDurationSetting, setRestDurationSetting] = useState<number>(() => {
+    const saved = localStorage.getItem('pumplo_rest_duration');
+    return saved ? parseInt(saved) : 120; // Default 2 minutes
+  });
+  const pendingAdvanceRef = useRef<{ type: 'next_exercise' | 'next_set'; exIdx: number; set?: number } | null>(null);
+
   // Serialize completedSetsMap to plain object for localStorage
   const serializeCompletedSets = () => {
     const obj: Record<number, CompletedSetData[]> = {};
@@ -398,19 +405,37 @@ const CustomWorkoutPlayer = () => {
 
   // What happens after rest ends
   const advanceAfterRest = () => {
+    // Check if list mode triggered the rest (pendingAdvance)
+    const pending = pendingAdvanceRef.current;
+    if (pending) {
+      pendingAdvanceRef.current = null;
+      if (pending.type === 'next_exercise') {
+        const nextEx = exercises[pending.exIdx];
+        setCurrentExerciseIndex(pending.exIdx);
+        setCurrentSet(1);
+        setPlayerState('exercise');
+        if (nextEx) {
+          announceExercise(nextEx.exercise_name, nextEx.weight_kg || undefined, `${nextEx.reps}`);
+        }
+      } else {
+        setCurrentExerciseIndex(pending.exIdx);
+        setCurrentSet(pending.set || 1);
+        setPlayerState('exercise');
+      }
+      return;
+    }
+
+    // Video mode rest logic
     if (!currentExercise) return;
     if (currentSet < currentExercise.sets) {
-      // Next set of same exercise
       setCurrentSet(prev => prev + 1);
       setPlayerState('exercise');
     } else {
-      // Next exercise
       if (currentExerciseIndex < exercises.length - 1) {
         const nextEx = exercises[currentExerciseIndex + 1];
         setCurrentExerciseIndex(prev => prev + 1);
         setCurrentSet(1);
         setPlayerState('exercise');
-        // Announce next exercise
         if (nextEx) {
           announceExercise(nextEx.exercise_name, nextEx.weight_kg || undefined, `${nextEx.reps}`);
         }
@@ -792,7 +817,6 @@ const CustomWorkoutPlayer = () => {
         const next = new Map(prev);
         const existing = next.get(exIdx) || [];
         const newSets = [...existing];
-        // Pad with empty entries if needed
         while (newSets.length <= setIdx) {
           newSets.push({ completed: false, weight: null, reps: null, durationSeconds: null });
         }
@@ -805,19 +829,25 @@ const CustomWorkoutPlayer = () => {
       // Check if all sets done for exercise → auto advance
       const exercise = exercises[exIdx];
       if (!exercise) return;
-      const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1; // +1 for current
+      const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1;
       if (setsForEx >= exercise.sets) {
-        // Move to next exercise
         if (exIdx < exercises.length - 1) {
-          setCurrentExerciseIndex(exIdx + 1);
-          setCurrentSet(1);
+          // Start rest before next exercise
+          setRestSeconds(restDurationSetting);
+          setPlayerState('rest');
+          // After rest, advance to next exercise (handled by rest timer)
+          pendingAdvanceRef.current = { type: 'next_exercise', exIdx: exIdx + 1 };
         } else {
-          // All done
           setPlayerState('completed');
+          announceWorkoutComplete();
         }
       } else {
         setCurrentExerciseIndex(exIdx);
         setCurrentSet(setsForEx + 1);
+        // Start rest between sets
+        setRestSeconds(restDurationSetting);
+        setPlayerState('rest');
+        pendingAdvanceRef.current = { type: 'next_set', exIdx, set: setsForEx + 1 };
       }
     };
 
@@ -1172,6 +1202,29 @@ const CustomWorkoutPlayer = () => {
             <p className="text-sm text-neutral-400 mb-8">
               Další: {getNextInfo()}
             </p>
+
+            {/* Rest duration setting */}
+            <div className="flex items-center gap-3 mb-4">
+              {[60, 90, 120, 180].map(sec => (
+                <button
+                  key={sec}
+                  onClick={() => {
+                    setRestDurationSetting(sec);
+                    localStorage.setItem('pumplo_rest_duration', String(sec));
+                    // Update current rest end time
+                    const elapsed = sec - restSeconds;
+                    restEndTimeRef.current = Date.now() + (sec > restSeconds ? sec - (restDurationSetting - restSeconds) : restSeconds) * 1000;
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    restDurationSetting === sec
+                      ? 'bg-[#5BC8F5] text-white'
+                      : 'bg-neutral-100 text-neutral-500'
+                  }`}
+                >
+                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
+                </button>
+              ))}
+            </div>
 
             {/* Skip button */}
             <button
