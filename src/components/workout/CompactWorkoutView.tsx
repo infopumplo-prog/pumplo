@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
+import { announceExercise } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -80,10 +81,20 @@ export const CompactWorkoutView = ({
   const currentSetIndex = currentSets.findIndex(s => !s.completed);
   const allSetsComplete = currentSetIndex === -1;
 
-  // Scroll to active exercise
+  // Scroll to active exercise + announce
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [currentExerciseIndex]);
+    // Announce current exercise with weight from input or history
+    if (currentExercise) {
+      const repText = `${currentExercise.repMin} až ${currentExercise.repMax}`;
+      const w = weight ? parseFloat(weight) : undefined;
+      setTimeout(() => announceExercise(
+        currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '',
+        w && w > 0 ? w : undefined,
+        repText
+      ), 500);
+    }
+  }, [currentExerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer tick
   useEffect(() => {

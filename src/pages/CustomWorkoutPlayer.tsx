@@ -274,12 +274,38 @@ const CustomWorkoutPlayer = () => {
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
     }));
 
+    // Fetch last weights from history for all exercises
+    const exIds = loaded.map(e => e.exercise_id).filter(Boolean);
+    if (exIds.length > 0) {
+      const { data: weightData } = await supabase
+        .from('workout_session_sets')
+        .select('exercise_id, weight_kg')
+        .in('exercise_id', exIds)
+        .not('weight_kg', 'is', null)
+        .gt('weight_kg', 0)
+        .order('created_at', { ascending: false });
+
+      if (weightData) {
+        // Get latest weight per exercise (first occurrence since ordered desc)
+        const weightMap = new Map<string, number>();
+        weightData.forEach(w => {
+          if (!weightMap.has(w.exercise_id)) weightMap.set(w.exercise_id, w.weight_kg);
+        });
+        // Update exercises with history weights
+        loaded.forEach(ex => {
+          if (!ex.weight_kg && weightMap.has(ex.exercise_id)) {
+            ex.weight_kg = weightMap.get(ex.exercise_id)!;
+          }
+        });
+      }
+    }
+
     setExercises(loaded);
     setCurrentExerciseIndex(0);
     setCurrentSet(1);
     setTotalSetsCompleted(0);
 
-    // Announce first exercise
+    // Announce first exercise with weight from history
     if (loaded[0]) {
       setTimeout(() => announceExercise(loaded[0].exercise_name, loaded[0].weight_kg || undefined, `${loaded[0].reps}`), 500);
     }
