@@ -260,24 +260,25 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
             </div>
           ))}
 
-          {/* Rest duration per exercise */}
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-            <label className="text-xs text-muted-foreground shrink-0">Pauza:</label>
-            <div className="flex gap-1">
-              {[60, 90, 120, 180].map(sec => (
-                <button
-                  key={sec}
-                  onClick={() => onUpdate(exercise.id, { rest_seconds: sec } as any)}
-                  className={cn(
-                    "px-2 py-1 rounded-md text-[10px] font-medium transition-colors",
-                    (exercise as any).rest_seconds === sec || (!((exercise as any).rest_seconds) && sec === 120)
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground"
-                  )}
-                >
-                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
-                </button>
-              ))}
+          {/* Rest duration per exercise - same style as reps/kg */}
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5">
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground">Pauza (s):</label>
+              <input
+                type="number"
+                value={(exercise as any).rest_seconds || 120}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (val >= 0) onUpdate(exercise.id, { rest_seconds: val } as any);
+                }}
+                onBlur={(e) => {
+                  const val = Math.max(10, parseInt(e.target.value) || 120);
+                  onUpdate(exercise.id, { rest_seconds: val } as any);
+                }}
+                className="w-16 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
+                min={10}
+                step={5}
+              />
             </div>
           </div>
         </div>
