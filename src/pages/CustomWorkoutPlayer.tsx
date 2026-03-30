@@ -26,6 +26,7 @@ interface ExerciseWithVideo {
   reps: number;
   weight_kg: number | null;
   rest_seconds: number;
+  rest_per_set: number[] | null;
   video_path: string | null;
   machine_id: string | null;
 }
@@ -283,6 +284,7 @@ const CustomWorkoutPlayer = () => {
       reps: e.reps,
       weight_kg: e.weight_kg,
       rest_seconds: e.rest_seconds || 120,
+      rest_per_set: e.rest_per_set || null,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
     }));
@@ -481,8 +483,9 @@ const CustomWorkoutPlayer = () => {
       setReps('');
     }
 
-    // Start rest — use per-exercise rest duration
-    const restTime = currentExercise?.rest_seconds || 120;
+    // Start rest — use per-set rest duration
+    const setIdx = currentSet - 1; // 0-based
+    const restTime = currentExercise?.rest_per_set?.[setIdx] ?? currentExercise?.rest_seconds ?? 120;
     setRestSeconds(restTime);
     setCurrentRestTotal(restTime);
     setPlayerState('rest');
@@ -897,7 +900,8 @@ const CustomWorkoutPlayer = () => {
       const exercise = exercises[exIdx];
       if (!exercise) return;
       const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1;
-      const exRestSec = exercise.rest_seconds || 120;
+      const setIdx = setsForEx - 1; // just completed set (0-based)
+      const exRestSec = exercise.rest_per_set?.[setIdx] ?? exercise.rest_seconds ?? 120;
       if (setsForEx >= exercise.sets) {
         if (exIdx < exercises.length - 1) {
           setRestSeconds(exRestSec);

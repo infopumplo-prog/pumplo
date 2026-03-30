@@ -223,63 +223,66 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               min={1}
             />
           </div>
-          {/* Individual set rows */}
-          {Array.from({ length: exercise.sets }, (_, i) => (
-            <div key={i} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5">
-              <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{i + 1}</span>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-muted-foreground">Opak:</label>
-                <input
-                  type="number"
-                  value={repsInput}
-                  onChange={(e) => {
-                    setRepsInput(e.target.value);
-                    const parsed = parseInt(e.target.value);
-                    if (parsed >= 1) onUpdate(exercise.id, { reps: parsed });
-                  }}
-                  onBlur={() => {
-                    const val = Math.max(1, parseInt(repsInput) || 1);
-                    setRepsInput(String(val));
-                    onUpdate(exercise.id, { reps: val });
-                  }}
-                  className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                  min={1}
-                />
+          {/* Individual set rows with per-set rest */}
+          {Array.from({ length: exercise.sets }, (_, i) => {
+            const restPerSet: number[] = (exercise as any).rest_per_set || [];
+            const setRest = restPerSet[i] ?? (exercise as any).rest_seconds ?? 120;
+            return (
+              <div key={i} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{i + 1}</span>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">Opak:</label>
+                  <input
+                    type="number"
+                    value={repsInput}
+                    onChange={(e) => {
+                      setRepsInput(e.target.value);
+                      const parsed = parseInt(e.target.value);
+                      if (parsed >= 1) onUpdate(exercise.id, { reps: parsed });
+                    }}
+                    onBlur={() => {
+                      const val = Math.max(1, parseInt(repsInput) || 1);
+                      setRepsInput(String(val));
+                      onUpdate(exercise.id, { reps: val });
+                    }}
+                    className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
+                    min={1}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">kg:</label>
+                  <input
+                    type="number"
+                    value={exercise.weight_kg ?? ''}
+                    onChange={(e) => onUpdate(exercise.id, { weight_kg: e.target.value ? parseFloat(e.target.value) : null })}
+                    placeholder="–"
+                    className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
+                    min={0}
+                    step={0.5}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">⏱</label>
+                  <input
+                    type="number"
+                    defaultValue={setRest}
+                    onBlur={(e) => {
+                      const val = Math.max(10, parseInt(e.target.value) || 120);
+                      e.target.value = String(val);
+                      const newArr = [...restPerSet];
+                      while (newArr.length < exercise.sets) newArr.push((exercise as any).rest_seconds || 120);
+                      newArr[i] = val;
+                      onUpdate(exercise.id, { rest_per_set: newArr } as any);
+                    }}
+                    className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
+                    min={10}
+                    step={5}
+                  />
+                  <span className="text-[10px] text-muted-foreground">s</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-muted-foreground">kg:</label>
-                <input
-                  type="number"
-                  value={exercise.weight_kg ?? ''}
-                  onChange={(e) => onUpdate(exercise.id, { weight_kg: e.target.value ? parseFloat(e.target.value) : null })}
-                  placeholder="–"
-                  className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                  min={0}
-                  step={0.5}
-                />
-              </div>
-            </div>
-          ))}
-
-          {/* Rest duration per exercise - same style as reps/kg */}
-          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5">
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-muted-foreground">Pauza (s):</label>
-              <input
-                type="number"
-                value={restInput}
-                onChange={(e) => setRestInput(e.target.value)}
-                onBlur={() => {
-                  const val = Math.max(10, parseInt(restInput) || 120);
-                  setRestInput(String(val));
-                  onUpdate(exercise.id, { rest_seconds: val } as any);
-                }}
-                className="w-16 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                min={10}
-                step={5}
-              />
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
     </div>
