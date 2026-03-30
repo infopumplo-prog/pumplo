@@ -900,8 +900,8 @@ const CustomWorkoutPlayer = () => {
       const exercise = exercises[exIdx];
       if (!exercise) return;
       const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1;
-      const setIdx = setsForEx - 1; // just completed set (0-based)
-      const exRestSec = exercise.rest_per_set?.[setIdx] ?? exercise.rest_seconds ?? 120;
+      const completedSetIdx = setsForEx - 1; // just completed set (0-based)
+      const exRestSec = exercise.rest_per_set?.[completedSetIdx] ?? exercise.rest_seconds ?? 120;
       if (setsForEx >= exercise.sets) {
         if (exIdx < exercises.length - 1) {
           setRestSeconds(exRestSec);

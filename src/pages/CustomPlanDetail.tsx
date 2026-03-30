@@ -132,7 +132,6 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
   const [repsInput, setRepsInput] = useState(String(exercise.reps));
-  const [restInput, setRestInput] = useState(String((exercise as any).rest_seconds || 120));
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -305,7 +304,6 @@ const CustomPlanDetail = () => {
 
   const [editingPlanName, setEditingPlanName] = useState(false);
   const [planNameValue, setPlanNameValue] = useState('');
-  const [restDuration, setRestDuration] = useState(120);
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
@@ -332,19 +330,6 @@ const CustomPlanDetail = () => {
 
   const activeFilterCount = selectedMuscles.size + selectedEquipment.size + selectedSlotTypes.size + selectedRoles.size + (machineSearch.length > 0 ? 1 : 0);
 
-  // Load rest duration from DB
-  useEffect(() => {
-    if (!id) return;
-    supabase.from('custom_plans').select('rest_duration_seconds').eq('id', id).single()
-      .then(({ data }) => { if (data?.rest_duration_seconds) setRestDuration(data.rest_duration_seconds); });
-  }, [id]);
-
-  const updateRestDuration = async (seconds: number) => {
-    setRestDuration(seconds);
-    if (id) {
-      await supabase.from('custom_plans').update({ rest_duration_seconds: seconds }).eq('id', id);
-    }
-  };
 
   const loadAllExercises = useCallback(async () => {
     setLoadingExercises(true);
