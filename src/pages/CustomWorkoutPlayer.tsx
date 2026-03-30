@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, unlockAudio, announceExercise, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, unlockAudio, announceExercise, announceCountdown, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -383,6 +383,32 @@ const CustomWorkoutPlayer = () => {
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
+      // Voice countdown at ~5s before end — "3, 2, 1, [next exercise], [weight] kilo, [reps] opakování"
+      if (remaining <= 5 && remaining > 3 && !b.spoken) {
+        b.spoken = true;
+        // Determine next exercise info
+        const pending = pendingAdvanceRef.current;
+        let nextName: string | undefined;
+        let nextWeight: number | undefined;
+        let nextReps: string | undefined;
+        if (pending?.type === 'next_exercise') {
+          const nextEx = exercises[pending.exIdx];
+          if (nextEx) {
+            nextName = nextEx.exercise_name;
+            nextWeight = nextEx.weight_kg || undefined;
+            nextReps = `${nextEx.reps}`;
+          }
+        } else if (!pending && currentExercise) {
+          // Video mode: figure out next from current state
+          if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
+            const nextEx = exercises[currentExerciseIndex + 1];
+            nextName = nextEx.exercise_name;
+            nextWeight = nextEx.weight_kg || undefined;
+            nextReps = `${nextEx.reps}`;
+          }
+        }
+        announceCountdown(nextName, nextWeight, nextReps);
+      }
       if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(); }
       if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(); }
       if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(); }
@@ -411,13 +437,9 @@ const CustomWorkoutPlayer = () => {
     if (pending) {
       pendingAdvanceRef.current = null;
       if (pending.type === 'next_exercise') {
-        const nextEx = exercises[pending.exIdx];
         setCurrentExerciseIndex(pending.exIdx);
         setCurrentSet(1);
         setPlayerState('exercise');
-        if (nextEx) {
-          announceExercise(nextEx.exercise_name, nextEx.weight_kg || undefined, `${nextEx.reps}`);
-        }
       } else {
         setCurrentExerciseIndex(pending.exIdx);
         setCurrentSet(pending.set || 1);
@@ -433,13 +455,9 @@ const CustomWorkoutPlayer = () => {
       setPlayerState('exercise');
     } else {
       if (currentExerciseIndex < exercises.length - 1) {
-        const nextEx = exercises[currentExerciseIndex + 1];
         setCurrentExerciseIndex(prev => prev + 1);
         setCurrentSet(1);
         setPlayerState('exercise');
-        if (nextEx) {
-          announceExercise(nextEx.exercise_name, nextEx.weight_kg || undefined, `${nextEx.reps}`);
-        }
       } else {
         setPlayerState('completed');
         announceWorkoutComplete();

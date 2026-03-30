@@ -138,6 +138,17 @@ export const announceExercise = (name: string, weight?: number, reps?: string) =
   playTts(text);
 };
 
+/** Countdown "3, 2, 1" + next exercise announcement via TTS */
+export const announceCountdown = (nextName?: string, nextWeight?: number, nextReps?: string) => {
+  let text = '3, 2, 1';
+  if (nextName) {
+    text += `, ${nextName}`;
+    if (nextWeight && nextWeight > 0) text += `, ${nextWeight} kilo`;
+    if (nextReps) text += `, ${nextReps} opakování`;
+  }
+  playTts(text);
+};
+
 /** Speak text — for rest timer "Další cvik: X" */
 export const speakText = (text: string) => {
   playTts(text);
