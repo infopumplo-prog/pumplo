@@ -281,6 +281,7 @@ const CustomPlanDetail = () => {
 
   const [editingPlanName, setEditingPlanName] = useState(false);
   const [planNameValue, setPlanNameValue] = useState('');
+  const [restDuration, setRestDuration] = useState(120);
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
@@ -306,6 +307,20 @@ const CustomPlanDetail = () => {
   const { pausedWorkout: pausedCustomWorkout, clearPausedWorkout: clearPausedCustomWorkout } = usePausedCustomWorkout();
 
   const activeFilterCount = selectedMuscles.size + selectedEquipment.size + selectedSlotTypes.size + selectedRoles.size + (machineSearch.length > 0 ? 1 : 0);
+
+  // Load rest duration from DB
+  useEffect(() => {
+    if (!id) return;
+    supabase.from('custom_plans').select('rest_duration_seconds').eq('id', id).single()
+      .then(({ data }) => { if (data?.rest_duration_seconds) setRestDuration(data.rest_duration_seconds); });
+  }, [id]);
+
+  const updateRestDuration = async (seconds: number) => {
+    setRestDuration(seconds);
+    if (id) {
+      await supabase.from('custom_plans').update({ rest_duration_seconds: seconds }).eq('id', id);
+    }
+  };
 
   const loadAllExercises = useCallback(async () => {
     setLoadingExercises(true);
@@ -605,6 +620,27 @@ const CustomPlanDetail = () => {
               </div>
             </motion.div>
           ))}
+
+          {/* Rest duration setting */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-sm font-medium mb-3">Pauza mezi sériemi</p>
+            <div className="flex gap-2">
+              {[60, 90, 120, 150, 180].map(sec => (
+                <button
+                  key={sec}
+                  onClick={() => updateRestDuration(sec)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
+                    restDuration === sec
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <Button
             onClick={() => addDay()}

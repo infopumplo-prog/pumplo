@@ -114,11 +114,15 @@ const CustomWorkoutPlayer = () => {
   const [completedSetsMap, setCompletedSetsMap] = useState<Map<number, CompletedSetData[]>>(new Map());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Rest duration setting (saved in localStorage)
-  const [restDurationSetting, setRestDurationSetting] = useState<number>(() => {
-    const saved = localStorage.getItem('pumplo_rest_duration');
-    return saved ? parseInt(saved) : 120; // Default 2 minutes
-  });
+  // Rest duration from plan DB (default 120s)
+  const [restDurationSetting, setRestDurationSetting] = useState<number>(120);
+
+  // Load rest duration from custom plan
+  useEffect(() => {
+    if (!id) return;
+    supabase.from('custom_plans').select('rest_duration_seconds').eq('id', id).single()
+      .then(({ data }) => { if (data?.rest_duration_seconds) setRestDurationSetting(data.rest_duration_seconds); });
+  }, [id]);
   const pendingAdvanceRef = useRef<{ type: 'next_exercise' | 'next_set'; exIdx: number; set?: number } | null>(null);
 
   // Serialize completedSetsMap to plain object for localStorage
