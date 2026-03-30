@@ -24,7 +24,9 @@ interface ExerciseWithVideo {
   exercise_name: string;
   sets: number;
   reps: number;
+  reps_per_set: number[] | null;
   weight_kg: number | null;
+  weight_per_set: number[] | null;
   rest_seconds: number;
   rest_per_set: number[] | null;
   video_path: string | null;
@@ -132,15 +134,20 @@ const CustomWorkoutPlayer = () => {
   const totalExercises = exercises.length;
   const totalSets = exercises.reduce((sum, e) => sum + e.sets, 0);
 
-  // Initialize weight/reps inputs when exercise changes, with history fallback
+  // Initialize weight/reps inputs when exercise or set changes, with per-set values
   useEffect(() => {
     if (!currentExercise) return;
+    const sIdx = currentSet - 1; // 0-based
 
-    // Use planned weight if set, otherwise fetch last used weight from history
-    if (currentExercise.weight_kg) {
-      setWeight(String(currentExercise.weight_kg));
+    // Per-set reps, fallback to exercise-level
+    const plannedReps = currentExercise.reps_per_set?.[sIdx] ?? currentExercise.reps;
+    setReps(String(plannedReps || ''));
+
+    // Per-set weight, fallback to exercise-level, then history
+    const plannedWeight = currentExercise.weight_per_set?.[sIdx] ?? currentExercise.weight_kg;
+    if (plannedWeight) {
+      setWeight(String(plannedWeight));
     } else if (currentExercise.exercise_id) {
-      // Fetch last weight from workout history
       supabase
         .from('workout_session_sets')
         .select('weight_kg')
@@ -160,8 +167,7 @@ const CustomWorkoutPlayer = () => {
     } else {
       setWeight('');
     }
-    setReps(String(currentExercise.reps || ''));
-  }, [currentExerciseIndex, currentExercise?.exercise_id]);
+  }, [currentExerciseIndex, currentSet, currentExercise?.exercise_id]);
 
   // Compute progress: sets done / total sets
   const progressPercent = totalSets > 0 ? (totalSetsCompleted / totalSets) * 100 : 0;
@@ -276,7 +282,9 @@ const CustomWorkoutPlayer = () => {
       exercise_name: e.exercise_name || 'Cvik',
       sets: e.sets,
       reps: e.reps,
+      reps_per_set: e.reps_per_set || null,
       weight_kg: e.weight_kg,
+      weight_per_set: e.weight_per_set || null,
       rest_seconds: e.rest_seconds || 120,
       rest_per_set: e.rest_per_set || null,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,

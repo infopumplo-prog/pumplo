@@ -17,7 +17,9 @@ export interface CustomPlanExercise {
   exercise_name?: string;
   sets: number;
   reps: number;
+  reps_per_set: number[] | null;
   weight_kg: number | null;
+  weight_per_set: number[] | null;
   rest_seconds: number;
   rest_per_set: number[] | null;
   order_index: number;
@@ -145,7 +147,9 @@ export function useCustomPlanDetail(planId: string | null) {
           exercise_name: e.exercises?.name,
           sets: e.sets,
           reps: e.reps,
+          reps_per_set: e.reps_per_set || null,
           weight_kg: e.weight_kg,
+          weight_per_set: e.weight_per_set || null,
           rest_seconds: e.rest_seconds || 120,
           rest_per_set: e.rest_per_set || null,
           order_index: e.order_index,
@@ -195,7 +199,7 @@ export function useCustomPlanDetail(planId: string | null) {
     await fetchPlan();
   };
 
-  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; weight_kg?: number | null; rest_seconds?: number; rest_per_set?: number[] }) => {
+  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: number[]; rest_seconds?: number; rest_per_set?: number[] }) => {
     await supabase.from('custom_plan_exercises').update(updates).eq('id', exerciseId);
     await fetchPlan();
   };

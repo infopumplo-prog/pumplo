@@ -117,12 +117,47 @@ const equipmentLabels: Record<string, string> = {
   plate_loaded: 'Kotouče', other: 'Jiné',
 };
 
+// --- Per-set row input (local state, saves on blur) ---
+const SetRowInput = ({ index, sets, reps, weight, rest, onRepsChange, onWeightChange, onRestChange }: {
+  index: number; sets: number; reps: number; weight: number | null; rest: number;
+  onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onRestChange: (v: number) => void;
+}) => {
+  const [r, setR] = useState(String(reps));
+  const [w, setW] = useState(weight != null ? String(weight) : '');
+  const [t, setT] = useState(String(rest));
+
+  return (
+    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
+      <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{index + 1}</span>
+      <div className="flex items-center gap-1">
+        <label className="text-xs text-muted-foreground">Opak:</label>
+        <input type="number" value={r} onChange={(e) => setR(e.target.value)}
+          onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
+          className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
+      </div>
+      <div className="flex items-center gap-1">
+        <label className="text-xs text-muted-foreground">kg:</label>
+        <input type="number" value={w} onChange={(e) => setW(e.target.value)}
+          onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
+          placeholder="–" className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} step={0.5} />
+      </div>
+      <div className="flex items-center gap-1">
+        <label className="text-xs text-muted-foreground">⏱</label>
+        <input type="number" value={t} onChange={(e) => setT(e.target.value)}
+          onBlur={() => { const v = Math.max(10, parseInt(t) || 120); setT(String(v)); onRestChange(v); }}
+          className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={10} step={5} />
+        <span className="text-[10px] text-muted-foreground">s</span>
+      </div>
+    </div>
+  );
+};
+
 // --- Sortable Exercise Item ---
 interface SortableExerciseProps {
   exercise: CustomPlanExercise;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onUpdate: (id: string, updates: { sets?: number; reps?: number; weight_kg?: number | null }) => void;
+  onUpdate: (id: string, updates: Record<string, any>) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onShowDetail: (exerciseId: string) => void;
@@ -131,8 +166,6 @@ interface SortableExerciseProps {
 const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
-  const [repsInput, setRepsInput] = useState(String(exercise.reps));
-  const [kgInput, setKgInput] = useState(exercise.weight_kg != null ? String(exercise.weight_kg) : '');
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -223,68 +256,38 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               min={1}
             />
           </div>
-          {/* Individual set rows with per-set rest */}
+          {/* Individual set rows — per-set reps, weight, rest */}
           {Array.from({ length: exercise.sets }, (_, i) => {
-            const restPerSet: number[] = (exercise as any).rest_per_set || [];
-            const setRest = restPerSet[i] ?? (exercise as any).rest_seconds ?? 120;
+            const repsArr = exercise.reps_per_set || [];
+            const weightArr = exercise.weight_per_set || [];
+            const restArr = exercise.rest_per_set || [];
+            const setReps = repsArr[i] ?? exercise.reps;
+            const setWeight = weightArr[i] ?? exercise.weight_kg;
+            const setRest = restArr[i] ?? exercise.rest_seconds ?? 120;
             return (
-              <div key={i} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
-                <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{i + 1}</span>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">Opak:</label>
-                  <input
-                    type="number"
-                    value={repsInput}
-                    onChange={(e) => {
-                      setRepsInput(e.target.value);
-                      const parsed = parseInt(e.target.value);
-                      if (parsed >= 1) onUpdate(exercise.id, { reps: parsed });
-                    }}
-                    onBlur={() => {
-                      const val = Math.max(1, parseInt(repsInput) || 1);
-                      setRepsInput(String(val));
-                      onUpdate(exercise.id, { reps: val });
-                    }}
-                    className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                    min={1}
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">kg:</label>
-                  <input
-                    type="number"
-                    value={kgInput}
-                    onChange={(e) => setKgInput(e.target.value)}
-                    onBlur={() => {
-                      const val = kgInput ? parseFloat(kgInput) : null;
-                      onUpdate(exercise.id, { weight_kg: val });
-                    }}
-                    placeholder="–"
-                    className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                    min={0}
-                    step={0.5}
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">⏱</label>
-                  <input
-                    type="number"
-                    defaultValue={setRest}
-                    onBlur={(e) => {
-                      const val = Math.max(10, parseInt(e.target.value) || 120);
-                      e.target.value = String(val);
-                      const newArr = [...restPerSet];
-                      while (newArr.length < exercise.sets) newArr.push((exercise as any).rest_seconds || 120);
-                      newArr[i] = val;
-                      onUpdate(exercise.id, { rest_per_set: newArr } as any);
-                    }}
-                    className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
-                    min={10}
-                    step={5}
-                  />
-                  <span className="text-[10px] text-muted-foreground">s</span>
-                </div>
-              </div>
+              <SetRowInput
+                key={i}
+                index={i}
+                sets={exercise.sets}
+                reps={setReps}
+                weight={setWeight}
+                rest={setRest}
+                onRepsChange={(val) => {
+                  const arr = [...(exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps))];
+                  arr[i] = val;
+                  onUpdate(exercise.id, { reps_per_set: arr });
+                }}
+                onWeightChange={(val) => {
+                  const arr = [...(exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg))];
+                  arr[i] = val;
+                  onUpdate(exercise.id, { weight_per_set: arr });
+                }}
+                onRestChange={(val) => {
+                  const arr = [...(exercise.rest_per_set || Array(exercise.sets).fill(exercise.rest_seconds || 120))];
+                  arr[i] = val;
+                  onUpdate(exercise.id, { rest_per_set: arr });
+                }}
+              />
             );
           })}
         </div>
