@@ -25,6 +25,7 @@ interface ExerciseWithVideo {
   sets: number;
   reps: number;
   weight_kg: number | null;
+  rest_seconds: number;
   video_path: string | null;
   machine_id: string | null;
 }
@@ -115,7 +116,7 @@ const CustomWorkoutPlayer = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Rest duration from plan DB (default 120s)
-  const [restDurationSetting, setRestDurationSetting] = useState<number>(120);
+  const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
 
   // Load rest duration from custom plan
   useEffect(() => {
@@ -281,6 +282,7 @@ const CustomWorkoutPlayer = () => {
       sets: e.sets,
       reps: e.reps,
       weight_kg: e.weight_kg,
+      rest_seconds: e.rest_seconds || 120,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
     }));
@@ -479,9 +481,10 @@ const CustomWorkoutPlayer = () => {
       setReps('');
     }
 
-    // Start rest
-    const restTime = isLastSet ? REST_BETWEEN_EXERCISES : REST_BETWEEN_SETS;
+    // Start rest — use per-exercise rest duration
+    const restTime = currentExercise?.rest_seconds || 120;
     setRestSeconds(restTime);
+    setCurrentRestTotal(restTime);
     setPlayerState('rest');
   };
 
@@ -804,7 +807,7 @@ const CustomWorkoutPlayer = () => {
             <circle
               cx="100" cy="100" r="90" fill="none" stroke="hsl(var(--primary))" strokeWidth="6"
               strokeDasharray={565.5}
-              strokeDashoffset={565.5 * (1 - restSeconds / restDurationSetting)}
+              strokeDashoffset={565.5 * (1 - restSeconds / currentRestTotal)}
               strokeLinecap="round"
               className="transition-all duration-300"
             />
@@ -894,12 +897,12 @@ const CustomWorkoutPlayer = () => {
       const exercise = exercises[exIdx];
       if (!exercise) return;
       const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1;
+      const exRestSec = exercise.rest_seconds || 120;
       if (setsForEx >= exercise.sets) {
         if (exIdx < exercises.length - 1) {
-          // Start rest before next exercise
-          setRestSeconds(restDurationSetting);
+          setRestSeconds(exRestSec);
+          setCurrentRestTotal(exRestSec);
           setPlayerState('rest');
-          // After rest, advance to next exercise (handled by rest timer)
           pendingAdvanceRef.current = { type: 'next_exercise', exIdx: exIdx + 1 };
         } else {
           setPlayerState('completed');
@@ -908,8 +911,8 @@ const CustomWorkoutPlayer = () => {
       } else {
         setCurrentExerciseIndex(exIdx);
         setCurrentSet(setsForEx + 1);
-        // Start rest between sets
-        setRestSeconds(restDurationSetting);
+        setRestSeconds(exRestSec);
+        setCurrentRestTotal(exRestSec);
         setPlayerState('rest');
         pendingAdvanceRef.current = { type: 'next_set', exIdx, set: setsForEx + 1 };
       }

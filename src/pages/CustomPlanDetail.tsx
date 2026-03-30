@@ -259,6 +259,27 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               </div>
             </div>
           ))}
+
+          {/* Rest duration per exercise */}
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+            <label className="text-xs text-muted-foreground shrink-0">Pauza:</label>
+            <div className="flex gap-1">
+              {[60, 90, 120, 180].map(sec => (
+                <button
+                  key={sec}
+                  onClick={() => onUpdate(exercise.id, { rest_seconds: sec } as any)}
+                  className={cn(
+                    "px-2 py-1 rounded-md text-[10px] font-medium transition-colors",
+                    (exercise as any).rest_seconds === sec || (!((exercise as any).rest_seconds) && sec === 120)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground"
+                  )}
+                >
+                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -620,27 +641,6 @@ const CustomPlanDetail = () => {
               </div>
             </motion.div>
           ))}
-
-          {/* Rest duration setting */}
-          <div className="bg-card border border-border rounded-2xl p-4">
-            <p className="text-sm font-medium mb-3">Pauza mezi sériemi</p>
-            <div className="flex gap-2">
-              {[60, 90, 120, 150, 180].map(sec => (
-                <button
-                  key={sec}
-                  onClick={() => updateRestDuration(sec)}
-                  className={cn(
-                    "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
-                    restDuration === sec
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {sec >= 60 ? `${sec / 60}min` : `${sec}s`}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <Button
             onClick={() => addDay()}
