@@ -132,6 +132,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
   const [repsInput, setRepsInput] = useState(String(exercise.reps));
+  const [restInput, setRestInput] = useState(String((exercise as any).rest_seconds || 120));
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -266,13 +267,11 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               <label className="text-xs text-muted-foreground">Pauza (s):</label>
               <input
                 type="number"
-                value={(exercise as any).rest_seconds || 120}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val >= 0) onUpdate(exercise.id, { rest_seconds: val } as any);
-                }}
-                onBlur={(e) => {
-                  const val = Math.max(10, parseInt(e.target.value) || 120);
+                value={restInput}
+                onChange={(e) => setRestInput(e.target.value)}
+                onBlur={() => {
+                  const val = Math.max(10, parseInt(restInput) || 120);
+                  setRestInput(String(val));
                   onUpdate(exercise.id, { rest_seconds: val } as any);
                 }}
                 className="w-16 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
