@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, unlockAudio, announceExercise, announceCountdown, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, unlockAudio, announceExercise, prefetchTts, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -364,15 +364,37 @@ const CustomWorkoutPlayer = () => {
 
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
-  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false, spoken: false });
+  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
+  const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Set end time when rest starts — use currentRestTotal (stable, not ticking)
+  // Set end time when rest starts + prefetch voice countdown
   useEffect(() => {
     if (playerState === 'rest' && currentRestTotal > 0) {
       restEndTimeRef.current = Date.now() + currentRestTotal * 1000;
-      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
+      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
+      countdownAudioRef.current = null;
+
+      // Build countdown text and prefetch TTS
+      const pending = pendingAdvanceRef.current;
+      let text = '3, 2, 1';
+      if (pending?.type === 'next_exercise') {
+        const nextEx = exercises[pending.exIdx];
+        if (nextEx) {
+          text += `, ${nextEx.exercise_name}`;
+          if (nextEx.weight_kg && nextEx.weight_kg > 0) text += `, ${nextEx.weight_kg} kilo`;
+          text += `, ${nextEx.reps} opakování`;
+        }
+      } else if (!pending && currentExercise) {
+        if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
+          const nextEx = exercises[currentExerciseIndex + 1];
+          text += `, ${nextEx.exercise_name}`;
+          if (nextEx.weight_kg && nextEx.weight_kg > 0) text += `, ${nextEx.weight_kg} kilo`;
+          text += `, ${nextEx.reps} opakování`;
+        }
+      }
+      prefetchTts(text).then(audio => { countdownAudioRef.current = audio; });
     }
-  }, [playerState, currentRestTotal]);
+  }, [playerState, currentRestTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tick rest timer
   useEffect(() => {
@@ -383,35 +405,17 @@ const CustomWorkoutPlayer = () => {
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      // Voice countdown at ~5s before end — "3, 2, 1, [next exercise], [weight] kilo, [reps] opakování"
-      if (remaining <= 5 && remaining > 3 && !b.spoken) {
-        b.spoken = true;
-        // Determine next exercise info
-        const pending = pendingAdvanceRef.current;
-        let nextName: string | undefined;
-        let nextWeight: number | undefined;
-        let nextReps: string | undefined;
-        if (pending?.type === 'next_exercise') {
-          const nextEx = exercises[pending.exIdx];
-          if (nextEx) {
-            nextName = nextEx.exercise_name;
-            nextWeight = nextEx.weight_kg || undefined;
-            nextReps = `${nextEx.reps}`;
-          }
-        } else if (!pending && currentExercise) {
-          // Video mode: figure out next from current state
-          if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
-            const nextEx = exercises[currentExerciseIndex + 1];
-            nextName = nextEx.exercise_name;
-            nextWeight = nextEx.weight_kg || undefined;
-            nextReps = `${nextEx.reps}`;
-          }
+      // Play prefetched voice countdown at exactly 3s — "3, 2, 1, [exercise info]"
+      if (remaining === 3 && !b.b3) {
+        b.b3 = true;
+        if (countdownAudioRef.current) {
+          countdownAudioRef.current.play().catch(() => {});
+        } else {
+          playBeep();
         }
-        announceCountdown(nextName, nextWeight, nextReps);
       }
-      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; }
+      if (remaining === 1 && !b.b1) { b.b1 = true; }
       if (remaining <= 0 && !b.done) {
         b.done = true;
         playFinishSound();

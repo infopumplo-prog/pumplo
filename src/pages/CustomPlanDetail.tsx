@@ -132,6 +132,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
   const [repsInput, setRepsInput] = useState(String(exercise.reps));
+  const [kgInput, setKgInput] = useState(exercise.weight_kg != null ? String(exercise.weight_kg) : '');
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -252,8 +253,12 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
                   <label className="text-xs text-muted-foreground">kg:</label>
                   <input
                     type="number"
-                    value={exercise.weight_kg ?? ''}
-                    onChange={(e) => onUpdate(exercise.id, { weight_kg: e.target.value ? parseFloat(e.target.value) : null })}
+                    value={kgInput}
+                    onChange={(e) => setKgInput(e.target.value)}
+                    onBlur={() => {
+                      const val = kgInput ? parseFloat(kgInput) : null;
+                      onUpdate(exercise.id, { weight_kg: val });
+                    }}
                     placeholder="–"
                     className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none"
                     min={0}

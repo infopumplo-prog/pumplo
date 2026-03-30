@@ -128,6 +128,30 @@ async function playTts(text: string) {
   }
 }
 
+/** Pre-fetch TTS audio and return an Audio element ready to play */
+export async function prefetchTts(text: string): Promise<HTMLAudioElement | null> {
+  try {
+    const resp = await fetch(TTS_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY',
+      },
+      body: JSON.stringify({ text }),
+    });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = 1.0;
+    // Preload the audio data
+    audio.load();
+    return audio;
+  } catch {
+    return null;
+  }
+}
+
 // --- Announce functions ---
 
 /** Announce exercise: full sentence via TTS edge function */
