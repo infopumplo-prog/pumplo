@@ -119,12 +119,6 @@ const CustomWorkoutPlayer = () => {
   // Rest duration from plan DB (default 120s)
   const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
 
-  // Load rest duration from custom plan
-  useEffect(() => {
-    if (!id) return;
-    supabase.from('custom_plans').select('rest_duration_seconds').eq('id', id).single()
-      .then(({ data }) => { if (data?.rest_duration_seconds) setRestDurationSetting(data.rest_duration_seconds); });
-  }, [id]);
   const pendingAdvanceRef = useRef<{ type: 'next_exercise' | 'next_set'; exIdx: number; set?: number } | null>(null);
 
   // Serialize completedSetsMap to plain object for localStorage
@@ -372,14 +366,13 @@ const CustomWorkoutPlayer = () => {
   const restEndTimeRef = useRef<number>(0);
   const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false, spoken: false });
 
-  // Set end time when rest starts
+  // Set end time when rest starts — use currentRestTotal (stable, not ticking)
   useEffect(() => {
-    if (playerState === 'rest') {
-      restEndTimeRef.current = Date.now() + restSeconds * 1000;
+    if (playerState === 'rest' && currentRestTotal > 0) {
+      restEndTimeRef.current = Date.now() + currentRestTotal * 1000;
       restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
-      // No speech during rest — announcement happens when next exercise starts
     }
-  }, [playerState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playerState, currentRestTotal]);
 
   // Tick rest timer
   useEffect(() => {
