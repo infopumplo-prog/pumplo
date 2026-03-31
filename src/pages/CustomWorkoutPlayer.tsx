@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, unlockAudio, announceExercise, prefetchTts, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -322,9 +322,12 @@ const CustomWorkoutPlayer = () => {
     setCurrentSet(1);
     setTotalSetsCompleted(0);
 
-    // Announce first exercise with weight from history
+    // Announce first exercise — per-set values for set 1
     if (loaded[0]) {
-      setTimeout(() => announceExercise(loaded[0].exercise_name, loaded[0].weight_kg || undefined, `${loaded[0].reps}`), 500);
+      const ex = loaded[0];
+      const w = ex.weight_per_set?.[0] ?? ex.weight_kg;
+      const r = ex.reps_per_set?.[0] ?? ex.reps;
+      setTimeout(() => announceExercise(ex.exercise_name, w || undefined, `${r}`), 500);
     }
 
     // Check equipment compatibility
@@ -372,37 +375,61 @@ const CustomWorkoutPlayer = () => {
 
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
-  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
-  const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
+  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false, spoken: false });
 
-  // Set end time when rest starts + prefetch voice countdown
+  // Set end time when rest starts
   useEffect(() => {
     if (playerState === 'rest' && currentRestTotal > 0) {
       restEndTimeRef.current = Date.now() + currentRestTotal * 1000;
-      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
-      countdownAudioRef.current = null;
-
-      // Build countdown text and prefetch TTS
-      const pending = pendingAdvanceRef.current;
-      let text = '3, 2, 1';
-      if (pending?.type === 'next_exercise') {
-        const nextEx = exercises[pending.exIdx];
-        if (nextEx) {
-          text += `, ${nextEx.exercise_name}`;
-          if (nextEx.weight_kg && nextEx.weight_kg > 0) text += `, ${nextEx.weight_kg} kilo`;
-          text += `, ${nextEx.reps} opakování`;
-        }
-      } else if (!pending && currentExercise) {
-        if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
-          const nextEx = exercises[currentExerciseIndex + 1];
-          text += `, ${nextEx.exercise_name}`;
-          if (nextEx.weight_kg && nextEx.weight_kg > 0) text += `, ${nextEx.weight_kg} kilo`;
-          text += `, ${nextEx.reps} opakování`;
-        }
-      }
-      prefetchTts(text).then(audio => { countdownAudioRef.current = audio; });
+      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
     }
-  }, [playerState, currentRestTotal]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playerState, currentRestTotal]);
+
+  // Build announcement text for next set/exercise using per-set values
+  const buildAnnouncementText = () => {
+    const pending = pendingAdvanceRef.current;
+    let name = '';
+    let w: number | null = null;
+    let r: number | null = null;
+
+    if (pending?.type === 'next_exercise') {
+      const nextEx = exercises[pending.exIdx];
+      if (nextEx) {
+        name = nextEx.exercise_name;
+        w = nextEx.weight_per_set?.[0] ?? nextEx.weight_kg;
+        r = nextEx.reps_per_set?.[0] ?? nextEx.reps;
+      }
+    } else if (pending?.type === 'next_set') {
+      const ex = exercises[pending.exIdx];
+      if (ex) {
+        const setIdx = (pending.set || 1) - 1;
+        name = ex.exercise_name;
+        w = ex.weight_per_set?.[setIdx] ?? ex.weight_kg;
+        r = ex.reps_per_set?.[setIdx] ?? ex.reps;
+      }
+    } else if (currentExercise) {
+      // Video mode fallback
+      if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
+        const nextEx = exercises[currentExerciseIndex + 1];
+        name = nextEx.exercise_name;
+        w = nextEx.weight_per_set?.[0] ?? nextEx.weight_kg;
+        r = nextEx.reps_per_set?.[0] ?? nextEx.reps;
+      } else if (currentSet < currentExercise.sets) {
+        const setIdx = currentSet; // next set (0-based = currentSet since currentSet is 1-based current)
+        name = currentExercise.exercise_name;
+        w = currentExercise.weight_per_set?.[setIdx] ?? currentExercise.weight_kg;
+        r = currentExercise.reps_per_set?.[setIdx] ?? currentExercise.reps;
+      }
+    }
+
+    let text = '3, 2, 1';
+    if (name) {
+      text += `, ${name}`;
+      if (w && w > 0) text += `, ${w} kilo`;
+      if (r) text += `, ${r} opakování`;
+    }
+    return text;
+  };
 
   // Tick rest timer
   useEffect(() => {
@@ -413,17 +440,15 @@ const CustomWorkoutPlayer = () => {
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      // Play prefetched voice countdown at exactly 3s — "3, 2, 1, [exercise info]"
-      if (remaining === 3 && !b.b3) {
-        b.b3 = true;
-        if (countdownAudioRef.current) {
-          countdownAudioRef.current.play().catch(() => {});
-        } else {
-          playBeep();
-        }
+      // Voice countdown at 5s — gives TTS time to load and play aligned with 3,2,1
+      if (remaining <= 5 && remaining > 3 && !b.spoken) {
+        b.spoken = true;
+        const text = buildAnnouncementText();
+        speakText(text);
       }
-      if (remaining === 2 && !b.b2) { b.b2 = true; }
-      if (remaining === 1 && !b.b1) { b.b1 = true; }
+      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(); }
+      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(); }
       if (remaining <= 0 && !b.done) {
         b.done = true;
         playFinishSound();
