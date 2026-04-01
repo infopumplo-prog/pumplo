@@ -450,6 +450,7 @@ export const WorkoutSession = ({
         totalWeight={totalWeight}
         totalReps={totalReps}
         exerciseCount={results.length}
+        exerciseDetails={results.map(r => ({ name: r.exerciseName, sets: r.sets.filter(s => s.completed).map(s => ({ weight: s.weight || 0, reps: s.reps || 0 })) }))}
         isBonus={isBonus}
         onClose={() => setShowSummary(false)}
         onFinish={handleFinishWorkout}

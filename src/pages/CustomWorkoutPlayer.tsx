@@ -836,6 +836,10 @@ const CustomWorkoutPlayer = () => {
         totalWeight={totalWeight}
         totalReps={totalReps}
         exerciseCount={totalExercises}
+        exerciseDetails={exercises.map((ex, i) => {
+          const sets = completedSetsMap.get(i) || [];
+          return { name: ex.exercise_name, sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
+        })}
         onClose={() => setPlayerState('exercise')}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}
