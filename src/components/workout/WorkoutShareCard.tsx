@@ -256,6 +256,14 @@ export const WorkoutShareCard = ({
   const dRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const pRef = useRef<{ sd: number; os: number } | null>(null);
 
+  const genImg = useCallback(async (): Promise<Blob | null> => {
+    if (!cardRef.current) return null;
+    try {
+      const c = await html2canvas(cardRef.current, { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
+      return new Promise(r => c.toBlob(b => r(b), 'image/png', 1.0));
+    } catch { return null; }
+  }, []);
+
   // Native touch listeners with { passive: false } to actually prevent browser zoom/scroll
   const posRef = useRef(pos);
   const scaleRef = useRef(scale);
@@ -313,14 +321,6 @@ export const WorkoutShareCard = ({
     r.onload = (ev) => { setUserPhoto(ev.target?.result as string); cachedBlobRef.current = null; setImageReady(false); setPos({x:0,y:0}); setScale(1); };
     r.readAsDataURL(f); e.target.value = '';
   };
-
-  const genImg = useCallback(async (): Promise<Blob | null> => {
-    if (!cardRef.current) return null;
-    try {
-      const c = await html2canvas(cardRef.current, { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
-      return new Promise(r => c.toBlob(b => r(b), 'image/png', 1.0));
-    } catch { return null; }
-  }, []);
 
   useEffect(() => {
     cachedBlobRef.current = null; setImageReady(false);
