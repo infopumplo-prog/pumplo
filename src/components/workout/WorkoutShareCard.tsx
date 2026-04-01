@@ -396,14 +396,20 @@ export const WorkoutShareCard = ({
         </div>
       </div>
 
-      {/* Template dots */}
-      <div className="shrink-0 flex items-center justify-center gap-3 py-1.5">
-        <button type="button" onClick={() => { setTemplateIndex(i => (i - 1 + TEMPLATE_NAMES.length) % TEMPLATE_NAMES.length); setPos({x:0,y:0}); setScale(1); }} style={{ color: 'rgba(255,255,255,0.5)' }}><ChevronLeft className="w-5 h-5" /></button>
-        {TEMPLATE_NAMES.map((_, i) => (
+      {/* Template selector — tap to switch */}
+      <div className="shrink-0 flex items-center justify-center gap-2 py-1.5 px-4">
+        {TEMPLATE_NAMES.map((name, i) => (
           <button key={i} type="button" onClick={() => { setTemplateIndex(i); setPos({x:0,y:0}); setScale(1); }}
-            style={{ width: i === templateIndex ? '24px' : '8px', height: '8px', borderRadius: '4px', background: i === templateIndex ? '#4CC9FF' : 'rgba(255,255,255,0.3)', transition: 'all 0.2s', border: 'none' }} />
+            style={{
+              flex: 1, height: '32px', borderRadius: '8px', border: 'none',
+              background: i === templateIndex ? '#4CC9FF' : 'rgba(255,255,255,0.1)',
+              color: i === templateIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+              fontSize: '12px', fontWeight: i === templateIndex ? 700 : 500,
+              transition: 'all 0.2s',
+            }}>
+            {name}
+          </button>
         ))}
-        <button type="button" onClick={() => { setTemplateIndex(i => (i + 1) % TEMPLATE_NAMES.length); setPos({x:0,y:0}); setScale(1); }} style={{ color: 'rgba(255,255,255,0.5)' }}><ChevronRight className="w-5 h-5" /></button>
       </div>
 
       <div className="shrink-0 px-4 pb-3 space-y-1.5">
