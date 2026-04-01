@@ -86,19 +86,15 @@ export const CompactWorkoutView = ({
     activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [currentExerciseIndex]);
 
-  // Announce exercise — delay to let pre-fill effects set correct weight/reps
+  // Announce exercise — triggered after weight is loaded
   const announcedExRef = useRef<number>(-1);
-  useEffect(() => {
-    announcedExRef.current = -1; // Reset on exercise change
-    const timeout = setTimeout(() => {
-      if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
-      announcedExRef.current = currentExerciseIndex;
-      const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
-      const w = weight ? parseFloat(weight) : undefined;
-      announceExercise(name, w && w > 0 ? w : undefined, reps || undefined);
-    }, 1000); // Wait 1s for weight/reps pre-fill from DB
-    return () => clearTimeout(timeout);
-  }, [currentExerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const announceCurrentExercise = useCallback((w?: string, r?: string) => {
+    if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
+    announcedExRef.current = currentExerciseIndex;
+    const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
+    const wNum = w ? parseFloat(w) : undefined;
+    announceExercise(name, wNum && wNum > 0 ? wNum : undefined, r || undefined);
+  }, [currentExercise, currentExerciseIndex]);
 
   // Timer tick
   useEffect(() => {
@@ -121,16 +117,20 @@ export const CompactWorkoutView = ({
     setTimerSeconds(0);
   }, [currentExerciseIndex, currentSetIndex]);
 
-  // Pre-fill reps and weight for current exercise
+  // Pre-fill reps and weight for current exercise, then announce
   useEffect(() => {
     if (!currentExercise) return;
-    setReps(`${currentExercise.repMax}`);
+    announcedExRef.current = -1; // Reset so new exercise gets announced
+    const r = `${currentExercise.repMax}`;
+    setReps(r);
 
     // First try weight from current session's completed sets
     const sets = setsDataByExercise.get(currentExerciseIndex);
     const lastCompleted = sets?.filter(s => s.completed).pop();
     if (lastCompleted?.weight != null) {
-      setWeight(`${lastCompleted.weight}`);
+      const w = `${lastCompleted.weight}`;
+      setWeight(w);
+      setTimeout(() => announceCurrentExercise(w, r), 300);
       return;
     }
 
@@ -146,14 +146,13 @@ export const CompactWorkoutView = ({
         .limit(1)
         .single()
         .then(({ data }) => {
-          if (data?.weight_kg) {
-            setWeight(`${data.weight_kg}`);
-          } else {
-            setWeight('');
-          }
+          const w = data?.weight_kg ? `${data.weight_kg}` : '';
+          setWeight(w);
+          setTimeout(() => announceCurrentExercise(w, r), 300);
         });
     } else {
       setWeight('');
+      setTimeout(() => announceCurrentExercise('', r), 300);
     }
   }, [currentExerciseIndex, currentExercise]); // eslint-disable-line react-hooks/exhaustive-deps
 

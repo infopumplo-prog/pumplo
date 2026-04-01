@@ -118,25 +118,24 @@ export const ExercisePlayer = ({
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
 
-  // Pre-fill weight from last workout when it loads (async)
+  // Pre-fill weight from last workout when it loads (async) + announce
+  const announcedRef = useRef<number>(-1);
   useEffect(() => {
     if (lastWeight && !weight) {
       setWeight(`${lastWeight}`);
     }
-  }, [lastWeight]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Announce once weight is available
+    if (announcedRef.current !== exerciseIndex && (lastWeight || lastWeight === null)) {
+      announcedRef.current = exerciseIndex;
+      const w = lastWeight || (weight ? parseFloat(weight) : undefined);
+      announceExercise(exerciseName, w && w > 0 ? w : undefined, reps || `${repMax}`);
+    }
+  }, [lastWeight, exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Announce exercise — delay to let weight pre-fill from DB
-  const announcedRef = useRef<number>(-1);
+  // Reset announcement ref when exercise changes
   useEffect(() => {
     announcedRef.current = -1;
-    const timeout = setTimeout(() => {
-      if (announcedRef.current === exerciseIndex) return;
-      announcedRef.current = exerciseIndex;
-      const w = weight ? parseFloat(weight) : undefined;
-      announceExercise(exerciseName, w && w > 0 ? w : undefined, reps || `${repMax}`);
-    }, 1000);
-    return () => clearTimeout(timeout);
-  }, [exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [exerciseIndex]);
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
