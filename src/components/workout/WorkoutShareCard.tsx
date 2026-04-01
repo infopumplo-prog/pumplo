@@ -256,6 +256,8 @@ export const WorkoutShareCard = ({
   const dRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const pRef = useRef<{ sd: number; os: number } | null>(null);
   const touchOverlayRef = useRef<HTMLDivElement>(null);
+  const movedRef = useRef(false);
+  const tapStartRef = useRef(0);
 
   const genImg = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
@@ -277,7 +279,10 @@ export const WorkoutShareCard = ({
 
     const onStart = (e: TouchEvent) => {
       e.preventDefault(); e.stopPropagation();
+      movedRef.current = false;
+      tapStartRef.current = Date.now();
       if (e.touches.length === 2) {
+        movedRef.current = true;
         const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
         pRef.current = { sd: Math.sqrt(dx*dx+dy*dy), os: scaleRef.current }; dRef.current = null;
       } else if (e.touches.length === 1) {
@@ -288,15 +293,26 @@ export const WorkoutShareCard = ({
     const onMove = (e: TouchEvent) => {
       e.preventDefault(); e.stopPropagation();
       if (e.touches.length === 2 && pRef.current) {
+        movedRef.current = true;
         const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
         setScale(Math.max(0.4, Math.min(2.5, pRef.current.os * (Math.sqrt(dx*dx+dy*dy) / pRef.current.sd))));
       } else if (e.touches.length === 1 && dRef.current) {
-        setPos({ x: dRef.current.ox + (e.touches[0].clientX - dRef.current.sx), y: dRef.current.oy + (e.touches[0].clientY - dRef.current.sy) });
+        const dx = e.touches[0].clientX - dRef.current.sx;
+        const dy = e.touches[0].clientY - dRef.current.sy;
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) movedRef.current = true;
+        setPos({ x: dRef.current.ox + dx, y: dRef.current.oy + dy });
       }
     };
 
     const onEnd = () => {
+      const wasTap = !movedRef.current && (Date.now() - tapStartRef.current) < 300;
       dRef.current = null; pRef.current = null;
+
+      if (wasTap) {
+        // Tap = cycle to next template
+        setTemplateIndex(i => (i + 1) % TEMPLATE_NAMES.length);
+      }
+
       cachedBlobRef.current = null; setImageReady(false);
       setTimeout(async () => {
         setIsGenerating(true);
@@ -380,10 +396,8 @@ export const WorkoutShareCard = ({
       className="fixed inset-0 z-50 flex flex-col overflow-hidden"
       style={{ background: '#111', width: '100%', height: '100%' }}>
 
-      <div className="shrink-0 flex items-center justify-between px-3 pt-2 pb-1">
+      <div className="shrink-0 flex items-center px-3 pt-2 pb-1">
         <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><ArrowLeft className="w-5 h-5" /></button>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>{TEMPLATE_NAMES[templateIndex]}</span>
-        <div className="w-9" />
       </div>
 
       <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">
@@ -394,22 +408,6 @@ export const WorkoutShareCard = ({
           {/* Transparent touch overlay — on top of everything, catches all gestures */}
           <div ref={touchOverlayRef} className="absolute inset-0" style={{ zIndex: 10, touchAction: 'none' }} />
         </div>
-      </div>
-
-      {/* Template selector — tap to switch */}
-      <div className="shrink-0 flex items-center justify-center gap-2 py-1.5 px-4">
-        {TEMPLATE_NAMES.map((name, i) => (
-          <button key={i} type="button" onClick={() => { setTemplateIndex(i); setPos({x:0,y:0}); setScale(1); }}
-            style={{
-              flex: 1, height: '32px', borderRadius: '8px', border: 'none',
-              background: i === templateIndex ? '#4CC9FF' : 'rgba(255,255,255,0.1)',
-              color: i === templateIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-              fontSize: '12px', fontWeight: i === templateIndex ? 700 : 500,
-              transition: 'all 0.2s',
-            }}>
-            {name}
-          </button>
-        ))}
       </div>
 
       <div className="shrink-0 px-4 pb-3 space-y-1.5">
