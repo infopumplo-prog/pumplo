@@ -121,7 +121,7 @@ export const WorkoutShareCard = ({
     if (!blob) return;
 
     const fileName = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
-    const shareText = `${displayTitle} dokoncen! ${totalWeight} kg | ${totalSets} serii | ${totalDuration} min`;
+    const shareText = `${displayTitle} dokoncen! ${Math.round(totalWeight)} kg | ${totalSets} serii | ${totalDuration} min`;
 
     if (Capacitor.isNativePlatform()) {
       try {
@@ -181,77 +181,73 @@ export const WorkoutShareCard = ({
       className="fixed inset-0 z-50 bg-black flex flex-col"
     >
       {/* Top bar */}
-      <div className="flex items-center justify-start px-4 pt-3 pb-1 z-10 shrink-0">
-        <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:bg-white/10">
-          <ArrowLeft className="w-6 h-6" />
-        </Button>
+      <div className="flex items-center px-4 pt-3 pb-1 z-10 shrink-0 safe-top">
+        <button type="button" onClick={onClose} className="p-2 rounded-full text-white/70 hover:bg-white/10">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Card preview — 9:16, edge-to-edge, no rounded corners */}
-      <div className="flex-1 min-h-0 flex items-center justify-center px-2 py-1">
+      {/* Card preview — fills available space, 9:16 */}
+      <div className="flex-1 min-h-0 flex items-center justify-center">
         <div
           ref={cardRef}
-          className="relative w-full overflow-hidden bg-black"
-          style={{ maxWidth: '360px', aspectRatio: '9/16' }}
+          className="relative overflow-hidden bg-black"
+          style={{ width: '100%', maxWidth: '420px', aspectRatio: '9/16' }}
         >
-          {/* Background: photo or dark gradient */}
+          {/* Background */}
           {userPhoto ? (
             <img src={userPhoto} alt="" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
           )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
 
-          {/* Gradient overlays for readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
-
-          {/* Content — positioned in IG-safe zone (15%-85% vertical) */}
-          <div className="relative h-full flex flex-col" style={{ paddingTop: '18%', paddingBottom: '18%' }}>
-            {/* Top section: camera button or spacer */}
-            {!userPhoto ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="relative rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-16 h-16 flex items-center justify-center">
-                  <Camera className="w-7 h-7 text-white/80 pointer-events-none" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoSelect}
-                    className="absolute inset-0 w-full h-full cursor-pointer"
-                    style={{ opacity: 0.01 }}
-                  />
-                </div>
+          {/* Content — vertically CENTERED so it works for Story, Post (1:1 crop), and Reels */}
+          <div className="relative h-full flex flex-col items-center justify-center px-6">
+            {/* Camera button — only without photo, above stats */}
+            {!userPhoto && (
+              <div className="relative rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-16 h-16 flex items-center justify-center mb-8">
+                <Camera className="w-7 h-7 text-white/80 pointer-events-none" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  className="absolute inset-0 w-full h-full cursor-pointer"
+                  style={{ opacity: 0.01 }}
+                />
               </div>
-            ) : (
-              <div className="flex-1" />
             )}
 
-            {/* Bottom section: branding + stats */}
-            <div className="px-5">
-              {/* Stats grid — 2x2 */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
+            {/* Stats block — centered, always visible even in 1:1 crop */}
+            <div className="w-full max-w-xs">
+              {/* 2x2 grid */}
+              <div className="grid grid-cols-2 gap-2.5 mb-3">
                 {stats.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-xl px-3 py-2.5">
-                    <s.icon className="w-4 h-4 shrink-0" style={{ color: s.color }} />
+                  <div key={i} className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md rounded-2xl px-4 py-3">
+                    <s.icon className="w-5 h-5 shrink-0" style={{ color: s.color }} />
                     <div className="flex items-baseline gap-1">
-                      <span className="text-white text-base font-bold">{s.value}</span>
-                      {s.unit && <span className="text-white/50 text-xs">{s.unit}</span>}
+                      <span className="text-white text-xl font-bold">{s.value}</span>
+                      {s.unit && <span className="text-white/50 text-sm">{s.unit}</span>}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Title bar with branding */}
-              <div className="flex items-end justify-between bg-black/40 backdrop-blur-md rounded-xl px-4 py-3">
-                <div>
-                  <p className="text-white text-base font-bold">{displayTitle}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3 text-white/50" />
-                    <span className="text-white/60 text-xs">{gymName}</span>
+              {/* Title + branding */}
+              <div className="bg-black/50 backdrop-blur-md rounded-2xl px-5 py-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-white text-lg font-bold leading-tight">{displayTitle}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <MapPin className="w-3.5 h-3.5 text-white/50" />
+                      <span className="text-white/70 text-sm">{gymName}</span>
+                    </div>
+                    <p className="text-white/40 text-xs mt-1">{dateStr} &middot; {exerciseCount} cviku &middot; {totalReps} opak.</p>
                   </div>
-                  <p className="text-white/40 text-[10px] mt-0.5">{dateStr} &middot; {exerciseCount} cviku &middot; {totalReps} opak.</p>
+                  <span className="text-lg font-extrabold tracking-tight shrink-0 ml-3" style={{ color: '#4CC9FF' }}>
+                    Pumplo
+                  </span>
                 </div>
-                <span style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '-0.3px', color: '#4CC9FF' }}>
-                  Pumplo
-                </span>
               </div>
             </div>
           </div>
@@ -259,9 +255,9 @@ export const WorkoutShareCard = ({
       </div>
 
       {/* Bottom actions */}
-      <div className="px-4 pt-1 pb-4 space-y-2 shrink-0">
+      <div className="px-4 pt-2 pb-4 space-y-2 shrink-0 safe-bottom">
         {userPhoto && (
-          <div className="relative flex items-center justify-center gap-2 w-full h-9 rounded-md border border-white/20 bg-white/5 text-sm font-medium text-white/80 cursor-pointer hover:bg-white/10 overflow-hidden">
+          <div className="relative flex items-center justify-center gap-2 w-full h-10 rounded-xl border border-white/20 bg-white/5 text-sm font-medium text-white/80 cursor-pointer hover:bg-white/10 overflow-hidden">
             <Camera className="w-4 h-4 pointer-events-none" />
             <span className="pointer-events-none">Zmenit fotku</span>
             <input
@@ -275,8 +271,9 @@ export const WorkoutShareCard = ({
         )}
 
         <Button
+          type="button"
           size="lg"
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2"
+          className="w-full h-12 bg-[#4CC9FF] hover:bg-[#3bb8ee] text-white font-semibold text-base flex items-center justify-center gap-2 rounded-xl"
           onClick={handleShare}
           disabled={isGenerating || !imageReady}
         >
@@ -285,9 +282,10 @@ export const WorkoutShareCard = ({
         </Button>
 
         <Button
+          type="button"
           size="lg"
           variant="outline"
-          className="w-full font-semibold border-white/20 text-white hover:bg-white/10"
+          className="w-full h-12 font-semibold text-base border-white/20 text-white hover:bg-white/10 rounded-xl"
           onClick={onFinish}
           disabled={isSaving || isGenerating}
         >
