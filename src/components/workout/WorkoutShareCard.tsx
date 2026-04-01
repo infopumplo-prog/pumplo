@@ -165,11 +165,12 @@ export const WorkoutShareCard = ({
         </button>
       </div>
 
-      {/* Captured card — 9:16 fills all available space */}
+      {/* Captured card — 9:16, limited height so buttons stay visible */}
+      <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">
       <div
         ref={cardRef}
-        className="flex-1 min-h-0 relative overflow-hidden"
-        style={{ background: '#111' }}
+        className="relative overflow-hidden w-full"
+        style={{ background: '#111', aspectRatio: '9/16', maxHeight: '100%' }}
       >
         {/* Background */}
         {userPhoto ? (
@@ -224,6 +225,7 @@ export const WorkoutShareCard = ({
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Bottom actions — outside the captured card */}
