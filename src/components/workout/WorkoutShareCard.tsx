@@ -256,35 +256,51 @@ export const WorkoutShareCard = ({
   const dRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const pRef = useRef<{ sd: number; os: number } | null>(null);
 
-  const onTS = useCallback((e: React.TouchEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
-      pRef.current = { sd: Math.sqrt(dx*dx+dy*dy), os: scale }; dRef.current = null;
-    } else if (e.touches.length === 1) {
-      dRef.current = { sx: e.touches[0].clientX, sy: e.touches[0].clientY, ox: pos.x, oy: pos.y };
-    }
-  }, [pos, scale]);
+  // Native touch listeners with { passive: false } to actually prevent browser zoom/scroll
+  const posRef = useRef(pos);
+  const scaleRef = useRef(scale);
+  posRef.current = pos;
+  scaleRef.current = scale;
 
-  const onTM = useCallback((e: React.TouchEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (e.touches.length === 2 && pRef.current) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
-      setScale(Math.max(0.4, Math.min(2.5, pRef.current.os * (Math.sqrt(dx*dx+dy*dy) / pRef.current.sd))));
-    } else if (e.touches.length === 1 && dRef.current) {
-      setPos({ x: dRef.current.ox + (e.touches[0].clientX - dRef.current.sx), y: dRef.current.oy + (e.touches[0].clientY - dRef.current.sy) });
-    }
-  }, []);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !userPhoto) return;
 
-  const onTE = useCallback(() => {
-    dRef.current = null; pRef.current = null;
-    cachedBlobRef.current = null; setImageReady(false);
-    setTimeout(async () => {
-      setIsGenerating(true);
-      const blob = await genImg();
-      cachedBlobRef.current = blob; setImageReady(!!blob); setIsGenerating(false);
-    }, 300);
-  }, []);
+    const onStart = (e: TouchEvent) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+        pRef.current = { sd: Math.sqrt(dx*dx+dy*dy), os: scaleRef.current }; dRef.current = null;
+      } else if (e.touches.length === 1) {
+        dRef.current = { sx: e.touches[0].clientX, sy: e.touches[0].clientY, ox: posRef.current.x, oy: posRef.current.y };
+      }
+    };
+
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.touches.length === 2 && pRef.current) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+        setScale(Math.max(0.4, Math.min(2.5, pRef.current.os * (Math.sqrt(dx*dx+dy*dy) / pRef.current.sd))));
+      } else if (e.touches.length === 1 && dRef.current) {
+        setPos({ x: dRef.current.ox + (e.touches[0].clientX - dRef.current.sx), y: dRef.current.oy + (e.touches[0].clientY - dRef.current.sy) });
+      }
+    };
+
+    const onEnd = () => {
+      dRef.current = null; pRef.current = null;
+      cachedBlobRef.current = null; setImageReady(false);
+      setTimeout(async () => {
+        setIsGenerating(true);
+        const blob = await genImg();
+        cachedBlobRef.current = blob; setImageReady(!!blob); setIsGenerating(false);
+      }, 300);
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: false });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd); };
+  }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
   const title = isBonus ? 'Bonusovy trenink' : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
@@ -371,8 +387,7 @@ export const WorkoutShareCard = ({
 
       <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">
         <div ref={cardRef} className="relative overflow-hidden w-full"
-          style={{ background: '#000', aspectRatio: '9/16', maxHeight: '100%' }}
-          onTouchStart={userPhoto ? onTS : undefined} onTouchMove={userPhoto ? onTM : undefined} onTouchEnd={userPhoto ? onTE : undefined}>
+          style={{ background: '#000', aspectRatio: '9/16', maxHeight: '100%', touchAction: userPhoto ? 'none' : undefined }}>
           {renderTemplate()}
           {cameraOverlay}
         </div>
