@@ -357,7 +357,6 @@ export const WorkoutSession = ({
           isBonus
         });
 
-        onComplete(orderedResults);
         setWorkoutSaved(true);
         announceWorkoutComplete();
       };
@@ -366,8 +365,11 @@ export const WorkoutSession = ({
   }, [showSummary, workoutSaved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFinishWorkout = useCallback(async () => {
+    const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
+      .filter((r): r is ExerciseResult => r !== undefined);
+    onComplete(orderedResults);
     navigate('/');
-  }, [navigate]);
+  }, [navigate, liveExercises, resultsByIndex, onComplete]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
