@@ -29,6 +29,7 @@ const formSchema = z.object({
   name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
   description: z.string().optional(),
   address: z.string().optional(),
+  instagram_handle: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -69,6 +70,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
       name: gym.name,
       description: gym.description || '',
       address: gym.address || '',
+      instagram_handle: (gym as any).instagram_handle || '',
     },
   });
 
@@ -85,6 +87,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
       name: data.name,
       description: data.description || null,
       address: data.address || null,
+      instagram_handle: data.instagram_handle || null,
       latitude: location.lat,
       longitude: location.lng,
       opening_hours: openingHours,
@@ -197,6 +200,15 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="address">Adresa</Label>
                     <Input id="address" {...register('address')} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram_handle">Instagram</Label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground text-sm">@</span>
+                      <Input id="instagram_handle" placeholder="nazev_posilovny" {...register('instagram_handle')} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Zobrazuje se na sdilene fotce z treninku</p>
                   </div>
                 </div>
 
