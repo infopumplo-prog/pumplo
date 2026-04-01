@@ -273,7 +273,7 @@ export const WorkoutShareCard = ({
 
   useEffect(() => {
     const el = touchOverlayRef.current;
-    if (!el || !userPhoto) return;
+    if (!el) return;
 
     const onStart = (e: TouchEvent) => {
       e.preventDefault(); e.stopPropagation();
@@ -367,7 +367,7 @@ export const WorkoutShareCard = ({
 
   // Camera button overlay (only without photo, not part of draggable)
   const cameraOverlay = !userPhoto && (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 5, pointerEvents: 'none' }}>
+    <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 15, pointerEvents: 'none' }}>
       <div className="relative w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', pointerEvents: 'auto', marginBottom: '180px' }}>
         <Camera className="w-7 h-7" style={{ color: 'rgba(255,255,255,0.8)' }} />
         <input type="file" accept="image/*" onChange={handlePhoto} className="absolute inset-0 w-full h-full cursor-pointer" style={{ opacity: 0.01 }} />
@@ -392,9 +392,7 @@ export const WorkoutShareCard = ({
           {renderTemplate()}
           {cameraOverlay}
           {/* Transparent touch overlay — on top of everything, catches all gestures */}
-          {userPhoto && (
-            <div ref={touchOverlayRef} className="absolute inset-0" style={{ zIndex: 10, touchAction: 'none' }} />
-          )}
+          <div ref={touchOverlayRef} className="absolute inset-0" style={{ zIndex: 10, touchAction: 'none' }} />
         </div>
       </div>
 
