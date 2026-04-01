@@ -54,7 +54,9 @@ export const WorkoutShareCard = ({
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const pinchRef = useRef<{ startDist: number; origScale: number } | null>(null);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -63,9 +65,11 @@ export const WorkoutShareCard = ({
     } else if (e.touches.length === 1) {
       dragRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: overlayPos.x, origY: overlayPos.y };
     }
-  };
+  }, [overlayPos, overlayScale]);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (e.touches.length === 2 && pinchRef.current) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -77,12 +81,11 @@ export const WorkoutShareCard = ({
       const dy = e.touches[0].clientY - dragRef.current.startY;
       setOverlayPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
     }
-  };
+  }, []);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     dragRef.current = null;
     pinchRef.current = null;
-    // Regenerate share image after repositioning
     cachedBlobRef.current = null;
     setImageReady(false);
     setTimeout(async () => {
@@ -92,7 +95,7 @@ export const WorkoutShareCard = ({
       setImageReady(!!blob);
       setIsGenerating(false);
     }, 300);
-  };
+  }, [generateImage]);
 
   const estimatedCalories = estimateCalories({
     durationSeconds: totalDuration * 60,
@@ -203,10 +206,10 @@ export const WorkoutShareCard = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#111' }}
+      className="fixed inset-0 z-50 flex flex-col overflow-hidden"
+      style={{ background: '#111', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
     >
-      {/* Top bar — outside the captured card */}
+      {/* Top bar */}
       <div className="shrink-0 flex items-center px-3 pt-2 pb-1">
         <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}>
           <ArrowLeft className="w-5 h-5" />
