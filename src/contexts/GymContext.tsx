@@ -36,6 +36,7 @@ export interface Gym {
   cover_photo_url: string | null;
   logo_url: string | null;
    pricing: GymPricing | null;
+  instagram_handle: string | null;
   created_at: string;
   updated_at: string;
 }

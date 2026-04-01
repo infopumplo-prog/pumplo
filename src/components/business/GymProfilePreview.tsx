@@ -129,10 +129,10 @@ const GymProfilePreview = ({
               {gym.address}
             </div>
           )}
-          {(gym as any).instagram_handle && (
+          {gym.instagram_handle && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
               <span>📷</span>
-              <span className="text-primary font-medium">@{(gym as any).instagram_handle}</span>
+              <span className="text-primary font-medium">@{gym.instagram_handle}</span>
             </div>
           )}
         </div>

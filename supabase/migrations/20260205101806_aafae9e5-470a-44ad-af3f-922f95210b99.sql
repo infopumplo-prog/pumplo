@@ -15,6 +15,7 @@ SELECT
   cover_photo_url,
   logo_url,
   pricing,
+  instagram_handle,
   created_at,
   updated_at
 FROM public.gyms
