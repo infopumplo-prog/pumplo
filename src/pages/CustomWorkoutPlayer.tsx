@@ -93,6 +93,7 @@ const CustomWorkoutPlayer = () => {
   // State
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
   const [gymName, setGymName] = useState<string>('');
+  const [gymInstagram, setGymInstagram] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [resumeApplied, setResumeApplied] = useState(false);
   const [exercises, setExercises] = useState<ExerciseWithVideo[]>([]);
@@ -185,10 +186,11 @@ const CustomWorkoutPlayer = () => {
     // Fetch gym name
     const { data: gymData } = await supabase
       .from('gyms')
-      .select('name')
+      .select('name, instagram_handle')
       .eq('id', gymId)
       .single();
     if (gymData?.name) setGymName(gymData.name);
+    if (gymData?.instagram_handle) setGymInstagram(gymData.instagram_handle);
 
     // Check if we're resuming (skip gym selection on resume)
     if (resumeMode && pausedWorkout && pausedWorkout.planId === id) {
@@ -831,6 +833,7 @@ const CustomWorkoutPlayer = () => {
         dayName={plan.name}
         goalId="general_fitness"
         gymName={gymName}
+        gymInstagram={gymInstagram}
         totalDuration={durationMinutes}
         totalSets={totalSetsCompleted}
         totalWeight={totalWeight}

@@ -125,6 +125,7 @@ export const WorkoutSession = ({
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [gymName, setGymName] = useState<string>('');
+  const [gymInstagram, setGymInstagram] = useState<string | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
   const [viewMode, setViewMode] = useState<'video' | 'list'>('video');
   // Mutable exercises array for live swap
@@ -140,11 +141,12 @@ export const WorkoutSession = ({
     if (!gymId) return;
     supabase
       .from('gyms')
-      .select('name')
+      .select('name, instagram_handle')
       .eq('id', gymId)
       .single()
       .then(({ data }) => {
         if (data?.name) setGymName(data.name);
+        if (data?.instagram_handle) setGymInstagram(data.instagram_handle);
       });
   }, [gymId]);
   
@@ -445,6 +447,7 @@ export const WorkoutSession = ({
         dayLetter={dayLetter}
         goalId={goalId}
         gymName={gymName}
+        gymInstagram={gymInstagram}
         totalDuration={totalDuration}
         totalSets={totalSets}
         totalWeight={totalWeight}

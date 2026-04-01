@@ -13,7 +13,7 @@ import { Capacitor } from '@capacitor/core';
 interface ExerciseDetail { name: string; sets: { weight: number; reps: number }[] }
 
 interface WorkoutShareCardProps {
-  dayLetter: string; dayName?: string; goalId: string; gymName: string;
+  dayLetter: string; dayName?: string; goalId: string; gymName: string; gymInstagram?: string | null;
   totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
@@ -31,7 +31,7 @@ const T_DarkBlur = ({ photo, title, gym, date, exCount, reps, stats, transform }
     <Center>
       <Draggable transform={transform}>
         <Grid2x2 stats={stats} bg="rgba(0,0,0,0.5)" />
-        <TitleBar title={title} gym={gym} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" />
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" />
       </Draggable>
     </Center>
   </>
@@ -49,7 +49,7 @@ const T_Minimal = ({ photo, title, gym, date, exCount, reps, stats, transform }:
           <p style={{ color: '#fff', fontSize: '28px', fontWeight: 800, lineHeight: 1.1, marginBottom: '4px' }}>{title}</p>
           <div className="flex items-center gap-1.5 mb-6">
             <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{gym} &middot; {date}</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{gym}{gymIg ? ` @${gymIg}` : ''} &middot; {date}</span>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '16px' }}>
             {stats.map((s, i) => (
@@ -90,7 +90,7 @@ const T_Bold = ({ photo, title, gym, date, exCount, reps, stats, transform }: TP
             <p style={{ color: '#fff', fontSize: '16px', fontWeight: 700 }}>{title}</p>
             <div className="flex items-center justify-center gap-1.5 mt-1">
               <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{gym} &middot; {date}</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{gym}{gymIg ? ` @${gymIg}` : ''} &middot; {date}</span>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '4px' }}>{exCount} cviku &middot; {reps} opak.</p>
           </div>
@@ -132,7 +132,7 @@ const T_ExerciseList = ({ photo, title, gym, date, exercises, transform }: TProp
           </div>
           <div className="flex items-center gap-1.5 mt-3">
             <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>{gym} &middot; {date}</span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>{gym}{gymIg ? ` @${gymIg}` : ''} &middot; {date}</span>
           </div>
         </div>
       </Draggable>
@@ -176,7 +176,7 @@ const T_SingleExercise = ({ photo, gym, date, exercises, transform, selectedEx, 
             </div>
             <div className="flex items-center justify-center gap-1.5 mt-4">
               <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>{gym} &middot; {date}</span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>{gym}{gymIg ? ` @${gymIg}` : ''} &middot; {date}</span>
             </div>
           </div>
         </Draggable>
@@ -186,7 +186,7 @@ const T_SingleExercise = ({ photo, gym, date, exercises, transform, selectedEx, 
 };
 
 // ===== SHARED PARTS =====
-interface TProps { photo: string | null; title: string; gym: string; date: string; exCount: number; reps: number; stats: Stat[]; transform: string }
+interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string }
 
 const BG = ({ photo, gradient }: { photo: string | null; gradient: string }) => (
   <>
@@ -218,7 +218,7 @@ const Grid2x2 = ({ stats, bg }: { stats: Stat[]; bg: string }) => (
     </div>
   </div>
 );
-const TitleBar = ({ title, gym, date, exCount, reps, bg }: { title: string; gym: string; date: string; exCount: number; reps: number; bg: string }) => (
+const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg }: { title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; bg: string }) => (
   <div className="rounded-2xl px-5 py-4" style={{ background: bg, backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
     <div className="flex items-start justify-between">
       <div>
@@ -226,6 +226,7 @@ const TitleBar = ({ title, gym, date, exCount, reps, bg }: { title: string; gym:
         <div className="flex items-center gap-1.5 mt-1">
           <MapPin className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
           <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
+          {gymIg && <span style={{ color: '#4CC9FF', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
         </div>
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '4px' }}>{date} &middot; {exCount} cviku &middot; {reps} opak.</p>
       </div>
@@ -238,7 +239,7 @@ const TEMPLATE_NAMES = ['Dark', 'Minimal', 'Bold', 'Cviky', 'Detail'];
 
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
-  dayLetter, dayName, goalId, gymName, totalDuration, totalSets, totalWeight, totalReps,
+  dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
   exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving,
 }: WorkoutShareCardProps) => {
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
@@ -350,7 +351,8 @@ export const WorkoutShareCard = ({
   const handleShare = useCallback(async () => {
     const blob = cachedBlobRef.current; if (!blob) return;
     const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
-    const txt = `${title} dokoncen! ${Math.round(totalWeight)} kg | ${totalSets} serii | ${totalDuration} min`;
+    const igTag = gymInstagram ? ` @${gymInstagram}` : '';
+    const txt = `${title} dokoncen! ${Math.round(totalWeight)} kg | ${totalSets} serii | ${totalDuration} min${igTag}`;
     if (Capacitor.isNativePlatform()) {
       try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: 'Muj trenink na Pumplo', text: txt, url: s.uri, dialogTitle: 'Sdilet trenink' }); return; }
       catch (e) { if ((e as Error).message?.includes('canceled')) return; }
@@ -368,7 +370,7 @@ export const WorkoutShareCard = ({
   ];
 
   const tf = `translate(${pos.x}px, ${pos.y}px) scale(${scale})`;
-  const tp: TProps = { photo: userPhoto, title, gym: gymName, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf };
+  const tp: TProps = { photo: userPhoto, title, gym: gymName, gymIg: gymInstagram || null, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf };
 
   const renderTemplate = () => {
     switch (templateIndex) {
