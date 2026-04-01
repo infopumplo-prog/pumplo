@@ -255,6 +255,7 @@ export const WorkoutShareCard = ({
   const [scale, setScale] = useState(1);
   const dRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const pRef = useRef<{ sd: number; os: number } | null>(null);
+  const touchOverlayRef = useRef<HTMLDivElement>(null);
 
   const genImg = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
@@ -271,7 +272,7 @@ export const WorkoutShareCard = ({
   scaleRef.current = scale;
 
   useEffect(() => {
-    const el = cardRef.current;
+    const el = touchOverlayRef.current;
     if (!el || !userPhoto) return;
 
     const onStart = (e: TouchEvent) => {
@@ -387,9 +388,13 @@ export const WorkoutShareCard = ({
 
       <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">
         <div ref={cardRef} className="relative overflow-hidden w-full"
-          style={{ background: '#000', aspectRatio: '9/16', maxHeight: '100%', touchAction: userPhoto ? 'none' : undefined }}>
+          style={{ background: '#000', aspectRatio: '9/16', maxHeight: '100%' }}>
           {renderTemplate()}
           {cameraOverlay}
+          {/* Transparent touch overlay — on top of everything, catches all gestures */}
+          {userPhoto && (
+            <div ref={touchOverlayRef} className="absolute inset-0" style={{ zIndex: 10, touchAction: 'none' }} />
+          )}
         </div>
       </div>
 
