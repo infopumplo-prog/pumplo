@@ -27,8 +27,6 @@ interface WorkoutShareCardProps {
   isSaving?: boolean;
 }
 
-/* no PhotoInput component - using inline inputs */
-
 export const WorkoutShareCard = ({
   dayLetter,
   dayName,
@@ -61,7 +59,7 @@ export const WorkoutShareCard = ({
   });
 
   const displayTitle = isBonus
-    ? 'Bonusový trénink'
+    ? 'Bonusovy trenink'
     : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
 
   const today = new Date();
@@ -87,14 +85,14 @@ export const WorkoutShareCard = ({
         scale: 3,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#000000',
         logging: false,
       });
       return new Promise((resolve) => {
         canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
       });
     } catch (err) {
-      console.error('Chyba při generování obrázku:', err);
+      console.error('Error generating image:', err);
       return null;
     }
   }, []);
@@ -123,7 +121,7 @@ export const WorkoutShareCard = ({
     if (!blob) return;
 
     const fileName = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
-    const shareText = `${displayTitle} dokončen! ${totalWeight} kg | ${totalSets} sérií | ${totalDuration} min`;
+    const shareText = `${displayTitle} dokoncen! ${totalWeight} kg | ${totalSets} serii | ${totalDuration} min`;
 
     if (Capacitor.isNativePlatform()) {
       try {
@@ -134,10 +132,10 @@ export const WorkoutShareCard = ({
           directory: Directory.Cache,
         });
         await Share.share({
-          title: 'Můj trénink na Pumplo',
+          title: 'Muj trenink na Pumplo',
           text: shareText,
           url: saved.uri,
-          dialogTitle: 'Sdílet trénink',
+          dialogTitle: 'Sdilet trenink',
         });
         return;
       } catch (err) {
@@ -150,7 +148,7 @@ export const WorkoutShareCard = ({
       try {
         const canShareFiles = navigator.canShare?.({ files: [file] });
         if (canShareFiles) {
-          await navigator.share({ files: [file], title: 'Můj trénink na Pumplo', text: shareText });
+          await navigator.share({ files: [file], title: 'Muj trenink na Pumplo', text: shareText });
           return;
         }
       } catch (err) {
@@ -169,53 +167,50 @@ export const WorkoutShareCard = ({
   }, [today, displayTitle, totalWeight, totalSets, totalDuration]);
 
   const stats = [
-    { icon: Clock, color: 'text-cyan-400', value: `${totalDuration}`, unit: 'min' },
-    { icon: Weight, color: 'text-emerald-400', value: `${Math.round(totalWeight).toLocaleString('cs')}`, unit: 'kg' },
-    { icon: Dumbbell, color: 'text-amber-400', value: `${totalSets}`, unit: '' },
-    { icon: Flame, color: 'text-orange-400', value: `${estimatedCalories}`, unit: 'kcal' },
+    { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
+    { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString('cs')}`, unit: 'kg' },
+    { icon: Dumbbell, color: '#fbbf24', value: `${totalSets}`, unit: '' },
+    { icon: Flame, color: '#fb923c', value: `${estimatedCalories}`, unit: 'kcal' },
   ];
-
-  const pillBg = userPhoto ? 'bg-black/40 backdrop-blur-md' : 'bg-gray-100';
-  const textMain = userPhoto ? 'text-white' : 'text-gray-800';
-  const textSub = userPhoto ? 'text-white/60' : 'text-gray-400';
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-white flex flex-col"
+      className="fixed inset-0 z-50 bg-black flex flex-col"
     >
-      {/* Horní lišta */}
+      {/* Top bar */}
       <div className="flex items-center justify-start px-4 pt-3 pb-1 z-10 shrink-0">
-        <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-600 hover:bg-gray-100">
+        <Button variant="ghost" size="icon" onClick={onClose} className="text-white/70 hover:bg-white/10">
           <ArrowLeft className="w-6 h-6" />
         </Button>
       </div>
 
-      {/* Karta — flexibilní výška, vejde se na obrazovku */}
-      <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-1">
+      {/* Card preview — 9:16, edge-to-edge, no rounded corners */}
+      <div className="flex-1 min-h-0 flex items-center justify-center px-2 py-1">
         <div
           ref={cardRef}
-          className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white h-full"
-          style={{ maxHeight: '100%', aspectRatio: '9/16' }}
+          className="relative w-full overflow-hidden bg-black"
+          style={{ maxWidth: '360px', aspectRatio: '9/16' }}
         >
+          {/* Background: photo or dark gradient */}
           {userPhoto ? (
             <img src={userPhoto} alt="" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100" />
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
           )}
 
-          {userPhoto && (
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
-          )}
+          {/* Gradient overlays for readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
 
-          <div className="relative h-full flex flex-col justify-between p-4">
-            {/* Nahoře: přidat fotku — VIDITELNÝ input stylovaný přes CSS */}
+          {/* Content — positioned in IG-safe zone (15%-85% vertical) */}
+          <div className="relative h-full flex flex-col" style={{ paddingTop: '18%', paddingBottom: '18%' }}>
+            {/* Top section: camera button or spacer */}
             {!userPhoto ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="relative rounded-full bg-white shadow-md border border-gray-200 w-14 h-14 flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-primary pointer-events-none" />
+                <div className="relative rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-16 h-16 flex items-center justify-center">
+                  <Camera className="w-7 h-7 text-white/80 pointer-events-none" />
                   <input
                     type="file"
                     accept="image/*"
@@ -229,51 +224,46 @@ export const WorkoutShareCard = ({
               <div className="flex-1" />
             )}
 
-            {/* Dole: Pumplo + gym + statistiky + název */}
-            <div>
-              <div className="flex justify-end mb-1.5">
-                <div className="flex flex-col gap-1 items-end">
-                  <div className={`rounded-lg px-2.5 py-1 ${pillBg}`}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', letterSpacing: '-0.3px', color: '#4CC9FF' }}>
-                      Pumplo
-                    </span>
-                  </div>
-                  <div className={`flex items-center gap-1 rounded-lg px-2.5 py-1 ${pillBg}`}>
-                    <MapPin className={`w-3 h-3 ${userPhoto ? 'text-white/70' : 'text-gray-400'}`} />
-                    <span className={`text-[11px] font-medium ${textMain}`}>{gymName}</span>
-                  </div>
-                  {stats.map((s, i) => (
-                    <div key={i} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 ${pillBg}`}>
-                      <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
-                      <span className={`text-xs font-bold ${textMain}`}>{s.value}</span>
-                      {s.unit && <span className={`text-[10px] ${textSub}`}>{s.unit}</span>}
+            {/* Bottom section: branding + stats */}
+            <div className="px-5">
+              {/* Stats grid — 2x2 */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {stats.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-xl px-3 py-2.5">
+                    <s.icon className="w-4 h-4 shrink-0" style={{ color: s.color }} />
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-white text-base font-bold">{s.value}</span>
+                      {s.unit && <span className="text-white/50 text-xs">{s.unit}</span>}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
 
-              <div className={`rounded-xl px-3 py-2 ${pillBg}`}>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className={`text-sm font-bold ${textMain}`}>{displayTitle}</p>
-                    <p className={`text-[10px] ${textSub}`}>{dateStr}</p>
+              {/* Title bar with branding */}
+              <div className="flex items-end justify-between bg-black/40 backdrop-blur-md rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-white text-base font-bold">{displayTitle}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-white/50" />
+                    <span className="text-white/60 text-xs">{gymName}</span>
                   </div>
-                  <p className={`text-[9px] ${userPhoto ? 'text-white/40' : 'text-gray-300'}`}>
-                    {exerciseCount} cviků &middot; {totalReps} opak.
-                  </p>
+                  <p className="text-white/40 text-[10px] mt-0.5">{dateStr} &middot; {exerciseCount} cviku &middot; {totalReps} opak.</p>
                 </div>
+                <span style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '-0.3px', color: '#4CC9FF' }}>
+                  Pumplo
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Spodní akce */}
+      {/* Bottom actions */}
       <div className="px-4 pt-1 pb-4 space-y-2 shrink-0">
         {userPhoto && (
-          <div className="relative flex items-center justify-center gap-2 w-full h-9 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent overflow-hidden">
+          <div className="relative flex items-center justify-center gap-2 w-full h-9 rounded-md border border-white/20 bg-white/5 text-sm font-medium text-white/80 cursor-pointer hover:bg-white/10 overflow-hidden">
             <Camera className="w-4 h-4 pointer-events-none" />
-            <span className="pointer-events-none">Změnit fotku</span>
+            <span className="pointer-events-none">Zmenit fotku</span>
             <input
               type="file"
               accept="image/*"
@@ -291,17 +281,17 @@ export const WorkoutShareCard = ({
           disabled={isGenerating || !imageReady}
         >
           <Share2 className="w-5 h-5" />
-          {isGenerating ? 'Připravuji...' : imageReady ? 'Sdílet trénink' : 'Připravuji obrázek...'}
+          {isGenerating ? 'Pripravuji...' : imageReady ? 'Sdilet trenink' : 'Pripravuji obrazek...'}
         </Button>
 
         <Button
           size="lg"
           variant="outline"
-          className="w-full font-semibold"
+          className="w-full font-semibold border-white/20 text-white hover:bg-white/10"
           onClick={onFinish}
           disabled={isSaving || isGenerating}
         >
-          {isSaving ? 'Ukládám...' : 'Dokončit trénink'}
+          {isSaving ? 'Ukladam...' : 'Dokoncit trenink'}
         </Button>
       </div>
     </motion.div>
