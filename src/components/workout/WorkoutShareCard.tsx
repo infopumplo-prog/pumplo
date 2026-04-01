@@ -48,6 +48,52 @@ export const WorkoutShareCard = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const { profile } = useUserProfile();
 
+  // Drag + pinch state for stats overlay
+  const [overlayPos, setOverlayPos] = useState({ x: 0, y: 0 });
+  const [overlayScale, setOverlayScale] = useState(1);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const pinchRef = useRef<{ startDist: number; origScale: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchRef.current = { startDist: Math.sqrt(dx * dx + dy * dy), origScale: overlayScale };
+      dragRef.current = null;
+    } else if (e.touches.length === 1) {
+      dragRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: overlayPos.x, origY: overlayPos.y };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const newScale = Math.max(0.5, Math.min(2, pinchRef.current.origScale * (dist / pinchRef.current.startDist)));
+      setOverlayScale(newScale);
+    } else if (e.touches.length === 1 && dragRef.current) {
+      const dx = e.touches[0].clientX - dragRef.current.startX;
+      const dy = e.touches[0].clientY - dragRef.current.startY;
+      setOverlayPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    dragRef.current = null;
+    pinchRef.current = null;
+    // Regenerate share image after repositioning
+    cachedBlobRef.current = null;
+    setImageReady(false);
+    setTimeout(async () => {
+      setIsGenerating(true);
+      const blob = await generateImage();
+      cachedBlobRef.current = blob;
+      setImageReady(!!blob);
+      setIsGenerating(false);
+    }, 300);
+  };
+
   const estimatedCalories = estimateCalories({
     durationSeconds: totalDuration * 60,
     totalSets,
@@ -72,6 +118,8 @@ export const WorkoutShareCard = ({
       setUserPhoto(event.target?.result as string);
       cachedBlobRef.current = null;
       setImageReady(false);
+      setOverlayPos({ x: 0, y: 0 });
+      setOverlayScale(1);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -181,9 +229,9 @@ export const WorkoutShareCard = ({
         {/* Overlay for readability */}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 50%, rgba(0,0,0,0.6) 100%)' }} />
 
-        {/* Content — centered vertically */}
+        {/* Content */}
         <div className="relative h-full flex flex-col items-center justify-center px-6">
-          {/* Camera button */}
+          {/* Camera button — only without photo */}
           {!userPhoto && (
             <div className="relative w-16 h-16 rounded-full flex items-center justify-center mb-10" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
               <Camera className="w-7 h-7" style={{ color: 'rgba(255,255,255,0.8)' }} />
@@ -191,8 +239,19 @@ export const WorkoutShareCard = ({
             </div>
           )}
 
-          {/* Stats — centered, full width */}
-          <div className="w-full" style={{ maxWidth: '320px' }}>
+          {/* Stats overlay — draggable + pinch-to-zoom when photo exists */}
+          <div
+            className="w-full"
+            style={{
+              maxWidth: '320px',
+              transform: userPhoto ? `translate(${overlayPos.x}px, ${overlayPos.y}px) scale(${overlayScale})` : undefined,
+              touchAction: userPhoto ? 'none' : undefined,
+              cursor: userPhoto ? 'grab' : undefined,
+            }}
+            onTouchStart={userPhoto ? handleTouchStart : undefined}
+            onTouchMove={userPhoto ? handleTouchMove : undefined}
+            onTouchEnd={userPhoto ? handleTouchEnd : undefined}
+          >
             <div className="grid grid-cols-2 gap-3 mb-3">
               {stats.map((s, i) => (
                 <div key={i} className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}>
