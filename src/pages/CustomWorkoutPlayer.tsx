@@ -916,6 +916,8 @@ const CustomWorkoutPlayer = () => {
       repMin: ex.reps,
       repMax: ex.reps,
       slotCategory: null as string | null,
+      repsPerSet: ex.reps_per_set,
+      weightPerSet: ex.weight_per_set,
     }));
 
     const compactSetsMap = new Map<number, { completed: boolean; weight?: number; reps?: number; durationSeconds?: number }[]>();

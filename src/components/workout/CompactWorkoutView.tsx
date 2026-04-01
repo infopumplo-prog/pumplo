@@ -30,6 +30,8 @@ interface WorkoutExerciseCompact {
   repMin: number;
   repMax: number;
   slotCategory?: string | null;
+  repsPerSet?: number[] | null;
+  weightPerSet?: (number | null)[] | null;
 }
 
 interface CompactWorkoutViewProps {
@@ -121,10 +123,22 @@ export const CompactWorkoutView = ({
   useEffect(() => {
     if (!currentExercise) return;
     announcedExRef.current = -1; // Reset so new exercise gets announced
-    const r = `${currentExercise.repMax}`;
+
+    // Per-set reps (if available), fallback to repMax
+    const setIdx = currentSetIndex >= 0 ? currentSetIndex : 0;
+    const r = `${currentExercise.repsPerSet?.[setIdx] ?? currentExercise.repMax}`;
     setReps(r);
 
-    // First try weight from current session's completed sets
+    // Per-set weight (if available)
+    const plannedWeight = currentExercise.weightPerSet?.[setIdx];
+    if (plannedWeight != null) {
+      const w = `${plannedWeight}`;
+      setWeight(w);
+      setTimeout(() => announceCurrentExercise(w, r), 300);
+      return;
+    }
+
+    // Try weight from current session's completed sets
     const sets = setsDataByExercise.get(currentExerciseIndex);
     const lastCompleted = sets?.filter(s => s.completed).pop();
     if (lastCompleted?.weight != null) {
@@ -154,7 +168,7 @@ export const CompactWorkoutView = ({
       setWeight('');
       setTimeout(() => announceCurrentExercise('', r), 300);
     }
-  }, [currentExerciseIndex, currentExercise]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentExerciseIndex, currentExercise, currentSetIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatTimer = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60);
