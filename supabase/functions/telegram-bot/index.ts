@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const ALLOWED_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -305,8 +306,71 @@ Dostupné příkazy:
     return sendTelegram(chatId, `✅ Zpráva odeslána všem členům *${gym.name}*:\n\n"${messageText}"`);
   }
 
-  // === UNKNOWN ===
-  return sendTelegram(chatId, `Nerozumím příkazu. Napiš *help* pro seznam příkazů.`);
+  // === AI CHAT — fallback to Claude ===
+  return handleAiChat(text, chatId);
+}
+
+async function gatherContext() {
+  const [users, gyms, sessions, feedback, subs] = await Promise.all([
+    supabase.from("user_profiles").select("id", { count: "exact", head: true }),
+    supabase.from("gyms").select("id, name, is_published, address"),
+    supabase.from("workout_sessions").select("id", { count: "exact", head: true })
+      .gte("started_at", new Date(Date.now() - 86400000).toISOString()),
+    supabase.from("user_feedback").select("id, type, message, status")
+      .in("status", ["new", "in_progress"]).limit(10),
+    supabase.from("gym_subscriptions").select("gym_id, plan_id, status, is_grandfathered"),
+  ]);
+
+  const gymNames = (gyms.data || []).map(g => `${g.name} (${g.is_published ? "published" : "draft"})`).join(", ");
+  const feedbackList = (feedback.data || []).map(f => `[${f.type}/${f.status}] ${(f.message || "").slice(0, 60)}`).join("\n");
+
+  return `Aktuální stav Pumplo:
+- Celkem uživatelů: ${users.count || 0}
+- Posilovny: ${gymNames}
+- Sessions za posledních 24h: ${sessions.count || 0}
+- Aktivní subscriptions: ${(subs.data || []).filter(s => s.status === "active").length}
+- Otevřený feedback (${(feedback.data || []).length}):
+${feedbackList || "žádný"}`;
+}
+
+async function handleAiChat(userMessage: string, chatId: string) {
+  try {
+    const context = await gatherContext();
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: `Jsi Pumplo Admin Bot — asistent pro správu fitness SaaS platformy Pumplo. Odpovídáš česky, stručně a věcně. Tvůj uživatel je David Novotný, zakladatel a jednatel GynTools CZ s.r.o.
+
+Pumplo je SaaS retention platforma pro nezávislé fitness posilovny. Má mobilní appku pro členy (tréninky, statistiky, gamifikace) a admin dashboard pro majitele posiloven (správa členů, strojů, trenérů, zpráv).
+
+Tři subscription tiers: Start (1990 CZK/měs), Profi (3990 CZK), Premium (6990 CZK).
+První zákazník: Eurogym Olomouc (grandfathered Premium).
+
+${context}
+
+Odpovídej stručně (max 500 znaků). Používej emoji. Pokud se ptá na data, použij kontext výše. Pokud potřebuješ detailnější data, řekni mu ať použije konkrétní příkaz (status, členové, feedback, statistiky, mrr).`,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+
+    const data = await response.json();
+    const aiResponse = data.content?.[0]?.text || "Omlouvám se, něco se pokazilo.";
+
+    // Telegram has 4096 char limit
+    const truncated = aiResponse.length > 4000 ? aiResponse.slice(0, 4000) + "..." : aiResponse;
+    return sendTelegram(chatId, truncated, "Markdown");
+  } catch (err) {
+    console.error("AI chat error:", err);
+    return sendTelegram(chatId, "❌ AI chat momentálně nefunguje. Zkus konkrétní příkaz — napiš *help*.");
+  }
 }
 
 serve(async (req) => {
