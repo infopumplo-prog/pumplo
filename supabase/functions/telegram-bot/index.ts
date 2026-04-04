@@ -306,6 +306,48 @@ Dostupné příkazy:
     return sendTelegram(chatId, `✅ Zpráva odeslána všem členům *${gym.name}*:\n\n"${messageText}"`);
   }
 
+  // === FIX / OPRAV — remote fix request ===
+  if (cmd.startsWith("oprav ") || cmd.startsWith("fix ")) {
+    const request = text.replace(/^(oprav|fix)\s+/i, "").trim();
+    if (!request) {
+      return sendTelegram(chatId, "Formát: `oprav popis problému`");
+    }
+
+    const { error } = await supabase.from("remote_fix_requests").insert({
+      message: request,
+      status: "pending",
+    });
+
+    if (error) {
+      return sendTelegram(chatId, `❌ Chyba: ${error.message}`);
+    }
+
+    return sendTelegram(chatId, `🔧 *Fix request vytvořen*\n\n"${request}"\n\nCloud agent ho zpracuje při příštím běhu (každou hodinu).`);
+  }
+
+  // === PENDING FIXES ===
+  if (cmd === "opravy" || cmd === "fixes") {
+    const { data: fixes } = await supabase
+      .from("remote_fix_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (!fixes || fixes.length === 0) {
+      return sendTelegram(chatId, "✅ Žádné pending fix requesty.");
+    }
+
+    let response = "";
+    for (const f of fixes) {
+      const icon = f.status === "completed" ? "✅" : f.status === "failed" ? "❌" : f.status === "in_progress" ? "⏳" : "🔧";
+      const date = new Date(f.created_at).toLocaleDateString("cs-CZ");
+      response += `\n${icon} *${f.status}* (${date})\n  ${f.message.slice(0, 100)}\n`;
+      if (f.result) response += `  → ${f.result.slice(0, 100)}\n`;
+    }
+
+    return sendTelegram(chatId, `🔧 *FIX REQUESTY*${response}`);
+  }
+
   // === AI CHAT — fallback to Claude ===
   return handleAiChat(text, chatId);
 }
