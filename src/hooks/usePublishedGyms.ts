@@ -17,6 +17,7 @@ export interface PublicGym {
   logo_url: string | null;
   pricing: GymPricing | null;
   instagram_handle: string | null;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }
