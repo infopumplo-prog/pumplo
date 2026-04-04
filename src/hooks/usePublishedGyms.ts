@@ -33,11 +33,12 @@ export const usePublishedGyms = () => {
 
       if (error) throw error;
 
+      // Sort featured (Premium) gyms first
       return (data || []).map(gym => ({
         ...gym,
         opening_hours: gym.opening_hours as OpeningHours,
         pricing: gym.pricing as unknown as GymPricing | null,
-      })) as PublicGym[];
+      })).sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)) as PublicGym[];
     },
   });
 
