@@ -415,6 +415,58 @@ Odpovídej stručně (max 500 znaků). Používej emoji. Pokud se ptá na data, 
   }
 }
 
+async function handlePhoto(message: any, chatId: string) {
+  try {
+    // Get largest photo version
+    const photo = message.photo[message.photo.length - 1];
+    const caption = (message.caption || "").trim();
+
+    // Get file path from Telegram
+    const fileRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${photo.file_id}`);
+    const fileData = await fileRes.json();
+    if (!fileData.ok) throw new Error("Failed to get file from Telegram");
+
+    const filePath = fileData.result.file_path;
+
+    // Download photo from Telegram
+    const photoRes = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`);
+    const photoBlob = await photoRes.blob();
+    const photoBuffer = new Uint8Array(await photoBlob.arrayBuffer());
+
+    // Upload to Supabase Storage
+    const fileName = `telegram/${Date.now()}_${photo.file_unique_id}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from("gym-assets")
+      .upload(fileName, photoBuffer, { contentType: "image/jpeg" });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage.from("gym-assets").getPublicUrl(fileName);
+    const imageUrl = urlData.publicUrl;
+
+    // If caption starts with "oprav" or "fix", create fix request with image
+    const cmd = caption.toLowerCase();
+    if (cmd.startsWith("oprav ") || cmd.startsWith("fix ")) {
+      const request = caption.replace(/^(oprav|fix)\s+/i, "").trim();
+
+      await supabase.from("remote_fix_requests").insert({
+        message: `${request}\n\nScreenshot: ${imageUrl}`,
+        status: "pending",
+      });
+
+      return sendTelegram(chatId, `🔧 *Fix request vytvořen* (s fotkou)\n\n"${request}"\n\n📸 ${imageUrl}\n\nCloud agent ho zpracuje při příštím běhu.`);
+    }
+
+    // Otherwise, use AI chat with image context
+    const userMessage = caption || "Podívej se na tento screenshot a řekni mi co vidíš.";
+    return handleAiChat(`${userMessage}\n\n[Uživatel přiložil screenshot: ${imageUrl}]`, chatId);
+  } catch (err) {
+    console.error("Photo handling error:", err);
+    return sendTelegram(chatId, "❌ Nepodařilo se zpracovat fotku. Zkus to znovu.");
+  }
+}
+
 serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
@@ -423,7 +475,7 @@ serve(async (req) => {
   try {
     const update = await req.json();
     const message = update.message;
-    if (!message?.text || !message?.chat?.id) {
+    if (!message?.chat?.id) {
       return new Response("OK", { status: 200 });
     }
 
@@ -435,7 +487,16 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    await handleCommand(message.text, chatId);
+    // Handle photo messages
+    if (message.photo && message.photo.length > 0) {
+      await handlePhoto(message, chatId);
+      return new Response("OK", { status: 200 });
+    }
+
+    // Handle text messages
+    if (message.text) {
+      await handleCommand(message.text, chatId);
+    }
   } catch (err) {
     console.error("Bot error:", err);
   }
