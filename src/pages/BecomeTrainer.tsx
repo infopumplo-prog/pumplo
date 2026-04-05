@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, ChevronLeft, Check, Building2, MessageSquare, User, Camera, Plus, X, Phone, Mail, Award } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -32,12 +32,20 @@ interface Certification {
 
 const BecomeTrainer = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Detect invite link
+  const inviteGymId = searchParams.get('gym');
+  const inviteCode = searchParams.get('invite');
+  const hasInvite = !!(inviteGymId && inviteCode);
+
   const [step, setStep] = useState(1);
+  const [inviteGymName, setInviteGymName] = useState<string | null>(null);
+  const [inviteValid, setInviteValid] = useState<boolean | null>(null);
   // Step 1: Profile
   const [photoUrl, setPhotoUrl] = useState<string | null>(profile?.avatar_url || null);
   const [bio, setBio] = useState('');
@@ -52,14 +60,43 @@ const BecomeTrainer = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Step 2: Gym
   const [gyms, setGyms] = useState<Gym[]>([]);
-  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
+  const [selectedGymId, setSelectedGymId] = useState<string | null>(inviteGymId);
   const [isLoadingGyms, setIsLoadingGyms] = useState(false);
   // Step 3: Message
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Validate invite link
   useEffect(() => {
-    if (step === 2) fetchGyms();
+    if (!hasInvite) return;
+    (async () => {
+      // Verify invite code
+      const { data: invite } = await supabase
+        .from('gym_trainer_invites' as any)
+        .select('id, gym_id, used_at, expires_at')
+        .eq('invite_code', inviteCode!)
+        .eq('gym_id', inviteGymId!)
+        .single();
+
+      if (!invite || invite.used_at || new Date(invite.expires_at) < new Date()) {
+        setInviteValid(false);
+        return;
+      }
+
+      // Get gym name
+      const { data: gym } = await supabase
+        .from('gyms')
+        .select('name')
+        .eq('id', inviteGymId!)
+        .single();
+
+      setInviteGymName(gym?.name || null);
+      setInviteValid(true);
+    })();
+  }, [hasInvite, inviteCode, inviteGymId]);
+
+  useEffect(() => {
+    if (step === 2 && !hasInvite) fetchGyms();
   }, [step]);
 
   const fetchGyms = async () => {
@@ -118,6 +155,13 @@ const BecomeTrainer = () => {
       } as any);
       if (reqError) throw reqError;
 
+      // 4. Mark invite as used if applicable
+      if (hasInvite && inviteCode) {
+        await supabase.from('gym_trainer_invites' as any)
+          .update({ used_at: new Date().toISOString(), used_by: user.id } as any)
+          .eq('invite_code', inviteCode);
+      }
+
       toast({ title: 'Žádost odeslána', description: 'Vyčkejte na schválení majitelem posilovny.' });
       navigate('/profile');
     } catch (error: any) {
@@ -131,6 +175,16 @@ const BecomeTrainer = () => {
   const canProceedStep1 = !!photoUrl && bio.trim().length > 0 && specializations.trim().length > 0;
   const canProceedStep2 = selectedGymId !== null;
 
+  // Skip step 2 when invite link is used
+  const goNextStep = () => {
+    if (step === 1 && hasInvite && inviteValid) setStep(3);
+    else setStep(step + 1);
+  };
+  const goPrevStep = () => {
+    if (step === 3 && hasInvite) setStep(1);
+    else setStep(step - 1);
+  };
+
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
   const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
@@ -140,12 +194,16 @@ const BecomeTrainer = () => {
         {/* Header */}
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-lg border-b border-border">
           <div className="flex items-center gap-4 px-4 py-4">
-            <button onClick={() => step > 1 ? setStep(step - 1) : navigate('/profile')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+            <button onClick={() => step > 1 ? goPrevStep() : navigate('/profile')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">Stát se trenérem</h1>
-              <p className="text-sm text-muted-foreground">Krok {step} ze 3</p>
+              <h1 className="text-xl font-bold">
+                {hasInvite && inviteGymName ? `Přidat se k ${inviteGymName}` : 'Stát se trenérem'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Krok {hasInvite ? (step === 1 ? 1 : 2) : step} ze {hasInvite ? 2 : 3}
+              </p>
             </div>
           </div>
           <div className="px-4 pb-3">
@@ -253,7 +311,7 @@ const BecomeTrainer = () => {
               </motion.div>
 
               <motion.div variants={itemVariants}>
-                <Button onClick={() => setStep(2)} disabled={!canProceedStep1} className="w-full" size="lg">
+                <Button onClick={goNextStep} disabled={!canProceedStep1} className="w-full" size="lg">
                   Pokračovat <ChevronRight className="w-5 h-5 ml-1" />
                 </Button>
               </motion.div>
@@ -356,7 +414,7 @@ const BecomeTrainer = () => {
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex gap-3">
-                <Button onClick={() => setStep(2)} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> Zpět</Button>
+                <Button onClick={goPrevStep} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> Zpět</Button>
                 <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1" size="lg">
                   {isSubmitting ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Odesílám...</> : <><Check className="w-5 h-5 mr-1" />Odeslat žádost</>}
                 </Button>
