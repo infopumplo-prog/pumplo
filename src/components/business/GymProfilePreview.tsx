@@ -265,6 +265,7 @@ const GymProfilePreview = ({
           machinesLoading={machinesLoading}
           pricing={'pricing' in gym ? (gym.pricing as GymPricing | null) : null}
           gymId={gym.id}
+          services={(gym as any).services}
         />
       </div>
 

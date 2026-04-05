@@ -42,9 +42,10 @@ interface GymDetailTabsProps {
   machinesLoading: boolean;
   pricing?: GymPricing | null;
   gymId?: string;
+  services?: string[] | null;
 }
 
-const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId }: GymDetailTabsProps) => {
+const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, services }: GymDetailTabsProps) => {
   const [hoursOpen, setHoursOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [machineSearch, setMachineSearch] = useState('');
@@ -141,11 +142,16 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId }: Gym
             )} />
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-2">
-            <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Sun className="w-4 h-4 text-muted-foreground" />
-                <span>Solárium</span>
-              </div>
+            <div className="bg-muted/30 rounded-lg p-4">
+              {services && services.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {services.map((s) => (
+                    <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Žádné služby</p>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>
