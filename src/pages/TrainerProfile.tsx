@@ -256,10 +256,24 @@ const TrainerProfile = () => {
                       </div>
                       <span className="font-medium truncate">{record.gym_name}</span>
                     </div>
-                    <Badge variant={getStatusVariant(record.status)}>
-                      {record.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
-                      {getStatusLabel(record.status)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusVariant(record.status)}>
+                        {record.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                        {getStatusLabel(record.status)}
+                      </Badge>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Opravdu chcete odejít z ${record.gym_name}?`)) return;
+                          await supabase.from('gym_trainers' as any).delete().eq('id', record.id);
+                          await supabase.from('trainer_gym_requests' as any).delete().eq('user_id', user!.id).eq('gym_id', record.gym_id);
+                          setTrainerRecords(prev => prev.filter(r => r.id !== record.id));
+                          toast({ title: 'Odešli jste z posilovny', description: record.gym_name });
+                        }}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        Odejít
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
