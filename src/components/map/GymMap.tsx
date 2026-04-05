@@ -25,8 +25,8 @@ interface GymMapProps {
   mapHandleRef?: React.MutableRefObject<GymMapHandle | null>;
 }
 
-const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isFeatured: boolean = false) => {
-  const borderColor = closingSoon ? '#f59e0b' : isFeatured ? '#FFD700' : 'hsl(var(--primary))';
+const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isFeatured: boolean = false, isClosed: boolean = false) => {
+  const borderColor = isClosed ? '#9ca3af' : closingSoon ? '#f59e0b' : isFeatured ? '#FFD700' : 'hsl(var(--primary))';
   const markerSize = isFeatured ? 52 : 44;
   const featuredGlow = isFeatured ? 'box-shadow: 0 0 12px rgba(255, 215, 0, 0.5), 0 2px 8px rgba(0,0,0,0.2);' : 'box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
   const featuredBadge = isFeatured ? `
@@ -246,20 +246,18 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current.clear();
 
-    // Filter to only open gyms (gyms without hours are shown as open)
-    const openGyms = gyms.filter(gym => {
-      const hours = gym.opening_hours as OpeningHours;
-      if (!hours || Object.keys(hours).length === 0) return true;
-      return isGymCurrentlyOpen(hours);
-    });
+    // Show all gyms — open with color, closed greyed out
+    const visibleGyms = gyms.filter(g => g.latitude && g.longitude);
 
-    // Add new markers
-    openGyms.forEach(gym => {
+    visibleGyms.forEach(gym => {
       const hours = gym.opening_hours as OpeningHours;
-      const closingSoon = isClosingSoon(hours);
-      
+      const hasHours = hours && Object.keys(hours).length > 0;
+      const isOpen = !hasHours || isGymCurrentlyOpen(hours);
+      const closingSoon = hasHours && isClosingSoon(hours);
+
       const marker = L.marker([gym.latitude, gym.longitude], {
-        icon: createGymIcon(gym.logo_url, closingSoon, (gym as any).is_featured ?? false),
+        icon: createGymIcon(gym.logo_url, closingSoon, (gym as any).is_featured ?? false, !isOpen),
+        opacity: isOpen ? 1 : 0.6,
       }).addTo(mapRef.current!);
 
       marker.on('click', () => onGymSelect(gym));
@@ -267,8 +265,8 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
     });
 
     // Fit bounds if we have gyms
-    if (openGyms.length > 0) {
-      const bounds = L.latLngBounds(openGyms.map(g => [g.latitude, g.longitude]));
+    if (visibleGyms.length > 0) {
+      const bounds = L.latLngBounds(visibleGyms.map(g => [g.latitude, g.longitude]));
       if (userLocation) {
         bounds.extend([userLocation.lat, userLocation.lng]);
       }

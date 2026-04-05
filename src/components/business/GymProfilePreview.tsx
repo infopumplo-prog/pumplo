@@ -157,29 +157,35 @@ const GymProfilePreview = ({
 
         {/* Contact info */}
         <div className="flex flex-wrap gap-2">
-          <a
-            href="https://www.eurogym.cz"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            eurogym.cz
-          </a>
-          <a
-            href="mailto:office@eurogym.cz"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            office@eurogym.cz
-          </a>
-          <a
-            href="tel:+420733238238"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            +420 733 238 238
-          </a>
+          {(gym as any).website && (
+            <a
+              href={(gym as any).website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {(gym as any).website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+            </a>
+          )}
+          {(gym as any).contact_email && (
+            <a
+              href={`mailto:${(gym as any).contact_email}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              {(gym as any).contact_email}
+            </a>
+          )}
+          {(gym as any).contact_phone && (
+            <a
+              href={`tel:${(gym as any).contact_phone.replace(/\s/g, '')}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              {(gym as any).contact_phone}
+            </a>
+          )}
           {gym.instagram_handle && (
             <a
               href={`https://instagram.com/${gym.instagram_handle}`}
