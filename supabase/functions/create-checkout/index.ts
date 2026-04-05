@@ -27,8 +27,14 @@ serve(async (req) => {
       );
     }
 
+    // Create Stripe customer first (required for Accounts V2 in test mode)
+    const customer = await stripe.customers.create({
+      metadata: { user_id, gym_name },
+    });
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      customer: customer.id,
       payment_method_types: ["card"],
       line_items: [{ price: price_id, quantity: 1 }],
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
