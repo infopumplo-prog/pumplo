@@ -130,6 +130,9 @@ const BecomeTrainer = () => {
       const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Trenér';
       const specsArray = specializations.split(',').map(s => s.trim()).filter(Boolean);
 
+      // Invite = auto-approve, no invite = pending request
+      const isAutoApproved = hasInvite && inviteValid;
+
       // 1. Insert trainer role
       await supabase.from('user_roles').insert({ user_id: user.id, role: 'trainer' as any }).single();
 
@@ -144,25 +147,30 @@ const BecomeTrainer = () => {
         certifications: certifications.filter(c => c.name),
         pricing: pricing.filter(p => p.name && p.price),
         contact: { phone: phone || undefined, email: email || undefined, instagram: instagram || undefined },
-        status: 'pending',
-        is_active: false,
+        status: isAutoApproved ? 'approved' : 'pending',
+        is_active: isAutoApproved,
       } as any);
       if (trainerError) throw trainerError;
 
-      // 3. Insert request
+      // 3. Insert request (approved immediately if invite)
       const { error: reqError } = await supabase.from('trainer_gym_requests' as any).insert({
-        user_id: user.id, gym_id: selectedGymId, message: message || null, status: 'pending',
+        user_id: user.id, gym_id: selectedGymId, message: message || null,
+        status: isAutoApproved ? 'approved' : 'pending',
+        ...(isAutoApproved ? { resolved_at: new Date().toISOString() } : {}),
       } as any);
       if (reqError) throw reqError;
 
-      // 4. Mark invite as used if applicable
+      // 4. Mark invite as used
       if (hasInvite && inviteCode) {
         await supabase.from('gym_trainer_invites' as any)
           .update({ used_at: new Date().toISOString(), used_by: user.id } as any)
           .eq('invite_code', inviteCode);
       }
 
-      toast({ title: 'Žádost odeslána', description: 'Vyčkejte na schválení majitelem posilovny.' });
+      toast({
+        title: isAutoApproved ? 'Přidáni k posilovně!' : 'Žádost odeslána',
+        description: isAutoApproved ? `Nyní jste trenérem v ${inviteGymName}.` : 'Vyčkejte na schválení majitelem posilovny.',
+      });
       navigate('/profile');
     } catch (error: any) {
       console.error('Trainer registration error:', error);
