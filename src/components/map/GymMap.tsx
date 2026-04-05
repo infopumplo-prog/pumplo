@@ -246,9 +246,10 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current.clear();
 
-    // Filter to only open gyms
+    // Filter to only open gyms (gyms without hours are shown as open)
     const openGyms = gyms.filter(gym => {
       const hours = gym.opening_hours as OpeningHours;
+      if (!hours || Object.keys(hours).length === 0) return true;
       return isGymCurrentlyOpen(hours);
     });
 
