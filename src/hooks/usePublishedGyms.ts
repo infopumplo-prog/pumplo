@@ -21,7 +21,6 @@ export interface PublicGym {
   contact_email: string | null;
   contact_phone: string | null;
   services: string[] | null;
-  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,7 +41,7 @@ export const usePublishedGyms = () => {
         ...gym,
         opening_hours: gym.opening_hours as OpeningHours,
         pricing: gym.pricing as unknown as GymPricing | null,
-      })).sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)) as PublicGym[];
+      })) as PublicGym[];
     },
   });
 

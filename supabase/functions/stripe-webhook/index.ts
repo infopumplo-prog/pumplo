@@ -293,4 +293,36 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     from_plan_id: oldPlan,
     to_plan_id: planInfo.plan_id,
   });
+
+  // On downgrade: unpublish gym if it exceeds new plan limits
+  if (eventType === "downgraded") {
+    const { data: newPlan } = await supabase
+      .from("subscription_plans")
+      .select("limits")
+      .eq("id", planInfo.plan_id)
+      .single();
+
+    if (newPlan?.limits) {
+      const limits = newPlan.limits as Record<string, number | boolean | string>;
+      const maxMachines = typeof limits.max_machines === "number" ? limits.max_machines : -1;
+      const maxPhotos = typeof limits.max_photos === "number" ? limits.max_photos : -1;
+      const maxTrainers = typeof limits.max_trainers === "number" ? limits.max_trainers : -1;
+
+      const [machines, photos, trainers] = await Promise.all([
+        maxMachines !== -1 ? supabase.from("gym_machines").select("id", { count: "exact", head: true }).eq("gym_id", gymSub.gym_id) : null,
+        maxPhotos !== -1 ? supabase.from("gym_photos").select("id", { count: "exact", head: true }).eq("gym_id", gymSub.gym_id) : null,
+        maxTrainers !== -1 ? supabase.from("gym_trainers").select("id", { count: "exact", head: true }).eq("gym_id", gymSub.gym_id).eq("is_active", true) : null,
+      ]);
+
+      const overLimit =
+        (maxMachines !== -1 && (machines?.count ?? 0) > maxMachines) ||
+        (maxPhotos !== -1 && (photos?.count ?? 0) > maxPhotos) ||
+        (maxTrainers !== -1 && (trainers?.count ?? 0) > maxTrainers);
+
+      if (overLimit) {
+        await supabase.from("gyms").update({ is_published: false }).eq("id", gymSub.gym_id);
+        console.log(`Gym ${gymSub.gym_id} unpublished after downgrade — exceeds ${planInfo.plan_id} limits`);
+      }
+    }
+  }
 }

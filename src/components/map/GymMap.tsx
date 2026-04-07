@@ -25,25 +25,9 @@ interface GymMapProps {
   mapHandleRef?: React.MutableRefObject<GymMapHandle | null>;
 }
 
-const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isFeatured: boolean = false, isClosed: boolean = false) => {
-  const borderColor = isClosed ? '#9ca3af' : closingSoon ? '#f59e0b' : isFeatured ? '#FFD700' : 'hsl(var(--primary))';
-  const markerSize = isFeatured ? 52 : 44;
-  const featuredGlow = isFeatured ? 'box-shadow: 0 0 12px rgba(255, 215, 0, 0.5), 0 2px 8px rgba(0,0,0,0.2);' : 'box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
-  const featuredBadge = isFeatured ? `
-    <div style="
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #FFD700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-    ">⭐</div>
-  ` : '';
+const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isClosed: boolean = false) => {
+  const borderColor = isClosed ? '#9ca3af' : closingSoon ? '#f59e0b' : 'hsl(var(--primary))';
+  const markerSize = 44;
   const warningBadge = closingSoon ? `
     <div style="
       position: absolute;
@@ -75,9 +59,9 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isF
           width: ${markerSize}px;
           height: ${markerSize}px;
           border-radius: 50%;
-          border: ${isFeatured ? 4 : 3}px solid ${borderColor};
+          border: 3px solid ${borderColor};
           background: white;
-          ${featuredGlow}
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
           overflow: hidden;
           display: flex;
           align-items: center;
@@ -85,7 +69,6 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isF
         ">
           <img src="${logoUrl}" style="width: 75%; height: 75%; object-fit: contain;" />
           ${warningBadge}
-          ${featuredBadge}
         </div>
       `,
       iconSize: [markerSize, markerSize],
@@ -101,9 +84,9 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isF
         width: ${markerSize}px;
         height: ${markerSize}px;
         border-radius: 50%;
-        border: ${isFeatured ? 4 : 3}px solid ${borderColor};
+        border: 3px solid ${borderColor};
         background: hsl(var(--primary) / 0.1);
-        ${featuredGlow}
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -113,7 +96,6 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isF
           <circle cx="12" cy="10" r="3"/>
         </svg>
         ${warningBadge}
-        ${featuredBadge}
       </div>
     `,
     iconSize: [markerSize, markerSize],
@@ -256,7 +238,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
       const closingSoon = hasHours && isClosingSoon(hours);
 
       const marker = L.marker([gym.latitude, gym.longitude], {
-        icon: createGymIcon(gym.logo_url, closingSoon, (gym as any).is_featured ?? false, !isOpen),
+        icon: createGymIcon(gym.logo_url, closingSoon, !isOpen),
         opacity: isOpen ? 1 : 0.6,
       }).addTo(mapRef.current!);
 
