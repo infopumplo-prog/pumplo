@@ -48,6 +48,7 @@ export interface GymMachine {
   quantity: number;
   max_weight_kg: number | null;
   bench_configs: string[] | null;
+  short_code: string;
   machine?: {
     id: string;
     name: string;
