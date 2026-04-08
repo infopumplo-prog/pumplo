@@ -13,8 +13,9 @@ ADD COLUMN IF NOT EXISTS services TEXT[] DEFAULT '{}';
 -- 2. Recreate public_gyms view — only gyms with active subscription
 DROP VIEW IF EXISTS public.public_gyms;
 
-CREATE VIEW public.public_gyms
-WITH (security_invoker=on) AS
+-- NOTE: no security_invoker — view must bypass RLS on gym_subscriptions
+-- so regular members can see published gyms with active subscriptions
+CREATE VIEW public.public_gyms AS
 SELECT
   g.id,
   g.name,
