@@ -13,6 +13,7 @@ const supabase = createClient(
 );
 
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 // Map Stripe price IDs to plan IDs
 const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
@@ -30,7 +31,13 @@ serve(async (req) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, WEBHOOK_SECRET);
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      sig,
+      WEBHOOK_SECRET,
+      undefined,
+      cryptoProvider
+    );
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return new Response("Webhook Error", { status: 400 });
