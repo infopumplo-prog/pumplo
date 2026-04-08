@@ -24,7 +24,7 @@ interface Stat { icon: any; color: string; value: string; unit: string }
 // ===== TEMPLATES =====
 
 // 1. Dark Blur
-const T_DarkBlur = ({ photo, title, gym, date, exCount, reps, stats, transform }: TProps) => (
+const T_DarkBlur = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" />
     <Overlay photo={photo} />
@@ -38,7 +38,7 @@ const T_DarkBlur = ({ photo, title, gym, date, exCount, reps, stats, transform }
 );
 
 // 2. Minimal Clean
-const T_Minimal = ({ photo, title, gym, date, exCount, reps, stats, transform }: TProps) => (
+const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
   <>
     <BG photo={photo} gradient="#000" />
     {photo && <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} />}
@@ -70,7 +70,7 @@ const T_Minimal = ({ photo, title, gym, date, exCount, reps, stats, transform }:
 );
 
 // 3. Bold Big Number
-const T_Bold = ({ photo, title, gym, date, exCount, reps, stats, transform }: TProps) => (
+const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #0c0c0c 0%, #1c1c1c 100%)" />
     {photo && <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.8) 100%)' }} />}
@@ -101,7 +101,7 @@ const T_Bold = ({ photo, title, gym, date, exCount, reps, stats, transform }: TP
 );
 
 // 4. Exercise List
-const T_ExerciseList = ({ photo, title, gym, date, exercises, transform }: TProps & { exercises: ExerciseDetail[] }) => (
+const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }: TProps & { exercises: ExerciseDetail[] }) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #0d1117 0%, #161b22 100%)" />
     {photo && <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} />}
@@ -141,7 +141,7 @@ const T_ExerciseList = ({ photo, title, gym, date, exercises, transform }: TProp
 );
 
 // 5. Single Exercise Spotlight
-const T_SingleExercise = ({ photo, gym, date, exercises, transform, selectedEx, onSelectEx }: TProps & { exercises: ExerciseDetail[]; selectedEx: number; onSelectEx: (i: number) => void }) => {
+const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selectedEx, onSelectEx }: TProps & { exercises: ExerciseDetail[]; selectedEx: number; onSelectEx: (i: number) => void }) => {
   const ex = exercises[selectedEx] || exercises[0];
   if (!ex) return <BG photo={photo} gradient="#000" />;
   const maxW = Math.max(...ex.sets.map(s => s.weight), 0);
