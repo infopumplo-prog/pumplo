@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -45,6 +46,8 @@ import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
+
+const StationPage = lazy(() => import('./pages/StationPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +140,15 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/install" element={<Install />} />
+    <Route path="/s/:code" element={
+      <Suspense fallback={
+        <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+        </div>
+      }>
+        <StationPage />
+      </Suspense>
+    } />
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
