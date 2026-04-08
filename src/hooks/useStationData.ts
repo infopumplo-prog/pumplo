@@ -57,8 +57,7 @@ export const useStationData = (shortCode: string | undefined) => {
       const { data: exercises } = await supabase
         .from('exercises')
         .select('id, name, video_path, description, setup_instructions, common_mistakes, tips, primary_muscles, secondary_muscles, difficulty, category, equipment_type')
-        .eq('machine_id', gymMachine.machine_id)
-        .eq('allowed_phase', 'main');
+        .eq('machine_id', gymMachine.machine_id);
 
       const machine = gymMachine.machines as any;
 
