@@ -388,6 +388,7 @@ export type Database = {
           machine_id: string
           max_weight_kg: number | null
           quantity: number
+          short_code: string
           updated_at: string
         }
         Insert: {
@@ -398,6 +399,7 @@ export type Database = {
           machine_id: string
           max_weight_kg?: number | null
           quantity?: number
+          short_code?: string
           updated_at?: string
         }
         Update: {
@@ -408,6 +410,7 @@ export type Database = {
           machine_id?: string
           max_weight_kg?: number | null
           quantity?: number
+          short_code?: string
           updated_at?: string
         }
         Relationships: [
