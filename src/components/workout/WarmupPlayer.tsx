@@ -47,9 +47,9 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const hasInfo = !!(currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
 
   const currentExercise = exercises[currentIndex];
+  const hasInfo = !!(currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
   const totalExercises = exercises.length;
   const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
 
