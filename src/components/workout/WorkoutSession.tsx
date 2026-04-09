@@ -370,15 +370,14 @@ export const WorkoutSession = ({
 
   const [finished, setFinished] = useState(false);
 
-  const handleFinishWorkout = useCallback(async () => {
+  const handleFinishWorkout = useCallback(() => {
     const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
       .filter((r): r is ExerciseResult => r !== undefined);
 
     if (skipNavigateOnComplete) {
-      // Hide this component first, then notify parent
+      // Set finished + call parent in same synchronous tick
       setFinished(true);
-      // Small delay so parent state updates take effect
-      await onComplete(orderedResults);
+      onComplete(orderedResults);
     } else {
       onComplete(orderedResults);
       navigate('/');
