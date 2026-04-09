@@ -29,7 +29,6 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
-import { CooldownPlayer } from '@/components/workout/CooldownPlayer';
 import { getTrainingFocus, selectWarmupExercises, selectCooldownExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -141,7 +140,6 @@ const Training = () => {
   const [cooldownExercises, setCooldownExercises] = useState<WarmupExercise[]>([]);
   const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false);
   const [showWarmup, setShowWarmup] = useState(false);
-  const [showCooldown, setShowCooldown] = useState(false);
   
   // Notification onboarding
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false);
@@ -1123,40 +1121,8 @@ const Training = () => {
     handleGenerateDayExercises(gymId, true);
   };
 
-  const handleWorkoutComplete = () => {
-    // Always show cooldown phase — set both states synchronously
+  const handleWorkoutComplete = async () => {
     setIsWorkoutActive(false);
-    setShowCooldown(true);
-
-    // If cooldown not pre-generated, fetch now (component will show loading)
-    if (cooldownExercises.length === 0) {
-      supabase
-        .from('exercises')
-        .select('id, name, primary_muscles, video_path, body_region')
-        .eq('allowed_phase', 'cooldown')
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setCooldownExercises(data.slice(0, 6).map(e => ({
-              id: e.id,
-              name: e.name,
-              duration: 30,
-              videoPath: e.video_path,
-              primaryMuscles: (e.primary_muscles as string[]) || [],
-            })));
-          } else {
-            // No cooldown available, skip to finish
-            setShowCooldown(false);
-            finishWorkout();
-          }
-        })
-        .catch(() => {
-          setShowCooldown(false);
-          finishWorkout();
-        });
-    }
-  };
-
-  const finishWorkout = async () => {
     setGeneratedExercises([]);
     setExtendedExercises([]);
     setCooldownExercises([]);
@@ -1165,7 +1131,6 @@ const Training = () => {
     if (!isBonusWorkout) {
       await advanceToNextDay();
 
-      // Update streak
       const { newStreak, isNewRecord, justActivated } = await updateStreakOnWorkoutComplete();
 
       if (justActivated) {
@@ -1182,17 +1147,6 @@ const Training = () => {
     setIsBonusWorkout(false);
     await refetchProfile();
     refetchPlan();
-  };
-
-  const handleCooldownComplete = async () => {
-    setShowCooldown(false);
-    await finishWorkout();
-  };
-
-  const handleCooldownSkip = async () => {
-    setShowCooldown(false);
-    toast.info('Protažení přeskočeno');
-    await finishWorkout();
   };
 
   const handleCancelPlan = async () => {
@@ -1497,25 +1451,6 @@ const Training = () => {
     );
   }
 
-  // Cooldown phase (after main workout)
-  if (showCooldown) {
-    if (cooldownExercises.length > 0) {
-      return (
-        <CooldownPlayer
-          exercises={cooldownExercises}
-          onComplete={handleCooldownComplete}
-          onSkipAll={handleCooldownSkip}
-        />
-      );
-    }
-    // Loading cooldown exercises
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-      </div>
-    );
-  }
-
   // Active workout view
   if (isWorkoutActive && (generatedExercises.length > 0 || extendedExercises.length > 0)) {
     const workoutExercises = extendedExercises.length > 0 ? extendedExercises : generatedExercises;
@@ -1529,7 +1464,7 @@ const Training = () => {
         gymId={selectedWorkoutGymId || profile?.selected_gym_id || ''}
         planId={plan?.id || null}
         isBonus={isBonusWorkout}
-        skipNavigateOnComplete={true}
+        cooldownExercises={cooldownExercises}
         onComplete={handleWorkoutComplete}
         onCancel={() => {
           setIsWorkoutActive(false);

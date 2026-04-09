@@ -15,6 +15,7 @@ import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { CompactWorkoutView } from './CompactWorkoutView';
 import { toast } from 'sonner';
+import { CooldownPlayer } from './CooldownPlayer';
 
 interface SetData {
   completed: boolean;
@@ -43,6 +44,7 @@ interface WorkoutSessionProps {
   initialSetIndex?: number;
   initialCurrentExerciseSets?: SetData[];
   skipNavigateOnComplete?: boolean;
+  cooldownExercises?: import('./WarmupPlayer').WarmupExercise[];
 }
 
 // Per-category rest times (seconds) per goal
@@ -110,6 +112,7 @@ export const WorkoutSession = ({
   initialSetIndex = 0,
   initialCurrentExerciseSets,
   skipNavigateOnComplete = false,
+  cooldownExercises = [],
 }: WorkoutSessionProps) => {
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
@@ -123,6 +126,17 @@ export const WorkoutSession = ({
     return map;
   });
   const [showSummary, setShowSummary] = useState(false);
+  const [showCooldown, setShowCooldown] = useState(false);
+  const [cooldownDone, setCooldownDone] = useState(false);
+
+  // Show cooldown first (if available), then summary
+  const triggerPostWorkout = useCallback(() => {
+    if (cooldownExercises.length > 0 && !cooldownDone) {
+      setShowCooldown(true);
+    } else {
+      triggerPostWorkout();
+    }
+  }, [cooldownExercises.length, cooldownDone]);
   const [workoutStartTime] = useState(new Date());
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -293,7 +307,7 @@ export const WorkoutSession = ({
       setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
       // Workout complete
-      setShowSummary(true);
+      triggerPostWorkout();
     }
   }, [currentExercise, currentExerciseIndex, liveExercises.length, goalId, liveExercises]);
 
@@ -318,7 +332,7 @@ export const WorkoutSession = ({
       setCurrentExerciseIndex(prev => prev + 1);
       setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
-      setShowSummary(true);
+      triggerPostWorkout();
     }
   }, [currentExercise, currentExerciseIndex, liveExercises.length]);
 
@@ -368,21 +382,12 @@ export const WorkoutSession = ({
     }
   }, [showSummary, workoutSaved]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [finished, setFinished] = useState(false);
-
   const handleFinishWorkout = useCallback(() => {
     const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
       .filter((r): r is ExerciseResult => r !== undefined);
-
-    if (skipNavigateOnComplete) {
-      // Set finished + call parent in same synchronous tick
-      setFinished(true);
-      onComplete(orderedResults);
-    } else {
-      onComplete(orderedResults);
-      navigate('/');
-    }
-  }, [navigate, liveExercises, resultsByIndex, onComplete, skipNavigateOnComplete]);
+    onComplete(orderedResults);
+    navigate('/');
+  }, [navigate, liveExercises, resultsByIndex, onComplete]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
@@ -437,7 +442,7 @@ export const WorkoutSession = ({
             return sets && sets.every(s => s.completed);
           });
           if (allExercisesDone) {
-            setShowSummary(true);
+            triggerPostWorkout();
           }
         }
       }
@@ -451,9 +456,24 @@ export const WorkoutSession = ({
     setHighestIndexReached(prev => Math.max(prev, index));
   }, []);
 
-  // Hide after finish (let parent show cooldown)
-  if (finished) {
-    return null;
+  // Cooldown phase (between last exercise and summary)
+  if (showCooldown) {
+    return (
+      <CooldownPlayer
+        exercises={cooldownExercises}
+        onComplete={() => {
+          setShowCooldown(false);
+          setCooldownDone(true);
+          setShowSummary(true);
+        }}
+        onSkipAll={() => {
+          setShowCooldown(false);
+          setCooldownDone(true);
+          setShowSummary(true);
+          toast.info('Protažení přeskočeno');
+        }}
+      />
+    );
   }
 
   // Summary / Share screen
