@@ -127,14 +127,7 @@ export const selectCooldownExercises = (
 
   const selected: WarmupExercise[] = [];
   for (let i = 0; i < 6 && i < scored.length; i++) {
-    const ex = scored[i].exercise;
-    selected.push({
-      id: ex.id,
-      name: ex.name,
-      duration: 30,
-      videoPath: ex.video_path,
-      primaryMuscles: ex.primary_muscles ?? [],
-    });
+    selected.push(toWarmupExercise(scored[i].exercise));
   }
   return selected;
 };
