@@ -29,6 +29,8 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
+import { CooldownPlayer } from '@/components/workout/CooldownPlayer';
+import { getTrainingFocus, selectTimedExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
@@ -136,8 +138,10 @@ const Training = () => {
   // Workout preview and warmup state
   const [showWorkoutPreview, setShowWorkoutPreview] = useState(false);
   const [warmupExercises, setWarmupExercises] = useState<WarmupExercise[]>([]);
+  const [cooldownExercises, setCooldownExercises] = useState<WarmupExercise[]>([]);
   const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false);
   const [showWarmup, setShowWarmup] = useState(false);
+  const [showCooldown, setShowCooldown] = useState(false);
   
   // Notification onboarding
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false);
@@ -946,97 +950,55 @@ const Training = () => {
     navigate('/map');
   };
   
-  // Generate warmup exercises based on main workout's target muscles
-  const generateWarmupExercises = useCallback(async (mainExercises: WorkoutExercise[]): Promise<WarmupExercise[]> => {
-    // 1. Collect target muscles from main exercises
-    const targetMuscles = new Set<string>();
-    
+  // Generate warmup or cooldown exercises based on split type and muscles
+  const generateTimedExercises = useCallback(async (
+    mainExercises: WorkoutExercise[],
+    phase: 'warmup' | 'cooldown'
+  ): Promise<WarmupExercise[]> => {
+    // 1. Determine training focus from split type and day
+    const splitType = plan?.splitType || 'full_body';
+    const dayLetter = plan?.currentDayLetter || 'A';
+    const focus = getTrainingFocus(splitType, dayLetter);
+
+    // 2. Collect target muscles from main exercises
+    const targetMuscles: string[] = [];
     for (const ex of mainExercises) {
       if (ex.exerciseId) {
         const { data } = await supabase
           .from('exercises')
-          .select('primary_muscles')
+          .select('primary_muscles, secondary_muscles')
           .eq('id', ex.exerciseId)
           .single();
-        
-        if (data?.primary_muscles) {
-          data.primary_muscles.forEach((m: string) => targetMuscles.add(m));
-        }
+        if (data?.primary_muscles) targetMuscles.push(...data.primary_muscles);
+        if (data?.secondary_muscles) targetMuscles.push(...data.secondary_muscles);
       }
     }
-    
-    // 2. Fetch warmup exercises (bodyweight only - no machines)
-    const { data: warmupExercisesData } = await supabase
+
+    // 3. Fetch exercises for the given phase with body_region
+    const { data: exercisesData } = await supabase
       .from('exercises')
-      .select('id, name, primary_muscles, video_path')
-      .eq('allowed_phase', 'warmup')
-      .is('machine_id', null);
-    
-    if (!warmupExercisesData || warmupExercisesData.length === 0) {
-      // Fallback: no warmup exercises in DB
-      return [];
-    }
-    
-    // 3. Select warmups that cover target muscles
-    const selectedWarmups: WarmupExercise[] = [];
-    const coveredMuscles = new Set<string>();
-    
-    // Sort by how many target muscles each warmup covers
-    const sorted = [...warmupExercisesData].sort((a, b) => {
-      const aScore = a.primary_muscles?.filter((m: string) => targetMuscles.has(m)).length || 0;
-      const bScore = b.primary_muscles?.filter((m: string) => targetMuscles.has(m)).length || 0;
-      return bScore - aScore;
-    });
-    
-    for (const warmup of sorted) {
-      if (selectedWarmups.length >= 6) break;
-      
-      const coversNewMuscle = warmup.primary_muscles?.some((m: string) => 
-        targetMuscles.has(m) && !coveredMuscles.has(m)
-      );
-      
-      // Add if covers new muscle OR we don't have enough warmups yet
-      if (coversNewMuscle || selectedWarmups.length < 4) {
-        selectedWarmups.push({
-          id: warmup.id,
-          name: warmup.name,
-          duration: 30, // 30 seconds per warmup
-          videoPath: warmup.video_path,
-          primaryMuscles: warmup.primary_muscles || []
-        });
-        warmup.primary_muscles?.forEach((m: string) => coveredMuscles.add(m));
-      }
-    }
-    
-    // 4. Fallback: if less than 4, add random warmups
-    if (selectedWarmups.length < 4) {
-      const remaining = warmupExercisesData.filter(w => 
-        !selectedWarmups.find(s => s.id === w.id)
-      );
-      const shuffled = remaining.sort(() => Math.random() - 0.5);
-      
-      while (selectedWarmups.length < 4 && shuffled.length > 0) {
-        const w = shuffled.pop()!;
-        selectedWarmups.push({
-          id: w.id,
-          name: w.name,
-          duration: 30,
-          videoPath: w.video_path,
-          primaryMuscles: w.primary_muscles || []
-        });
-      }
-    }
-    
-    return selectedWarmups;
-  }, []);
+      .select('id, name, primary_muscles, video_path, body_region')
+      .eq('allowed_phase', phase);
+
+    if (!exercisesData || exercisesData.length === 0) return [];
+
+    // 4. Use selection helper to pick 6 exercises
+    return selectTimedExercises(exercisesData as any, focus, targetMuscles);
+  }, [plan?.splitType, plan?.currentDayLetter]);
   
   // Handle starting warmup from preview
   const handleStartWarmup = useCallback(async () => {
     setIsGeneratingWarmup(true);
     
     try {
-      const warmups = await generateWarmupExercises(generatedExercises);
-      
+      const [warmups, cooldowns] = await Promise.all([
+        generateTimedExercises(generatedExercises, 'warmup'),
+        generateTimedExercises(generatedExercises, 'cooldown'),
+      ]);
+
+      // Pre-store cooldown for after workout
+      setCooldownExercises(cooldowns);
+
       if (warmups.length === 0) {
         // No warmup exercises available, go straight to workout
         setShowWorkoutPreview(false);
@@ -1055,7 +1017,7 @@ const Training = () => {
     } finally {
       setIsGeneratingWarmup(false);
     }
-  }, [generatedExercises, generateWarmupExercises]);
+  }, [generatedExercises, generateTimedExercises]);
   
   // Handle warmup completion
   const handleWarmupComplete = useCallback(() => {
@@ -1159,16 +1121,28 @@ const Training = () => {
 
   const handleWorkoutComplete = async () => {
     setIsWorkoutActive(false);
+
+    // Show cooldown if available
+    if (cooldownExercises.length > 0) {
+      setShowCooldown(true);
+      return; // Don't finish yet — cooldown will call finishWorkout
+    }
+
+    await finishWorkout();
+  };
+
+  const finishWorkout = async () => {
     setGeneratedExercises([]);
     setExtendedExercises([]);
-    
+    setCooldownExercises([]);
+
     // Only advance day and update streak if not a bonus workout
     if (!isBonusWorkout) {
       await advanceToNextDay();
-      
+
       // Update streak
       const { newStreak, isNewRecord, justActivated } = await updateStreakOnWorkoutComplete();
-      
+
       if (justActivated) {
         toast.success('🔥 Streak aktivován! Máš 3 tréninky za sebou!', {
           duration: 5000
@@ -1179,11 +1153,22 @@ const Training = () => {
         });
       }
     }
-    
+
     setIsBonusWorkout(false);
     await refetchProfile();
     refetchPlan();
   };
+
+  const handleCooldownComplete = useCallback(async () => {
+    setShowCooldown(false);
+    await finishWorkout();
+  }, []);
+
+  const handleCooldownSkip = useCallback(async () => {
+    setShowCooldown(false);
+    toast.info('Protažení přeskočeno');
+    await finishWorkout();
+  }, []);
 
   const handleCancelPlan = async () => {
     if (!plan) return;
@@ -1483,6 +1468,17 @@ const Training = () => {
           setGeneratedExercises([]);
         }}
         initialIndex={initialWarmupIndex}
+      />
+    );
+  }
+
+  // Cooldown phase (after main workout)
+  if (showCooldown && cooldownExercises.length > 0) {
+    return (
+      <CooldownPlayer
+        exercises={cooldownExercises}
+        onComplete={handleCooldownComplete}
+        onSkipAll={handleCooldownSkip}
       />
     );
   }

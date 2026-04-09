@@ -292,6 +292,7 @@ export type Database = {
         Row: {
           allowed_phase: string | null
           banned_injuries: string[] | null
+          body_region: string | null
           category: string
           common_mistakes: string | null
           created_at: string
@@ -318,6 +319,7 @@ export type Database = {
         Insert: {
           allowed_phase?: string | null
           banned_injuries?: string[] | null
+          body_region?: string | null
           category: string
           common_mistakes?: string | null
           created_at?: string
@@ -344,6 +346,7 @@ export type Database = {
         Update: {
           allowed_phase?: string | null
           banned_injuries?: string[] | null
+          body_region?: string | null
           category?: string
           common_mistakes?: string | null
           created_at?: string
