@@ -41,6 +41,10 @@ interface Exercise {
   allowed_phase: string | null;
   exercise_with_weights: boolean | null;
   required_bench_config: string | null;
+  description: string | null;
+  setup_instructions: string | null;
+  common_mistakes: string | null;
+  tips: string | null;
   created_at: string;
 }
 
@@ -120,6 +124,10 @@ const ExercisesManagement = () => {
     allowed_phase: 'main',
     exercise_with_weights: true,
     required_bench_config: '',
+    description: '',
+    setup_instructions: '',
+    common_mistakes: '',
+    tips: '',
   });
 
   const fetchData = async () => {
@@ -214,6 +222,10 @@ const ExercisesManagement = () => {
       allowed_phase: 'main',
       exercise_with_weights: true,
       required_bench_config: '',
+      description: '',
+      setup_instructions: '',
+      common_mistakes: '',
+      tips: '',
     });
     setDrawerOpen(true);
   };
@@ -234,6 +246,10 @@ const ExercisesManagement = () => {
       allowed_phase: exercise.allowed_phase || 'main',
       exercise_with_weights: exercise.exercise_with_weights ?? true,
       required_bench_config: exercise.required_bench_config || '',
+      description: exercise.description || '',
+      setup_instructions: exercise.setup_instructions || '',
+      common_mistakes: exercise.common_mistakes || '',
+      tips: exercise.tips || '',
     });
     setDrawerOpen(true);
   };
@@ -258,6 +274,10 @@ const ExercisesManagement = () => {
       allowed_phase: form.allowed_phase,
       exercise_with_weights: form.exercise_with_weights,
       required_bench_config: form.required_bench_config || null,
+      description: form.description || null,
+      setup_instructions: form.setup_instructions || null,
+      common_mistakes: form.common_mistakes || null,
+      tips: form.tips || null,
     };
 
     if (editingExercise) {
@@ -429,6 +449,46 @@ const ExercisesManagement = () => {
                 />
               </div>
               
+              <div>
+                <Label>Popis</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Popis cviku..."
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label>Nastavení stroje / pozice</Label>
+                <Textarea
+                  value={form.setup_instructions}
+                  onChange={(e) => setForm({ ...form, setup_instructions: e.target.value })}
+                  placeholder="Jak nastavit stroj, sedačku, opěrku..."
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label>Časté chyby</Label>
+                <Textarea
+                  value={form.common_mistakes}
+                  onChange={(e) => setForm({ ...form, common_mistakes: e.target.value })}
+                  placeholder="Na co si dát pozor..."
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label>Tipy</Label>
+                <Textarea
+                  value={form.tips}
+                  onChange={(e) => setForm({ ...form, tips: e.target.value })}
+                  placeholder="Tipy pro správné provedení..."
+                  rows={2}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Kategória</Label>

@@ -293,7 +293,9 @@ export type Database = {
           allowed_phase: string | null
           banned_injuries: string[] | null
           category: string
+          common_mistakes: string | null
           created_at: string
+          description: string | null
           difficulty: number
           equipment_type: string | null
           exercise_with_weights: boolean | null
@@ -306,8 +308,10 @@ export type Database = {
           required_bench_config: string | null
           secondary_machine_id: string | null
           secondary_muscles: string[]
+          setup_instructions: string | null
           slot_type: string | null
           stability_rating: number | null
+          tips: string | null
           updated_at: string
           video_path: string | null
         }
@@ -315,7 +319,9 @@ export type Database = {
           allowed_phase?: string | null
           banned_injuries?: string[] | null
           category: string
+          common_mistakes?: string | null
           created_at?: string
+          description?: string | null
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
@@ -328,8 +334,10 @@ export type Database = {
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          setup_instructions?: string | null
           slot_type?: string | null
           stability_rating?: number | null
+          tips?: string | null
           updated_at?: string
           video_path?: string | null
         }
@@ -337,7 +345,9 @@ export type Database = {
           allowed_phase?: string | null
           banned_injuries?: string[] | null
           category?: string
+          common_mistakes?: string | null
           created_at?: string
+          description?: string | null
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
@@ -350,8 +360,10 @@ export type Database = {
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          setup_instructions?: string | null
           slot_type?: string | null
           stability_rating?: number | null
+          tips?: string | null
           updated_at?: string
           video_path?: string | null
         }
