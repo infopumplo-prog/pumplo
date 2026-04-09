@@ -1512,6 +1512,7 @@ const Training = () => {
         gymId={selectedWorkoutGymId || profile?.selected_gym_id || ''}
         planId={plan?.id || null}
         isBonus={isBonusWorkout}
+        skipNavigateOnComplete={true}
         onComplete={handleWorkoutComplete}
         onCancel={() => {
           setIsWorkoutActive(false);

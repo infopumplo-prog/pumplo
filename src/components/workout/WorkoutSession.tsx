@@ -42,6 +42,7 @@ interface WorkoutSessionProps {
   initialResults?: ExerciseResult[];
   initialSetIndex?: number;
   initialCurrentExerciseSets?: SetData[];
+  skipNavigateOnComplete?: boolean;
 }
 
 // Per-category rest times (seconds) per goal
@@ -108,6 +109,7 @@ export const WorkoutSession = ({
   initialResults = [],
   initialSetIndex = 0,
   initialCurrentExerciseSets,
+  skipNavigateOnComplete = false,
 }: WorkoutSessionProps) => {
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
@@ -370,8 +372,10 @@ export const WorkoutSession = ({
     const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
       .filter((r): r is ExerciseResult => r !== undefined);
     onComplete(orderedResults);
-    navigate('/');
-  }, [navigate, liveExercises, resultsByIndex, onComplete]);
+    if (!skipNavigateOnComplete) {
+      navigate('/');
+    }
+  }, [navigate, liveExercises, resultsByIndex, onComplete, skipNavigateOnComplete]);
 
   // Calculate workout stats
   const totalDuration = Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60);
