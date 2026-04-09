@@ -133,8 +133,7 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         )}
 
         {/* Bottom gradient overlay for text readability — always visible */}
-        <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ height: '60%', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 40%, transparent 100%)' }} />
 
         {/* Top gradient for info button */}
         <div className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
@@ -184,8 +183,8 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}> / {exercises.length}</span>
         </div>
 
-        {/* Exercise name overlay at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+        {/* Exercise name overlay at bottom — pb-20 to stay above CTA */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-20">
           <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
             {currentExercise.name}
           </p>
