@@ -55,7 +55,7 @@ const StationPage = () => {
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#000' }}>
       <StationBanner gymName={data.gymName} />
-      <div className="flex-1 mt-12 mb-16">
+      <div className="flex-1">
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} />
       </div>
       <StationCTA />
