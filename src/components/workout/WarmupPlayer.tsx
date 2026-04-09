@@ -1,10 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, Flame, Pause, Play, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 
@@ -39,262 +34,191 @@ interface WarmupPlayerProps {
 
 export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd, initialIndex = 0 }: WarmupPlayerProps) => {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.duration || 30);
+  const [timeRemaining, setTimeRemaining] = useState(exercises[initialIndex]?.duration || 30);
   const [isPaused, setIsPaused] = useState(false);
-  const [isWaitingForTap, setIsWaitingForTap] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState(false);
 
   const currentExercise = exercises[currentIndex];
   const totalExercises = exercises.length;
-  const progressPercentage = ((currentIndex + 1) / totalExercises) * 100;
+  const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
 
-  // Use video_path directly (it's a full public URL)
+  // Countdown timer
   useEffect(() => {
-    const fetchVideoUrl = async () => {
-      if (!currentExercise?.videoPath) {
-        setVideoUrl(null);
-        return;
-      }
-
-      // video_path is already a full public URL
-      setVideoUrl(currentExercise.videoPath);
-    };
-
-    fetchVideoUrl();
-  }, [currentExercise?.videoPath]);
-
-  // Countdown timer - stops when reaches 0 and waits for tap
-  useEffect(() => {
-    if (isPaused || !currentExercise || isWaitingForTap) return;
+    if (isPaused || !currentExercise) return;
 
     const interval = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          setIsWaitingForTap(true);
-          return 0;
+          // Auto-advance to next exercise
+          if (currentIndex < exercises.length - 1) {
+            setCurrentIndex(i => i + 1);
+            setVideoError(false);
+            return exercises[currentIndex + 1]?.duration || 30;
+          } else {
+            onComplete();
+            return 0;
+          }
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentIndex, isPaused, currentExercise, isWaitingForTap]);
+  }, [currentIndex, isPaused, currentExercise]);
 
-  // Handle advancing to next exercise (called on tap)
-  const handleAdvance = useCallback(() => {
-    if (currentIndex < exercises.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setTimeRemaining(exercises[currentIndex + 1]?.duration || 30);
-      setIsWaitingForTap(false);
-    } else {
-      onComplete();
+  // Play/pause video with timer
+  useEffect(() => {
+    if (videoRef.current && currentExercise?.videoPath) {
+      videoRef.current.muted = true;
+      if (isPaused) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
     }
-  }, [currentIndex, exercises, onComplete]);
+  }, [isPaused, currentExercise?.videoPath]);
 
   const handleSkipExercise = useCallback(() => {
     if (currentIndex < exercises.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      setCurrentIndex(i => i + 1);
       setTimeRemaining(exercises[currentIndex + 1]?.duration || 30);
-      setIsWaitingForTap(false);
+      setVideoError(false);
     } else {
       onComplete();
     }
   }, [currentIndex, exercises, onComplete]);
 
-  const handleSkipAll = useCallback(() => {
-    setShowSkipWarning(true);
-  }, []);
+  const handleGoPrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(i => i - 1);
+      setTimeRemaining(exercises[currentIndex - 1]?.duration || 30);
+      setVideoError(false);
+    }
+  }, [currentIndex, exercises]);
 
   const confirmSkipAll = useCallback(() => {
     setShowSkipWarning(false);
     onSkipAll();
   }, [onSkipAll]);
 
-  const handleExitClick = useCallback(() => {
-    setShowExitDialog(true);
-  }, []);
-
-  const handleEnd = useCallback(() => {
-    if (onEnd) {
-      onEnd();
-    }
-    navigate('/');
-  }, [onEnd, navigate]);
-
-  const handlePauseWorkout = useCallback(() => {
-    if (onPause) {
-      onPause(currentIndex);
-    }
-    navigate('/');
-  }, [onPause, currentIndex, navigate]);
-
   if (!currentExercise) return null;
 
-  const timerProgressValue = (timeRemaining / currentExercise.duration) * 100;
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background flex flex-col w-screen max-w-full overflow-hidden"
-    >
-      {/* Header */}
-      <div className="flex-none p-4 border-b border-border flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={handleExitClick}>
-          <X className="w-5 h-5" />
-        </Button>
-        <Badge variant="secondary" className="gap-1">
-          <Flame className="w-3 h-3 text-orange-500" />
-          Rozcvička {currentIndex + 1}/{totalExercises}
-        </Badge>
-        <Button variant="ghost" size="sm" onClick={handleSkipAll} className="text-muted-foreground">
-          Přeskočit vše
-        </Button>
-      </div>
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+      <motion.div
+        key={`warmup-${currentIndex}`}
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -30 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex flex-col relative"
+      >
+        {/* Full-screen video */}
+        <div className="flex-1 relative">
+          {currentExercise.videoPath && !videoError ? (
+            <video
+              ref={videoRef}
+              key={currentExercise.videoPath}
+              src={currentExercise.videoPath}
+              autoPlay loop muted playsInline
+              preload="auto"
+              className="w-full h-full object-cover"
+              onError={() => setVideoError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-neutral-900">
+              <div className="text-center">
+                <Dumbbell className="w-12 h-12 mx-auto mb-2 text-white/20" />
+                <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
+              </div>
+            </div>
+          )}
 
-      {/* Exercise progress bar */}
-      <div className="flex-none px-4 pt-2">
-        <Progress value={progressPercentage} className="h-1" />
-      </div>
-
-      {/* Video / Visual area - relative for tap overlay */}
-      <div className="flex-1 relative bg-muted/30 flex items-center justify-center min-h-[200px]">
-        {videoUrl ? (
-          <video
-            src={videoUrl}
-            loop
-            muted
-            autoPlay={!isPaused && !isWaitingForTap}
-            playsInline
-            className="w-full h-full object-contain max-h-[280px]"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center text-muted-foreground">
-            <Flame className="w-16 h-16 mb-4 text-orange-500/50" />
-            <p className="text-sm">Vizualizace cviku</p>
+          {/* Top overlay: back + progress + counter + skip */}
+          <div className="absolute top-0 left-0 right-0 safe-top">
+            <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+              {currentIndex > 0 && (
+                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              )}
+              <div className="flex-1">
+                <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-orange-400 rounded-full"
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
+                🔥 {currentIndex + 1}/{totalExercises}
+              </span>
+              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <SkipForward className="w-5 h-5" />
+              </button>
+              <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Tap overlay when timer finished */}
-        {isWaitingForTap && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 cursor-pointer"
-            onClick={handleAdvance}
-          >
-            <div className="text-center">
-              <motion.div 
-                className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4"
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                <ChevronRight className="w-8 h-8 text-primary" />
-              </motion.div>
-              <p className="text-lg font-semibold">Klepni pro další cvik</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {currentIndex < exercises.length - 1 
-                  ? exercises[currentIndex + 1].name 
-                  : 'Spustit trénink'}
+          {/* Top-left: exercise name */}
+          <div className="absolute top-16 left-0 px-4 safe-top">
+            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[70vw]">
+              <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
+              <p className="text-white/70 text-sm mt-0.5">Rozcvička</p>
+              {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {currentExercise.primaryMuscles.slice(0, 3).map(m => (
+                    <span key={m} className="text-[10px] bg-orange-400/20 text-orange-300 px-1.5 py-0.5 rounded-full">{getMuscleLabel(m)}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom overlay: timer + buttons */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
+            {/* Timer display */}
+            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-3">
+              <p className={`text-white text-4xl font-bold leading-tight text-center tabular-nums ${timeRemaining <= 5 ? 'text-red-400' : ''}`}>
+                {formatTime(timeRemaining)}
+              </p>
+              <p className="text-white/50 text-xs text-center mt-1">
+                Drž pozici {currentExercise.duration} sekund
               </p>
             </div>
-          </motion.div>
-        )}
-      </div>
 
-      {/* Timer progress bar */}
-      <div className="flex-none px-4 py-3 border-t border-border">
-        <div className="flex items-center gap-3">
-          <Progress 
-            value={timerProgressValue} 
-            className={cn(
-              "flex-1 h-2 transition-colors",
-              timeRemaining <= 5 && "[&>div]:bg-destructive"
-            )}
-          />
-          <span className={cn(
-            "text-lg font-bold tabular-nums w-12 text-right transition-colors",
-            timeRemaining <= 5 && "text-destructive"
-          )}>
-            {timeRemaining}s
-          </span>
-        </div>
-      </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                {/* Skip all button */}
+                <button
+                  onClick={() => setShowSkipWarning(true)}
+                  className="w-full bg-white/10 backdrop-blur-sm text-white/60 text-sm font-medium rounded-xl h-12 active:scale-95 transition-transform"
+                >
+                  Přeskočit rozcvičku
+                </button>
+              </div>
 
-      {/* Exercise info */}
-      <div className="flex-none p-6 text-center border-t border-border">
-        <motion.h2
-          key={currentExercise.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-xl font-bold mb-2"
-        >
-          {currentExercise.name}
-        </motion.h2>
-        <p className="text-muted-foreground text-sm">
-          Drž pozici / Provádej {currentExercise.duration} sekund
-        </p>
-
-        {/* Muscle tags */}
-        {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
-          <div className="flex flex-wrap gap-1 justify-center mt-3">
-            {currentExercise.primaryMuscles.slice(0, 3).map(muscle => (
-              <Badge key={muscle} variant="outline" className="text-xs">
-                {getMuscleLabel(muscle)}
-              </Badge>
-            ))}
+              {/* Pause/Play button */}
+              <button
+                onClick={() => setIsPaused(!isPaused)}
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0 ${isPaused ? 'bg-orange-400 shadow-orange-400/40' : 'bg-white/20 backdrop-blur-sm'}`}
+              >
+                {isPaused ? <Play className="w-7 h-7 text-white ml-0.5" /> : <Pause className="w-7 h-7 text-white" />}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex-none p-4 pb-28 border-t border-border flex gap-2">
-        <Button
-          variant={isPaused ? "default" : "outline"}
-          size="lg"
-          className="flex-1 gap-2"
-          onClick={() => setIsPaused(!isPaused)}
-          disabled={isWaitingForTap}
-        >
-          {isPaused ? (
-            <>
-              <Play className="w-5 h-5" />
-              Pokračovat
-            </>
-          ) : (
-            <>
-              <Pause className="w-5 h-5" />
-              Pauza
-            </>
-          )}
-        </Button>
-
-        {currentIndex < exercises.length - 1 ? (
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex-1 gap-2"
-            onClick={handleSkipExercise}
-          >
-            <SkipForward className="w-5 h-5" />
-            Další cvik
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            className="flex-1 gap-2"
-            onClick={onComplete}
-          >
-            <ChevronRight className="w-5 h-5" />
-            Spustit trénink
-          </Button>
-        )}
-      </div>
+        </div>
+      </motion.div>
 
       {/* Skip warning dialog */}
       <AlertDialog open={showSkipWarning} onOpenChange={setShowSkipWarning}>
@@ -322,10 +246,10 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
       <WorkoutExitDialog
         open={showExitDialog}
         onOpenChange={setShowExitDialog}
-        onEnd={handleEnd}
-        onPause={handlePauseWorkout}
+        onEnd={() => { if (onEnd) onEnd(); navigate('/'); }}
+        onPause={() => { if (onPause) onPause(currentIndex); navigate('/'); }}
         isWarmup={true}
       />
-    </motion.div>
+    </div>
   );
 };
