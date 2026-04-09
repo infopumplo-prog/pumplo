@@ -1124,15 +1124,14 @@ const Training = () => {
   };
 
   const handleWorkoutComplete = async () => {
-    setIsWorkoutActive(false);
-
-    // If cooldown was pre-generated, show it
+    // If cooldown was pre-generated, show it immediately (synchronous state batch)
     if (cooldownExercises.length > 0) {
+      setIsWorkoutActive(false);
       setShowCooldown(true);
       return;
     }
 
-    // Fallback: fetch cooldown exercises directly from DB
+    // Fallback: fetch cooldown exercises directly from DB BEFORE unmounting workout
     try {
       const { data: cooldownData } = await supabase
         .from('exercises')
@@ -1140,7 +1139,6 @@ const Training = () => {
         .eq('allowed_phase', 'cooldown');
 
       if (cooldownData && cooldownData.length > 0) {
-        // Pick up to 6, prioritize variety
         const selected: WarmupExercise[] = cooldownData.slice(0, 6).map(e => ({
           id: e.id,
           name: e.name,
@@ -1148,14 +1146,17 @@ const Training = () => {
           videoPath: e.video_path,
           primaryMuscles: (e.primary_muscles as string[]) || [],
         }));
+        // Set both states in same tick so React batches them
         setCooldownExercises(selected);
         setShowCooldown(true);
+        setIsWorkoutActive(false);
         return;
       }
     } catch (err) {
       console.error('Error fetching cooldown:', err);
     }
 
+    setIsWorkoutActive(false);
     await finishWorkout();
   };
 
