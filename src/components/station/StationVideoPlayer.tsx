@@ -183,8 +183,8 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}> / {exercises.length}</span>
         </div>
 
-        {/* Exercise name overlay at bottom — z-20 above gradient+video, pb-20 above CTA */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-20 z-20">
+        {/* Exercise name overlay — z-20 above gradient+video, bottom-16 above CTA */}
+        <div className="absolute left-0 right-0 px-4 z-20" style={{ bottom: '70px' }}>
           <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
             {currentExercise.name}
           </p>
