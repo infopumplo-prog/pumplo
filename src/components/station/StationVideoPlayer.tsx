@@ -47,51 +47,62 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
 
 export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlayerProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [loadingUrl, setLoadingUrl] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
+  const [activeUrl, setActiveUrl] = useState<string | null>(null);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const activeVideoRef = useRef<HTMLVideoElement>(null);
+  const nextVideoRef = useRef<HTMLVideoElement>(null);
 
   const currentExercise = exercises[currentIndex] ?? null;
 
   const fetchSignedUrl = useCallback(async (videoPath: string) => {
-    setLoadingUrl(true);
-    // Don't clear signedUrl — keep old video visible while loading
     try {
       const filePath = extractVideoFilePath(videoPath);
       const { data, error } = await supabase.storage
         .from('exercise-videos')
         .createSignedUrl(filePath, 3600);
       if (!error && data?.signedUrl) {
-        setVideoReady(false);
-        setSignedUrl(data.signedUrl);
+        if (!activeUrl) {
+          // First load — set directly as active
+          setActiveUrl(data.signedUrl);
+        } else {
+          // Subsequent loads — preload in hidden video
+          setNextUrl(data.signedUrl);
+        }
       }
-    } finally {
-      setLoadingUrl(false);
-    }
-  }, []);
+    } catch {}
+  }, [activeUrl]);
 
   useEffect(() => {
     if (currentExercise?.video_path) {
       fetchSignedUrl(currentExercise.video_path);
-    } else {
-      setSignedUrl(null);
-      setVideoReady(false);
     }
     setInfoOpen(false);
-  }, [currentExercise, fetchSignedUrl]);
+  }, [currentIndex]);
 
+  // When active URL changes, start playback
   useEffect(() => {
-    if (signedUrl && videoRef.current) {
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
+    if (activeUrl && activeVideoRef.current) {
+      activeVideoRef.current.load();
+      activeVideoRef.current.play().catch(() => {});
     }
-  }, [signedUrl]);
+  }, [activeUrl]);
 
-  const handleVideoCanPlay = useCallback(() => {
-    setVideoReady(true);
-  }, []);
+  // When next video loads in background, start it
+  useEffect(() => {
+    if (nextUrl && nextVideoRef.current) {
+      nextVideoRef.current.load();
+      nextVideoRef.current.play().catch(() => {});
+    }
+  }, [nextUrl]);
+
+  // When next video is ready, promote it to active
+  const handleNextCanPlay = useCallback(() => {
+    if (nextUrl) {
+      setActiveUrl(nextUrl);
+      setNextUrl(null);
+    }
+  }, [nextUrl]);
 
   const goTo = (index: number) => {
     setCurrentIndex(Math.max(0, Math.min(index, exercises.length - 1)));
@@ -110,8 +121,8 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
 
   // Tap anywhere on video to play (iOS autoplay workaround)
   const handleVideoTap = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
+    if (activeVideoRef.current) {
+      activeVideoRef.current.play().catch(() => {});
     }
   }, []);
 
@@ -119,22 +130,37 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
     <div className="relative w-full h-full flex flex-col" style={{ background: '#000' }}>
       {/* Video area — fills all available space */}
       <div className="relative flex-1 overflow-hidden" onClick={handleVideoTap}>
-        {/* Video — always rendered, hidden when no URL */}
+        {/* Active video — visible */}
         <video
-          ref={videoRef}
-          src={signedUrl || undefined}
+          ref={activeVideoRef}
+          src={activeUrl || undefined}
           autoPlay
           loop
           muted
           playsInline
-          onCanPlay={handleVideoCanPlay}
           // @ts-ignore — webkit prefix for iOS
           webkit-playsinline="true"
           className="w-full h-full object-cover"
-          style={{ opacity: signedUrl ? 1 : 0, transition: 'opacity 0.3s' }}
+          style={{ opacity: activeUrl ? 1 : 0, transition: 'opacity 0.3s' }}
         />
-        {/* Loading spinner — only on first load when no video at all */}
-        {!signedUrl && (
+        {/* Next video — hidden, preloading */}
+        {nextUrl && (
+          <video
+            ref={nextVideoRef}
+            src={nextUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onCanPlay={handleNextCanPlay}
+            // @ts-ignore
+            webkit-playsinline="true"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0 }}
+          />
+        )}
+        {/* Loading spinner — only on first load */}
+        {!activeUrl && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#4CC9FF', borderTopColor: 'transparent' }} />
           </div>
