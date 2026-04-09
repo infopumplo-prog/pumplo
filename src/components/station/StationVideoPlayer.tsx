@@ -250,13 +250,13 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
             )}
 
             {/* Primary muscles */}
-            {currentExercise.primary_muscles.length > 0 && (
+            {(currentExercise.primary_muscles ?? []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   Primární svaly
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {currentExercise.primary_muscles.map((m) => (
+                  {(currentExercise.primary_muscles ?? []).map((m) => (
                     <span
                       key={m}
                       className="px-2.5 py-1 rounded-full text-xs font-medium"
@@ -270,13 +270,13 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
             )}
 
             {/* Secondary muscles */}
-            {currentExercise.secondary_muscles.length > 0 && (
+            {(currentExercise.secondary_muscles ?? []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   Sekundární svaly
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {currentExercise.secondary_muscles.map((m) => (
+                  {(currentExercise.secondary_muscles ?? []).map((m) => (
                     <span
                       key={m}
                       className="px-2.5 py-1 rounded-full text-xs font-medium"

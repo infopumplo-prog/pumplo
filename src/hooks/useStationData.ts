@@ -66,7 +66,11 @@ export const useStationData = (shortCode: string | undefined) => {
         machineDescription: machine?.description || null,
         gymName: gym?.name || '',
         gymId: gymMachine.gym_id,
-        exercises: exercises || [],
+        exercises: (exercises || []).map(e => ({
+          ...e,
+          primary_muscles: e.primary_muscles || [],
+          secondary_muscles: e.secondary_muscles || [],
+        })),
       });
       setIsLoading(false);
     };
