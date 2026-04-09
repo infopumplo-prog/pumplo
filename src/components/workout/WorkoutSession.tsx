@@ -134,7 +134,7 @@ export const WorkoutSession = ({
     if (cooldownExercises.length > 0 && !cooldownDone) {
       setShowCooldown(true);
     } else {
-      triggerPostWorkout();
+      setShowSummary(true);
     }
   }, [cooldownExercises.length, cooldownDone]);
   const [workoutStartTime] = useState(new Date());
