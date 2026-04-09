@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +22,10 @@ export interface WarmupExercise {
   duration: number;
   videoPath: string | null;
   primaryMuscles?: string[];
+  description?: string | null;
+  setupInstructions?: string | null;
+  commonMistakes?: string | null;
+  tips?: string | null;
 }
 
 interface WarmupPlayerProps {
@@ -41,6 +46,8 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const hasInfo = !!(currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
 
   const currentExercise = exercises[currentIndex];
   const totalExercises = exercises.length;
@@ -170,9 +177,9 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
             </div>
           </div>
 
-          {/* Top-left: exercise name */}
-          <div className="absolute top-16 left-0 px-4 safe-top">
-            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[70vw]">
+          {/* Top-left: exercise name + info */}
+          <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[65vw]">
               <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
               <p className="text-white/70 text-sm mt-0.5">Rozcvička</p>
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
@@ -183,6 +190,14 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                 </div>
               )}
             </div>
+            {hasInfo && (
+              <button
+                onClick={() => setShowInfoDrawer(true)}
+                className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              >
+                <Info className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Bottom overlay: timer + buttons */}
@@ -250,6 +265,51 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
         onPause={() => { if (onPause) onPause(currentIndex); navigate('/'); }}
         isWarmup={true}
       />
+
+      {/* Info Drawer */}
+      <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>{currentExercise.name}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6 overflow-y-auto space-y-4">
+            {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Svaly</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentExercise.primaryMuscles.map(m => (
+                    <span key={m} className="text-xs bg-orange-400/15 text-orange-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m)}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {currentExercise.description && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Popis</p>
+                <p className="text-sm leading-relaxed">{currentExercise.description}</p>
+              </div>
+            )}
+            {currentExercise.setupInstructions && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Nastavení</p>
+                <p className="text-sm leading-relaxed">{currentExercise.setupInstructions}</p>
+              </div>
+            )}
+            {currentExercise.commonMistakes && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Časté chyby</p>
+                <p className="text-sm leading-relaxed">{currentExercise.commonMistakes}</p>
+              </div>
+            )}
+            {currentExercise.tips && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Tipy</p>
+                <p className="text-sm leading-relaxed">{currentExercise.tips}</p>
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };

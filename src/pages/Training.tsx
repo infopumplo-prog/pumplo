@@ -975,7 +975,7 @@ const Training = () => {
     // 3. Fetch exercises for the given phase with body_region
     const { data: exercisesData } = await supabase
       .from('exercises')
-      .select('id, name, primary_muscles, video_path, body_region')
+      .select('id, name, primary_muscles, video_path, body_region, description, setup_instructions, common_mistakes, tips')
       .eq('allowed_phase', phase);
 
     if (!exercisesData || exercisesData.length === 0) return [];

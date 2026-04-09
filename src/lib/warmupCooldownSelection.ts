@@ -21,7 +21,23 @@ interface DbExercise {
   video_path: string | null;
   primary_muscles: string[] | null;
   body_region: string | null;
+  description?: string | null;
+  setup_instructions?: string | null;
+  common_mistakes?: string | null;
+  tips?: string | null;
 }
+
+const toWarmupExercise = (ex: DbExercise): WarmupExercise => ({
+  id: ex.id,
+  name: ex.name,
+  duration: 30,
+  videoPath: ex.video_path,
+  primaryMuscles: ex.primary_muscles ?? [],
+  description: ex.description,
+  setupInstructions: ex.setup_instructions,
+  commonMistakes: ex.common_mistakes,
+  tips: ex.tips,
+});
 
 // Select 6 warmup exercises (6 × 30s = 3 min) based on training focus
 // Upper day: 3 upper + 3 core, Lower day: 3 lower + 3 core, Full: 2+2+2
@@ -78,13 +94,7 @@ export const selectWarmupExercises = (
     // Pick top N for this slot
     for (let i = 0; i < slot.count && i < scored.length; i++) {
       const ex = scored[i].exercise;
-      selected.push({
-        id: ex.id,
-        name: ex.name,
-        duration: 30,
-        videoPath: ex.video_path,
-        primaryMuscles: ex.primary_muscles ?? [],
-      });
+      selected.push(toWarmupExercise(ex));
       usedIds.add(ex.id);
     }
   }
@@ -94,13 +104,7 @@ export const selectWarmupExercises = (
     const remaining = available.filter(e => !usedIds.has(e.id));
     for (const ex of remaining) {
       if (selected.length >= 6) break;
-      selected.push({
-        id: ex.id,
-        name: ex.name,
-        duration: 30,
-        videoPath: ex.video_path,
-        primaryMuscles: ex.primary_muscles ?? [],
-      });
+      selected.push(toWarmupExercise(ex));
     }
   }
 
