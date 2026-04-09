@@ -112,20 +112,22 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
     <div className="relative w-full h-full flex flex-col" style={{ background: '#000' }}>
       {/* Video area — fills all available space */}
       <div className="relative flex-1 overflow-hidden" onClick={handleVideoTap}>
-        {signedUrl && !loadingUrl ? (
-          <video
-            ref={videoRef}
-            src={signedUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            // @ts-ignore — webkit prefix for iOS
-            webkit-playsinline="true"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ background: '#0B1222' }}>
+        {/* Video — always rendered, hidden when no URL */}
+        <video
+          ref={videoRef}
+          src={signedUrl || undefined}
+          autoPlay
+          loop
+          muted
+          playsInline
+          // @ts-ignore — webkit prefix for iOS
+          webkit-playsinline="true"
+          className="w-full h-full object-cover"
+          style={{ opacity: signedUrl && !loadingUrl ? 1 : 0, transition: 'opacity 0.3s' }}
+        />
+        {/* Loading spinner overlay */}
+        {(!signedUrl || loadingUrl) && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#4CC9FF', borderTopColor: 'transparent' }} />
           </div>
         )}
