@@ -32,7 +32,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
 
   const currentExercise = exercises[currentIndex];
-  const hasInfo = !!(currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
+  const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
   const totalExercises = exercises.length;
   const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
 
