@@ -49,6 +49,7 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
   const [currentIndex, setCurrentIndex] = useState(0);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -56,13 +57,14 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
 
   const fetchSignedUrl = useCallback(async (videoPath: string) => {
     setLoadingUrl(true);
-    setSignedUrl(null);
+    // Don't clear signedUrl — keep old video visible while loading
     try {
       const filePath = extractVideoFilePath(videoPath);
       const { data, error } = await supabase.storage
         .from('exercise-videos')
         .createSignedUrl(filePath, 3600);
       if (!error && data?.signedUrl) {
+        setVideoReady(false);
         setSignedUrl(data.signedUrl);
       }
     } finally {
@@ -75,6 +77,7 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
       fetchSignedUrl(currentExercise.video_path);
     } else {
       setSignedUrl(null);
+      setVideoReady(false);
     }
     setInfoOpen(false);
   }, [currentExercise, fetchSignedUrl]);
@@ -85,6 +88,10 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
       videoRef.current.play().catch(() => {});
     }
   }, [signedUrl]);
+
+  const handleVideoCanPlay = useCallback(() => {
+    setVideoReady(true);
+  }, []);
 
   const goTo = (index: number) => {
     setCurrentIndex(Math.max(0, Math.min(index, exercises.length - 1)));
@@ -120,13 +127,14 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           loop
           muted
           playsInline
+          onCanPlay={handleVideoCanPlay}
           // @ts-ignore — webkit prefix for iOS
           webkit-playsinline="true"
           className="w-full h-full object-cover"
-          style={{ opacity: signedUrl && !loadingUrl ? 1 : 0, transition: 'opacity 0.3s' }}
+          style={{ opacity: signedUrl ? 1 : 0, transition: 'opacity 0.3s' }}
         />
-        {/* Loading spinner */}
-        {(!signedUrl || loadingUrl) && (
+        {/* Loading spinner — only on first load when no video at all */}
+        {!signedUrl && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#4CC9FF', borderTopColor: 'transparent' }} />
           </div>
