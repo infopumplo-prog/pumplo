@@ -3,9 +3,10 @@ import { useState } from 'react';
 
 interface StationBannerProps {
   gymName: string;
+  onDismiss?: () => void;
 }
 
-export const StationBanner = ({ gymName }: StationBannerProps) => {
+export const StationBanner = ({ gymName, onDismiss }: StationBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -33,7 +34,7 @@ export const StationBanner = ({ gymName }: StationBannerProps) => {
           style={{ background: '#4CC9FF', color: '#fff', fontSize: '13px' }}>
           Otevřít
         </a>
-        <button type="button" onClick={() => setDismissed(true)}
+        <button type="button" onClick={() => { setDismissed(true); onDismiss?.(); }}
           className="p-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
           <X className="w-4 h-4" />
         </button>

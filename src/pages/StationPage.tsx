@@ -4,11 +4,12 @@ import { StationBanner } from '@/components/station/StationBanner';
 import { StationCTA } from '@/components/station/StationCTA';
 import { StationVideoPlayer } from '@/components/station/StationVideoPlayer';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const StationPage = () => {
   const { code } = useParams<{ code: string }>();
   const { data, isLoading, error } = useStationData(code);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -54,9 +55,9 @@ const StationPage = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#000' }}>
-      <StationBanner gymName={data.gymName} />
+      <StationBanner gymName={data.gymName} onDismiss={() => setBannerDismissed(true)} />
       <div className="flex-1">
-        <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} />
+        <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} bannerVisible={!bannerDismissed} />
       </div>
       <StationCTA />
     </div>

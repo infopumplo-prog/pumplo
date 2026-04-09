@@ -18,6 +18,7 @@ interface Exercise {
 interface StationVideoPlayerProps {
   exercises: Exercise[];
   machineName: string;
+  bannerVisible?: boolean;
 }
 
 const extractVideoFilePath = (videoPath: string): string => {
@@ -45,7 +46,8 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
   );
 };
 
-export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlayerProps) => {
+export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = false }: StationVideoPlayerProps) => {
+  const topOffset = bannerVisible ? '52px' : '12px';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeUrl, setActiveUrl] = useState<string | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
@@ -203,16 +205,16 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setInfoOpen(true); }}
-          className="absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm z-20"
-          style={{ background: 'rgba(0,0,0,0.4)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
+          className="absolute right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm z-20"
+          style={{ top: topOffset, background: 'rgba(0,0,0,0.4)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)', transition: 'top 0.3s' }}
           aria-label="Informace o cviku"
         >
           <Info className="w-5 h-5" />
         </button>
 
         {/* Exercise counter badge */}
-        <div className="absolute top-3 left-3 px-3 py-1 rounded-full backdrop-blur-sm z-20"
-          style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)' }}>
+        <div className="absolute left-3 px-3 py-1 rounded-full backdrop-blur-sm z-20"
+          style={{ top: topOffset, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', transition: 'top 0.3s' }}>
           <span style={{ color: '#4CC9FF', fontSize: '13px', fontWeight: 700 }}>{currentIndex + 1}</span>
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}> / {exercises.length}</span>
         </div>
