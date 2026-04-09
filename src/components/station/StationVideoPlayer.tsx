@@ -101,10 +101,17 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
     );
   }
 
+  // Tap anywhere on video to play (iOS autoplay workaround)
+  const handleVideoTap = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
   return (
-    <div className="relative w-full flex flex-col" style={{ background: '#0B1222' }}>
-      {/* Video area */}
-      <div className="relative w-full" style={{ aspectRatio: '9/16', maxHeight: '75vh', overflow: 'hidden', background: '#000' }}>
+    <div className="relative w-full h-full flex flex-col" style={{ background: '#000' }}>
+      {/* Video area — fills all available space */}
+      <div className="relative flex-1 overflow-hidden" onClick={handleVideoTap}>
         {signedUrl && !loadingUrl ? (
           <video
             ref={videoRef}
@@ -113,6 +120,8 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
             loop
             muted
             playsInline
+            // @ts-ignore — webkit prefix for iOS
+            webkit-playsinline="true"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -121,13 +130,21 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           </div>
         )}
 
+        {/* Bottom gradient overlay for text readability */}
+        <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)' }} />
+
+        {/* Top gradient for info button */}
+        <div className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)' }} />
+
         {/* Left arrow */}
         {currentIndex > 0 && (
           <button
             type="button"
-            onClick={() => goTo(currentIndex - 1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full"
-            style={{ background: 'rgba(11,18,34,0.7)', color: '#fff' }}
+            onClick={(e) => { e.stopPropagation(); goTo(currentIndex - 1); }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-sm"
+            style={{ background: 'rgba(0,0,0,0.4)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
             aria-label="Předchozí cvik"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -138,9 +155,9 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         {currentIndex < exercises.length - 1 && (
           <button
             type="button"
-            onClick={() => goTo(currentIndex + 1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full"
-            style={{ background: 'rgba(11,18,34,0.7)', color: '#fff' }}
+            onClick={(e) => { e.stopPropagation(); goTo(currentIndex + 1); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-sm"
+            style={{ background: 'rgba(0,0,0,0.4)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
             aria-label="Další cvik"
           >
             <ChevronRight className="w-6 h-6" />
@@ -150,42 +167,50 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         {/* Info button */}
         <button
           type="button"
-          onClick={() => setInfoOpen(true)}
-          className="absolute top-3 right-3 flex items-center justify-center w-9 h-9 rounded-full"
-          style={{ background: 'rgba(11,18,34,0.7)', color: '#4CC9FF' }}
+          onClick={(e) => { e.stopPropagation(); setInfoOpen(true); }}
+          className="absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm"
+          style={{ background: 'rgba(0,0,0,0.4)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
           aria-label="Informace o cviku"
         >
           <Info className="w-5 h-5" />
         </button>
 
-        {/* Dot indicators */}
-        {exercises.length > 1 && (
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-            {exercises.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goTo(i)}
-                className="w-2 h-2 rounded-full transition-all"
-                style={{
-                  background: i === currentIndex ? '#4CC9FF' : 'rgba(255,255,255,0.3)',
-                  transform: i === currentIndex ? 'scale(1.3)' : 'scale(1)',
-                }}
-                aria-label={`Cvik ${i + 1}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        {/* Exercise counter badge */}
+        <div className="absolute top-3 left-3 px-3 py-1 rounded-full backdrop-blur-sm"
+          style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)' }}>
+          <span style={{ color: '#4CC9FF', fontSize: '13px', fontWeight: 700 }}>{currentIndex + 1}</span>
+          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}> / {exercises.length}</span>
+        </div>
 
-      {/* Exercise name + machine */}
-      <div className="px-4 pt-3 pb-4">
-        <p className="font-bold text-lg leading-tight" style={{ color: '#fff' }}>
-          {currentExercise.name}
-        </p>
-        <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {machineName}
-        </p>
+        {/* Exercise name overlay at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+          <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
+            {currentExercise.name}
+          </p>
+          <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            {machineName}
+          </p>
+          {/* Dot indicators */}
+          {exercises.length > 1 && exercises.length <= 20 && (
+            <div className="flex gap-1.5 mt-3">
+              {exercises.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); goTo(i); }}
+                  className="rounded-full transition-all"
+                  style={{
+                    width: i === currentIndex ? '20px' : '6px',
+                    height: '6px',
+                    background: i === currentIndex ? '#4CC9FF' : 'rgba(255,255,255,0.35)',
+                    borderRadius: '3px',
+                  }}
+                  aria-label={`Cvik ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Info overlay */}
