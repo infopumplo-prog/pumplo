@@ -1123,41 +1123,37 @@ const Training = () => {
     handleGenerateDayExercises(gymId, true);
   };
 
-  const handleWorkoutComplete = async () => {
-    // If cooldown was pre-generated, show it immediately (synchronous state batch)
-    if (cooldownExercises.length > 0) {
-      setIsWorkoutActive(false);
-      setShowCooldown(true);
-      return;
-    }
+  const handleWorkoutComplete = () => {
+    // Always show cooldown phase — set both states synchronously
+    setIsWorkoutActive(false);
+    setShowCooldown(true);
 
-    // Fallback: fetch cooldown exercises directly from DB BEFORE unmounting workout
-    try {
-      const { data: cooldownData } = await supabase
+    // If cooldown not pre-generated, fetch now (component will show loading)
+    if (cooldownExercises.length === 0) {
+      supabase
         .from('exercises')
         .select('id, name, primary_muscles, video_path, body_region')
-        .eq('allowed_phase', 'cooldown');
-
-      if (cooldownData && cooldownData.length > 0) {
-        const selected: WarmupExercise[] = cooldownData.slice(0, 6).map(e => ({
-          id: e.id,
-          name: e.name,
-          duration: 30,
-          videoPath: e.video_path,
-          primaryMuscles: (e.primary_muscles as string[]) || [],
-        }));
-        // Set both states in same tick so React batches them
-        setCooldownExercises(selected);
-        setShowCooldown(true);
-        setIsWorkoutActive(false);
-        return;
-      }
-    } catch (err) {
-      console.error('Error fetching cooldown:', err);
+        .eq('allowed_phase', 'cooldown')
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setCooldownExercises(data.slice(0, 6).map(e => ({
+              id: e.id,
+              name: e.name,
+              duration: 30,
+              videoPath: e.video_path,
+              primaryMuscles: (e.primary_muscles as string[]) || [],
+            })));
+          } else {
+            // No cooldown available, skip to finish
+            setShowCooldown(false);
+            finishWorkout();
+          }
+        })
+        .catch(() => {
+          setShowCooldown(false);
+          finishWorkout();
+        });
     }
-
-    setIsWorkoutActive(false);
-    await finishWorkout();
   };
 
   const finishWorkout = async () => {
@@ -1502,13 +1498,21 @@ const Training = () => {
   }
 
   // Cooldown phase (after main workout)
-  if (showCooldown && cooldownExercises.length > 0) {
+  if (showCooldown) {
+    if (cooldownExercises.length > 0) {
+      return (
+        <CooldownPlayer
+          exercises={cooldownExercises}
+          onComplete={handleCooldownComplete}
+          onSkipAll={handleCooldownSkip}
+        />
+      );
+    }
+    // Loading cooldown exercises
     return (
-      <CooldownPlayer
-        exercises={cooldownExercises}
-        onComplete={handleCooldownComplete}
-        onSkipAll={handleCooldownSkip}
-      />
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+      </div>
     );
   }
 
