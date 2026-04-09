@@ -1126,10 +1126,22 @@ const Training = () => {
   const handleWorkoutComplete = async () => {
     setIsWorkoutActive(false);
 
-    // Show cooldown if available
+    // If cooldown was pre-generated, show it
     if (cooldownExercises.length > 0) {
       setShowCooldown(true);
-      return; // Don't finish yet — cooldown will call finishWorkout
+      return;
+    }
+
+    // Try generating cooldown on the fly if not pre-generated
+    try {
+      const cooldowns = await generateTimedExercises(generatedExercises, 'cooldown');
+      if (cooldowns.length > 0) {
+        setCooldownExercises(cooldowns);
+        setShowCooldown(true);
+        return;
+      }
+    } catch (err) {
+      console.error('Error generating cooldown:', err);
     }
 
     await finishWorkout();
@@ -1163,16 +1175,16 @@ const Training = () => {
     refetchPlan();
   };
 
-  const handleCooldownComplete = useCallback(async () => {
+  const handleCooldownComplete = async () => {
     setShowCooldown(false);
     await finishWorkout();
-  }, []);
+  };
 
-  const handleCooldownSkip = useCallback(async () => {
+  const handleCooldownSkip = async () => {
     setShowCooldown(false);
     toast.info('Protažení přeskočeno');
     await finishWorkout();
-  }, []);
+  };
 
   const handleCancelPlan = async () => {
     if (!plan) return;
