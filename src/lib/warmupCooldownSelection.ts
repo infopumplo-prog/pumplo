@@ -23,8 +23,9 @@ interface DbExercise {
   body_region: string | null;
 }
 
-// Select 6 exercises (6 × 30s = 3 min) based on training focus and muscles used
-export const selectTimedExercises = (
+// Select 6 warmup exercises (6 × 30s = 3 min) based on training focus
+// Upper day: 3 upper + 3 core, Lower day: 3 lower + 3 core, Full: 2+2+2
+export const selectWarmupExercises = (
   available: DbExercise[],
   focus: 'upper' | 'lower' | 'full',
   mainWorkoutMuscles: string[]
@@ -33,21 +34,18 @@ export const selectTimedExercises = (
   const lower = available.filter(e => e.body_region === 'lower');
   const core = available.filter(e => e.body_region === 'core');
 
-  // Determine how many of each region to pick
   let slots: { region: string; count: number }[];
   switch (focus) {
     case 'upper':
       slots = [
         { region: 'upper', count: 3 },
-        { region: 'core', count: 1 },
-        { region: 'lower', count: 2 },
+        { region: 'core', count: 3 },
       ];
       break;
     case 'lower':
       slots = [
         { region: 'lower', count: 3 },
-        { region: 'core', count: 1 },
-        { region: 'upper', count: 2 },
+        { region: 'core', count: 3 },
       ];
       break;
     case 'full':
@@ -107,6 +105,34 @@ export const selectTimedExercises = (
   }
 
   return selected.slice(0, 6);
+};
+
+// Select 6 cooldown exercises — always full body (mix all available)
+export const selectCooldownExercises = (
+  available: DbExercise[],
+  mainWorkoutMuscles: string[]
+): WarmupExercise[] => {
+  // Score all by muscle overlap, pick top 6
+  const scored = available
+    .map(e => {
+      const muscles = e.primary_muscles ?? [];
+      const overlap = muscles.filter(m => mainWorkoutMuscles.includes(m)).length;
+      return { exercise: e, score: overlap };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const selected: WarmupExercise[] = [];
+  for (let i = 0; i < 6 && i < scored.length; i++) {
+    const ex = scored[i].exercise;
+    selected.push({
+      id: ex.id,
+      name: ex.name,
+      duration: 30,
+      videoPath: ex.video_path,
+      primaryMuscles: ex.primary_muscles ?? [],
+    });
+  }
+  return selected;
 };
 
 // Extract all target muscles from main workout exercises

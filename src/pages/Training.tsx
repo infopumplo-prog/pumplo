@@ -30,7 +30,7 @@ import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelecto
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
 import { CooldownPlayer } from '@/components/workout/CooldownPlayer';
-import { getTrainingFocus, selectTimedExercises } from '@/lib/warmupCooldownSelection';
+import { getTrainingFocus, selectWarmupExercises, selectCooldownExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
@@ -982,8 +982,12 @@ const Training = () => {
 
     if (!exercisesData || exercisesData.length === 0) return [];
 
-    // 4. Use selection helper to pick 6 exercises
-    return selectTimedExercises(exercisesData as any, focus, targetMuscles);
+    // 4. Use appropriate selection helper
+    if (phase === 'warmup') {
+      return selectWarmupExercises(exercisesData as any, focus, targetMuscles);
+    } else {
+      return selectCooldownExercises(exercisesData as any, targetMuscles);
+    }
   }, [plan?.splitType, plan?.currentDayLetter]);
   
   // Handle starting warmup from preview
