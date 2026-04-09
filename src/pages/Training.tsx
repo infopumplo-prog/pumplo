@@ -1132,16 +1132,28 @@ const Training = () => {
       return;
     }
 
-    // Try generating cooldown on the fly if not pre-generated
+    // Fallback: fetch cooldown exercises directly from DB
     try {
-      const cooldowns = await generateTimedExercises(generatedExercises, 'cooldown');
-      if (cooldowns.length > 0) {
-        setCooldownExercises(cooldowns);
+      const { data: cooldownData } = await supabase
+        .from('exercises')
+        .select('id, name, primary_muscles, video_path, body_region')
+        .eq('allowed_phase', 'cooldown');
+
+      if (cooldownData && cooldownData.length > 0) {
+        // Pick up to 6, prioritize variety
+        const selected: WarmupExercise[] = cooldownData.slice(0, 6).map(e => ({
+          id: e.id,
+          name: e.name,
+          duration: 30,
+          videoPath: e.video_path,
+          primaryMuscles: (e.primary_muscles as string[]) || [],
+        }));
+        setCooldownExercises(selected);
         setShowCooldown(true);
         return;
       }
     } catch (err) {
-      console.error('Error generating cooldown:', err);
+      console.error('Error fetching cooldown:', err);
     }
 
     await finishWorkout();
