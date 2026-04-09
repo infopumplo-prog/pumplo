@@ -368,11 +368,19 @@ export const WorkoutSession = ({
     }
   }, [showSummary, workoutSaved]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [finished, setFinished] = useState(false);
+
   const handleFinishWorkout = useCallback(async () => {
     const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
       .filter((r): r is ExerciseResult => r !== undefined);
-    onComplete(orderedResults);
-    if (!skipNavigateOnComplete) {
+
+    if (skipNavigateOnComplete) {
+      // Hide this component first, then notify parent
+      setFinished(true);
+      // Small delay so parent state updates take effect
+      await onComplete(orderedResults);
+    } else {
+      onComplete(orderedResults);
       navigate('/');
     }
   }, [navigate, liveExercises, resultsByIndex, onComplete, skipNavigateOnComplete]);
@@ -443,6 +451,11 @@ export const WorkoutSession = ({
     setCurrentExerciseIndex(index);
     setHighestIndexReached(prev => Math.max(prev, index));
   }, []);
+
+  // Hide after finish (let parent show cooldown)
+  if (finished) {
+    return null;
+  }
 
   // Summary / Share screen
   if (showSummary) {
