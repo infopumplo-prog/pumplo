@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Info, X, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Exercise {
@@ -50,7 +50,6 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentExercise = exercises[currentIndex] ?? null;
@@ -82,9 +81,8 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
 
   useEffect(() => {
     if (signedUrl && videoRef.current) {
-      setIsPlaying(false);
       videoRef.current.load();
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      videoRef.current.play().catch(() => {});
     }
   }, [signedUrl]);
 
@@ -106,7 +104,7 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
   // Tap anywhere on video to play (iOS autoplay workaround)
   const handleVideoTap = useCallback(() => {
     if (videoRef.current) {
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      videoRef.current.play().catch(() => {});
     }
   }, []);
 
@@ -134,25 +132,11 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           </div>
         )}
 
-        {/* Play button — shown when video loaded but not playing (iOS) */}
-        {signedUrl && !loadingUrl && !isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <button
-              type="button"
-              onClick={handleVideoTap}
-              className="flex items-center justify-center w-20 h-20 rounded-full"
-              style={{ background: 'rgba(76, 201, 255, 0.9)', color: '#fff', boxShadow: '0 0 30px rgba(76, 201, 255, 0.4)' }}
-            >
-              <Play className="w-10 h-10 ml-1" fill="white" />
-            </button>
-          </div>
-        )}
-
-        {/* Bottom gradient overlay for text readability — always visible */}
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{ height: '60%', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 40%, transparent 100%)' }} />
+        {/* Bottom gradient overlay for text readability — z-10 to stay above video */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-10" style={{ height: '60%', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 40%, transparent 100%)' }} />
 
         {/* Top gradient for info button */}
-        <div className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
+        <div className="absolute top-0 left-0 right-0 h-24 pointer-events-none z-10"
           style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)' }} />
 
         {/* Left arrow */}
@@ -185,7 +169,7 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setInfoOpen(true); }}
-          className="absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm"
+          className="absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm z-20"
           style={{ background: 'rgba(0,0,0,0.4)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
           aria-label="Informace o cviku"
         >
@@ -193,14 +177,14 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
         </button>
 
         {/* Exercise counter badge */}
-        <div className="absolute top-3 left-3 px-3 py-1 rounded-full backdrop-blur-sm"
+        <div className="absolute top-3 left-3 px-3 py-1 rounded-full backdrop-blur-sm z-20"
           style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)' }}>
           <span style={{ color: '#4CC9FF', fontSize: '13px', fontWeight: 700 }}>{currentIndex + 1}</span>
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}> / {exercises.length}</span>
         </div>
 
-        {/* Exercise name overlay at bottom — pb-20 to stay above CTA */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-20">
+        {/* Exercise name overlay at bottom — z-20 above gradient+video, pb-20 above CTA */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-20 z-20">
           <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
             {currentExercise.name}
           </p>
