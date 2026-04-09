@@ -47,7 +47,7 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
 };
 
 export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = false }: StationVideoPlayerProps) => {
-  const topOffset = bannerVisible ? '52px' : '12px';
+  const topOffset = bannerVisible ? '60px' : '12px';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeUrl, setActiveUrl] = useState<string | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
