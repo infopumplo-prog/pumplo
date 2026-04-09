@@ -125,14 +125,14 @@ export const StationVideoPlayer = ({ exercises, machineName }: StationVideoPlaye
           className="w-full h-full object-cover"
           style={{ opacity: signedUrl && !loadingUrl ? 1 : 0, transition: 'opacity 0.3s' }}
         />
-        {/* Loading spinner overlay */}
+        {/* Loading spinner — centered, no full overlay so name stays visible */}
         {(!signedUrl || loadingUrl) && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#4CC9FF', borderTopColor: 'transparent' }} />
           </div>
         )}
 
-        {/* Bottom gradient overlay for text readability */}
+        {/* Bottom gradient overlay for text readability — always visible */}
         <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
           style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)' }} />
 
