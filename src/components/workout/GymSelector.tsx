@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Check, X, Building2 } from 'lucide-react';
+import { MapPin, Check, X, Building2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,15 +19,18 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
   const { gyms, isLoading } = usePublishedGyms();
   const [selected, setSelected] = useState<string | null>(selectedGymId || null);
 
-  // Filter to only show open gyms first
+  // Sort order: Premium (featured) > open > closed, then alphabetical
   const sortedGyms = [...gyms].sort((a, b) => {
+    // Premium gyms always on top
+    if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
+
     const aStatus = getTodayOpeningStatus(a.opening_hours as OpeningHours);
     const bStatus = getTodayOpeningStatus(b.opening_hours as OpeningHours);
-    
-    // Open gyms first
+
+    // Then open gyms before closed
     if (aStatus.isOpen && !bStatus.isOpen) return -1;
     if (!aStatus.isOpen && bStatus.isOpen) return 1;
-    
+
     return a.name.localeCompare(b.name);
   });
 
@@ -80,29 +83,40 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                 onClick={() => !isDisabled && setSelected(gym.id)}
                 disabled={isDisabled}
                 className={cn(
-                  "w-full p-4 rounded-xl border-2 transition-all text-left",
+                  "w-full p-4 rounded-xl border-2 transition-all text-left relative",
                   isSelected
                     ? "border-primary bg-primary/5"
                     : isDisabled
                       ? "border-border bg-muted/30 opacity-50"
-                      : "border-border bg-card hover:border-primary/50"
+                      : gym.is_featured
+                        ? "border-amber-500/40 bg-amber-500/[0.04] hover:border-amber-500/70 shadow-[0_0_0_2px_rgba(245,158,11,0.08)]"
+                        : "border-border bg-card hover:border-primary/50"
                 )}
                 whileTap={!isDisabled ? { scale: 0.98 } : undefined}
               >
+                {gym.is_featured && !isDisabled && (
+                  <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
+                    <Star className="w-2.5 h-2.5 fill-white" />
+                    PREMIUM
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   {/* Logo/Icon */}
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
+                    gym.is_featured ? "bg-amber-500/10 ring-2 ring-amber-500/30" : "bg-muted"
+                  )}>
                     {gym.logo_url ? (
-                      <img 
-                        src={gym.logo_url} 
-                        alt={gym.name} 
+                      <img
+                        src={gym.logo_url}
+                        alt={gym.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <Building2 className="w-6 h-6 text-muted-foreground" />
                     )}
                   </div>
-                  
+
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate">{gym.name}</h3>
@@ -114,9 +128,9 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                     )}
                     <p className={cn(
                       "text-xs mt-1",
-                      status.isOpen 
-                        ? status.closingSoon 
-                          ? "text-orange-500" 
+                      status.isOpen
+                        ? status.closingSoon
+                          ? "text-orange-500"
                           : "text-green-600"
                         : "text-destructive"
                     )}>

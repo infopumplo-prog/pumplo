@@ -23,6 +23,8 @@ export interface PublicGym {
   services: string[] | null;
   created_at: string;
   updated_at: string;
+  /** Premium plan gyms are featured on the map and prioritized in search results. */
+  is_featured: boolean;
 }
 
 export const usePublishedGyms = () => {
@@ -36,12 +38,18 @@ export const usePublishedGyms = () => {
 
       if (error) throw error;
 
-      // Sort featured (Premium) gyms first
-      return (data || []).map(gym => ({
+      // Premium (featured) gyms first, then alphabetically by name
+      const normalized = (data || []).map(gym => ({
         ...gym,
         opening_hours: gym.opening_hours as OpeningHours,
         pricing: gym.pricing as unknown as GymPricing | null,
+        is_featured: Boolean((gym as { is_featured?: boolean }).is_featured),
       })) as PublicGym[];
+
+      return normalized.sort((a, b) => {
+        if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
     },
   });
 

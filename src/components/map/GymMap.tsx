@@ -25,9 +25,44 @@ interface GymMapProps {
   mapHandleRef?: React.MutableRefObject<GymMapHandle | null>;
 }
 
-const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isClosed: boolean = false) => {
-  const borderColor = isClosed ? '#9ca3af' : closingSoon ? '#f59e0b' : 'hsl(var(--primary))';
-  const markerSize = 44;
+const createGymIcon = (
+  logoUrl: string | null,
+  closingSoon: boolean = false,
+  isClosed: boolean = false,
+  isFeatured: boolean = false,
+) => {
+  const borderColor = isClosed
+    ? '#9ca3af'
+    : closingSoon
+      ? '#f59e0b'
+      : isFeatured
+        ? '#f59e0b' // amber/gold border for Premium
+        : 'hsl(var(--primary))';
+  const markerSize = isFeatured ? 56 : 44;
+  const boxShadow = isFeatured
+    ? '0 0 0 3px rgba(245,158,11,0.25), 0 4px 14px rgba(245,158,11,0.4)'
+    : '0 2px 8px rgba(0,0,0,0.2)';
+  const borderWidth = isFeatured ? 4 : 3;
+  const featuredBadge = isFeatured && !isClosed ? `
+    <div style="
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 2px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </div>
+  ` : '';
   const warningBadge = closingSoon ? `
     <div style="
       position: absolute;
@@ -52,24 +87,25 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isC
 
   if (logoUrl) {
     return L.divIcon({
-      className: 'gym-marker',
+      className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
       html: `
         <div style="
           position: relative;
           width: ${markerSize}px;
           height: ${markerSize}px;
           border-radius: 50%;
-          border: 3px solid ${borderColor};
+          border: ${borderWidth}px solid ${borderColor};
           background: white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          box-shadow: ${boxShadow};
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
         ">
           <img src="${logoUrl}" style="width: 75%; height: 75%; object-fit: contain;" />
-          ${warningBadge}
         </div>
+        ${featuredBadge}
+        ${warningBadge}
       `,
       iconSize: [markerSize, markerSize],
       iconAnchor: [markerSize / 2, markerSize],
@@ -77,26 +113,27 @@ const createGymIcon = (logoUrl: string | null, closingSoon: boolean = false, isC
   }
 
   return L.divIcon({
-    className: 'gym-marker',
+    className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
     html: `
       <div style="
         position: relative;
         width: ${markerSize}px;
         height: ${markerSize}px;
         border-radius: 50%;
-        border: 3px solid ${borderColor};
-        background: hsl(var(--primary) / 0.1);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        border: ${borderWidth}px solid ${borderColor};
+        background: ${isFeatured ? 'rgba(245,158,11,0.12)' : 'hsl(var(--primary) / 0.1)'};
+        box-shadow: ${boxShadow};
         display: flex;
         align-items: center;
         justify-content: center;
       ">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${isFeatured ? '#f59e0b' : 'hsl(var(--primary))'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
           <circle cx="12" cy="10" r="3"/>
         </svg>
-        ${warningBadge}
       </div>
+      ${featuredBadge}
+      ${warningBadge}
     `,
     iconSize: [markerSize, markerSize],
     iconAnchor: [markerSize / 2, markerSize],
@@ -238,8 +275,10 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
       const closingSoon = hasHours && isClosingSoon(hours);
 
       const marker = L.marker([gym.latitude, gym.longitude], {
-        icon: createGymIcon(gym.logo_url, closingSoon, !isOpen),
+        icon: createGymIcon(gym.logo_url, closingSoon, !isOpen, gym.is_featured),
         opacity: isOpen ? 1 : 0.6,
+        // Featured (Premium) gyms render above others so they're never hidden by neighbors
+        zIndexOffset: gym.is_featured ? 1000 : 0,
       }).addTo(mapRef.current!);
 
       marker.on('click', () => onGymSelect(gym));

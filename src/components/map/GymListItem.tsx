@@ -1,6 +1,6 @@
 import { OpeningHours } from '@/hooks/useGym';
 import { PublicGym } from '@/hooks/usePublishedGyms';
-import { MapPin, Navigation, Heart, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, Heart, AlertTriangle, Star } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 
@@ -20,10 +20,20 @@ const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) =
     <button
       onClick={onClick}
       className={cn(
-        "w-full bg-card border border-border rounded-xl p-4 flex items-center gap-4 shadow-card transition-colors text-left",
-        isOpen ? "hover:bg-accent/50" : "opacity-60 hover:opacity-70"
+        "w-full rounded-xl p-4 flex items-center gap-4 shadow-card transition-colors text-left relative",
+        gym.is_featured
+          ? "bg-amber-500/[0.04] border-2 border-amber-500/40 hover:bg-amber-500/[0.08]"
+          : "bg-card border border-border",
+        !gym.is_featured && (isOpen ? "hover:bg-accent/50" : "opacity-60 hover:opacity-70"),
+        gym.is_featured && !isOpen && "opacity-60"
       )}
     >
+      {gym.is_featured && (
+        <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
+          <Star className="w-2.5 h-2.5 fill-white" />
+          PREMIUM
+        </div>
+      )}
       {/* Logo */}
       <div className="relative flex-shrink-0">
         {gym.logo_url ? (

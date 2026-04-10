@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Play, ArrowLeft, ChevronDown, Globe, Mail, Phone, Heart, Check } from 'lucide-react';
+import { MapPin, Play, ArrowLeft, ChevronDown, Globe, Mail, Phone, Heart, Check, Star } from 'lucide-react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
  import { GymPricing } from '@/contexts/GymContext';
 import { PublicGym } from '@/hooks/usePublishedGyms';
@@ -122,7 +122,15 @@ const GymProfilePreview = ({
       <div className="pt-12 pb-4 px-4 space-y-4">
         {/* Header */}
         <div>
-          <h3 className="font-bold text-xl">{gym.name}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-xl">{gym.name}</h3>
+            {'is_featured' in gym && (gym as PublicGym).is_featured && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
+                <Star className="w-2.5 h-2.5 fill-white" />
+                PREMIUM
+              </span>
+            )}
+          </div>
           {gym.address && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
               <MapPin className="w-3.5 h-3.5" />
