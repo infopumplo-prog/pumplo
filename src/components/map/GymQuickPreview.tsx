@@ -1,4 +1,4 @@
-import { MapPin, Clock, Navigation, Info, X, Star } from 'lucide-react';
+import { MapPin, Clock, Navigation, Info, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
@@ -37,12 +37,6 @@ const GymQuickPreview = ({
         ? "bg-card border-2 border-amber-500/50 shadow-[0_0_0_3px_rgba(245,158,11,0.12)]"
         : "bg-card border border-border"
     )}>
-      {gym.is_featured && (
-        <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm z-10">
-          <Star className="w-2.5 h-2.5 fill-white" />
-          PREMIUM
-        </div>
-      )}
       {/* Close button */}
       <button
         onClick={onClose}
