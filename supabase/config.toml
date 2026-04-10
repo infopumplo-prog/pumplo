@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.admin-user-actions]
 verify_jwt = false
+
+[functions.create-portal-session]
+verify_jwt = false

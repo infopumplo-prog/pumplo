@@ -121,11 +121,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // 2. Set user role to business
-  await supabase.from("user_roles").upsert({
+  // 2. Ensure user has the business role (user_roles is multi-role; a user may
+  // already have the default "user" role — we add "business" alongside it).
+  // Requires UNIQUE (user_id, role) constraint on public.user_roles.
+  const { error: roleError } = await supabase.from("user_roles").upsert({
     user_id: userId,
     role: "business",
-  }, { onConflict: "user_id" });
+  }, { onConflict: "user_id,role", ignoreDuplicates: true });
+  if (roleError) {
+    console.error("Failed to set business role:", roleError);
+  }
 
   // 3. Create gym subscription
   const { error: subError } = await supabase.from("gym_subscriptions").insert({
