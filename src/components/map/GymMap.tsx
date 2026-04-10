@@ -38,27 +38,42 @@ const createGymIcon = (
       : isFeatured
         ? '#f59e0b' // amber/gold border for Premium
         : 'hsl(var(--primary))';
-  const markerSize = isFeatured ? 56 : 44;
+  const markerSize = isFeatured ? 64 : 44;
   const boxShadow = isFeatured
-    ? '0 0 0 3px rgba(245,158,11,0.25), 0 4px 14px rgba(245,158,11,0.4)'
+    ? '0 0 0 4px rgba(255,255,255,0.9), 0 0 0 6px rgba(245,158,11,0.5), 0 6px 20px rgba(245,158,11,0.55)'
     : '0 2px 8px rgba(0,0,0,0.2)';
-  const borderWidth = isFeatured ? 4 : 3;
+  const borderWidth = isFeatured ? 5 : 3;
+  // Animated pulse ring behind the marker to draw the eye (Premium only, when open)
+  const pulseRing = isFeatured && !isClosed ? `
+    <div class="gym-premium-pulse" style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: ${markerSize}px;
+      height: ${markerSize}px;
+      border-radius: 50%;
+      background: rgba(245,158,11,0.35);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    "></div>
+  ` : '';
   const featuredBadge = isFeatured && !isClosed ? `
     <div style="
       position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 20px;
-      height: 20px;
+      top: -8px;
+      right: -8px;
+      width: 26px;
+      height: 26px;
       border-radius: 50%;
-      background: #f59e0b;
-      border: 2px solid white;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border: 3px solid white;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      z-index: 2;
     ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
       </svg>
     </div>
@@ -89,6 +104,7 @@ const createGymIcon = (
     return L.divIcon({
       className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
       html: `
+        ${pulseRing}
         <div style="
           position: relative;
           width: ${markerSize}px;
@@ -115,6 +131,7 @@ const createGymIcon = (
   return L.divIcon({
     className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
     html: `
+      ${pulseRing}
       <div style="
         position: relative;
         width: ${markerSize}px;

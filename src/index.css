@@ -172,6 +172,22 @@
   animation: userPulse 2s ease-in-out infinite;
 }
 
+/* Premium (featured) gym marker pulse ring — draws the eye on the map */
+@keyframes gymPremiumPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(2.1);
+    opacity: 0;
+  }
+}
+
+.gym-premium-pulse {
+  animation: gymPremiumPulse 2.4s ease-out infinite;
+}
+
 @layer utilities {
   .gradient-primary {
     background: var(--gradient-primary);
