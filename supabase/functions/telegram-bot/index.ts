@@ -17,6 +17,81 @@ async function sendTelegram(chatId: string, text: string, parseMode = "Markdown"
   });
 }
 
+async function answerCallbackQuery(callbackId: string, text?: string) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackId, text: text ?? "" }),
+  });
+}
+
+async function editTelegramMessage(chatId: string, messageId: number, text: string) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: "Markdown",
+    }),
+  });
+}
+
+async function handleCallbackQuery(callback: any) {
+  const chatId = String(callback.message?.chat?.id || "");
+  const messageId = callback.message?.message_id as number | undefined;
+  const data: string = callback.data || "";
+  const callbackId: string = callback.id;
+
+  // Security: only our chat
+  if (chatId !== ALLOWED_CHAT_ID) {
+    await answerCallbackQuery(callbackId, "Unauthorized");
+    return;
+  }
+
+  // Parse "allow:<id>" or "deny:<id>"
+  const match = data.match(/^(allow|deny):(.+)$/);
+  if (!match) {
+    await answerCallbackQuery(callbackId, "Neznámá akce");
+    return;
+  }
+  const [, decision, requestId] = match;
+
+  // Update DB row
+  const { data: updated, error } = await supabase
+    .from("claude_permission_requests")
+    .update({
+      status: decision,
+      resolved_at: new Date().toISOString(),
+      resolved_via: "telegram",
+    })
+    .eq("id", requestId)
+    .eq("status", "pending") // only update if still pending (idempotent)
+    .select("tool_name")
+    .maybeSingle();
+
+  if (error || !updated) {
+    await answerCallbackQuery(callbackId, "Už bylo rozhodnuto nebo expirovalo");
+    if (messageId) {
+      await editTelegramMessage(
+        chatId,
+        messageId,
+        (callback.message?.text || "") + `\n\n⏰ *(expired / already resolved)*`,
+      );
+    }
+    return;
+  }
+
+  // Ack + edit message to show decision
+  const icon = decision === "allow" ? "✅ POVOLENO" : "❌ ZAMÍTNUTO";
+  await answerCallbackQuery(callbackId, icon);
+  if (messageId) {
+    const original = callback.message?.text || "";
+    await editTelegramMessage(chatId, messageId, `${original}\n\n${icon} (${new Date().toLocaleTimeString("cs-CZ")})`);
+  }
+}
+
 async function handleCommand(text: string, chatId: string) {
   const cmd = text.toLowerCase().trim();
 
@@ -502,6 +577,13 @@ serve(async (req) => {
 
   try {
     const update = await req.json();
+
+    // Handle callback_query (inline button taps) FIRST — before text message check
+    if (update.callback_query) {
+      await handleCallbackQuery(update.callback_query);
+      return new Response("OK", { status: 200 });
+    }
+
     const message = update.message;
     if (!message?.chat?.id) {
       return new Response("OK", { status: 200 });

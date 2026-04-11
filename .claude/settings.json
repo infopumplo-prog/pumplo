@@ -94,6 +94,18 @@
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|WebFetch|WebSearch|Task|Agent|Read|Glob|Grep|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/telegram-permission-gate.sh",
+            "timeout": 80
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

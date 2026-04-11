@@ -36,6 +36,11 @@ async function main() {
   const message = String(payload.message || '').trim()
   if (!message) return
 
+  // Skip permission notifications — those are handled by PermissionRequest hook
+  // (telegram-permission-gate.js) which sends a richer message with inline buttons.
+  // We don't want the user to get a duplicate, button-less alert.
+  if (/needs your permission/i.test(message) || /permission to use/i.test(message)) return
+
   // Telegram text (plain, no markdown — safer, no parse errors)
   const text = '🔔 Claude čeká na vstup:\n\n' + message
 
