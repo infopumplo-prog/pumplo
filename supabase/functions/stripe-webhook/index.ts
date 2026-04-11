@@ -15,14 +15,14 @@ const supabase = createClient(
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-// Map Stripe price IDs to plan IDs
+// Map Stripe price IDs to plan IDs — LIVE mode (switched 2026-04-11)
 const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
-  "price_1TIa4zEvdp2FxnFO3favQISR": { plan_id: "start", period: "monthly" },
-  "price_1TIa50Evdp2FxnFObj0umzSN": { plan_id: "start", period: "annual" },
-  "price_1TIa51Evdp2FxnFOjxDA7qFq": { plan_id: "profi", period: "monthly" },
-  "price_1TIa51Evdp2FxnFOyG8IDLhJ": { plan_id: "profi", period: "annual" },
-  "price_1TIa52Evdp2FxnFOoJIEJKlF": { plan_id: "premium", period: "monthly" },
-  "price_1TIa52Evdp2FxnFOYJVPYkFM": { plan_id: "premium", period: "annual" },
+  "price_1TKxyrEvdp2FxnFO3TTdE9mS": { plan_id: "start", period: "monthly" },
+  "price_1TKxysEvdp2FxnFOCXjuXt8g": { plan_id: "start", period: "annual" },
+  "price_1TKxysEvdp2FxnFO4ImRp2gn": { plan_id: "profi", period: "monthly" },
+  "price_1TKxysEvdp2FxnFOWAg03uG7": { plan_id: "profi", period: "annual" },
+  "price_1TKxytEvdp2FxnFOpx9DiIw3": { plan_id: "premium", period: "monthly" },
+  "price_1TKxytEvdp2FxnFOqbt8PhRo": { plan_id: "premium", period: "annual" },
 };
 
 serve(async (req) => {
