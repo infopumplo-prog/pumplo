@@ -102,7 +102,7 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/telegram-permission-gate.sh",
-            "timeout": 80
+            "timeout": 320
           }
         ]
       }

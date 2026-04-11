@@ -25,7 +25,7 @@ async function answerCallbackQuery(callbackId: string, text?: string) {
   });
 }
 
-async function editTelegramMessage(chatId: string, messageId: number, text: string) {
+async function editTelegramMessage(chatId: string, messageId: number, text: string, clearKeyboard = true) {
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,6 +34,8 @@ async function editTelegramMessage(chatId: string, messageId: number, text: stri
       message_id: messageId,
       text,
       parse_mode: "Markdown",
+      // Pass empty inline_keyboard to remove the buttons after resolution
+      ...(clearKeyboard ? { reply_markup: { inline_keyboard: [] } } : {}),
     }),
   });
 }
