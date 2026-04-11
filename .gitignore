@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# claude-remote — bridge env is in ~/.claude-remote.env, never in repo.
+# This line is defensive in case someone ever drops one into the project.
+.claude-remote.env
+.claude-remote/

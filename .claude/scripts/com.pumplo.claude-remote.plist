@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent for claude-remote-bridge.
+
+  This starts the tmux session + bridge daemon automatically when David logs in.
+  It does NOT auto-start Claude Code inside the tmux session on boot — that
+  requires interactive claude login, so David needs to run claude-remote-start.sh
+  manually (or attach to tmux and type `claude`) once after boot.
+
+  Install:
+    cp .claude/scripts/com.pumplo.claude-remote.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.pumplo.claude-remote.plist
+
+  Unload (stop auto-start):
+    launchctl unload ~/Library/LaunchAgents/com.pumplo.claude-remote.plist
+
+  Status:
+    launchctl list | grep claude-remote
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pumplo.claude-remote</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>/Users/davidnovotny/Desktop/pumplo/.claude/scripts/claude-remote-start.sh start</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/davidnovotny/.claude-remote/launchd-stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/davidnovotny/.claude-remote/launchd-stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/davidnovotny/Desktop/pumplo</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

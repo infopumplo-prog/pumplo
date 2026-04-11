@@ -10,5 +10,94 @@
       "Bash(curl -s \"https://udqwjqgdsjobdufdxbpn.supabase.co/rest/v1/gyms?select=id,name,pricing,description&is_published=eq.true\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXdqcWdkc2pvYmR1ZmR4YnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODY3NTQsImV4cCI6MjA4Nzk2Mjc1NH0.Ehf4grKfU7flrTbuOXKnH_WRiXVDIp9BjfYif9E4SrY\")",
       "Bash(python3 -m json.tool)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-check-update.js"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-session-state.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-context-monitor.js",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-phase-boundary.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-prompt-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-read-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-validate-commit.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PUMPLO_TG_BOT_TOKEN='8652608637:AAFXzwYiAJCV8fEAHzO_YvpniMb0dijH8mU' PUMPLO_TG_CHAT_ID='1111711198' node .claude/hooks/telegram-notify.js",
+            "timeout": 8
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node .claude/hooks/gsd-statusline.js"
   }
 }

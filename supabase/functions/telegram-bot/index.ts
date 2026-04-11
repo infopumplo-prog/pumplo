@@ -20,6 +20,31 @@ async function sendTelegram(chatId: string, text: string, parseMode = "Markdown"
 async function handleCommand(text: string, chatId: string) {
   const cmd = text.toLowerCase().trim();
 
+  // === LIVE CLAUDE CHAT — prefix `>` routes straight into running tmux Claude session ===
+  // Example: `> proč padá build v pumplo-admin?`
+  // Requires local claude-remote-bridge daemon to be running on the Mac.
+  if (text.trim().startsWith(">")) {
+    const payload = text.trim().slice(1).trim();
+    if (!payload) {
+      return sendTelegram(chatId, "Formát: `> zpráva pro Claude v běžícím tmux session`");
+    }
+
+    const { data, error } = await supabase
+      .from("claude_remote_messages")
+      .insert({ message: payload, source: "telegram", status: "pending" })
+      .select("id")
+      .single();
+
+    if (error) {
+      return sendTelegram(chatId, `❌ Nepodařilo se zařadit zprávu: ${error.message}`);
+    }
+
+    return sendTelegram(
+      chatId,
+      `📨 Odesláno do live Claude session.\n\nID: \`${data.id.slice(0, 8)}\`\n\nPokud claude-remote-bridge běží, zpráva dorazí do tmux pane během 2 s. Pokud dostaneš "skipped" v dalším updatu, daemon neběží.`,
+    );
+  }
+
   // === HELP ===
   if (cmd === "/start" || cmd === "/help" || cmd === "help") {
     return sendTelegram(chatId, `🤖 *Pumplo Admin Bot*
@@ -35,7 +60,10 @@ Dostupné příkazy:
 📈 *statistiky* — detailní statistiky
 💰 *mrr* — Monthly Recurring Revenue
 🔍 *uživatel [jméno]* — hledání uživatele
-📩 *zpráva [gym]: text* — hromadná zpráva`);
+📩 *zpráva [gym]: text* — hromadná zpráva
+
+🧠 *> text* — živá zpráva do Claude Code v tmux session (potřebuje běžící claude-remote-bridge daemon na Macu)
+🔧 *oprav popis* — fix request pro cloud agenta (batch, zpracuje za hodinu)`);
   }
 
   // === STATUS ===
