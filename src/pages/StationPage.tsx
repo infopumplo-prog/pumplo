@@ -41,7 +41,7 @@ const StationPage = () => {
   if (data.exercises.length === 0) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: '#0B1222' }}>
-        <StationBanner gymName={data.gymName} />
+        <StationBanner gymName={data.gymName} gymIsVerified={data.gymIsVerified} />
         <p style={{ color: '#fff', fontSize: '20px', fontWeight: 700, marginBottom: '8px', marginTop: '60px' }}>
           {data.machineName}
         </p>
@@ -55,7 +55,7 @@ const StationPage = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#000' }}>
-      <StationBanner gymName={data.gymName} onDismiss={() => setBannerDismissed(true)} />
+      <StationBanner gymName={data.gymName} gymIsVerified={data.gymIsVerified} onDismiss={() => setBannerDismissed(true)} />
       <div className="flex-1">
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} bannerVisible={!bannerDismissed} />
       </div>

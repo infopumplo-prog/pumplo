@@ -499,6 +499,7 @@ export type Database = {
           description: string | null
           id: string
           is_published: boolean
+          is_verified: boolean | null
           latitude: number
           logo_url: string | null
           longitude: number
@@ -515,6 +516,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
+          is_verified?: boolean | null
           latitude: number
           logo_url?: string | null
           longitude: number
@@ -531,6 +533,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
+          is_verified?: boolean | null
           latitude?: number
           logo_url?: string | null
           longitude?: number
@@ -1285,7 +1288,9 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string | null
+          is_featured: boolean | null
           is_published: boolean | null
+          is_verified: boolean | null
           latitude: number | null
           logo_url: string | null
           longitude: number | null
@@ -1300,7 +1305,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          is_featured?: boolean | null
           is_published?: boolean | null
+          is_verified?: boolean | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
@@ -1315,7 +1322,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          is_featured?: boolean | null
           is_published?: boolean | null
+          is_verified?: boolean | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null

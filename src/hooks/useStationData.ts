@@ -21,6 +21,7 @@ interface StationData {
   machineDescription: string | null;
   gymName: string;
   gymId: string;
+  gymIsVerified: boolean;
   exercises: StationExercise[];
 }
 
@@ -50,7 +51,7 @@ export const useStationData = (shortCode: string | undefined) => {
 
       const { data: gym } = await supabase
         .from('gyms')
-        .select('name')
+        .select('name, is_verified')
         .eq('id', gymMachine.gym_id)
         .single();
 
@@ -66,6 +67,7 @@ export const useStationData = (shortCode: string | undefined) => {
         machineDescription: machine?.description || null,
         gymName: gym?.name || '',
         gymId: gymMachine.gym_id,
+        gymIsVerified: Boolean(gym?.is_verified),
         exercises: (exercises || []).map(e => ({
           ...e,
           primary_muscles: e.primary_muscles || [],

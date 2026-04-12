@@ -25,6 +25,8 @@ export interface PublicGym {
   updated_at: string;
   /** Premium plan gyms are featured on the map and prioritized in search results. */
   is_featured: boolean;
+  /** Gym has been verified by Pumplo team (fulfillment completed). */
+  is_verified: boolean;
 }
 
 export const usePublishedGyms = () => {
@@ -44,6 +46,7 @@ export const usePublishedGyms = () => {
         opening_hours: gym.opening_hours as OpeningHours,
         pricing: gym.pricing as unknown as GymPricing | null,
         is_featured: Boolean((gym as { is_featured?: boolean }).is_featured),
+        is_verified: Boolean((gym as { is_verified?: boolean }).is_verified),
       })) as PublicGym[];
 
       return normalized.sort((a, b) => {

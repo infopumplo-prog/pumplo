@@ -1,12 +1,13 @@
-import { X } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface StationBannerProps {
   gymName: string;
+  gymIsVerified?: boolean;
   onDismiss?: () => void;
 }
 
-export const StationBanner = ({ gymName, onDismiss }: StationBannerProps) => {
+export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -25,7 +26,12 @@ export const StationBanner = ({ gymName, onDismiss }: StationBannerProps) => {
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         <div>
           <p style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>Pumplo</p>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{gymName}</p>
+          <div className="flex items-center gap-1">
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{gymName}</p>
+            {gymIsVerified && (
+              <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+            )}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">

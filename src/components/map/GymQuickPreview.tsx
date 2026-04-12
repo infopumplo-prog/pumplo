@@ -1,4 +1,4 @@
-import { MapPin, Clock, Navigation, Info, X } from 'lucide-react';
+import { MapPin, Clock, Navigation, Info, X, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
@@ -75,7 +75,15 @@ const GymQuickPreview = ({
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-base truncate">{gym.name}</h3>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="font-bold text-base truncate">{gym.name}</h3>
+              {gym.is_verified && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 shrink-0">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Ověřená
+                </span>
+              )}
+            </div>
 
             {/* Address + Distance on same line */}
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">

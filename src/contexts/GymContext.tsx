@@ -32,6 +32,7 @@ export interface Gym {
   longitude: number;
   address: string | null;
   is_published: boolean;
+  is_verified?: boolean;
   opening_hours: OpeningHours;
   cover_photo_url: string | null;
   logo_url: string | null;
