@@ -220,7 +220,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     // === Send Telegram notification about new fulfillment order ===
     try {
       const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
-      const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
+      const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID');
 
       if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
         const message = `📦 *Nová fulfillment objednávka!*\n\n` +
