@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.6.0?target=deno";
 
+const IMPLEMENTATION_FEE_PRICE_ID = 'price_1TLJJrEvdp2FxnFOcOEO0cAI';
+
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
   httpClient: Stripe.createFetchHttpClient(),
@@ -36,7 +38,10 @@ serve(async (req) => {
       mode: "subscription",
       customer: customer.id,
       payment_method_types: ["card"],
-      line_items: [{ price: price_id, quantity: 1 }],
+      line_items: [
+        { price: price_id, quantity: 1 },
+        { price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 },
+      ],
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
       cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
       metadata: {
