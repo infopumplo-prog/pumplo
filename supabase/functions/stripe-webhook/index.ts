@@ -216,6 +216,37 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.log(
       `Fulfillment order created for gym ${gym.id}: ${totalStickerCount} stickers, 2 stands`
     );
+
+    // === Send Telegram notification about new fulfillment order ===
+    try {
+      const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+      const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
+
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        const message = `📦 *Nová fulfillment objednávka!*\n\n` +
+          `🏋️ *${session.metadata?.gym_name || 'Neznámá posilovna'}*\n` +
+          `📍 ${session.metadata?.address || 'Adresa neuvedena'}\n` +
+          `📞 ${session.metadata?.phone || 'Telefon neuveden'}\n\n` +
+          `🏷️ Samolepek: *${totalStickerCount}*\n` +
+          `🪧 Stojánků: *2*\n` +
+          `📋 Plán: *${planInfo.plan_id}*\n\n` +
+          `➡️ [Otevřít fulfillment](https://pumplo-admin.vercel.app/fulfillment)`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown',
+            disable_web_page_preview: true,
+          }),
+        });
+        console.log('Telegram fulfillment notification sent');
+      }
+    } catch (telegramError) {
+      console.error('Telegram notification error (non-blocking):', telegramError);
+    }
   }
 
   console.log(`Gym "${gymName}" created with ${planInfo.plan_id} plan for user ${userId}`);
