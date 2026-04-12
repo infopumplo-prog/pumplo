@@ -27,20 +27,24 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.webmanifest" />
     
-    <!-- Favicon -->
+    <!-- Favicon — modern PNG preferred, legacy .ico fallback -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/pumplo-icon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pumplo-icon-192.png" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Pumplo - Tvůj osobní tréningový průvodce" />
     <meta property="og:description" content="Pumplo je tréninková appka, která ti pomůže dosáhnout tvých fitness cílů. Generuj personalizované tréninky a sleduj svůj pokrok." />
-    <meta property="og:image" content="https://pumplo-nine.vercel.app/pwa-512x512.png" />
+    <meta property="og:image" content="https://pumplo-nine.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Pumplo - Tvůj osobní tréningový průvodce" />
     <meta name="twitter:description" content="Pumplo je tréninková appka, která ti pomůže dosáhnout tvých fitness cílů." />
-    <meta name="twitter:image" content="https://pumplo-nine.vercel.app/pwa-512x512.png" />
+    <meta name="twitter:image" content="https://pumplo-nine.vercel.app/og-image.png" />
     
     <!-- Mobile Specific -->
     <meta name="mobile-web-app-capable" content="yes" />
