@@ -174,6 +174,50 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
   }
 
+  // 6. Create fulfillment order for welcome kit
+  let totalStickerCount = 0;
+  try {
+    const { data: machineData } = await supabase
+      .from("gym_machines")
+      .select("quantity")
+      .eq("gym_id", gym.id);
+    if (machineData) {
+      totalStickerCount = machineData.reduce(
+        (sum: number, m: { quantity: number | null }) => sum + (m.quantity || 1),
+        0
+      );
+    }
+  } catch (e) {
+    console.error("Error counting machines for fulfillment:", e);
+  }
+
+  const { error: fulfillmentError } = await supabase
+    .from("fulfillment_orders")
+    .insert({
+      gym_id: gym.id,
+      type: "welcome_kit",
+      status: "pending",
+      shipping_address: {
+        address: session.metadata?.address || "",
+        phone: session.metadata?.phone || "",
+        gym_name: session.metadata?.gym_name || "",
+      },
+      sticker_count: totalStickerCount || 1,
+      stand_count: 2,
+      metadata: {
+        stripe_session_id: session.id,
+        plan_id: planInfo.plan_id,
+      },
+    });
+
+  if (fulfillmentError) {
+    console.error("Error creating fulfillment order:", fulfillmentError);
+  } else {
+    console.log(
+      `Fulfillment order created for gym ${gym.id}: ${totalStickerCount} stickers, 2 stands`
+    );
+  }
+
   console.log(`Gym "${gymName}" created with ${planInfo.plan_id} plan for user ${userId}`);
 }
 
