@@ -31,7 +31,7 @@ Systém pro výrobu, distribuci a verifikaci fyzických marketingových materiá
 - **Name**: Aktivace Pumplo kitu
 - **Price**: 500 CZK, one-time
 - **Description**: Jednorázový implementační poplatek zahrnující: tisk QR samolepek na všechny stroje, 2× A5 akrylový stojánek na recepci, welcome kit s placement guide, balení a poštovné.
-- **Price ID**: `price_...` (vytvořit v Stripe Dashboard → Products → Create)
+- **Price ID**: `price_1TLJJrEvdp2FxnFOcOEO0cAI` (LIVE)
 - **Metadata**: `type=implementation_fee`
 
 ### Integrace do checkout flow
@@ -62,24 +62,53 @@ Když zákazník klikne "Publikovat" v admin dashboardu (po dokončení profilu)
    - `stand_count`: 2
 3. Telegram notifikace → David: "Nová objednávka: {gym_name}, {sticker_count} samolepek, {stand_count} stojánků"
 
-### 2.2 David zpracuje objednávku
+### 2.2 David zpracuje objednávku (ruční MVP flow)
 
-1. David vidí objednávku v admin dashboardu (nová sekce "Fulfillment")
-2. Vytiskne samolepky (QR z existujícího `GymQRCodes` systému)
-3. Připraví stojánky (A5 karta v akrylovém stojanu)
-4. Přiloží welcome dopis (tištěný A4)
-5. Přiloží placement guide (tištěný A4)
-6. Zabalí → podá přes Balíkobot
-7. Zadá tracking number do dashboardu → status: `shipped`
-8. Zákazník vidí tracking v svém dashboardu
+**Trigger:** Telegram notifikace přijde → David otevře admin dashboard `/fulfillment`
 
-### 2.3 Balíkobot integrace
+**Krok za krokem:**
 
-- API: https://apiv2.balikobot.cz/doc
-- Single integration point pro všechny dopravce
-- Default carrier: Zásilkovna (nejlevnější, nejhustší síť výdejních míst v ČR)
-- Doručení na gym adresu (ne na výdejní místo — gym má recepci)
-- Label generation → PDF → David vytiskne a nalepí
+1. **Otevři fulfillment dashboard** — vidíš novou objednávku se statusem "Čeká na zpracování"
+2. **Vytiskni samolepky**:
+   - Jdi na `/qr-codes` pro danou posilovnu (nebo GymQRCodes page)
+   - Stáhni PDF se všemi QR kódy
+   - Tisk na samolepkový papír 5×5 cm (tiskárna: vlastní nebo copycentrum)
+3. **Připrav stojánky**:
+   - Vytiskni A5 kartu (design z mockupů) na 300g křídový papír, mat laminace
+   - Vlož do akrylového L-stojanu (zakoupené předem, ~80 Kč/ks z Aliexpress/Alza)
+4. **Vytiskni welcome dopis** — A4, jednostranný (šablona v `docs/email-templates/`)
+5. **Vytiskni placement guide** — A4, oboustranný (šablona bude v `docs/`)
+6. **Zabal**:
+   - Bublinkový obálka nebo malá krabička
+   - Pořadí: welcome dopis navrch → placement guide → samolepky v sáčku → stojánky
+7. **Podej zásilku** — ruční podání přes web dopravce:
+   - **Zásilkovna** (doporučeno): zasilkovna.cz → "Odeslat zásilku" → adresa z dashboardu → ~89-129 Kč
+   - **Česká pošta**: posta.cz → Balík Do ruky → ~130 Kč
+   - **PPL**: ppl.cz → Online podání → ~149 Kč
+8. **Zadej tracking do dashboardu** — klikni "Označit jako odesláno" → vlož tracking number
+9. **Zákazník vidí tracking** v svém dashboard setup progress kartu
+
+**Časový odhad:**
+- Příprava balíčku: 20-30 min (tisk + balení)
+- Podání zásilky: 10 min (online) + cesta na poštu/výdejní místo
+- Doručení: **2-3 pracovní dny** (Zásilkovna/PPL), 3-5 dnů (ČP)
+- Celkem od objednávky po doručení: **3-5 pracovních dnů**
+
+**Náklady per balíček (hrazeno z 500 Kč implementačního poplatku):**
+- Samolepky (30 ks průměr × 8 Kč): ~240 Kč
+- 2× A5 stojánek (tisk + stojan): ~200 Kč
+- Poštovné: ~100-150 Kč
+- Obálka/krabička: ~20 Kč
+- **Celkem: ~560-610 Kč** (mírná ztráta u menších gymů, ale customer acquisition cost)
+
+### 2.3 Shipping — ruční MVP (bez Balíkobotu)
+
+Balíkobot (600 Kč/měs) se vyplatí až od 10+ zásilek/měsíc. Pro launch používáme ruční podání:
+
+- **Primární dopravce**: Zásilkovna na adresu (129 Kč, 2-3 dny)
+- **Alternativa**: ČP Balík Do ruky (130 Kč, 3-5 dnů)
+- **Tracking**: manuálně zadáno do admin dashboardu po podání
+- **Migrace na Balíkobot**: až překročíme 10 zásilek/měsíc (cca 10 nových zákazníků)
 
 ### 2.4 Post-delivery verification
 
