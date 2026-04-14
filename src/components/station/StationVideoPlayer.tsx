@@ -106,9 +106,36 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
     }
   }, [nextUrl]);
 
-  const goTo = (index: number) => {
+  const goTo = useCallback((index: number) => {
     setCurrentIndex(Math.max(0, Math.min(index, exercises.length - 1)));
-  };
+  }, [exercises.length]);
+
+  // Lock screen widget — Media Session API
+  useEffect(() => {
+    if (!currentExercise || !('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentExercise.name,
+      artist: machineName,
+      artwork: [
+        { src: '/pumplo-artwork-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pumplo-artwork-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack',
+      currentIndex > 0 ? () => goTo(currentIndex - 1) : null
+    );
+    navigator.mediaSession.setActionHandler('nexttrack',
+      currentIndex < exercises.length - 1 ? () => goTo(currentIndex + 1) : null
+    );
+  }, [currentExercise, machineName, currentIndex, exercises.length, goTo]);
+
+  // Sync playback state with lock screen widget
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = activeUrl ? 'playing' : 'none';
+  }, [activeUrl]);
 
   if (!currentExercise) {
     return (

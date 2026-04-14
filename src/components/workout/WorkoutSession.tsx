@@ -138,6 +138,36 @@ export const WorkoutSession = ({
     }
   }, [cooldownExercises.length, cooldownDone]);
   const [workoutStartTime] = useState(new Date());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Lock screen widget — elapsed count-up timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - workoutStartTime.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [workoutStartTime]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentExercise) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentExercise.exerciseName,
+      artist: gymName || 'Trénink · Pumplo',
+      artwork: [
+        { src: '/pumplo-artwork-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pumplo-artwork-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+    });
+    navigator.mediaSession.playbackState = 'playing';
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: 5400,
+        position: Math.min(elapsedSeconds, 5400),
+        playbackRate: 1,
+      });
+    } catch {}
+  }, [currentExercise, gymName, elapsedSeconds]);
+
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [gymName, setGymName] = useState<string>('');

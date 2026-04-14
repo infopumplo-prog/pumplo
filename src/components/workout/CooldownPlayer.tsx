@@ -44,8 +44,8 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
       title: currentExercise.name,
       artist: 'Cooldown · Pumplo',
       artwork: [
-        { src: '/pumplo-icon-192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/pumplo-icon-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/pumplo-artwork-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pumplo-artwork-512.png', sizes: '512x512', type: 'image/png' },
       ],
     });
     navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing';
