@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
+import { announceTimedExercise, unlockAudio, startSilentLoop, stopSilentLoop } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -35,6 +36,44 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
   const totalExercises = exercises.length;
   const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
+
+  // Lock screen widget — metadata + countdown timer
+  useEffect(() => {
+    if (!currentExercise || !('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentExercise.name,
+      artist: 'Cooldown · Pumplo',
+      artwork: [
+        { src: '/pumplo-icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pumplo-icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+    });
+    navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing';
+  }, [currentExercise, isPaused]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentExercise) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: currentExercise.duration,
+        position: Math.max(0, currentExercise.duration - timeRemaining),
+        playbackRate: isPaused ? 0 : 1,
+      });
+    } catch {}
+  }, [timeRemaining, currentExercise, isPaused]);
+
+  // On mount: unlock audio + start silent loop to keep MediaSession active
+  useEffect(() => {
+    unlockAudio();
+    startSilentLoop();
+    return () => stopSilentLoop();
+  }, []);
+
+  // Announce exercise name + duration on each new exercise
+  useEffect(() => {
+    if (!currentExercise) return;
+    announceTimedExercise(currentExercise.name, currentExercise.duration);
+  }, [currentIndex]);
 
   // Countdown timer — auto-advance
   useEffect(() => {

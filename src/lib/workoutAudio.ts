@@ -58,8 +58,21 @@ function getExerciseAudioUrl(name: string): string {
   return `${STORAGE_BASE}/ex_${md5Hash(name).substring(0, 12)}.mp3`;
 }
 
+// --- Silent WAV for MediaSession lock screen support ---
+let silenceUrl: string|null = null;
+try {
+  const sr=22050,n=sr;const buf=new ArrayBuffer(44+n);const v=new DataView(buf);
+  const w=(o:number,s:string)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);
+  v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  w(36,'data');v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,128);
+  silenceUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+} catch{}
+
 // --- Audio player ---
 let audioEl: HTMLAudioElement | null = null;
+let silentEl: HTMLAudioElement | null = null; // dedicated element for silent loop (MediaSession)
 let unlocked = false;
 
 function play(url: string) {
@@ -71,6 +84,7 @@ function play(url: string) {
 export const unlockAudio = () => {
   if (unlocked) return;
   try {
+    // Unlock TTS audio element
     if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
     audioEl.src = PHRASES.start;
     audioEl.muted = true;
@@ -78,7 +92,28 @@ export const unlockAudio = () => {
       audioEl!.pause(); audioEl!.muted = false; audioEl!.currentTime = 0;
       unlocked = true;
     }).catch(() => {});
+    // Unlock silent loop element in the same gesture — Safari requires this
+    if (!silentEl) { silentEl = new Audio(); silentEl.volume = 0.001; silentEl.loop = true; }
+    silentEl.src = PHRASES.start; // need a src for Safari to trust the element
+    silentEl.muted = true;
+    silentEl.play().then(() => {
+      silentEl!.pause(); silentEl!.muted = false;
+    }).catch(() => {});
   } catch {}
+};
+
+/** Start silent audio loop to keep MediaSession active (lock screen widget) */
+export const startSilentLoop = () => {
+  if (!silentEl || !silenceUrl) return;
+  silentEl.src = silenceUrl;
+  silentEl.loop = true;
+  silentEl.volume = 0.001;
+  silentEl.play().catch(() => {});
+};
+
+/** Stop silent audio loop */
+export const stopSilentLoop = () => {
+  silentEl?.pause();
 };
 
 const autoUnlock = () => { unlockAudio(); document.removeEventListener('click',autoUnlock); document.removeEventListener('touchstart',autoUnlock); document.removeEventListener('touchend',autoUnlock); };
@@ -101,11 +136,22 @@ function generateWavBeep(freq: number, ms: number, sr = 22050): string {
 let beepUrl: string|null=null, highBeepUrl: string|null=null;
 try { beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200); } catch{}
 
+
 export const playBeep = () => { if(!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 export const playFinishSound = () => { if(!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 
 // --- TTS via Supabase Edge Function (full sentence, one MP3) ---
 const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
+
+function speakViaSynthesis(text: string) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'cs-CZ';
+  utt.rate = 1.0;
+  utt.volume = 1.0;
+  window.speechSynthesis.speak(utt);
+}
 
 async function playTts(text: string) {
   try {
@@ -117,14 +163,15 @@ async function playTts(text: string) {
       },
       body: JSON.stringify({ text }),
     });
-    if (!resp.ok) return;
+    if (!resp.ok) { speakViaSynthesis(text); return; }
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     play(url);
     // Clean up blob URL after playback
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   } catch {
-    // Fallback to pre-recorded name only
+    // Fallback to Web Speech API (works natively on Safari without audio unlock)
+    speakViaSynthesis(text);
   }
 }
 
@@ -181,4 +228,9 @@ export const speakText = (text: string) => {
 /** Announce workout complete */
 export const announceWorkoutComplete = () => {
   playTts('Trénink dokončen, skvělá práce!');
+};
+
+/** Announce timed exercise (warmup/cooldown): name + duration in seconds */
+export const announceTimedExercise = (name: string, durationSeconds: number) => {
+  playTts(`${name}, ${durationSeconds} sekund`);
 };

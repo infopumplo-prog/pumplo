@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
+import { announceTimedExercise, unlockAudio, startSilentLoop, stopSilentLoop } from '@/lib/workoutAudio';
 
 export interface WarmupExercise {
   id: string;
@@ -43,6 +44,8 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [timeRemaining, setTimeRemaining] = useState(exercises[initialIndex]?.duration || 30);
   const [isPaused, setIsPaused] = useState(false);
+  const endTimeRef = useRef(Date.now() + (exercises[initialIndex]?.duration || 30) * 1000);
+  const pausedAtRef = useRef<number | null>(null);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -53,27 +56,89 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const totalExercises = exercises.length;
   const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
 
-  // Countdown timer
+  // Lock screen widget — metadata + countdown timer
+  useEffect(() => {
+    if (!currentExercise || !('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentExercise.name,
+      artist: 'Warmup · Pumplo',
+      artwork: [
+        { src: '/pumplo-icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pumplo-icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+    });
+    navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing';
+  }, [currentExercise, isPaused]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentExercise) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: currentExercise.duration,
+        position: Math.max(0, currentExercise.duration - timeRemaining),
+        playbackRate: isPaused ? 0 : 1,
+      });
+    } catch {}
+  }, [timeRemaining, currentExercise, isPaused]);
+
+  // Reset end time when exercise changes
+  useEffect(() => {
+    endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
+  }, [currentIndex]);
+
+  // On mount: unlock audio + start silent loop to keep MediaSession active
+  useEffect(() => {
+    unlockAudio();
+    startSilentLoop();
+    return () => stopSilentLoop();
+  }, []);
+
+  // Announce exercise name + duration on each new exercise
+  useEffect(() => {
+    if (!currentExercise) return;
+    announceTimedExercise(currentExercise.name, currentExercise.duration);
+  }, [currentIndex]);
+
+  // Adjust end time when pausing/resuming
+  useEffect(() => {
+    if (isPaused) {
+      pausedAtRef.current = Date.now();
+    } else if (pausedAtRef.current !== null) {
+      endTimeRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+  }, [isPaused]);
+
+  // Recalculate when screen turns back on (visibility API)
+  useEffect(() => {
+    const onVisible = () => {
+      if (!isPaused && currentExercise) {
+        const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
+        setTimeRemaining(Math.max(0, remaining));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isPaused, currentExercise]);
+
+  // Countdown timer — wall-clock based (survives background throttling)
   useEffect(() => {
     if (isPaused || !currentExercise) return;
 
     const interval = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          // Auto-advance to next exercise
-          if (currentIndex < exercises.length - 1) {
-            setCurrentIndex(i => i + 1);
-            setVideoError(false);
-            return exercises[currentIndex + 1]?.duration || 30;
-          } else {
-            onComplete();
-            return 0;
-          }
+      const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        if (currentIndex < exercises.length - 1) {
+          setCurrentIndex(i => i + 1);
+          setVideoError(false);
+        } else {
+          onComplete();
         }
-        return prev - 1;
-      });
-    }, 1000);
+        return;
+      }
+      setTimeRemaining(remaining);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [currentIndex, isPaused, currentExercise]);
