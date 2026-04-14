@@ -154,24 +154,29 @@ export const playFinishSound = () => { if(!highBeepUrl)return; const b=new Audio
 // --- TTS via Supabase Edge Function (full sentence, one MP3) ---
 const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
 
+// Extracted to a separate top-level function to avoid SWC minifier TDZ bug:
+// when doSpeak was an inner const arrow, the minifier could assign the same
+// mangled name to both the outer `text` param and the inner `utt` const,
+// producing "Cannot access 'X' before initialization" at runtime.
+function speakNow(text: string) {
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'cs-CZ';
+  utt.rate = 1.0;
+  utt.volume = 1.0;
+  window.speechSynthesis.speak(utt);
+}
+
 function speakViaSynthesis(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  const doSpeak = () => {
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'cs-CZ';
-    utt.rate = 1.0;
-    utt.volume = 1.0;
-    window.speechSynthesis.speak(utt);
-  };
   if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
     // Cancel ongoing/queued utterances and wait a tick before speaking.
     // iOS WebKit bug: cancel() + immediate speak() drops the new utterance.
     window.speechSynthesis.cancel();
-    setTimeout(doSpeak, 100);
+    setTimeout(() => speakNow(text), 100);
   } else {
     // Nothing speaking — do NOT cancel (calling cancel() when idle can corrupt
     // the iOS synthesis engine state and break the next speak() call).
-    doSpeak();
+    speakNow(text);
   }
 }
 
