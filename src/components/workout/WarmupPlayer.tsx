@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
-import { announceTimedExercise, unlockAudio, startSilentLoop, stopSilentLoop } from '@/lib/workoutAudio';
+import { announceTimedExercise } from '@/lib/workoutAudio';
 
 export interface WarmupExercise {
   id: string;
@@ -85,13 +85,6 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   useEffect(() => {
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
   }, [currentIndex]);
-
-  // On mount: unlock audio + start silent loop to keep MediaSession active
-  useEffect(() => {
-    unlockAudio();
-    startSilentLoop();
-    return () => stopSilentLoop();
-  }, []);
 
   // Announce exercise name + duration on each new exercise
   useEffect(() => {
