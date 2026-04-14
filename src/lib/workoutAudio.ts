@@ -154,6 +154,14 @@ function speakViaSynthesis(text: string) {
 }
 
 async function playTts(text: string) {
+  // Prefer speechSynthesis on iOS — it properly releases audio session so music resumes.
+  // HTMLAudioElement holds the iOS audio session after playback ends, blocking music resumption.
+  const isIOS = typeof navigator !== 'undefined' &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS && typeof window !== 'undefined' && window.speechSynthesis) {
+    speakViaSynthesis(text);
+    return;
+  }
   try {
     const resp = await fetch(TTS_FUNCTION_URL, {
       method: 'POST',
@@ -167,10 +175,8 @@ async function playTts(text: string) {
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     play(url);
-    // Clean up blob URL after playback
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   } catch {
-    // Fallback to Web Speech API (works natively on Safari without audio unlock)
     speakViaSynthesis(text);
   }
 }
