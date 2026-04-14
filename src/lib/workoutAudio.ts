@@ -157,11 +157,15 @@ const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/
 function speakViaSynthesis(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'cs-CZ';
-  utt.rate = 1.0;
-  utt.volume = 1.0;
-  window.speechSynthesis.speak(utt);
+  // iOS WebKit bug: cancel() + immediate speak() drops the new utterance.
+  // A small timeout lets the engine process the cancellation first.
+  setTimeout(() => {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'cs-CZ';
+    utt.rate = 1.0;
+    utt.volume = 1.0;
+    window.speechSynthesis.speak(utt);
+  }, 100);
 }
 
 async function playTts(text: string) {
