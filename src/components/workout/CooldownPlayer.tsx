@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
-import { announceTimedExercise, unlockAudio, startSilentLoop, stopSilentLoop } from '@/lib/workoutAudio';
+import { announceTimedExercise } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -62,17 +62,12 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     } catch {}
   }, [timeRemaining, currentExercise, isPaused]);
 
-  // Hold audio session so Pumplo widget shows on lock screen; music resumes on unmount
-  useEffect(() => {
-    unlockAudio();
-    startSilentLoop();
-    return () => stopSilentLoop();
-  }, []);
-
-  // Announce exercise name + duration on each new exercise
+  // Announce exercise name + duration; delay first to avoid mount race with audio unlock
   useEffect(() => {
     if (!currentExercise) return;
-    announceTimedExercise(currentExercise.name, currentExercise.duration);
+    const delay = currentIndex === initialIndex ? 600 : 0;
+    const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
+    return () => clearTimeout(t);
   }, [currentIndex]);
 
   // Countdown timer — auto-advance
