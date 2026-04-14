@@ -86,9 +86,17 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
   }, [currentIndex]);
 
-  // Announce exercise name + duration on each new exercise
+  // Announce exercise name + duration on each new exercise.
+  // First exercise: 500ms delay so the iOS speechSynthesis unlock utterance
+  // (spoken in unlockAudio) can complete before we call speak() — cancelling
+  // it mid-speech leaves the synthesis engine in a broken state.
   useEffect(() => {
     if (!currentExercise) return;
+    const delay = currentIndex === initialIndex ? 500 : 0;
+    if (delay) {
+      const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
+      return () => clearTimeout(t);
+    }
     announceTimedExercise(currentExercise.name, currentExercise.duration);
   }, [currentIndex]);
 

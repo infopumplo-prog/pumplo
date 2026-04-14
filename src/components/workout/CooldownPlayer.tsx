@@ -62,9 +62,16 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     } catch {}
   }, [timeRemaining, currentExercise, isPaused]);
 
-  // Announce exercise name + duration on each new exercise
+  // Announce exercise name + duration on each new exercise.
+  // First exercise: 500ms delay so the iOS speechSynthesis unlock utterance
+  // (spoken in unlockAudio) can complete before we call speak().
   useEffect(() => {
     if (!currentExercise) return;
+    const delay = currentIndex === initialIndex ? 500 : 0;
+    if (delay) {
+      const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
+      return () => clearTimeout(t);
+    }
     announceTimedExercise(currentExercise.name, currentExercise.duration);
   }, [currentIndex]);
 

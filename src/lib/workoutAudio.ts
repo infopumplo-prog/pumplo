@@ -156,16 +156,23 @@ const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/
 
 function speakViaSynthesis(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  // iOS WebKit bug: cancel() + immediate speak() drops the new utterance.
-  // A small timeout lets the engine process the cancellation first.
-  setTimeout(() => {
+  const doSpeak = () => {
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = 'cs-CZ';
     utt.rate = 1.0;
     utt.volume = 1.0;
     window.speechSynthesis.speak(utt);
-  }, 100);
+  };
+  if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+    // Cancel ongoing/queued utterances and wait a tick before speaking.
+    // iOS WebKit bug: cancel() + immediate speak() drops the new utterance.
+    window.speechSynthesis.cancel();
+    setTimeout(doSpeak, 100);
+  } else {
+    // Nothing speaking — do NOT cancel (calling cancel() when idle can corrupt
+    // the iOS synthesis engine state and break the next speak() call).
+    doSpeak();
+  }
 }
 
 async function playTts(text: string) {
