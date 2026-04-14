@@ -271,9 +271,7 @@ export const announceTimedExercise = (name: string, durationSeconds: number) => 
 export const announceWarmupStart = () => {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   // Speak directly — no cancel(), no async. Must be in user-gesture call stack.
-  const utt = new SpeechSynthesisUtterance('Začínáme');
-  utt.lang = 'cs-CZ';
-  utt.rate = 1.0;
-  utt.volume = 1.0;
+  const utt = new SpeechSynthesisUtterance(' ');
+  utt.volume = 0;
   window.speechSynthesis.speak(utt);
 };
