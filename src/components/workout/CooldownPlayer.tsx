@@ -51,6 +51,17 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing';
   }, [currentExercise, isPaused]);
 
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentExercise) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: currentExercise.duration,
+        position: Math.max(0, currentExercise.duration - timeRemaining),
+        playbackRate: isPaused ? 0 : 1,
+      });
+    } catch {}
+  }, [timeRemaining, currentExercise, isPaused]);
+
   // Hold audio session so Pumplo widget shows on lock screen; music resumes on unmount
   useEffect(() => {
     unlockAudio();

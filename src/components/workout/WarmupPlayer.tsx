@@ -70,6 +70,17 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing';
   }, [currentExercise, isPaused]);
 
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentExercise) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: currentExercise.duration,
+        position: Math.max(0, currentExercise.duration - timeRemaining),
+        playbackRate: isPaused ? 0 : 1,
+      });
+    } catch {}
+  }, [timeRemaining, currentExercise, isPaused]);
+
   // Reset end time when exercise changes
   useEffect(() => {
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
