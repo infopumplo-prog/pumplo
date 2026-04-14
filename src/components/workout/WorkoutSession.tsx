@@ -139,6 +139,14 @@ export const WorkoutSession = ({
   }, [cooldownExercises.length, cooldownDone]);
   const [workoutStartTime] = useState(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [gymName, setGymName] = useState<string>('');
+  const [gymInstagram, setGymInstagram] = useState<string | null>(null);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [viewMode, setViewMode] = useState<'video' | 'list'>('video');
+  // Mutable exercises array for live swap
+  const [liveExercises, setLiveExercises] = useState<WorkoutExercise[]>(exercises);
+  // currentExercise declared here so it's available in the useEffect dep arrays below
+  const currentExercise = liveExercises[currentExerciseIndex];
 
   // Lock screen widget — elapsed count-up timer
   useEffect(() => {
@@ -170,12 +178,6 @@ export const WorkoutSession = ({
 
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const [gymName, setGymName] = useState<string>('');
-  const [gymInstagram, setGymInstagram] = useState<string | null>(null);
-  const [isSwapping, setIsSwapping] = useState(false);
-  const [viewMode, setViewMode] = useState<'video' | 'list'>('video');
-  // Mutable exercises array for live swap
-  const [liveExercises, setLiveExercises] = useState<WorkoutExercise[]>(exercises);
   // Track sets data per exercise for compact mode
   const [setsDataByExercise, setSetsDataByExercise] = useState<Map<number, SetData[]>>(new Map());
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
@@ -312,8 +314,6 @@ export const WorkoutSession = ({
   const [currentExerciseSets, setCurrentExerciseSets] = useState<SetData[]>(
     initialCurrentExerciseSets || []
   );
-
-  const currentExercise = liveExercises[currentExerciseIndex];
 
   // Note: weight tracking is now determined by exercise_with_weights field from DB
 
