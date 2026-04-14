@@ -86,12 +86,10 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
   }, [currentIndex]);
 
-  // Announce exercise name + duration; delay first to avoid mount race with audio unlock
+  // Announce exercise name + duration on each new exercise
   useEffect(() => {
     if (!currentExercise) return;
-    const delay = currentIndex === initialIndex ? 600 : 0;
-    const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
-    return () => clearTimeout(t);
+    announceTimedExercise(currentExercise.name, currentExercise.duration);
   }, [currentIndex]);
 
   // Adjust end time when pausing/resuming

@@ -100,11 +100,12 @@ export const unlockAudio = () => {
     silentEl.play().then(() => {
       silentEl!.pause(); silentEl!.muted = false;
     }).catch(() => {});
-    // Unlock speechSynthesis on iOS — first speak() must happen in user gesture context
+    // Unlock speechSynthesis on iOS — first speak() must be in user gesture context.
+    // Use a short space utterance and let it complete (don't cancel immediately).
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance('');
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
       window.speechSynthesis.speak(u);
-      window.speechSynthesis.cancel();
     }
   } catch {}
 };
