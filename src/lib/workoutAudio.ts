@@ -262,3 +262,18 @@ export const announceWorkoutComplete = () => {
 export const announceTimedExercise = (name: string, durationSeconds: number) => {
   playTts(`${name}, ${durationSeconds} sekund`);
 };
+
+/**
+ * Call this synchronously inside the "Start warmup" button handler (before any await).
+ * iOS speechSynthesis loses its unlock after a long gap — this refreshes it in the
+ * gesture context and also gives the user audio feedback that warmup is starting.
+ */
+export const announceWarmupStart = () => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  // Speak directly — no cancel(), no async. Must be in user-gesture call stack.
+  const utt = new SpeechSynthesisUtterance('Začínáme');
+  utt.lang = 'cs-CZ';
+  utt.rate = 1.0;
+  utt.volume = 1.0;
+  window.speechSynthesis.speak(utt);
+};
