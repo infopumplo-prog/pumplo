@@ -189,7 +189,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 💙 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={() => setMuted(toggleWorkoutMute())} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+              <button onClick={() => { const nowMuted = toggleWorkoutMute(); setMuted(nowMuted); if (!nowMuted) announceTimedExercise(currentExercise.name, currentExercise.duration); }} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                 {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
               <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">

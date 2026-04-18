@@ -258,7 +258,11 @@ export const ExercisePlayer = ({
                 {exerciseIndex + 1}/{totalExercises}
               </span>
               <button
-                onClick={() => setMuted(toggleWorkoutMute())}
+                onClick={() => {
+                  const nowMuted = toggleWorkoutMute();
+                  setMuted(nowMuted);
+                  if (!nowMuted) announceExercise(exerciseName, lastWeight && lastWeight > 0 ? lastWeight : undefined, reps || `${repMax}`);
+                }}
                 className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white"
               >
                 {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
