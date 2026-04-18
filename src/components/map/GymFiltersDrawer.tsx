@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 export interface GymFilters {
   openNow: boolean;
   verifiedOnly: boolean;
+  hasMembership: boolean;
   maxDistance: number | null; // km, null = any
   maxSinglePrice: number | null; // CZK, null = any
   services: string[];
@@ -14,6 +15,7 @@ export interface GymFilters {
 export const DEFAULT_FILTERS: GymFilters = {
   openNow: false,
   verifiedOnly: false,
+  hasMembership: false,
   maxDistance: null,
   maxSinglePrice: null,
   services: [],
@@ -23,6 +25,7 @@ export const DEFAULT_FILTERS: GymFilters = {
 export const countActiveFilters = (f: GymFilters) =>
   (f.openNow ? 1 : 0) +
   (f.verifiedOnly ? 1 : 0) +
+  (f.hasMembership ? 1 : 0) +
   (f.maxDistance !== null ? 1 : 0) +
   (f.maxSinglePrice !== null ? 1 : 0) +
   f.services.length +
@@ -132,9 +135,12 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
         <div className="px-4 pb-8 pt-4 space-y-5 overflow-y-auto">
           {/* Dostupnost */}
           <Section title="Dostupnost">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Toggle active={filters.openNow} onClick={() => set({ openNow: !filters.openNow })}>
                 Otevřeno teď
+              </Toggle>
+              <Toggle active={filters.hasMembership} onClick={() => set({ hasMembership: !filters.hasMembership })}>
+                Permanentka
               </Toggle>
               <Toggle active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>
                 ✓ Ověřená

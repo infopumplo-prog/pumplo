@@ -193,6 +193,7 @@ const Map = () => {
       const dist = getGymDistance(gym);
       if (dist === undefined || dist > filters.maxDistance) return false;
     }
+    if (filters.hasMembership && !((gym.pricing as any)?.memberships?.length > 0)) return false;
     if (filters.maxSinglePrice !== null) {
       const price = (gym.pricing as any)?.single_entries?.[0]?.prices?.[0]?.price;
       if (!price || price > filters.maxSinglePrice) return false;
