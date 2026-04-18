@@ -1,7 +1,116 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+
+const stripDiacritics = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const levenshtein = (a: string, b: string): number => {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[a.length][b.length];
+};
+
+// Each group: any term matches any other term in the group (bidirectional)
+const SYNONYM_GROUPS: string[][] = [
+  // Jednoručky / činky / dumbbells
+  ['dumbbell', 'dumbbells', 'cinky', 'jednorucky', 'jednoruky', 'hantel', 'hantle'],
+  // Osy / tyče / barbells
+  ['barbell', 'barbells', 'osa', 'osy', 'tyc', 'tyce', 'olympijska'],
+  // Lavička / bench press
+  ['bench', 'lavicka', 'lavicky', 'benchpress', 'bench press'],
+  // Kladka / cable
+  ['cable', 'cables', 'kladka', 'kladky', 'kabelova', 'krizova', 'crossover', 'lanko'],
+  // Dřepový stojan / squat rack / power rack
+  ['squat', 'drep', 'drepy', 'powrack', 'power rack', 'stojan', 'drepovy', 'rack'],
+  // Běžecký pás / treadmill
+  ['treadmill', 'bezecky', 'bezak', 'bezaky', 'pas', 'beh', 'cardio'],
+  // Rotoped / kolo / bike
+  ['bike', 'bicycle', 'kolo', 'kola', 'cyklo', 'rotoped', 'spinning', 'spinningove'],
+  // Veslovací trenažér / rowing
+  ['rowing', 'rower', 'veslovaci', 'veslo', 'veslak', 'concept', 'ergometr'],
+  // Prsa / chest press
+  ['chest', 'hrudni', 'prsni', 'prsa', 'pec', 'pecdeck', 'motyl', 'butterfly'],
+  // Ramena / shoulder press
+  ['shoulder', 'shoulders', 'ramena', 'ramenni', 'ramenou', 'trapez', 'trapy'],
+  // Biceps
+  ['bicep', 'biceps', 'bicepsovy', 'scott', 'larry', 'preacher', 'modlitebna'],
+  // Triceps
+  ['tricep', 'triceps', 'tricepsovy', 'tlak', 'french'],
+  // Lat pulldown / stahování
+  ['pulldown', 'stazeni', 'stahovan', 'lat', 'latissimu', 'dorsi', 'siroka', 'uzka'],
+  // Přítahy / seated row / row
+  ['row', 'rows', 'pritahy', 'pritah', 'zasedove', 'veslovan', 'veslovani', 't-bar', 'tbar', 'tyrka'],
+  // Hip thrust / kyčel / glute bridge
+  ['hip', 'kycle', 'kycelni', 'hip thrust', 'hipthrust', 'glutebridge', 'thrust'],
+  // Hýžďový / glute
+  ['glute', 'glutes', 'hyzde', 'hyzdovy', 'hyzd', 'zadecek', 'kickback', 'hyper'],
+  // Abdukce / abduktor
+  ['abduction', 'abdukce', 'abduktor', 'odtazeni', 'rozkrok'],
+  // Addukce / adduktor
+  ['adduction', 'addukce', 'adduktor', 'pritazeni', 'stahovan'],
+  // Lýtka / calf raise
+  ['calf', 'calves', 'lytko', 'lytka', 'lytkovy', 'gastro', 'soleus'],
+  // Záda / back / hyperextenze
+  ['back', 'zada', 'zadovy', 'hyperextenze', 'hyperex', 'roman', 'zaklony', 'mrtvak', 'deadlift', 'mrtvy'],
+  // Břicho / core / abs
+  ['abs', 'abdominal', 'brisni', 'bricho', 'core', 'briska', 'crunch', 'plank'],
+  // Eliptický / elliptical
+  ['elliptical', 'elipticky', 'elipsa', 'elipticka', 'cross'],
+  // Smith / Smithův stroj
+  ['smith', 'smithuv', 'smitova'],
+  // Leg press
+  ['leg press', 'legpress', 'nozni', 'nohy', 'dolni', 'leg', 'nozak'],
+  // Leg extension / extenze nohou
+  ['extension', 'extenze', 'extenzni', 'kvadriceps', 'quads', 'quad', 'stehno'],
+  // Leg curl / hamstringy
+  ['curl', 'curly', 'hamstring', 'hamstringy', 'stehenni', 'zakoleni', 'lying'],
+  // Hrazda / pull-up / chin-up
+  ['hrazda', 'pullup', 'pull-up', 'chinup', 'chin-up', 'shyby', 'asistovana'],
+  // Kliky / dip station
+  ['dip', 'dipy', 'dipovadlo', 'kliky', 'paralely', 'paralelky'],
+  // Kettlebell
+  ['kettlebell', 'kettlebells', 'kettlebely', 'zvon', 'zvony'],
+  // TRX / suspension
+  ['trx', 'suspension', 'zavesny'],
+  // Funkční trenažér / functional trainer
+  ['functional', 'funkcni', 'trenanzer', 'multipress'],
+  // Inklinace / šikmá lavička
+  ['incline', 'decline', 'sikma', 'sikmá', 'naklonena'],
+  // Medicinbal
+  ['medicine', 'medicinbal', 'medibal', 'ball'],
+  // Fly / rozpažení / motýl
+  ['fly', 'rozpazeni', 'rozpazen', 'motyl', 'pecdeck', 'pec deck'],
+  // Závaží / kotouče / weight plates
+  ['plates', 'kotouče', 'kotoucy', 'zavazi', 'weights'],
+];
+
+const SYNONYM_MAP = new Map<string, string[]>();
+for (const group of SYNONYM_GROUPS) {
+  for (const term of group) SYNONYM_MAP.set(term, group);
+}
+
+const machineMatches = (machine: string, query: string): boolean => {
+  const normMachine = stripDiacritics(machine);
+  const words = stripDiacritics(query).split(/\s+/).filter(Boolean);
+  return words.every(word => {
+    if (normMachine.includes(word)) return true;
+    const group = SYNONYM_MAP.get(word) ?? [];
+    if (group.some(syn => syn !== word && normMachine.includes(syn))) return true;
+    if (word.length >= 4) {
+      const tolerance = word.length >= 7 ? 2 : 1;
+      return normMachine.split(/\s+/).some(part => levenshtein(word, part) <= tolerance);
+    }
+    return false;
+  });
+};
 
 export interface GymFilters {
   openNow: boolean;
@@ -137,6 +246,7 @@ const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onC
 
 export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice, availableMachines }: Props) => {
   const [machineSearch, setMachineSearch] = useState('');
+  const machineInputRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<GymFilters>) => onChange({ ...filters, ...patch });
   const toggleService = (key: string) => set({ services: filters.services.includes(key) ? filters.services.filter(s => s !== key) : [...filters.services, key] });
   const toggleCard = (key: string) => set({ cards: filters.cards.includes(key) ? filters.cards.filter(c => c !== key) : [...filters.cards, key] });
@@ -144,7 +254,7 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
   const active = countActiveFilters(filters);
 
   const filteredMachines = machineSearch.trim()
-    ? availableMachines.filter(m => m.toLowerCase().includes(machineSearch.toLowerCase()))
+    ? availableMachines.filter(m => machineMatches(m, machineSearch))
     : [];
 
   return (
@@ -190,10 +300,12 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
               </div>
             )}
             <input
+              ref={machineInputRef}
               type="text"
               placeholder="Hledat stroj nebo cvičiště..."
               value={machineSearch}
               onChange={e => setMachineSearch(e.target.value)}
+              onFocus={() => setTimeout(() => machineInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350)}
               className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background outline-none focus:ring-2 focus:ring-primary/30"
             />
             {filteredMachines.length > 0 && (
