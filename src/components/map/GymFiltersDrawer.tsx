@@ -1,13 +1,12 @@
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
 
 export interface GymFilters {
   openNow: boolean;
   verifiedOnly: boolean;
-  hasMembership: boolean;
-  maxDistance: number | null; // km, null = any
-  maxSinglePrice: number | null; // CZK, null = any
+  distanceLimit: number | null;     // km, null = any
+  singlePriceLimit: number | null;  // CZK, null = any
+  membershipPriceLimit: number | null; // CZK, null = any
   services: string[];
   cards: string[];
 }
@@ -15,9 +14,9 @@ export interface GymFilters {
 export const DEFAULT_FILTERS: GymFilters = {
   openNow: false,
   verifiedOnly: false,
-  hasMembership: false,
-  maxDistance: null,
-  maxSinglePrice: null,
+  distanceLimit: null,
+  singlePriceLimit: null,
+  membershipPriceLimit: null,
   services: [],
   cards: [],
 };
@@ -25,9 +24,9 @@ export const DEFAULT_FILTERS: GymFilters = {
 export const countActiveFilters = (f: GymFilters) =>
   (f.openNow ? 1 : 0) +
   (f.verifiedOnly ? 1 : 0) +
-  (f.hasMembership ? 1 : 0) +
-  (f.maxDistance !== null ? 1 : 0) +
-  (f.maxSinglePrice !== null ? 1 : 0) +
+  (f.distanceLimit !== null ? 1 : 0) +
+  (f.singlePriceLimit !== null ? 1 : 0) +
+  (f.membershipPriceLimit !== null ? 1 : 0) +
   f.services.length +
   f.cards.length;
 
@@ -51,19 +50,8 @@ const CARDS = [
   { key: 'edenred', label: 'Edenred' },
 ];
 
-const DISTANCES = [
-  { value: 1, label: '< 1 km' },
-  { value: 3, label: '< 3 km' },
-  { value: 5, label: '< 5 km' },
-  { value: 10, label: '< 10 km' },
-];
-
-const PRICES = [
-  { value: 100, label: 'do 100 Kč' },
-  { value: 130, label: 'do 130 Kč' },
-  { value: 160, label: 'do 160 Kč' },
-  { value: 200, label: 'do 200 Kč' },
-];
+const DIST_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 3]; // km
+const distLabel = (v: number) => v < 1 ? `${v * 1000} m` : `${v} km`;
 
 interface Props {
   open: boolean;
@@ -71,28 +59,26 @@ interface Props {
   filters: GymFilters;
   onChange: (filters: GymFilters) => void;
   hasGps: boolean;
+  maxSinglePrice: number;
+  maxMembershipPrice: number;
 }
 
-const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+const Toggle = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
     onClick={onClick}
-    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
-      active
-        ? 'bg-primary text-primary-foreground border-primary'
-        : 'bg-background text-foreground border-border'
+    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+      active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border'
     }`}
   >
     {children}
   </button>
 );
 
-const Toggle = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
   <button
     onClick={onClick}
-    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
-      active
-        ? 'bg-primary text-primary-foreground border-primary'
-        : 'bg-background text-foreground border-border'
+    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+      active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border'
     }`}
   >
     {children}
@@ -106,15 +92,72 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </div>
 );
 
-export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps }: Props) => {
-  const set = (patch: Partial<GymFilters>) => onChange({ ...filters, ...patch });
+const RangeSlider = ({
+  label, value, max, step, unit, noLimitLabel = 'Bez omezení',
+  onChange,
+}: {
+  label: string; value: number | null; max: number; step: number; unit: string;
+  noLimitLabel?: string; onChange: (v: number | null) => void;
+}) => {
+  const display = value ?? max;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+        <span className={`text-sm font-semibold ${value === null ? 'text-muted-foreground' : 'text-primary'}`}>
+          {value === null ? noLimitLabel : `do ${value} ${unit}`}
+        </span>
+      </div>
+      <input
+        type="range" min={step} max={max} step={step} value={display}
+        onChange={e => {
+          const v = parseInt(e.target.value);
+          onChange(v >= max ? null : v);
+        }}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-primary"
+      />
+      <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+        <span>{step} {unit}</span>
+        <span>{noLimitLabel}</span>
+      </div>
+    </div>
+  );
+};
 
+const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onChange: (v: number | null) => void; hasGps: boolean }) => {
+  if (!hasGps) return null;
+  const idx = value === null ? DIST_STEPS.length : Math.max(0, DIST_STEPS.indexOf(value));
+  const display = idx === DIST_STEPS.length ? DIST_STEPS.length : idx;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vzdálenost od tebe</p>
+        <span className={`text-sm font-semibold ${value === null ? 'text-muted-foreground' : 'text-primary'}`}>
+          {value === null ? 'Bez omezení' : `do ${distLabel(value)}`}
+        </span>
+      </div>
+      <input
+        type="range" min={0} max={DIST_STEPS.length} step={1} value={display}
+        onChange={e => {
+          const i = parseInt(e.target.value);
+          onChange(i >= DIST_STEPS.length ? null : DIST_STEPS[i]);
+        }}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-primary"
+      />
+      <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+        <span>50 m</span>
+        <span>Bez omezení</span>
+      </div>
+    </div>
+  );
+};
+
+export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice }: Props) => {
+  const set = (patch: Partial<GymFilters>) => onChange({ ...filters, ...patch });
   const toggleService = (key: string) =>
     set({ services: filters.services.includes(key) ? filters.services.filter(s => s !== key) : [...filters.services, key] });
-
   const toggleCard = (key: string) =>
     set({ cards: filters.cards.includes(key) ? filters.cards.filter(c => c !== key) : [...filters.cards, key] });
-
   const active = countActiveFilters(filters);
 
   return (
@@ -123,24 +166,18 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
         <DrawerHeader className="flex items-center justify-between pb-0">
           <DrawerTitle>Filtrovat posilovny</DrawerTitle>
           {active > 0 && (
-            <button
-              onClick={() => onChange(DEFAULT_FILTERS)}
-              className="text-sm text-primary font-medium"
-            >
+            <button onClick={() => onChange(DEFAULT_FILTERS)} className="text-sm text-primary font-medium">
               Vymazat vše ({active})
             </button>
           )}
         </DrawerHeader>
 
-        <div className="px-4 pb-8 pt-4 space-y-5 overflow-y-auto">
+        <div className="px-4 pb-4 pt-4 space-y-5 overflow-y-auto">
           {/* Dostupnost */}
           <Section title="Dostupnost">
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2">
               <Toggle active={filters.openNow} onClick={() => set({ openNow: !filters.openNow })}>
                 Otevřeno teď
-              </Toggle>
-              <Toggle active={filters.hasMembership} onClick={() => set({ hasMembership: !filters.hasMembership })}>
-                Permanentka
               </Toggle>
               <Toggle active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>
                 ✓ Ověřená
@@ -149,36 +186,27 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           </Section>
 
           {/* Vzdálenost */}
-          {hasGps && (
-            <Section title="Vzdálenost od tebe">
-              <div className="flex flex-wrap gap-2">
-                {DISTANCES.map(d => (
-                  <Chip
-                    key={d.value}
-                    active={filters.maxDistance === d.value}
-                    onClick={() => set({ maxDistance: filters.maxDistance === d.value ? null : d.value })}
-                  >
-                    {d.label}
-                  </Chip>
-                ))}
-              </div>
-            </Section>
-          )}
+          <DistanceSlider value={filters.distanceLimit} onChange={v => set({ distanceLimit: v })} hasGps={hasGps} />
 
-          {/* Cena */}
-          <Section title="Jednorázový vstup">
-            <div className="flex flex-wrap gap-2">
-              {PRICES.map(p => (
-                <Chip
-                  key={p.value}
-                  active={filters.maxSinglePrice === p.value}
-                  onClick={() => set({ maxSinglePrice: filters.maxSinglePrice === p.value ? null : p.value })}
-                >
-                  {p.label}
-                </Chip>
-              ))}
-            </div>
-          </Section>
+          {/* Jednorázový vstup */}
+          <RangeSlider
+            label="Jednorázový vstup"
+            value={filters.singlePriceLimit}
+            max={maxSinglePrice}
+            step={10}
+            unit="Kč"
+            onChange={v => set({ singlePriceLimit: v })}
+          />
+
+          {/* Permanentka */}
+          <RangeSlider
+            label="Permanentka (nejlevnější)"
+            value={filters.membershipPriceLimit}
+            max={maxMembershipPrice}
+            step={50}
+            unit="Kč"
+            onChange={v => set({ membershipPriceLimit: v })}
+          />
 
           {/* Platební karty */}
           <Section title="Platební karty">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -185,18 +185,44 @@ const Map = () => {
     );
   };
 
+  // Compute dynamic slider maximums from real data
+  const maxSinglePrice = useMemo(() => {
+    let max = 200;
+    gyms.forEach(gym => {
+      ((gym.pricing as any)?.single_entries || []).forEach((e: any) =>
+        (e.prices || []).forEach((p: any) => { if (p.price > max) max = p.price; })
+      );
+    });
+    return Math.ceil(max / 10) * 10;
+  }, [gyms]);
+
+  const maxMembershipPrice = useMemo(() => {
+    let max = 2000;
+    gyms.forEach(gym => {
+      ((gym.pricing as any)?.memberships || []).forEach((m: any) =>
+        (m.prices || []).forEach((p: any) => { if (p.price > max) max = p.price; })
+      );
+    });
+    return Math.ceil(max / 50) * 50;
+  }, [gyms]);
+
   // Apply filters
   const filteredGyms = gyms.filter(gym => {
     if (filters.openNow && !isGymCurrentlyOpen(gym.opening_hours as OpeningHours)) return false;
     if (filters.verifiedOnly && !gym.is_verified) return false;
-    if (filters.maxDistance !== null) {
+    if (filters.distanceLimit !== null) {
       const dist = getGymDistance(gym);
-      if (dist === undefined || dist > filters.maxDistance) return false;
+      if (dist === undefined || dist > filters.distanceLimit) return false;
     }
-    if (filters.hasMembership && !((gym.pricing as any)?.memberships?.length > 0)) return false;
-    if (filters.maxSinglePrice !== null) {
-      const price = (gym.pricing as any)?.single_entries?.[0]?.prices?.[0]?.price;
-      if (!price || price > filters.maxSinglePrice) return false;
+    if (filters.singlePriceLimit !== null) {
+      const prices = ((gym.pricing as any)?.single_entries || []).flatMap((e: any) => (e.prices || []).map((p: any) => p.price as number));
+      const minPrice = prices.length ? Math.min(...prices) : null;
+      if (!minPrice || minPrice > filters.singlePriceLimit) return false;
+    }
+    if (filters.membershipPriceLimit !== null) {
+      const prices = ((gym.pricing as any)?.memberships || []).flatMap((m: any) => (m.prices || []).map((p: any) => p.price as number));
+      const minPrice = prices.length ? Math.min(...prices) : null;
+      if (!minPrice || minPrice > filters.membershipPriceLimit) return false;
     }
     if (filters.services.length > 0) {
       const gymServices = (gym.services || []).map(s => s.toLowerCase());
@@ -360,6 +386,8 @@ const Map = () => {
           filters={filters}
           onChange={setFilters}
           hasGps={!!userLocation}
+          maxSinglePrice={maxSinglePrice}
+          maxMembershipPrice={maxMembershipPrice}
         />
 
         {/* Fullscreen Gym Detail Drawer */}
