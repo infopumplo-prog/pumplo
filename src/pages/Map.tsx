@@ -50,6 +50,29 @@ const Map = () => {
   const { toast } = useToast();
   const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
   const { gyms } = usePublishedGyms();
+  const [gymMachinesMap, setGymMachinesMap] = useState<Record<string, string[]>>({});
+  const [availableMachines, setAvailableMachines] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchMachines = async () => {
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('gym_machines')
+        .select('gym_id, machines(name)');
+      if (!data) return;
+      const map: Record<string, string[]> = {};
+      const allNames = new Set<string>();
+      data.forEach((row: any) => {
+        const name = row.machines?.name;
+        if (!name) return;
+        if (!map[row.gym_id]) map[row.gym_id] = [];
+        map[row.gym_id].push(name.toLowerCase());
+        allNames.add(name);
+      });
+      setGymMachinesMap(map);
+      setAvailableMachines([...allNames].sort());
+    };
+    fetchMachines();
+  }, []);
   const { toggleFavorite, isFavorite } = useFavoriteGyms();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -232,6 +255,10 @@ const Map = () => {
       const gymServices = (gym.services || []).map(s => s.toLowerCase());
       if (!filters.cards.every(c => gymServices.includes(c.toLowerCase()))) return false;
     }
+    if (filters.machines.length > 0) {
+      const gymMachines = gymMachinesMap[gym.id] || [];
+      if (!filters.machines.every(m => gymMachines.includes(m.toLowerCase()))) return false;
+    }
     return true;
   });
 
@@ -388,6 +415,7 @@ const Map = () => {
           hasGps={!!userLocation}
           maxSinglePrice={maxSinglePrice}
           maxMembershipPrice={maxMembershipPrice}
+          availableMachines={availableMachines}
         />
 
         {/* Fullscreen Gym Detail Drawer */}

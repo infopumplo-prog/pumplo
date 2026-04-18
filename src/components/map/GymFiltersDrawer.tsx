@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 export interface GymFilters {
   openNow: boolean;
   verifiedOnly: boolean;
-  distanceLimit: number | null;     // km, null = any
-  singlePriceLimit: number | null;  // CZK, null = any
-  membershipPriceLimit: number | null; // CZK, null = any
+  distanceLimit: number | null;
+  singlePriceLimit: number | null;
+  membershipPriceLimit: number | null;
   services: string[];
   cards: string[];
+  machines: string[];
 }
 
 export const DEFAULT_FILTERS: GymFilters = {
@@ -19,6 +20,7 @@ export const DEFAULT_FILTERS: GymFilters = {
   membershipPriceLimit: null,
   services: [],
   cards: [],
+  machines: [],
 };
 
 export const countActiveFilters = (f: GymFilters) =>
@@ -28,7 +30,8 @@ export const countActiveFilters = (f: GymFilters) =>
   (f.singlePriceLimit !== null ? 1 : 0) +
   (f.membershipPriceLimit !== null ? 1 : 0) +
   f.services.length +
-  f.cards.length;
+  f.cards.length +
+  f.machines.length;
 
 const SERVICES = [
   { key: 'parkování', label: 'Parkování' },
@@ -61,6 +64,7 @@ interface Props {
   hasGps: boolean;
   maxSinglePrice: number;
   maxMembershipPrice: number;
+  availableMachines: string[];
 }
 
 const Toggle = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
@@ -114,7 +118,7 @@ const RangeSlider = ({
           const v = parseInt(e.target.value);
           onChange(v >= max ? null : v);
         }}
-        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-primary"
+        className="w-full accent-primary cursor-pointer"
       />
       <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
         <span>{step} {unit}</span>
@@ -142,7 +146,7 @@ const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onC
           const i = parseInt(e.target.value);
           onChange(i >= DIST_STEPS.length ? null : DIST_STEPS[i]);
         }}
-        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-primary"
+        className="w-full accent-primary cursor-pointer"
       />
       <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
         <span>50 m</span>
@@ -152,12 +156,14 @@ const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onC
   );
 };
 
-export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice }: Props) => {
+export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice, availableMachines }: Props) => {
   const set = (patch: Partial<GymFilters>) => onChange({ ...filters, ...patch });
   const toggleService = (key: string) =>
     set({ services: filters.services.includes(key) ? filters.services.filter(s => s !== key) : [...filters.services, key] });
   const toggleCard = (key: string) =>
     set({ cards: filters.cards.includes(key) ? filters.cards.filter(c => c !== key) : [...filters.cards, key] });
+  const toggleMachine = (key: string) =>
+    set({ machines: filters.machines.includes(key) ? filters.machines.filter(m => m !== key) : [...filters.machines, key] });
   const active = countActiveFilters(filters);
 
   return (
@@ -207,6 +213,19 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
             unit="Kč"
             onChange={v => set({ membershipPriceLimit: v })}
           />
+
+          {/* Stroje */}
+          {availableMachines.length > 0 && (
+            <Section title="Stroje a vybavení">
+              <div className="flex flex-wrap gap-2">
+                {availableMachines.map(m => (
+                  <Chip key={m} active={filters.machines.includes(m)} onClick={() => toggleMachine(m)}>
+                    {m}
+                  </Chip>
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* Platební karty */}
           <Section title="Platební karty">
