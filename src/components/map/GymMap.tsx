@@ -29,55 +29,15 @@ const createGymIcon = (
   logoUrl: string | null,
   closingSoon: boolean = false,
   isClosed: boolean = false,
-  isFeatured: boolean = false,
 ) => {
   const borderColor = isClosed
     ? '#9ca3af'
     : closingSoon
       ? '#f59e0b'
-      : isFeatured
-        ? '#f59e0b' // amber/gold border for Premium
-        : 'hsl(var(--primary))';
-  const markerSize = isFeatured ? 64 : 44;
-  const boxShadow = isFeatured
-    ? '0 0 0 4px rgba(255,255,255,0.9), 0 0 0 6px rgba(245,158,11,0.5), 0 6px 20px rgba(245,158,11,0.55)'
-    : '0 2px 8px rgba(0,0,0,0.2)';
-  const borderWidth = isFeatured ? 5 : 3;
-  // Animated pulse ring behind the marker to draw the eye (Premium only, when open)
-  const pulseRing = isFeatured && !isClosed ? `
-    <div class="gym-premium-pulse" style="
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: ${markerSize}px;
-      height: ${markerSize}px;
-      border-radius: 50%;
-      background: rgba(245,158,11,0.35);
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    "></div>
-  ` : '';
-  const featuredBadge = isFeatured && !isClosed ? `
-    <div style="
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #fbbf24, #f59e0b);
-      border: 3px solid white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-      z-index: 2;
-    ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-      </svg>
-    </div>
-  ` : '';
+      : 'hsl(var(--primary))';
+  const markerSize = 44;
+  const boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+  const borderWidth = 3;
   const warningBadge = closingSoon ? `
     <div style="
       position: absolute;
@@ -102,9 +62,8 @@ const createGymIcon = (
 
   if (logoUrl) {
     return L.divIcon({
-      className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
+      className: 'gym-marker',
       html: `
-        ${pulseRing}
         <div style="
           position: relative;
           width: ${markerSize}px;
@@ -120,7 +79,6 @@ const createGymIcon = (
         ">
           <img src="${logoUrl}" style="width: 75%; height: 75%; object-fit: contain;" />
         </div>
-        ${featuredBadge}
         ${warningBadge}
       `,
       iconSize: [markerSize, markerSize],
@@ -129,27 +87,25 @@ const createGymIcon = (
   }
 
   return L.divIcon({
-    className: isFeatured ? 'gym-marker gym-marker-featured' : 'gym-marker',
+    className: 'gym-marker',
     html: `
-      ${pulseRing}
       <div style="
         position: relative;
         width: ${markerSize}px;
         height: ${markerSize}px;
         border-radius: 50%;
         border: ${borderWidth}px solid ${borderColor};
-        background: ${isFeatured ? 'rgba(245,158,11,0.12)' : 'hsl(var(--primary) / 0.1)'};
+        background: hsl(var(--primary) / 0.1);
         box-shadow: ${boxShadow};
         display: flex;
         align-items: center;
         justify-content: center;
       ">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${isFeatured ? '#f59e0b' : 'hsl(var(--primary))'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
           <circle cx="12" cy="10" r="3"/>
         </svg>
       </div>
-      ${featuredBadge}
       ${warningBadge}
     `,
     iconSize: [markerSize, markerSize],
@@ -197,6 +153,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const hasFittedBoundsRef = useRef(false);
   const [isMapReady, setIsMapReady] = useState(false);
   const [hasCenteredOnUser, setHasCenteredOnUser] = useState(false);
 
@@ -292,23 +249,22 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
       const closingSoon = hasHours && isClosingSoon(hours);
 
       const marker = L.marker([gym.latitude, gym.longitude], {
-        icon: createGymIcon(gym.logo_url, closingSoon, !isOpen, gym.is_featured),
+        icon: createGymIcon(gym.logo_url, closingSoon, !isOpen),
         opacity: isOpen ? 1 : 0.6,
-        // Featured (Premium) gyms render above others so they're never hidden by neighbors
-        zIndexOffset: gym.is_featured ? 1000 : 0,
       }).addTo(mapRef.current!);
 
       marker.on('click', () => onGymSelect(gym));
       markersRef.current.set(gym.id, marker);
     });
 
-    // Fit bounds if we have gyms
-    if (visibleGyms.length > 0) {
+    // Fit bounds only on initial gym load — not on every GPS/filter update
+    if (visibleGyms.length > 0 && !hasFittedBoundsRef.current) {
       const bounds = L.latLngBounds(visibleGyms.map(g => [g.latitude, g.longitude]));
       if (userLocation) {
         bounds.extend([userLocation.lat, userLocation.lng]);
       }
       mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      hasFittedBoundsRef.current = true;
     }
   }, [gyms, isMapReady, onGymSelect]);
 
