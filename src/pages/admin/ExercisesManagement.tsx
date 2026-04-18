@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Video } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Loader2, ChevronRight, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
@@ -110,6 +110,7 @@ const ExercisesManagement = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
   const [form, setForm] = useState({
     name: '',
     category: 'chest',
@@ -326,6 +327,24 @@ const ExercisesManagement = () => {
         ? prev[field].filter((m) => m !== muscle)
         : [...prev[field], muscle],
     }));
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from('exercise-videos').upload(fileName, file);
+    if (error) {
+      toast.error('Chyba při nahrávání videa');
+      setIsUploading(false);
+      return;
+    }
+    const { data } = supabase.storage.from('exercise-videos').getPublicUrl(fileName);
+    setForm(prev => ({ ...prev, video_path: data.publicUrl }));
+    setIsUploading(false);
+    toast.success('Video nahráno');
   };
 
   const getCategoryLabel = (value: string) => {
@@ -667,12 +686,26 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Cesta k videu</Label>
-                <Input
-                  value={form.video_path}
-                  onChange={(e) => setForm({ ...form, video_path: e.target.value })}
-                  placeholder="napr. Chest/push_up.mp4"
-                />
+                <Label>Video cviku</Label>
+                {form.video_path && (
+                  <div className="mt-1 mb-2 rounded-lg overflow-hidden bg-black aspect-video">
+                    <video src={form.video_path} className="w-full h-full object-contain" controls />
+                  </div>
+                )}
+                <div className="flex gap-2 mt-1">
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2 px-3 py-2 border border-input rounded-md hover:bg-muted/50 text-sm text-muted-foreground">
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
+                      {isUploading ? 'Nahrávám...' : form.video_path ? 'Změnit video' : 'Nahrát video'}
+                    </div>
+                    <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} disabled={isUploading} />
+                  </label>
+                  {form.video_path && (
+                    <Button variant="outline" size="icon" type="button" onClick={() => setForm(prev => ({ ...prev, video_path: '' }))}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div>

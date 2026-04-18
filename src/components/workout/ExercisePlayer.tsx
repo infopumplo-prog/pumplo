@@ -112,7 +112,6 @@ export const ExercisePlayer = ({
   const [weight, setWeight] = useState<string>(lastWeight ? `${lastWeight}` : '');
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const [infoVideoError, setInfoVideoError] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const completedSets = setsData.filter(s => s.completed).length;
@@ -234,12 +233,7 @@ export const ExercisePlayer = ({
               onError={() => setVideoError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-neutral-900">
-              <div className="text-center">
-                <Dumbbell className="w-12 h-12 mx-auto mb-2 text-white/20" />
-                <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
-              </div>
-            </div>
+            <div className="w-full h-full bg-neutral-900" />
           )}
 
           {/* Top overlay: back + progress + counter + skip */}
@@ -392,26 +386,6 @@ export const ExercisePlayer = ({
             <DrawerTitle>{exerciseName}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
-            {videoUrl ? (
-              <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
-                {infoVideoError ? (
-                  <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video nedostupné</div>
-                ) : (
-                  <video
-                    key={videoUrl}
-                    src={videoUrl}
-                    controls playsInline autoPlay loop muted preload="auto"
-                    className="w-full h-full object-contain"
-                    onError={() => setInfoVideoError(true)}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Bez videa</p>
-              </div>
-            )}
-
             <p className="text-sm text-muted-foreground mb-4">
               {categoryLabels[category] || category}
               {equipmentType && ` · ${equipmentLabels[equipmentType] || equipmentType}`}
