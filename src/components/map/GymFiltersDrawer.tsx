@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -247,6 +247,14 @@ const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onC
 export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice, availableMachines }: Props) => {
   const [machineSearch, setMachineSearch] = useState('');
   const machineInputRef = useRef<HTMLInputElement>(null);
+
+  // iOS Chrome: keyboard appearance scrolls window even inside fixed drawers — reset it
+  useEffect(() => {
+    if (!open) return;
+    const resetScroll = () => { if (window.scrollY !== 0) window.scrollTo(0, 0); };
+    window.visualViewport?.addEventListener('resize', resetScroll);
+    return () => window.visualViewport?.removeEventListener('resize', resetScroll);
+  }, [open]);
   const set = (patch: Partial<GymFilters>) => onChange({ ...filters, ...patch });
   const toggleService = (key: string) => set({ services: filters.services.includes(key) ? filters.services.filter(s => s !== key) : [...filters.services, key] });
   const toggleCard = (key: string) => set({ cards: filters.cards.includes(key) ? filters.cards.filter(c => c !== key) : [...filters.cards, key] });
