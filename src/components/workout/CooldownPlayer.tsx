@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info } from 'lucide-react';
+import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
-import { announceTimedExercise } from '@/lib/workoutAudio';
+import { announceTimedExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -31,6 +31,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [muted, setMuted] = useState(isWorkoutMuted());
 
   const currentExercise = exercises[currentIndex];
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
@@ -188,6 +189,9 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 💙 {currentIndex + 1}/{totalExercises}
               </span>
+              <button onClick={() => setMuted(toggleWorkoutMute())} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
               <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                 <SkipForward className="w-5 h-5" />
               </button>

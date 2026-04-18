@@ -71,6 +71,11 @@ try {
   silenceUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
 } catch{}
 
+// --- Mute state (default: muted — user must opt in) ---
+let _muted = true;
+export const isWorkoutMuted = () => _muted;
+export const toggleWorkoutMute = (): boolean => { _muted = !_muted; return _muted; };
+
 // --- Audio player ---
 let audioEl: HTMLAudioElement | null = null;
 let silentEl: HTMLAudioElement | null = null; // dedicated element for silent loop (MediaSession)
@@ -148,8 +153,8 @@ let beepUrl: string|null=null, highBeepUrl: string|null=null;
 try { beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200); } catch{}
 
 
-export const playBeep = () => { if(!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
-export const playFinishSound = () => { if(!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
+export const playBeep = () => { if(_muted||!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
+export const playFinishSound = () => { if(_muted||!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 
 // --- TTS via Supabase Edge Function (full sentence, one MP3) ---
 const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
@@ -181,6 +186,7 @@ function speakViaSynthesis(text: string) {
 }
 
 async function playTts(text: string) {
+  if (_muted) return;
   // Prefer speechSynthesis on iOS — it properly releases audio session so music resumes.
   // HTMLAudioElement holds the iOS audio session after playback ends, blocking music resumption.
   const isIOS = typeof navigator !== 'undefined' &&

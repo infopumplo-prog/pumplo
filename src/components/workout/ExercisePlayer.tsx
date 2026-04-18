@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Volume2, VolumeX } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
-import { announceExercise } from '@/lib/workoutAudio';
+import { announceExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 
@@ -113,6 +113,7 @@ export const ExercisePlayer = ({
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [muted, setMuted] = useState(isWorkoutMuted());
 
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
@@ -256,6 +257,12 @@ export const ExercisePlayer = ({
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 {exerciseIndex + 1}/{totalExercises}
               </span>
+              <button
+                onClick={() => setMuted(toggleWorkoutMute())}
+                className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white"
+              >
+                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
               {onSwapExercise && (
                 <button onClick={onSwapExercise} disabled={isSwapping} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white disabled:opacity-50">
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
