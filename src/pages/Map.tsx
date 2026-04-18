@@ -11,6 +11,7 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import GymMap, { GymMapHandle } from '@/components/map/GymMap';
 import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
+import { GymFiltersDrawer, GymFilters, DEFAULT_FILTERS, countActiveFilters } from '@/components/map/GymFiltersDrawer';
 import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
@@ -59,6 +60,8 @@ const Map = () => {
   // State for two-step interaction
   const [quickPreviewGym, setQuickPreviewGym] = useState<PublicGym | null>(null);
   const [detailGym, setDetailGym] = useState<PublicGym | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<GymFilters>(DEFAULT_FILTERS);
 
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
@@ -182,6 +185,31 @@ const Map = () => {
     );
   };
 
+  // Apply filters
+  const filteredGyms = gyms.filter(gym => {
+    if (filters.openNow && !isGymCurrentlyOpen(gym.opening_hours as OpeningHours)) return false;
+    if (filters.verifiedOnly && !gym.is_verified) return false;
+    if (filters.maxDistance !== null) {
+      const dist = getGymDistance(gym);
+      if (dist === undefined || dist > filters.maxDistance) return false;
+    }
+    if (filters.maxSinglePrice !== null) {
+      const price = (gym.pricing as any)?.single_entries?.[0]?.prices?.[0]?.price;
+      if (!price || price > filters.maxSinglePrice) return false;
+    }
+    if (filters.services.length > 0) {
+      const gymServices = (gym.services || []).map(s => s.toLowerCase());
+      if (!filters.services.every(s => gymServices.includes(s.toLowerCase()))) return false;
+    }
+    if (filters.cards.length > 0) {
+      const gymServices = (gym.services || []).map(s => s.toLowerCase());
+      if (!filters.cards.every(c => gymServices.includes(c.toLowerCase()))) return false;
+    }
+    return true;
+  });
+
+  const activeFilterCount = countActiveFilters(filters);
+
   const detailGymIsOpen = detailGym
     ? isGymCurrentlyOpen(detailGym.opening_hours as OpeningHours)
     : false;
@@ -256,7 +284,7 @@ const Map = () => {
         {/* Fullscreen Map */}
         <div className="absolute inset-0" style={{ bottom: BOTTOM_NAV_HEIGHT }}>
           <GymMap
-            gyms={gyms}
+            gyms={filteredGyms}
             userLocation={userLocation}
             onGymSelect={handleGymSelect}
             selectedGymId={quickPreviewGym?.id || detailGym?.id}
@@ -276,6 +304,22 @@ const Map = () => {
               Povolit polohu pro zobrazení vzdálenosti
             </button>
           )}
+
+          {/* Filter button */}
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="absolute top-4 right-[60px] z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all relative"
+            aria-label="Filtrovat posilovny"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeFilterCount > 0 ? '#4CC9FF' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
           {/* Center on user button */}
           <button
@@ -305,6 +349,15 @@ const Map = () => {
             />
           </div>
         )}
+
+        {/* Filters Drawer */}
+        <GymFiltersDrawer
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          filters={filters}
+          onChange={setFilters}
+          hasGps={!!userLocation}
+        />
 
         {/* Fullscreen Gym Detail Drawer */}
         <Drawer open={!!detailGym} onOpenChange={(open) => !open && setDetailGym(null)}>
