@@ -19,75 +19,88 @@ const levenshtein = (a: string, b: string): number => {
 };
 
 // Each group: any term matches any other term in the group (bidirectional)
+// Terms are pre-normalized (no diacritics, lowercase) to match stripDiacritics output
 const SYNONYM_GROUPS: string[][] = [
   // Jednoručky / činky / dumbbells
-  ['dumbbell', 'dumbbells', 'cinky', 'jednorucky', 'jednoruky', 'hantel', 'hantle'],
-  // Osy / tyče / barbells
-  ['barbell', 'barbells', 'osa', 'osy', 'tyc', 'tyce', 'olympijska'],
+  ['dumbbell', 'dumbbells', 'cinky', 'cinka', 'jednorucky', 'jednoruky', 'jednoruek', 'hantel', 'hantle', 'jednoruci'],
+  // Osy / EZ osy / barbells
+  ['barbell', 'barbells', 'osa', 'osy', 'tyc', 'tyce', 'olympijska', 'ez osy', 'ez osa', 'ez'],
   // Lavička / bench press
-  ['bench', 'lavicka', 'lavicky', 'benchpress', 'bench press'],
-  // Kladka / cable
-  ['cable', 'cables', 'kladka', 'kladky', 'kabelova', 'krizova', 'crossover', 'lanko'],
-  // Dřepový stojan / squat rack / power rack
-  ['squat', 'drep', 'drepy', 'powrack', 'power rack', 'stojan', 'drepovy', 'rack'],
+  ['bench', 'lavicka', 'lavicky', 'benchpress', 'bench press', 'lavice'],
+  // Kladka / cable — kladka veslování, křížová kladka, horní/dolní kladka
+  ['cable', 'cables', 'kladka', 'kladky', 'kabelova', 'krizova', 'crossover', 'lanko', 'krizovy'],
+  // Dřepový stojan / squat rack / power rack / half rack
+  ['squat', 'drep', 'drepy', 'power rack', 'half rack', 'drepovy', 'rack', 'stojan'],
   // Běžecký pás / treadmill
-  ['treadmill', 'bezecky', 'bezak', 'bezaky', 'pas', 'beh', 'cardio'],
-  // Rotoped / kolo / bike
-  ['bike', 'bicycle', 'kolo', 'kola', 'cyklo', 'rotoped', 'spinning', 'spinningove'],
-  // Veslovací trenažér / rowing
-  ['rowing', 'rower', 'veslovaci', 'veslo', 'veslak', 'concept', 'ergometr'],
-  // Prsa / chest press
-  ['chest', 'hrudni', 'prsni', 'prsa', 'pec', 'pecdeck', 'motyl', 'butterfly'],
-  // Ramena / shoulder press
-  ['shoulder', 'shoulders', 'ramena', 'ramenni', 'ramenou', 'trapez', 'trapy'],
-  // Biceps
-  ['bicep', 'biceps', 'bicepsovy', 'scott', 'larry', 'preacher', 'modlitebna'],
+  ['treadmill', 'bezecky', 'bezak', 'bezaky', 'beh', 'running'],
+  // Rotoped / kolo / bike / air bike
+  ['bike', 'bicycle', 'kolo', 'kola', 'cyklo', 'rotoped', 'spinning', 'spinningove', 'air bike', 'airbike'],
+  // Veslařský / veslovací / rowing machine
+  ['rowing', 'rower', 'veslovaci', 'veslarsky', 'veslar', 'veslo', 'veslak', 'concept', 'ergometr', 'veslovan'],
+  // Prsa / pektorální / chest — vertikální tlak na prsa, peck deck
+  ['chest', 'hrudni', 'prsni', 'prsa', 'pec', 'pecdeck', 'motyl', 'butterfly', 'pektoral', 'vertikalni tlak', 'prsni stroj'],
+  // Ramena / deltoid / shoulder press
+  ['shoulder', 'shoulders', 'ramena', 'ramenni', 'deltoid', 'deltoidni', 'delta', 'trapy', 'trapez', 'deltoid press'],
+  // Biceps / curling stroj / preacher
+  ['bicep', 'biceps', 'bicepsovy', 'scott', 'larry', 'preacher', 'modlitebna', 'curling'],
   // Triceps
-  ['tricep', 'triceps', 'tricepsovy', 'tlak', 'french'],
-  // Lat pulldown / stahování
-  ['pulldown', 'stazeni', 'stahovan', 'lat', 'latissimu', 'dorsi', 'siroka', 'uzka'],
-  // Přítahy / seated row / row
-  ['row', 'rows', 'pritahy', 'pritah', 'zasedove', 'veslovan', 'veslovani', 't-bar', 'tbar', 'tyrka'],
+  ['tricep', 'triceps', 'tricepsovy', 'french'],
+  // Lat pulldown / stahování / kruhové stahování
+  ['pulldown', 'stazeni', 'stahovan', 'lat', 'latissimu', 'dorsi', 'siroka', 'uzka', 'kruhove', 'lat pulldown'],
+  // Přítahy / přítah stroj / row / mid row / high row / T-bar
+  ['row', 'rows', 'pritahy', 'pritah', 'mid row', 'high row', 'veslovan', 't-bar', 'tbar', 'predklon'],
   // Hip thrust / kyčel / glute bridge
-  ['hip', 'kycle', 'kycelni', 'hip thrust', 'hipthrust', 'glutebridge', 'thrust'],
-  // Hýžďový / glute
-  ['glute', 'glutes', 'hyzde', 'hyzdovy', 'hyzd', 'zadecek', 'kickback', 'hyper'],
-  // Abdukce / abduktor
-  ['abduction', 'abdukce', 'abduktor', 'odtazeni', 'rozkrok'],
+  ['hip', 'kycle', 'kycelni', 'hipthrust', 'hip thrust', 'glutebridge', 'thrust'],
+  // Hýžďový / glute / kickback — stroj na hýždě, kickback stroj
+  ['glute', 'glutes', 'hyzde', 'hyzdovy', 'hyzd', 'zadecek', 'kickback'],
+  // Hyperextenze / záda / roman chair — záda a záklony
+  ['back', 'zada', 'zadovy', 'hyperextenze', 'hyperex', 'roman', 'zaklony', 'mrtvak', 'deadlift', 'mrtvy', 'hyperex'],
+  // Abdukce / únos / abduktor — únos stroj, únos vstoje
+  ['abduction', 'abdukce', 'abduktor', 'unos', 'odtazeni', 'rozkrok'],
   // Addukce / adduktor
-  ['adduction', 'addukce', 'adduktor', 'pritazeni', 'stahovan'],
-  // Lýtka / calf raise
-  ['calf', 'calves', 'lytko', 'lytka', 'lytkovy', 'gastro', 'soleus'],
-  // Záda / back / hyperextenze
-  ['back', 'zada', 'zadovy', 'hyperextenze', 'hyperex', 'roman', 'zaklony', 'mrtvak', 'deadlift', 'mrtvy'],
-  // Břicho / core / abs
+  ['adduction', 'addukce', 'adduktor', 'pritazeni'],
+  // Lýtka / calf — lýtka vsedě, stroj na lýtka, Viking press a lýtka
+  ['calf', 'calves', 'lytko', 'lytka', 'lytkovy', 'gastro', 'soleus', 'viking'],
+  // Břicho / abs / stroj na břicho
   ['abs', 'abdominal', 'brisni', 'bricho', 'core', 'briska', 'crunch', 'plank'],
-  // Eliptický / elliptical
-  ['elliptical', 'elipticky', 'elipsa', 'elipticka', 'cross'],
-  // Smith / Smithův stroj
-  ['smith', 'smithuv', 'smitova'],
-  // Leg press
-  ['leg press', 'legpress', 'nozni', 'nohy', 'dolni', 'leg', 'nozak'],
-  // Leg extension / extenze nohou
-  ['extension', 'extenze', 'extenzni', 'kvadriceps', 'quads', 'quad', 'stehno'],
+  // Eliptický / orbitrek / elliptical
+  ['elliptical', 'elipticky', 'elipsa', 'elipticka', 'cross', 'orbitrek', 'orbit'],
+  // Smith stroj
+  ['smith', 'smithuv', 'smituv', 'vyvazeny'],
+  // Leg press — leg press, leg press 45°, horizontální leg press
+  ['leg press', 'legpress', 'nozni lis', 'nozak', 'horizontalni', 'leglis'],
+  // Leg extension / extenze nohou — kvadriceps, stehna
+  ['extension', 'extenze', 'extenzni', 'kvadriceps', 'quads', 'quad', 'stehno', 'leg extension'],
   // Leg curl / hamstringy
-  ['curl', 'curly', 'hamstring', 'hamstringy', 'stehenni', 'zakoleni', 'lying'],
-  // Hrazda / pull-up / chin-up
-  ['hrazda', 'pullup', 'pull-up', 'chinup', 'chin-up', 'shyby', 'asistovana'],
-  // Kliky / dip station
-  ['dip', 'dipy', 'dipovadlo', 'kliky', 'paralely', 'paralelky'],
+  ['curl', 'hamstring', 'hamstringy', 'stehenni', 'zakoleni', 'lying', 'leg curl'],
+  // Hrazda / hrazdy / pull-up / shyby / pull assist
+  ['hrazda', 'hrazdy', 'hrazd', 'pullup', 'pull-up', 'chinup', 'chin-up', 'shyby', 'pull assist', 'asistovana'],
+  // Bradla / dip station / paralelní tyče
+  ['dip', 'dipy', 'bradla', 'paralelni', 'paralely', 'paralelky', 'dipovadlo'],
   // Kettlebell
   ['kettlebell', 'kettlebells', 'kettlebely', 'zvon', 'zvony'],
   // TRX / suspension
   ['trx', 'suspension', 'zavesny'],
-  // Funkční trenažér / functional trainer
-  ['functional', 'funkcni', 'trenanzer', 'multipress'],
-  // Inklinace / šikmá lavička
-  ['incline', 'decline', 'sikma', 'sikmá', 'naklonena'],
+  // Schody / stepper / stairmaster
+  ['stairs', 'schody', 'schod', 'stepper', 'stairmaster', 'step'],
+  // Šikmá lavička / incline / super šikmý bench
+  ['incline', 'decline', 'sikma', 'naklonena', 'sikmý'],
   // Medicinbal
-  ['medicine', 'medicinbal', 'medibal', 'ball'],
-  // Fly / rozpažení / motýl
-  ['fly', 'rozpazeni', 'rozpazen', 'motyl', 'pecdeck', 'pec deck'],
+  ['medicine', 'medicinbal', 'medibal'],
+  // Fly / rozpažení / peck deck / vertikální pek dek
+  ['fly', 'rozpazeni', 'rozpazen', 'motyl', 'pecdeck', 'pec deck', 'pek dek'],
+  // Pullover stroj
+  ['pullover'],
+  // Rotační stroj
+  ['rotation', 'rotacni', 'rotacni stroj', 'twist'],
+  // Funkční / functional trainer / pinnacle
+  ['functional', 'funkcni', 'multipress', 'pinnacle'],
+  // Hack squat
+  ['hack', 'hack squat', 'hacksquat'],
+  // Super dřep / pendulový dřep
+  ['pendulum', 'pendulovy', 'super drep', 'super power'],
+  // Sissy squat
+  ['sissy'],
   // Závaží / kotouče / weight plates
   ['plates', 'kotouče', 'kotoucy', 'zavazi', 'weights'],
 ];
