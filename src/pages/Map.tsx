@@ -219,12 +219,24 @@ const Map = () => {
     return Math.ceil(max / 10) * 10;
   }, [gyms]);
 
+  const getMonthlyPrice = (m: any): number | null => {
+    const name = (m.name || '').toLowerCase();
+    if (/\d+x\s*vstup|solárium|ručník|zapůjč/i.test(name)) return null;
+    const price = m.prices?.[0]?.price;
+    if (!price) return null;
+    const multi = name.match(/\((\d+)\s*měsíc/);
+    if (multi) return price / parseInt(multi[1]);
+    if (/měsíční|měsíc/i.test(name)) return price;
+    return null;
+  };
+
   const maxMembershipPrice = useMemo(() => {
     let max = 2000;
     gyms.forEach(gym => {
-      ((gym.pricing as any)?.memberships || []).forEach((m: any) =>
-        (m.prices || []).forEach((p: any) => { if (p.price > max) max = p.price; })
-      );
+      ((gym.pricing as any)?.memberships || []).forEach((m: any) => {
+        const monthly = getMonthlyPrice(m);
+        if (monthly && monthly > max) max = monthly;
+      });
     });
     return Math.ceil(max / 50) * 50;
   }, [gyms]);
@@ -242,10 +254,15 @@ const Map = () => {
       const minPrice = prices.length ? Math.min(...prices) : null;
       if (!minPrice || minPrice > filters.singlePriceLimit) return false;
     }
+    if (filters.privateOnly) {
+      const gymServices = (gym.services || []).map(s => s.toLowerCase());
+      if (!gymServices.includes('soukromý') && !gymServices.includes('private')) return false;
+    }
     if (filters.membershipPriceLimit !== null) {
-      const prices = ((gym.pricing as any)?.memberships || []).flatMap((m: any) => (m.prices || []).map((p: any) => p.price as number));
-      const minPrice = prices.length ? Math.min(...prices) : null;
-      if (!minPrice || minPrice > filters.membershipPriceLimit) return false;
+      const monthlyPrices = ((gym.pricing as any)?.memberships || [])
+        .map((m: any) => getMonthlyPrice(m)).filter(Boolean) as number[];
+      const minMonthly = monthlyPrices.length ? Math.min(...monthlyPrices) : null;
+      if (!minMonthly || minMonthly > filters.membershipPriceLimit) return false;
     }
     if (filters.services.length > 0) {
       const gymServices = (gym.services || []).map(s => s.toLowerCase());
