@@ -258,6 +258,10 @@ const Map = () => {
       const gymServices = (gym.services || []).map(s => s.toLowerCase());
       if (!gymServices.includes('soukromý') && !gymServices.includes('private')) return false;
     }
+    if (filters.parking) {
+      const gymServices = (gym.services || []).map(s => s.toLowerCase());
+      if (!gymServices.some(s => s.includes('parkování') || s.includes('parkovani') || s.includes('parking'))) return false;
+    }
     if (filters.membershipPriceLimit !== null) {
       const monthlyPrices = ((gym.pricing as any)?.memberships || [])
         .map((m: any) => getMonthlyPrice(m)).filter(Boolean) as number[];

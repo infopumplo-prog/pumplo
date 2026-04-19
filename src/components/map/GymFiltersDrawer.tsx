@@ -49,10 +49,10 @@ const SYNONYM_GROUPS: string[][] = [
   ['pulldown', 'stazeni', 'stahovan', 'lat', 'latissimu', 'dorsi', 'siroka', 'uzka', 'kruhove', 'lat pulldown'],
   // Přítahy / přítah stroj / row / mid row / high row / T-bar
   ['row', 'rows', 'pritahy', 'pritah', 'mid row', 'high row', 'veslovan', 't-bar', 'tbar', 'predklon'],
-  // Hip thrust / kyčel / glute bridge
-  ['hip', 'kycle', 'kycelni', 'hipthrust', 'hip thrust', 'glutebridge', 'thrust'],
-  // Hýžďový / glute / kickback — stroj na hýždě, kickback stroj
-  ['glute', 'glutes', 'hyzde', 'hyzdovy', 'hyzd', 'zadecek', 'kickback'],
+  // Hip thrust / kyčel / glute bridge / bootybuilder
+  ['hip', 'kycle', 'kycelni', 'hipthrust', 'hip thrust', 'glutebridge', 'thrust', 'bootybuilder', 'booty', 'booty builder'],
+  // Hýžďový / glute / kickback / stroj na hýždě
+  ['glute', 'glutes', 'hyzde', 'hyzdovy', 'hyzd', 'zadecek', 'kickback', 'bootybuilder', 'booty'],
   // Hyperextenze / záda / roman chair — záda a záklony
   ['back', 'zada', 'zadovy', 'hyperextenze', 'hyperex', 'roman', 'zaklony', 'mrtvak', 'deadlift', 'mrtvy', 'hyperex'],
   // Abdukce / únos / abduktor — únos stroj, únos vstoje
@@ -129,6 +129,7 @@ export interface GymFilters {
   openNow: boolean;
   verifiedOnly: boolean;
   privateOnly: boolean;
+  parking: boolean;
   distanceLimit: number | null;
   singlePriceLimit: number | null;
   membershipPriceLimit: number | null;
@@ -141,6 +142,7 @@ export const DEFAULT_FILTERS: GymFilters = {
   openNow: false,
   verifiedOnly: false,
   privateOnly: false,
+  parking: false,
   distanceLimit: null,
   singlePriceLimit: null,
   membershipPriceLimit: null,
@@ -153,6 +155,7 @@ export const countActiveFilters = (f: GymFilters) =>
   (f.openNow ? 1 : 0) +
   (f.verifiedOnly ? 1 : 0) +
   (f.privateOnly ? 1 : 0) +
+  (f.parking ? 1 : 0) +
   (f.distanceLimit !== null ? 1 : 0) +
   (f.singlePriceLimit !== null ? 1 : 0) +
   (f.membershipPriceLimit !== null ? 1 : 0) +
@@ -161,7 +164,6 @@ export const countActiveFilters = (f: GymFilters) =>
   f.machines.length;
 
 const SERVICES = [
-  { key: 'parkování', label: 'Parkování' },
   { key: 'solárium', label: 'Solárium' },
   { key: 'sauna', label: 'Sauna' },
   { key: 'sprchy', label: 'Sprchy' },
@@ -297,6 +299,13 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
               <Toggle active={filters.openNow} onClick={() => set({ openNow: !filters.openNow })}>Otevřeno teď</Toggle>
               <Toggle active={filters.privateOnly} onClick={() => set({ privateOnly: !filters.privateOnly })}>Soukromý gym</Toggle>
               <Toggle active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>✓ Ověřená</Toggle>
+            </div>
+          </Section>
+
+          {/* Parkování */}
+          <Section title="Parkování">
+            <div className="flex gap-2">
+              <Toggle active={filters.parking} onClick={() => set({ parking: !filters.parking })}>🅿 S parkováním</Toggle>
             </div>
           </Section>
 
