@@ -106,3 +106,9 @@ const { data } = await supabase.from('gyms').select('*').eq('owner_id', user.id)
 ## Skills
 - UI/UX guidelines: .claude/skills/ui-ux-pro-max/
 - Obsidian skills: .claude/skills/obsidian-skills/
+
+## Knowledge Graph (Graphify RAG)
+Before grepping through files for architecture or business questions, consult the knowledge graph:
+- **Graph Report:** ~/Desktop/graphify-workspace/graphify-out/GRAPH_REPORT.md
+- **Graph JSON:** ~/Desktop/graphify-workspace/graphify-out/graph.json
+- **Query CLI:** `graphify query "<question>"`

@@ -31,12 +31,7 @@ const GymQuickPreview = ({
   };
 
   return (
-    <div className={cn(
-      "rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 relative",
-      gym.is_featured
-        ? "bg-card border-2 border-amber-500/50 shadow-[0_0_0_3px_rgba(245,158,11,0.12)]"
-        : "bg-card border border-border"
-    )}>
+    <div className="rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 relative bg-card border border-border">
       {/* Close button */}
       <button
         onClick={onClose}
@@ -51,10 +46,7 @@ const GymQuickPreview = ({
           {/* Logo */}
           <div className="shrink-0">
             {gym.logo_url ? (
-              <div className={cn(
-                "w-16 h-16 rounded-lg bg-white flex items-center justify-center overflow-hidden",
-                gym.is_featured ? "border-2 border-amber-500/40" : "border border-border"
-              )}>
+              <div className="w-16 h-16 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-border">
                 <img
                   src={gym.logo_url}
                   alt={`${gym.name} logo`}
@@ -62,13 +54,8 @@ const GymQuickPreview = ({
                 />
               </div>
             ) : (
-              <div className={cn(
-                "w-16 h-16 rounded-lg flex items-center justify-center",
-                gym.is_featured
-                  ? "bg-amber-500/10 border-2 border-amber-500/40"
-                  : "bg-primary/10 border border-border"
-              )}>
-                <MapPin className={cn("w-6 h-6", gym.is_featured ? "text-amber-500" : "text-primary")} />
+              <div className="w-16 h-16 rounded-lg flex items-center justify-center bg-primary/10 border border-border">
+                <MapPin className="w-6 h-6 text-primary" />
               </div>
             )}
           </div>
