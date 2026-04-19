@@ -16,7 +16,17 @@ async function sendTelegram(text: string) {
   });
 }
 
-serve(async (_req) => {
+serve(async (req) => {
+  // Only allow requests with the correct cron secret
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 86400000);
@@ -141,6 +151,6 @@ ${(newFeedback.data?.length || 0) > 0 ? `💬 *NOVÝ FEEDBACK* (${newFeedback.da
     });
   } catch (err) {
     console.error("Daily briefing error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
   }
 });
