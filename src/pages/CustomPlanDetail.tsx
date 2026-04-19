@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown } from 'lucide-react';
@@ -392,6 +392,13 @@ const CustomPlanDetail = () => {
   const { pausedWorkout: pausedCustomWorkout, clearPausedWorkout: clearPausedCustomWorkout } = usePausedCustomWorkout();
 
   const activeFilterCount = selectedMuscles.size + selectedEquipment.size + selectedSlotTypes.size + selectedRoles.size + (machineSearch.length > 0 ? 1 : 0);
+
+  const uniqueMachineNames = useMemo(() => {
+    const names = allExercises
+      .map(e => e.machine_name)
+      .filter((n): n is string => Boolean(n));
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'cs'));
+  }, [allExercises]);
 
 
   const loadAllExercises = useCallback(async () => {
@@ -865,7 +872,7 @@ const CustomPlanDetail = () => {
                   {/* Machine search */}
                   <div className="mb-5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Hledat stroj</p>
-                    <div className="relative">
+                    <div className="relative mb-2">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="text"
@@ -880,6 +887,30 @@ const CustomPlanDetail = () => {
                         </button>
                       )}
                     </div>
+                    {(() => {
+                      const list = machineSearch
+                        ? uniqueMachineNames.filter(m => m.toLowerCase().includes(machineSearch.toLowerCase()))
+                        : uniqueMachineNames;
+                      if (list.length === 0) return <p className="text-xs text-muted-foreground">Žádný stroj nenalezen</p>;
+                      return (
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                          {list.map((machine) => (
+                            <button
+                              key={machine}
+                              onClick={() => setMachineSearch(machineSearch === machine ? '' : machine)}
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                                machineSearch === machine
+                                  ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
+                                  : "bg-card border-border text-foreground hover:border-[#5BC8F5]/50"
+                              )}
+                            >
+                              {machine}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Equipment type */}
