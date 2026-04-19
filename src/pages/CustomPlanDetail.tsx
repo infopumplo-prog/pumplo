@@ -56,10 +56,11 @@ const MUSCLE_FILTERS = [
   { key: 'fullbody', label: 'Celé tělo', match: ['fullbody', 'fulbody', 'full body'] },
 ] as const;
 
-// Equipment: actual DB values are machine, free_weight, bodyweight, other
+// Equipment: actual DB values are machine, free_weight, bodyweight, kettlebell, other
 const EQUIPMENT_FILTERS = [
   { key: 'machine', label: 'Stroj' },
   { key: 'free_weight', label: 'Volné závaží' },
+  { key: 'kettlebell', label: 'Kettlebell' },
   { key: 'bodyweight', label: 'Vlastní váha' },
 ] as const;
 
@@ -104,6 +105,14 @@ const ROLE_FILTER_GROUPS = [
     roles: [
       { key: 'anti_extension', label: 'Anti-extenze' },
       { key: 'rotation', label: 'Rotace trupu' },
+    ],
+  },
+  {
+    label: 'Kardio',
+    roles: [
+      { key: 'cyclical_cardio', label: 'Běh / Kardio' },
+      { key: 'cyclical_pull', label: 'Veslování' },
+      { key: 'cyclical_push', label: 'Air bike / Kolo' },
     ],
   },
 ] as const;
@@ -319,12 +328,15 @@ const CustomPlanDetail = () => {
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
+  const [drawerBottom, setDrawerBottom] = useState('0px');
 
   useEffect(() => {
     if (!exerciseDrawerOpen) return;
     const update = () => {
       const h = window.visualViewport?.height ?? window.innerHeight;
+      const keyboardH = Math.max(0, window.innerHeight - h);
       setDrawerHeight(`${h}px`);
+      setDrawerBottom(`${keyboardH}px`);
       if (window.scrollY !== 0) window.scrollTo(0, 0);
     };
     update();
@@ -739,7 +751,7 @@ const CustomPlanDetail = () => {
 
         {/* Exercise Search Drawer */}
         <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
-          <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight }}>
+          <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }}>
             <DrawerHeader className="shrink-0 pb-2">
               <DrawerTitle>Vybrat cvik</DrawerTitle>
             </DrawerHeader>
@@ -964,7 +976,7 @@ const CustomPlanDetail = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text" placeholder="Hledat cvik..." value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)} autoFocus
+                      onChange={(e) => handleSearch(e.target.value)}
                       className="w-full bg-muted rounded-xl pl-10 pr-10 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                     />
                     {searchQuery && (
