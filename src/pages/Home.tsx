@@ -10,7 +10,7 @@ import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
-import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import pumploWordmark from '@/assets/pumplo-logo-light.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
