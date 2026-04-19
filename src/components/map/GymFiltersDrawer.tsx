@@ -163,18 +163,22 @@ export const countActiveFilters = (f: GymFilters) =>
   f.cards.length +
   f.machines.length;
 
+// Keys must match EXACTLY what pumplo-admin stores in DB (case-sensitive)
 const SERVICES = [
-  { key: 'solárium', label: 'Solárium' },
-  { key: 'sauna', label: 'Sauna / wellness' },
-  { key: 'masáže', label: 'Masáže' },
-  { key: 'personal training', label: 'Personal training' },
-  { key: 'skupinové lekce', label: 'Skupinové lekce' },
-  { key: 'cross zóna', label: 'Cross / funkční zóna' },
-  { key: 'bojové sporty', label: 'Bojové sporty' },
-  { key: 'kardio zóna', label: 'Kardio zóna' },
-  { key: 'sprchy', label: 'Sprchy' },
-  { key: 'bar', label: 'Kavárna / bar' },
-  { key: '24/7', label: '24/7 přístup' },
+  { key: 'Solárium', label: 'Solárium' },
+  { key: 'Sauna', label: 'Sauna' },
+  { key: 'Wellness', label: 'Wellness' },
+  { key: 'Masáže', label: 'Masáže' },
+  { key: 'Skupinové lekce', label: 'Skupinové lekce' },
+  { key: 'Kruhové tréninky', label: 'Kruhové tréninky' },
+  { key: 'Funkční trénink', label: 'Funkční trénink' },
+  { key: 'CrossFit', label: 'CrossFit' },
+  { key: 'Box / MMA', label: 'Box / MMA' },
+  { key: 'Jóga / Pilates', label: 'Jóga / Pilates' },
+  { key: 'Spinning', label: 'Spinning' },
+  { key: 'Bar / Kavárna', label: 'Bar / Kavárna' },
+  { key: 'Sprchy', label: 'Sprchy' },
+  { key: 'Šatny se zámkem', label: 'Šatny se zámkem' },
 ];
 
 const CARDS = [

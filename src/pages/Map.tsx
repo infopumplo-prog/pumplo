@@ -259,8 +259,8 @@ const Map = () => {
       if (!gymServices.includes('soukromý') && !gymServices.includes('private')) return false;
     }
     if (filters.parking) {
-      const gymServices = (gym.services || []).map(s => s.toLowerCase());
-      if (!gymServices.some(s => s.includes('parkování') || s.includes('parkovani') || s.includes('parking'))) return false;
+      const gymServicesLower = (gym.services || []).map(s => s.toLowerCase());
+      if (!gymServicesLower.includes('parkování')) return false;
     }
     if (filters.membershipPriceLimit !== null) {
       const monthlyPrices = ((gym.pricing as any)?.memberships || [])
@@ -269,12 +269,12 @@ const Map = () => {
       if (!minMonthly || minMonthly > filters.membershipPriceLimit) return false;
     }
     if (filters.services.length > 0) {
-      const gymServices = (gym.services || []).map(s => s.toLowerCase());
-      if (!filters.services.every(s => gymServices.includes(s.toLowerCase()))) return false;
+      const gymServicesLower = (gym.services || []).map(s => s.toLowerCase());
+      if (!filters.services.every(s => gymServicesLower.includes(s.toLowerCase()))) return false;
     }
     if (filters.cards.length > 0) {
-      const gymServices = (gym.services || []).map(s => s.toLowerCase());
-      if (!filters.cards.every(c => gymServices.includes(c.toLowerCase()))) return false;
+      const gymServicesLower = (gym.services || []).map(s => s.toLowerCase());
+      if (!filters.cards.every(c => gymServicesLower.includes(c.toLowerCase()))) return false;
     }
     if (filters.machines.length > 0) {
       const gymMachines = gymMachinesMap[gym.id] || [];
