@@ -53,6 +53,7 @@ const Home = () => {
   const {
     isAdmin,
     isBusiness,
+    isTrainer,
     role
   } = useUserRole();
   const {
