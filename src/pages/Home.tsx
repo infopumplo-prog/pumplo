@@ -209,6 +209,10 @@ const Home = () => {
                   <Building2 className="w-4 h-4" />
                   Business
                 </Link>}
+              {isTrainer && <Link to="/trainer-profile" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
+                  <Dumbbell className="w-4 h-4" />
+                  Trenér
+                </Link>}
               {isAdmin && <Link to="/admin" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Shield className="w-4 h-4" />
                   Admin
