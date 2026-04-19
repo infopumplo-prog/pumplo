@@ -41,6 +41,33 @@ interface ExerciseSearchResult {
   machine_name: string | null;
 }
 
+// EN→CZ synonym translation for exercise/machine search
+const SEARCH_SYNONYMS: Record<string, string> = {
+  'dumbbell': 'jednoruč',
+  'dumbbells': 'jednoruč',
+  'cable': 'kabel',
+  'squat': 'dřep',
+  'deadlift': 'mrtvý tah',
+  'row': 'přítah',
+  'curl': 'zdvih',
+  'press': 'tlak',
+  'fly': 'rozpažení',
+  'pulldown': 'stažení',
+  'lunge': 'výpad',
+  'extension': 'natažení',
+  'pullup': 'přítah',
+  'pull-up': 'přítah',
+  'shrug': 'krčení',
+  'hip thrust': 'hip thrust',
+  'plank': 'plank',
+  'bench': 'bench',
+  'treadmill': 'běh',
+  'bike': 'kolo',
+  'rowing': 'veslování',
+};
+
+const translateQuery = (q: string): string => SEARCH_SYNONYMS[q.toLowerCase().trim()] ?? q;
+
 // Muscle filters - matching actual Czech primary_muscles values from DB
 const MUSCLE_FILTERS = [
   { key: 'back', label: 'Záda', match: ['záda', 'back', 'laty', 'latisi', 'latysi', 'lopatky', 'trapéz', 'trapez', 'traps', 'pilovitý', 'pilovity', 'rhomboid', 'wide_back', 'střed zad', 'stred zad'] },
@@ -393,7 +420,7 @@ const CustomPlanDetail = () => {
     let results = allExercises;
 
     if (query.length >= 1) {
-      const q = query.toLowerCase();
+      const q = translateQuery(query.toLowerCase());
       results = results.filter(e => e.name.toLowerCase().includes(q));
     }
 
@@ -424,7 +451,7 @@ const CustomPlanDetail = () => {
     }
 
     if (machineQ.length >= 1) {
-      const mq = machineQ.toLowerCase();
+      const mq = translateQuery(machineQ.toLowerCase());
       results = results.filter(e =>
         (e.machine_name && e.machine_name.toLowerCase().includes(mq)) ||
         e.name.toLowerCase().includes(mq)
