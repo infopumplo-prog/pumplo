@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import pumploLogo from '@/assets/pumplo-full-logo-dark.png';
+import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import pumploIcon from '@/assets/pumplo-icon.png';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency } from '@/lib/trainingGoals';
 import { ONBOARDING_TOTAL_STEPS, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {
@@ -455,14 +456,15 @@ const Auth = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <motion.img
-            src={pumploLogo}
-            alt="Pumplo"
-            className="w-64 object-contain"
+          <motion.div
+            className="flex items-center gap-3"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-          />
+          >
+            <img src={pumploIcon} alt="" className="h-12 w-12 object-contain" />
+            <img src={pumploWordmark} alt="Pumplo" className="h-10 object-contain" />
+          </motion.div>
           <p className="text-muted-foreground mt-2 text-sm">Tvůj fitness parťák</p>
         </motion.div>
       </div>

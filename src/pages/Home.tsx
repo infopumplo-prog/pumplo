@@ -10,7 +10,8 @@ import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
-import pumploLogo from '@/assets/pumplo-full-logo-dark.png';
+import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import pumploIcon from '@/assets/pumplo-icon.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -201,7 +202,10 @@ const Home = () => {
         }} transition={{
           duration: 0.4
         }}>
-            <img src={pumploLogo} alt="Pumplo" className="h-10 w-auto object-contain" />
+            <div className="flex items-center gap-2">
+              <img src={pumploIcon} alt="" className="h-9 w-9 object-contain" />
+              <img src={pumploWordmark} alt="Pumplo" className="h-7 object-contain" />
+            </div>
             <div className="flex items-center gap-3 mt-3">
               {role === 'business' && <Link to="/business" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Building2 className="w-4 h-4" />
