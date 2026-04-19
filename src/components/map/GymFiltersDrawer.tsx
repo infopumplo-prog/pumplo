@@ -165,14 +165,16 @@ export const countActiveFilters = (f: GymFilters) =>
 
 const SERVICES = [
   { key: 'solárium', label: 'Solárium' },
-  { key: 'sauna', label: 'Sauna' },
-  { key: 'sprchy', label: 'Sprchy' },
+  { key: 'sauna', label: 'Sauna / wellness' },
+  { key: 'masáže', label: 'Masáže' },
   { key: 'personal training', label: 'Personal training' },
-  { key: 'dětský koutek', label: 'Dětský koutek' },
-  { key: 'šatny', label: 'Šatny' },
-  { key: 'bar', label: 'Protein bar' },
-  { key: 'kardio zóna', label: 'Kardio zóna' },
   { key: 'skupinové lekce', label: 'Skupinové lekce' },
+  { key: 'cross zóna', label: 'Cross / funkční zóna' },
+  { key: 'bojové sporty', label: 'Bojové sporty' },
+  { key: 'kardio zóna', label: 'Kardio zóna' },
+  { key: 'sprchy', label: 'Sprchy' },
+  { key: 'bar', label: 'Kavárna / bar' },
+  { key: '24/7', label: '24/7 přístup' },
 ];
 
 const CARDS = [
