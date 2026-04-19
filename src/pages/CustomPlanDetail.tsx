@@ -43,30 +43,55 @@ interface ExerciseSearchResult {
 
 // EN→CZ synonym translation for exercise/machine search
 const SEARCH_SYNONYMS: Record<string, string> = {
-  'dumbbell': 'jednoruč',
-  'dumbbells': 'jednoruč',
+  // Equipment
+  'dumbbell': 'jednoruč', 'dumbbells': 'jednoruč',
   'cable': 'kabel',
+  'barbell': 'osa',
+  'kettlebell': 'kettlebell',
+  // Body parts
+  'chest': 'prsa',
+  'back': 'záda',
+  'shoulder': 'ramena', 'shoulders': 'ramena',
+  'glute': 'hýždě', 'glutes': 'hýždě',
+  'bicep': 'biceps', 'biceps': 'biceps',
+  'tricep': 'triceps', 'triceps': 'triceps',
+  'calf': 'lýtka', 'calves': 'lýtka',
+  'abs': 'břicho', 'core': 'střed',
+  'leg': 'nohy', 'legs': 'nohy',
+  // Movements
   'squat': 'dřep',
   'deadlift': 'mrtvý tah',
-  'row': 'přítah',
+  'row': 'přítah', 'rowing': 'veslování',
   'curl': 'zdvih',
   'press': 'tlak',
   'fly': 'rozpažení',
   'pulldown': 'stažení',
   'lunge': 'výpad',
   'extension': 'natažení',
-  'pullup': 'přítah',
-  'pull-up': 'přítah',
+  'pullup': 'přítah', 'pull-up': 'přítah',
   'shrug': 'krčení',
-  'hip thrust': 'hip thrust',
-  'plank': 'plank',
-  'bench': 'bench',
   'treadmill': 'běh',
   'bike': 'kolo',
-  'rowing': 'veslování',
 };
 
+// Translates a single word using synonym table
+const translateWord = (w: string): string => SEARCH_SYNONYMS[w.toLowerCase().trim()] ?? w;
+
+// Full-query single-word translation (for exercise name search)
 const translateQuery = (q: string): string => SEARCH_SYNONYMS[q.toLowerCase().trim()] ?? q;
+
+// Multi-word machine search: each word matched as original OR translated
+const filterMachinesByQuery = (machines: string[], query: string): string[] => {
+  if (!query.trim()) return [];
+  const words = query.toLowerCase().trim().split(/\s+/);
+  return machines.filter(machine => {
+    const ml = machine.toLowerCase();
+    return words.every(word => {
+      const translated = translateWord(word);
+      return ml.includes(word) || (translated !== word && ml.includes(translated));
+    });
+  });
+};
 
 // Muscle filters - matching actual Czech primary_muscles values from DB
 const MUSCLE_FILTERS = [
@@ -887,13 +912,11 @@ const CustomPlanDetail = () => {
                         </button>
                       )}
                     </div>
-                    {(() => {
-                      const list = machineSearch
-                        ? uniqueMachineNames.filter(m => m.toLowerCase().includes(machineSearch.toLowerCase()))
-                        : uniqueMachineNames;
-                      if (list.length === 0) return <p className="text-xs text-muted-foreground">Žádný stroj nenalezen</p>;
+                    {machineSearch.trim().length > 0 && (() => {
+                      const list = filterMachinesByQuery(uniqueMachineNames, machineSearch);
+                      if (list.length === 0) return <p className="text-xs text-muted-foreground mt-1">Žádný stroj nenalezen</p>;
                       return (
-                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                        <div className="flex flex-wrap gap-1.5 mt-1">
                           {list.map((machine) => (
                             <button
                               key={machine}
