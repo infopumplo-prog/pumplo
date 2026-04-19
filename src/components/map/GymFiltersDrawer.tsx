@@ -67,12 +67,14 @@ const SYNONYM_GROUPS: string[][] = [
   ['elliptical', 'elipticky', 'elipsa', 'elipticka', 'cross', 'orbitrek', 'orbit'],
   // Smith stroj
   ['smith', 'smithuv', 'smituv', 'vyvazeny'],
+  // Nohy obecně (leg machines) — nohy najde leg press, curl, extension
+  ['nohy', 'nozni', 'dolni', 'leg', 'legs', 'dolni koncetiny', 'dolni konc'],
   // Leg press — leg press, leg press 45°, horizontální leg press
-  ['leg press', 'legpress', 'nozni lis', 'nozak', 'horizontalni', 'leglis'],
+  ['leg press', 'legpress', 'nozni lis', 'nozak', 'horizontalni', 'leglis', 'nohy'],
   // Leg extension / extenze nohou — kvadriceps, stehna
-  ['extension', 'extenze', 'extenzni', 'kvadriceps', 'quads', 'quad', 'stehno', 'leg extension'],
+  ['extension', 'extenze', 'extenzni', 'kvadriceps', 'quads', 'quad', 'stehno', 'leg extension', 'nohy'],
   // Leg curl / hamstringy
-  ['curl', 'hamstring', 'hamstringy', 'stehenni', 'zakoleni', 'lying', 'leg curl'],
+  ['curl', 'hamstring', 'hamstringy', 'stehenni', 'zakoleni', 'lying', 'leg curl', 'nohy'],
   // Hrazda / hrazdy / pull-up / shyby / pull assist
   ['hrazda', 'hrazdy', 'hrazd', 'pullup', 'pull-up', 'chinup', 'chin-up', 'shyby', 'pull assist', 'asistovana'],
   // Bradla / dip station / paralelní tyče

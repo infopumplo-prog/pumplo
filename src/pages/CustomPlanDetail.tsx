@@ -43,14 +43,17 @@ interface ExerciseSearchResult {
 
 // Muscle filters - matching actual Czech primary_muscles values from DB
 const MUSCLE_FILTERS = [
-  { key: 'back', label: 'Záda', match: ['záda', 'zad', 'laty', 'lopatky', 'trapéz', 'pilovitý'] },
-  { key: 'chest', label: 'Prsa', match: ['prsa', 'prsní'] },
-  { key: 'legs', label: 'Nohy', match: ['nohy', 'kvadriceps', 'dolní konč', 'lýtka', 'hamstring'] },
-  { key: 'shoulders', label: 'Ramena', match: ['ramena'] },
+  { key: 'back', label: 'Záda', match: ['záda', 'back', 'laty', 'latisi', 'latysi', 'lopatky', 'trapéz', 'trapez', 'traps', 'pilovitý', 'pilovity', 'rhomboid', 'wide_back', 'střed zad', 'stred zad'] },
+  { key: 'chest', label: 'Prsa', match: ['prsa', 'prsní', 'chest', 'horní prsa', 'horni prsa'] },
+  { key: 'legs', label: 'Nohy', match: ['nohy', 'nožní', 'kvadriceps', 'quadriceps', 'quads', 'dolní konč', 'dolni konc', 'lýtka', 'lytka', 'calves', 'hamstring', 'front_thigh', 'back_thigh'] },
+  { key: 'glutes', label: 'Zadek / Hýždě', match: ['zadek', 'glute', 'hýždě', 'hyzde'] },
+  { key: 'shoulders', label: 'Ramena', match: ['ramena', 'shoulders', 'front_shoulders', 'side_shoulders', 'deltoid'] },
   { key: 'biceps', label: 'Biceps', match: ['biceps'] },
   { key: 'triceps', label: 'Triceps', match: ['triceps'] },
-  { key: 'glutes', label: 'Zadek', match: ['zadek'] },
-  { key: 'core', label: 'Core', match: ['břišní', 'břicho', 'střed těla', 'bedra'] },
+  { key: 'core', label: 'Břicho / Core', match: ['břišní', 'brisni', 'břicho', 'bricho', 'střed těla', 'stred tela', 'core', 'abs', 'bedra'] },
+  { key: 'calves', label: 'Lýtka', match: ['lýtka', 'lytka', 'calves', 'calf'] },
+  { key: 'arms', label: 'Paže / Ruce', match: ['paže', 'paze', 'ruce'] },
+  { key: 'fullbody', label: 'Celé tělo', match: ['fullbody', 'fulbody', 'full body'] },
 ] as const;
 
 // Equipment: actual DB values are machine, free_weight, bodyweight, other
