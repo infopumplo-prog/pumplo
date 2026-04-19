@@ -318,6 +318,19 @@ const CustomPlanDetail = () => {
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
+  const [drawerHeight, setDrawerHeight] = useState('100dvh');
+
+  useEffect(() => {
+    if (!exerciseDrawerOpen) return;
+    const update = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setDrawerHeight(`${h}px`);
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    update();
+    window.visualViewport?.addEventListener('resize', update);
+    return () => window.visualViewport?.removeEventListener('resize', update);
+  }, [exerciseDrawerOpen]);
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allExercises, setAllExercises] = useState<ExerciseSearchResult[]>([]);
@@ -726,7 +739,7 @@ const CustomPlanDetail = () => {
 
         {/* Exercise Search Drawer */}
         <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
-          <DrawerContent className="flex flex-col" style={{ height: '100dvh', maxHeight: '100dvh' }}>
+          <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight }}>
             <DrawerHeader className="shrink-0 pb-2">
               <DrawerTitle>Vybrat cvik</DrawerTitle>
             </DrawerHeader>
