@@ -168,6 +168,8 @@ const SERVICES = [
   { key: 'Solárium', label: 'Solárium' },
   { key: 'Sauna', label: 'Sauna' },
   { key: 'Wellness', label: 'Wellness' },
+  { key: 'Bazén', label: 'Bazén' },
+  { key: 'Vířivka', label: 'Vířivka' },
   { key: 'Masáže', label: 'Masáže' },
   { key: 'Skupinové lekce', label: 'Skupinové lekce' },
   { key: 'Kruhové tréninky', label: 'Kruhové tréninky' },
@@ -177,8 +179,11 @@ const SERVICES = [
   { key: 'Jóga / Pilates', label: 'Jóga / Pilates' },
   { key: 'Spinning', label: 'Spinning' },
   { key: 'Bar / Kavárna', label: 'Bar / Kavárna' },
+  { key: 'Personal training', label: 'Personal training' },
+  { key: 'Tenis / Squash', label: 'Tenis / Squash' },
   { key: 'Sprchy', label: 'Sprchy' },
   { key: 'Šatny se zámkem', label: 'Šatny se zámkem' },
+  { key: '24/7 přístup', label: '24/7 přístup' },
 ];
 
 const CARDS = [
