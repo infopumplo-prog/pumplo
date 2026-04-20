@@ -141,7 +141,7 @@ const CustomWorkoutPlayer = () => {
   // Init cardio timer when cardio exercise starts
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise') return;
-    const totalSec = (currentExercise?.reps || 10) * 60;
+    const totalSec = currentExercise?.reps || 600;
     cardioEndTimeRef.current = Date.now() + totalSec * 1000;
     setCardioSeconds(totalSec);
     setCardioTotalSeconds(totalSec);

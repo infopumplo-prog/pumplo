@@ -71,12 +71,6 @@ export const stopSilentLoop = () => {
   silentEl.load();
 };
 
-const autoUnlock = () => { unlockAudio(); document.removeEventListener('click',autoUnlock); document.removeEventListener('touchstart',autoUnlock); document.removeEventListener('touchend',autoUnlock); };
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', autoUnlock, { passive: true });
-  document.addEventListener('touchstart', autoUnlock, { passive: true });
-  document.addEventListener('touchend', autoUnlock, { passive: true });
-}
 
 // --- Beep generation ---
 function generateWavBeep(freq: number, ms: number, sr = 22050): string {
