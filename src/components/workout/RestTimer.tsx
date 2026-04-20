@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { playBeep, playFinishSound } from '@/lib/workoutAudio';
+import { playAlarmBeep, playFinishSound } from '@/lib/workoutAudio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -34,9 +34,9 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
 
-      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playBeep(); }
-      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playBeep(); }
-      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playBeep(); }
+      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playAlarmBeep(); }
+      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playAlarmBeep(); }
+      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playAlarmBeep(); }
 
       if (remaining <= 0 && !completedRef.current) {
         completedRef.current = true;

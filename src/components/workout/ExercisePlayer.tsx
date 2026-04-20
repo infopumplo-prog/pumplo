@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Volume2, VolumeX, Play, Pause } from 'lucide-react';
-import { playBeep, playFinishSound } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, playAlarmBeep } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
 import { announceExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
@@ -141,9 +141,9 @@ export const ExercisePlayer = ({
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       setCardioTimeLeft(remaining);
-      if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playBeep(); }
-      if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playBeep(); }
-      if (remaining === 1 && !cardioB1.current) { cardioB1.current = true; playBeep(); }
+      if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playAlarmBeep(); }
+      if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playAlarmBeep(); }
+      if (remaining === 1 && !cardioB1.current) { cardioB1.current = true; playAlarmBeep(); }
       if (remaining <= 0) handleCardioComplete();
     };
     tick();

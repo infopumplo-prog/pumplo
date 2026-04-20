@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { playBeep, playAlarmBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -157,9 +157,9 @@ const CustomWorkoutPlayer = () => {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       setCardioSeconds(remaining);
-      if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playBeep(); }
-      if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playBeep(); }
-      if (remaining === 1 && !cardioBeepsRef.current.b1) { cardioBeepsRef.current.b1 = true; playBeep(); }
+      if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playAlarmBeep(); }
+      if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playAlarmBeep(); }
+      if (remaining === 1 && !cardioBeepsRef.current.b1) { cardioBeepsRef.current.b1 = true; playAlarmBeep(); }
       if (remaining <= 0 && !cardioBeepsRef.current.done) {
         cardioBeepsRef.current.done = true;
         playFinishSound();
@@ -498,9 +498,9 @@ const CustomWorkoutPlayer = () => {
         const text = buildAnnouncementText();
         speakText(text);
       }
-      if (remaining === 3 && !b.b3) { b.b3 = true; playBeep(); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playBeep(); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playBeep(); }
+      if (remaining === 3 && !b.b3) { b.b3 = true; playAlarmBeep(); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; playAlarmBeep(); }
+      if (remaining === 1 && !b.b1) { b.b1 = true; playAlarmBeep(); }
       if (remaining <= 0 && !b.done) {
         b.done = true;
         playFinishSound();

@@ -71,10 +71,17 @@ try {
   silenceUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
 } catch{}
 
-// --- Mute state (default: muted — user must opt in) ---
-let _muted = true;
+// --- Mute state — persisted to localStorage, default unmuted ---
+const MUTE_KEY = 'workout_muted';
+let _muted = (() => {
+  try { return localStorage.getItem(MUTE_KEY) === 'true'; } catch { return false; }
+})();
 export const isWorkoutMuted = () => _muted;
-export const toggleWorkoutMute = (): boolean => { _muted = !_muted; return _muted; };
+export const toggleWorkoutMute = (): boolean => {
+  _muted = !_muted;
+  try { localStorage.setItem(MUTE_KEY, String(_muted)); } catch {}
+  return _muted;
+};
 
 // --- Audio player ---
 let audioEl: HTMLAudioElement | null = null;
