@@ -313,6 +313,7 @@ export type Database = {
           slot_type: string | null
           stability_rating: number | null
           tips: string | null
+          unit_type: string
           updated_at: string
           video_path: string | null
         }
@@ -340,6 +341,7 @@ export type Database = {
           slot_type?: string | null
           stability_rating?: number | null
           tips?: string | null
+          unit_type?: string
           updated_at?: string
           video_path?: string | null
         }
@@ -367,6 +369,7 @@ export type Database = {
           slot_type?: string | null
           stability_rating?: number | null
           tips?: string | null
+          unit_type?: string
           updated_at?: string
           video_path?: string | null
         }

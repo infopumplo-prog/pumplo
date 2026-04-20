@@ -45,6 +45,7 @@ import {
   getCardioSlotsCount,
   CARDIO_SLOT_DEFAULTS,
   CARDIO_ROLE_IDS,
+  getCardioDurationMinutes,
 } from '@/lib/bmiUtils';
 
 export const useWorkoutGenerator = () => {
@@ -86,6 +87,8 @@ export const useWorkoutGenerator = () => {
   // Get sets for user level from slot template, with bonus sets for longer durations
   // Trainer rules v3: extra time = more SETS, not more exercises
   const getSetsForLevel = (slot: DayTemplateSlot, level: UserLevel, durationMinutes?: number, goalId?: string, allSlots?: DayTemplateSlot[]): number => {
+    // Cardio is always 1 set — duration is expressed in repMin/repMax (minutes)
+    if (slot.slotCategory === 'conditioning') return 1;
     let baseSets = getBaseSetsForSlot(slot, level);
 
     // Max TOTAL sets per exercise by level (absolute ceiling)
@@ -101,8 +104,8 @@ export const useWorkoutGenerator = () => {
     if (durationMinutes && allSlots && allSlots.length > 0) {
       const goal = goalId || 'general_fitness';
       // Calculate actual base time across ALL slots with their real rest times
-      // Cardio: fixed 5 min per set (user chooses actual duration themselves)
-      const CARDIO_SET_SECONDS = 5 * 60; // 5 min per cardio set
+      // Cardio: always 1 set, ~10 min estimated for time-budget purposes
+      const CARDIO_SET_SECONDS = 10 * 60;
       const actualBaseTime = allSlots.reduce((sum, s) => {
         const sets = getBaseSetsForSlot(s, level);
         const rest = getRestSecondsForCategory(goal, s.slotCategory);
@@ -619,8 +622,18 @@ export const useWorkoutGenerator = () => {
           }
 
           // Apply goal-based rep range and RPE overrides (trainer rules v3)
-          const repRange = getRepRangeForGoal(goalId, slot.slotCategory);
-          const rpeRange = getRpeForGoal(goalId, slot.slotCategory);
+          // Conditioning slots use dynamic cardio duration instead of goal rep ranges
+          const isCardioSlot = slot.slotCategory === 'conditioning';
+          let repRange: { repMin: number; repMax: number };
+          let rpeRange: { rirMin: number | null; rirMax: number | null };
+          if (isCardioSlot) {
+            const numCardioSlots = finalSlots.filter(s => s.slotCategory === 'conditioning').length;
+            repRange = getCardioDurationMinutes(durationMinutes, numCardioSlots, result.exercise?.difficulty ?? 2);
+            rpeRange = { rirMin: null, rirMax: null };
+          } else {
+            repRange = getRepRangeForGoal(goalId, slot.slotCategory);
+            rpeRange = getRpeForGoal(goalId, slot.slotCategory);
+          }
 
           exerciseInserts.push({
             day_letter: day.dayLetter,

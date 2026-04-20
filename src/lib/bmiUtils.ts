@@ -125,6 +125,7 @@ export const CARDIO_ROLE_IDS = ['cyclical_pull', 'cyclical_push'];
 
 /**
  * Default cardio slot configuration for fat_loss plans
+ * Sets always 1 — duration is calculated dynamically from target workout time
  */
 export const CARDIO_SLOT_DEFAULTS = {
   roleId: 'cyclical_push',
@@ -132,11 +133,39 @@ export const CARDIO_SLOT_DEFAULTS = {
   beginnerSets: 1,
   intermediateSets: 1,
   advancedSets: 1,
-  repMin: 1,    // For cardio, reps represent minutes
-  repMax: 15,   // 15 minutes
+  repMin: 8,
+  repMax: 12,
   rirMin: null,
   rirMax: null,
-  notes: 'Kardio — min. 15 min nízká intenzita',
+  notes: 'Kardio — čas závisí na délce tréninku',
+};
+
+/**
+ * Floor/ceiling for cardio duration in minutes based on exercise difficulty (1–4)
+ * Higher difficulty = shorter but more intense; lower = longer, steadier pace
+ */
+export const CARDIO_DURATION_BOUNDS: Record<number, { floor: number; ceiling: number }> = {
+  1: { floor: 10, ceiling: 20 },
+  2: { floor: 8,  ceiling: 16 },
+  3: { floor: 6,  ceiling: 13 },
+  4: { floor: 4,  ceiling: 10 },
+};
+
+/**
+ * Calculate cardio duration in minutes based on target workout time, number of cardio slots,
+ * and exercise difficulty. Clamps to difficulty-specific bounds.
+ */
+export const getCardioDurationMinutes = (
+  durationMinutes: number,
+  numCardioSlots: number,
+  exerciseDifficulty: number = 2
+): { repMin: number; repMax: number } => {
+  const slots = Math.max(1, numCardioSlots);
+  const targetMin = Math.round((durationMinutes / 3) / slots);
+  const diff = Math.min(4, Math.max(1, exerciseDifficulty));
+  const { floor, ceiling } = CARDIO_DURATION_BOUNDS[diff];
+  const clamped = Math.max(floor, Math.min(ceiling, targetMin));
+  return { repMin: Math.max(floor, clamped - 2), repMax: clamped };
 };
 
 /**

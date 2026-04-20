@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -31,6 +31,8 @@ interface ExerciseWithVideo {
   rest_per_set: number[] | null;
   video_path: string | null;
   machine_id: string | null;
+  unit_type: string;
+  category: string;
 }
 
 interface CompletedSetData {
@@ -123,6 +125,50 @@ const CustomWorkoutPlayer = () => {
   const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
 
   const pendingAdvanceRef = useRef<{ type: 'next_exercise' | 'next_set'; exIdx: number; set?: number } | null>(null);
+
+  // Cardio timer state
+  const [cardioSeconds, setCardioSeconds] = useState(0);
+  const [cardioTotalSeconds, setCardioTotalSeconds] = useState(0);
+  const [cardioPaused, setCardioPaused] = useState(false);
+  const cardioEndTimeRef = useRef<number>(0);
+  const cardioPausedAtRef = useRef<number | null>(null);
+  const cardioBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
+
+  const isCurrentCardio = currentExercise?.unit_type === 'time_min';
+
+  // Init cardio timer when cardio exercise starts
+  useEffect(() => {
+    if (!isCurrentCardio || playerState !== 'exercise') return;
+    const totalSec = (currentExercise?.reps || 10) * 60;
+    cardioEndTimeRef.current = Date.now() + totalSec * 1000;
+    setCardioSeconds(totalSec);
+    setCardioTotalSeconds(totalSec);
+    setCardioPaused(false);
+    cardioPausedAtRef.current = null;
+    cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
+  }, [currentExerciseIndex, currentSet]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cardio timer tick
+  useEffect(() => {
+    if (!isCurrentCardio || playerState !== 'exercise' || cardioPaused) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
+      setCardioSeconds(remaining);
+      if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playBeep(); }
+      if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playBeep(); }
+      if (remaining === 1 && !cardioBeepsRef.current.b1) { cardioBeepsRef.current.b1 = true; playBeep(); }
+      if (remaining <= 0 && !cardioBeepsRef.current.done) {
+        cardioBeepsRef.current.done = true;
+        playFinishSound();
+        handleCardioComplete();
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 250);
+    const onVisible = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
+  }, [isCurrentCardio, playerState, cardioPaused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Serialize completedSetsMap to plain object for localStorage
   const serializeCompletedSets = () => {
@@ -272,11 +318,11 @@ const CustomWorkoutPlayer = () => {
     const exerciseIds = day.exercises.map(e => e.exercise_id);
     const { data: exerciseData } = await supabase
       .from('exercises')
-      .select('id, name, video_path, machine_id')
+      .select('id, name, video_path, machine_id, unit_type, category')
       .in('id', exerciseIds);
 
-    const dataMap = new Map<string, { video_path: string | null; machine_id: string | null }>();
-    exerciseData?.forEach(e => dataMap.set(e.id, { video_path: e.video_path, machine_id: e.machine_id }));
+    const dataMap = new Map<string, { video_path: string | null; machine_id: string | null; unit_type: string; category: string }>();
+    exerciseData?.forEach(e => dataMap.set(e.id, { video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '' }));
 
     const loaded: ExerciseWithVideo[] = day.exercises.map(e => ({
       id: e.id,
@@ -291,6 +337,8 @@ const CustomWorkoutPlayer = () => {
       rest_per_set: e.rest_per_set || null,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
+      unit_type: dataMap.get(e.exercise_id)?.unit_type || 'reps',
+      category: dataMap.get(e.exercise_id)?.category || '',
     }));
 
     // Fetch last weights from history for all exercises
@@ -539,6 +587,39 @@ const CustomWorkoutPlayer = () => {
     setRestSeconds(restTime);
     setCurrentRestTotal(restTime);
     setPlayerState('rest');
+  };
+
+  const handleCardioComplete = () => {
+    if (cardioBeepsRef.current.done && cardioSeconds > 0) return;
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const existing = next.get(currentExerciseIndex) || [];
+      next.set(currentExerciseIndex, [...existing, { completed: true, weight: null, reps: currentExercise?.reps || 0, durationSeconds: cardioTotalSeconds }]);
+      return next;
+    });
+    setTotalSetsCompleted(prev => prev + 1);
+    const isLastExercise = currentExerciseIndex >= exercises.length - 1;
+    if (isLastExercise) { setPlayerState('completed'); announceWorkoutComplete(); return; }
+    const restTime = currentExercise?.rest_seconds ?? 60;
+    setRestSeconds(restTime);
+    setCurrentRestTotal(restTime);
+    setPlayerState('rest');
+    pendingAdvanceRef.current = { type: 'next_exercise', exIdx: currentExerciseIndex + 1 };
+  };
+
+  const handleCardioPauseToggle = () => {
+    if (cardioPaused) {
+      const pausedDur = Date.now() - (cardioPausedAtRef.current || Date.now());
+      cardioEndTimeRef.current += pausedDur;
+      cardioPausedAtRef.current = null;
+      const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
+      cardioBeepsRef.current.b3 = remaining < 3;
+      cardioBeepsRef.current.b2 = remaining < 2;
+      cardioBeepsRef.current.b1 = remaining < 1;
+    } else {
+      cardioPausedAtRef.current = Date.now();
+    }
+    setCardioPaused(p => !p);
   };
 
   // Skip rest
@@ -1236,55 +1317,56 @@ const CustomWorkoutPlayer = () => {
 
               {/* Bottom overlay */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
-                {/* Previous sets summary */}
-                {(completedSetsMap.get(currentExerciseIndex) || []).some(s => s.completed && s.weight) && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {(completedSetsMap.get(currentExerciseIndex) || []).map((set, i) =>
-                      set.completed && set.weight ? (
-                        <span key={i} className="text-xs bg-white/15 backdrop-blur-sm text-white/80 px-2 py-1 rounded-lg">
-                          S{i + 1}: {set.weight}kg × {set.reps || 0}
-                        </span>
-                      ) : null
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    {/* Weight and reps inputs */}
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="např. 60"
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={reps}
-                          onChange={(e) => setReps(e.target.value)}
-                          className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50"
-                        />
-                      </div>
+                {isCurrentCardio ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
+                      <p className="text-white/60 text-xs mb-1">Kardio · {currentExercise.reps} min</p>
+                      <p className={`text-5xl font-bold tabular-nums ${cardioSeconds <= 10 ? 'text-red-400' : 'text-white'}`}>
+                        {formatTime(cardioSeconds)}
+                      </p>
+                      {cardioPaused && <p className="text-white/50 text-xs mt-1">Pozastaveno</p>}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button onClick={handleCardioPauseToggle} className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform">
+                        {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
+                      </button>
+                      <button onClick={handleCardioComplete} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform">
+                        <SkipForward className="w-5 h-5 text-white" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Complete set button */}
-                  <button
-                    onClick={() => { setVideoError(false); handleCompleteSet(); }}
-                    className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform"
-                  >
-                    <ChevronRight className="w-8 h-8 text-white" />
-                  </button>
-                </div>
+                ) : (
+                  <>
+                    {(completedSetsMap.get(currentExerciseIndex) || []).some(s => s.completed && s.weight) && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {(completedSetsMap.get(currentExerciseIndex) || []).map((set, i) =>
+                          set.completed && set.weight ? (
+                            <span key={i} className="text-xs bg-white/15 backdrop-blur-sm text-white/80 px-2 py-1 rounded-lg">
+                              S{i + 1}: {set.weight}kg × {set.reps || 0}
+                            </span>
+                          ) : null
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
+                            <input type="number" inputMode="decimal" placeholder="např. 60" value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
+                            <input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50" />
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => { setVideoError(false); handleCompleteSet(); }} className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform">
+                        <ChevronRight className="w-8 h-8 text-white" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

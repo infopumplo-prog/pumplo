@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Volume2, VolumeX, Play, Pause } from 'lucide-react';
+import { playBeep, playFinishSound } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
 import { announceExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
@@ -117,6 +118,57 @@ export const ExercisePlayer = ({
 
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+
+  const isCardio = category === 'cardio';
+  const cardioTotalSeconds = repMax * 60;
+  const [cardioTimeLeft, setCardioTimeLeft] = useState(cardioTotalSeconds);
+  const [cardioPaused, setCardioPaused] = useState(false);
+  const cardioEndTimeRef = useRef(Date.now() + cardioTotalSeconds * 1000);
+  const cardioPausedAtRef = useRef<number | null>(null);
+  const cardioDoneRef = useRef(false);
+  const cardioB3 = useRef(false), cardioB2 = useRef(false), cardioB1 = useRef(false);
+
+  const handleCardioComplete = useCallback(() => {
+    if (cardioDoneRef.current) return;
+    cardioDoneRef.current = true;
+    playFinishSound();
+    onCompleteExercise([{ completed: true, reps: repMax }]);
+  }, [onCompleteExercise, repMax]);
+
+  useEffect(() => {
+    if (!isCardio) return;
+    if (cardioPaused) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
+      setCardioTimeLeft(remaining);
+      if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playBeep(); }
+      if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playBeep(); }
+      if (remaining === 1 && !cardioB1.current) { cardioB1.current = true; playBeep(); }
+      if (remaining <= 0) handleCardioComplete();
+    };
+    tick();
+    const interval = setInterval(tick, 250);
+    const onVisible = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
+  }, [isCardio, cardioPaused, handleCardioComplete]);
+
+  const handleCardioPause = useCallback(() => {
+    if (cardioPaused) {
+      const paused = Date.now() - (cardioPausedAtRef.current || Date.now());
+      cardioEndTimeRef.current += paused;
+      cardioPausedAtRef.current = null;
+      const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
+      cardioB3.current = remaining < 3;
+      cardioB2.current = remaining < 2;
+      cardioB1.current = remaining < 1;
+    } else {
+      cardioPausedAtRef.current = Date.now();
+    }
+    setCardioPaused(p => !p);
+  }, [cardioPaused]);
+
+  const formatCardioTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   // Pre-fill weight from last workout when it loads (async) + announce
   const announcedRef = useRef<number>(-1);
@@ -310,82 +362,110 @@ export const ExercisePlayer = ({
             </button>
           </div>
 
-          {/* Bottom overlay: inputs + complete button */}
+          {/* Bottom overlay: cardio timer OR strength inputs */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
-            {/* Previous sets summary */}
-            {setsData.some(s => s.completed && s.weight) && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {setsData.map((set, i) =>
-                  set.completed && set.weight ? (
-                    <span key={i} className="text-xs bg-white/15 backdrop-blur-sm text-white/80 px-2 py-1 rounded-lg">
-                      S{i + 1}: {set.weight}kg × {set.reps || repMax}
-                    </span>
-                  ) : null
-                )}
-              </div>
-            )}
-
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                {/* Reps + RIR display */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
-                  <p className="text-white text-2xl font-bold leading-tight">
-                    {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
+            {isCardio ? (
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
+                  <p className="text-white/60 text-xs mb-1">Kardio · {repMax} min</p>
+                  <p className={`text-5xl font-bold tabular-nums ${cardioTimeLeft <= 10 ? 'text-red-400' : 'text-white'}`}>
+                    {formatCardioTime(cardioTimeLeft)}
                   </p>
-                  {(rirMin != null || rirMax != null) && (() => {
-                    const rir = rirMax ?? rirMin ?? 2;
-                    const label = rir >= 4 ? 'Lehké' : rir >= 3 ? 'Pohodlné' : rir >= 2 ? 'Náročné' : rir >= 1 ? 'Těžké' : 'Maximum';
-                    const desc = rir >= 3 ? `Nechte si ${rir} opak. v zásobě`
-                      : rir >= 1 ? `Nechte si ${rir} opak. v zásobě`
-                      : 'Dejte do toho vše';
-                    const color = rir >= 3 ? 'text-green-400' : rir >= 2 ? 'text-amber-400' : 'text-red-400';
-                    return (
-                      <div className={`mt-1 flex items-center gap-2 ${color}`}>
-                        <span className="text-xs font-bold">{label}</span>
-                        <span className="text-[10px] text-white/40">{desc}</span>
-                      </div>
-                    );
-                  })()}
+                  {cardioPaused && <p className="text-white/50 text-xs mt-1">Pozastaveno</p>}
                 </div>
-
-                {/* Weight and reps inputs */}
-                {showWeightInput && currentSet < totalSets && (
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        placeholder="např. 60"
-                        value={weight}
-                        onChange={(e) => setWeight(e.target.value)}
-                        className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={reps}
-                        onChange={(e) => setReps(e.target.value)}
-                        className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50"
-                      />
-                    </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleCardioPause}
+                    className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform"
+                  >
+                    {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
+                  </button>
+                  <button
+                    onClick={handleCardioComplete}
+                    className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform"
+                  >
+                    <SkipForward className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Previous sets summary */}
+                {setsData.some(s => s.completed && s.weight) && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {setsData.map((set, i) =>
+                      set.completed && set.weight ? (
+                        <span key={i} className="text-xs bg-white/15 backdrop-blur-sm text-white/80 px-2 py-1 rounded-lg">
+                          S{i + 1}: {set.weight}kg × {set.reps || repMax}
+                        </span>
+                      ) : null
+                    )}
                   </div>
                 )}
-              </div>
 
-              {/* Complete set button */}
-              {currentSet < totalSets && (
-                <button
-                  onClick={handleCompleteSet}
-                  className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
-                >
-                  <ChevronRight className="w-8 h-8 text-white" />
-                </button>
-              )}
-            </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    {/* Reps + RIR display */}
+                    <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
+                      <p className="text-white text-2xl font-bold leading-tight">
+                        {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
+                      </p>
+                      {(rirMin != null || rirMax != null) && (() => {
+                        const rir = rirMax ?? rirMin ?? 2;
+                        const label = rir >= 4 ? 'Lehké' : rir >= 3 ? 'Pohodlné' : rir >= 2 ? 'Náročné' : rir >= 1 ? 'Těžké' : 'Maximum';
+                        const desc = rir >= 3 ? `Nechte si ${rir} opak. v zásobě`
+                          : rir >= 1 ? `Nechte si ${rir} opak. v zásobě`
+                          : 'Dejte do toho vše';
+                        const color = rir >= 3 ? 'text-green-400' : rir >= 2 ? 'text-amber-400' : 'text-red-400';
+                        return (
+                          <div className={`mt-1 flex items-center gap-2 ${color}`}>
+                            <span className="text-xs font-bold">{label}</span>
+                            <span className="text-[10px] text-white/40">{desc}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Weight and reps inputs */}
+                    {showWeightInput && currentSet < totalSets && (
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="např. 60"
+                            value={weight}
+                            onChange={(e) => setWeight(e.target.value)}
+                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={reps}
+                            onChange={(e) => setReps(e.target.value)}
+                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Complete set button */}
+                  {currentSet < totalSets && (
+                    <button
+                      onClick={handleCompleteSet}
+                      className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
+                    >
+                      <ChevronRight className="w-8 h-8 text-white" />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </motion.div>
