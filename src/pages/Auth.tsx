@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import pumploWordmark from '@/assets/pumplo-logo-light.png';
+import pumploWordmark from '@/assets/pumplo-wordmark.png';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency } from '@/lib/trainingGoals';
 import { ONBOARDING_TOTAL_STEPS, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {

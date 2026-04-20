@@ -134,6 +134,10 @@ const CustomWorkoutPlayer = () => {
   const cardioPausedAtRef = useRef<number | null>(null);
   const cardioBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
 
+  // Must be declared before the cardio useEffects — dep array evaluates immediately (not a closure)
+  const currentExercise = exercises[currentExerciseIndex] || null;
+  const isCurrentCardio = currentExercise?.unit_type === 'time_min' || currentExercise?.category === 'cardio';
+
   // Init cardio timer when cardio exercise starts
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise') return;
@@ -175,8 +179,6 @@ const CustomWorkoutPlayer = () => {
     return obj;
   };
 
-  const currentExercise = exercises[currentExerciseIndex] || null;
-  const isCurrentCardio = currentExercise?.unit_type === 'time_min' || currentExercise?.category === 'cardio';
   const totalExercises = exercises.length;
   const totalSets = exercises.reduce((sum, e) => sum + e.sets, 0);
 
