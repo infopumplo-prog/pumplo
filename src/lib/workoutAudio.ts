@@ -111,6 +111,8 @@ export const unlockAudio = () => {
     silentEl.muted = true;
     silentEl.play().then(() => {
       silentEl!.pause(); silentEl!.muted = false;
+      // Start silent loop immediately after unlock to keep audio session alive
+      startSilentLoop();
     }).catch(() => {});
     // Unlock speechSynthesis on iOS — first speak() must be in user gesture context.
     // Use a short space utterance and let it complete (don't cancel immediately).
