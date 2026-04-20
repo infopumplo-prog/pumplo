@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
-import { announceExercise } from '@/lib/workoutAudio';
+import { announceExercise, playAlarmBeep, playAlarmFinish } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -120,6 +120,28 @@ export const CompactWorkoutView = ({
     setTimerRunning(false);
     setTimerSeconds(0);
   }, [currentExerciseIndex, currentSetIndex]);
+
+  // Stable ref so the cardio auto-complete effect can call onCompleteSet without stale closure
+  const onCompleteSetRef = useRef(onCompleteSet);
+  onCompleteSetRef.current = onCompleteSet;
+
+  // Cardio auto-complete: countdown beeps at T-3/2/1, auto-complete at target
+  useEffect(() => {
+    if (!timerRunning || !currentExercise || allSetsComplete) return;
+    const isCardio = currentExercise.unit_type === 'time_min' || currentExercise.category === 'cardio';
+    if (!isCardio) return;
+    const targetSec = currentExercise.repMax;
+    const remaining = targetSec - timerSeconds;
+    if (remaining > 0 && remaining <= 3) {
+      playAlarmBeep();
+    }
+    if (timerSeconds >= targetSec && targetSec > 0) {
+      playAlarmFinish();
+      setTimerRunning(false);
+      setTimerSeconds(0);
+      onCompleteSetRef.current(currentExerciseIndex, currentSetIndex, undefined, targetSec, timerSeconds);
+    }
+  }, [timerSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pre-fill reps and weight for current exercise, then announce
   useEffect(() => {

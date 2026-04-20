@@ -150,11 +150,18 @@ function generateWavBeep(freq: number, ms: number, sr = 22050): string {
   return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
 }
 let beepUrl: string|null=null, highBeepUrl: string|null=null;
-try { beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200); } catch{}
-
+let alarmBeepUrl: string|null=null, alarmFinishUrl: string|null=null;
+try {
+  beepUrl=generateWavBeep(660,150); highBeepUrl=generateWavBeep(1047,200);
+  alarmBeepUrl=generateWavBeep(880,120); alarmFinishUrl=generateWavBeep(1175,350);
+} catch{}
 
 export const playBeep = () => { if(_muted||!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
 export const playFinishSound = () => { if(_muted||!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
+/** Alarm beep — ignores mute, for cardio countdown */
+export const playAlarmBeep = () => { if(!alarmBeepUrl)return; const b=new Audio(alarmBeepUrl);b.volume=0.85;b.play().catch(()=>{}); };
+/** Alarm finish — ignores mute, signals end of cardio set */
+export const playAlarmFinish = () => { if(!alarmFinishUrl)return; const b=new Audio(alarmFinishUrl);b.volume=0.85;b.play().catch(()=>{}); };
 
 // --- TTS via Supabase Edge Function (full sentence, one MP3) ---
 const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
