@@ -176,7 +176,7 @@ const CustomWorkoutPlayer = () => {
   };
 
   const currentExercise = exercises[currentExerciseIndex] || null;
-  const isCurrentCardio = currentExercise?.unit_type === 'time_min';
+  const isCurrentCardio = currentExercise?.unit_type === 'time_min' || currentExercise?.category === 'cardio';
   const totalExercises = exercises.length;
   const totalSets = exercises.reduce((sum, e) => sum + e.sets, 0);
 
