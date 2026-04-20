@@ -129,7 +129,7 @@ const CustomWorkoutPlayer = () => {
   // Cardio timer state
   const [cardioSeconds, setCardioSeconds] = useState(0);
   const [cardioTotalSeconds, setCardioTotalSeconds] = useState(0);
-  const [cardioPaused, setCardioPaused] = useState(false);
+  const [cardioPaused, setCardioPaused] = useState(true);
   const cardioEndTimeRef = useRef<number>(0);
   const cardioPausedAtRef = useRef<number | null>(null);
   const cardioBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
@@ -154,6 +154,7 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise' || cardioPaused) return;
     const tick = () => {
+      if (cardioEndTimeRef.current === 0) return; // not started yet
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       setCardioSeconds(remaining);
       if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playCountdown3(); }
