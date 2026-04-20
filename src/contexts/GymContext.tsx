@@ -49,6 +49,7 @@ export interface GymMachine {
   quantity: number;
   max_weight_kg: number | null;
   bench_configs: string[] | null;
+  brand: string | null;
   short_code: string;
   machine?: {
     id: string;
@@ -78,7 +79,7 @@ interface GymContextType {
   updateGym: (updates: Partial<Gym>) => Promise<{ success: boolean; error?: string }>;
   togglePublish: () => Promise<void>;
   addMachine: (machineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => Promise<{ success: boolean; error?: string }>;
-  updateMachine: (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => Promise<{ success: boolean }>;
+  updateMachine: (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[], brand?: string) => Promise<{ success: boolean }>;
   removeMachine: (gymMachineId: string) => Promise<{ success: boolean }>;
   refetch: () => Promise<void>;
 }
@@ -297,13 +298,14 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
     return { success: true };
   };
 
-  const updateMachine = async (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => {
+  const updateMachine = async (gymMachineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[], brand?: string) => {
     const { error } = await supabase
       .from('gym_machines')
       .update({
         quantity,
         max_weight_kg: maxWeight || null,
         bench_configs: benchConfigs || null,
+        brand: brand ?? null,
       })
       .eq('id', gymMachineId);
 
