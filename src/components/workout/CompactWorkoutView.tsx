@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
+import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
-import { announceExercise, playAlarmBeep, playAlarmFinish } from '@/lib/workoutAudio';
+import { announceExercise, playAlarmBeep, playAlarmFinish, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -77,6 +77,7 @@ export const CompactWorkoutView = ({
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
+  const [muted, setMuted] = useState(isWorkoutMuted());
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -244,6 +245,13 @@ export const CompactWorkoutView = ({
           <span className="text-xs text-muted-foreground shrink-0">
             {completedTotal}/{totalSetsAll}
           </span>
+          <button
+            onClick={() => { const m = toggleWorkoutMute(); setMuted(m); }}
+            className="p-2 rounded-xl bg-muted text-foreground"
+            title={muted ? 'Zapnout zvuk' : 'Vypnout zvuk'}
+          >
+            {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
           <button
             onClick={onSwitchToVideo}
             className="p-2 rounded-xl bg-muted text-foreground"

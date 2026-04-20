@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -106,6 +106,7 @@ const CustomWorkoutPlayer = () => {
   const [startTime] = useState<Date>(new Date());
   const [totalSetsCompleted, setTotalSetsCompleted] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  const [muted, setMuted] = useState(isWorkoutMuted());
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
   const [exerciseDetail, setExerciseDetail] = useState<ExerciseDetail | null>(null);
@@ -1296,6 +1297,9 @@ const CustomWorkoutPlayer = () => {
                   </span>
                   <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                     <List className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => { const m = toggleWorkoutMute(); setMuted(m); }} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                    {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
                   <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                     <X className="w-5 h-5" />
