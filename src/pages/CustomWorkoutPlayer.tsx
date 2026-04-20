@@ -141,7 +141,7 @@ const CustomWorkoutPlayer = () => {
   // Init cardio timer when cardio exercise starts
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise') return;
-    const totalSec = (currentExercise?.reps || 10) * 60;
+    const totalSec = currentExercise?.reps || 600;
     cardioEndTimeRef.current = Date.now() + totalSec * 1000;
     setCardioSeconds(totalSec);
     setCardioTotalSeconds(totalSec);
@@ -1321,7 +1321,7 @@ const CustomWorkoutPlayer = () => {
                 {isCurrentCardio ? (
                   <div className="flex flex-col items-center gap-4">
                     <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
-                      <p className="text-white/60 text-xs mb-1">Kardio · {currentExercise.reps} min</p>
+                      <p className="text-white/60 text-xs mb-1">Kardio · {Math.floor(currentExercise.reps / 60)}:{String(currentExercise.reps % 60).padStart(2, '0')} min</p>
                       <p className={`text-5xl font-bold tabular-nums ${cardioSeconds <= 10 ? 'text-red-400' : 'text-white'}`}>
                         {formatTime(cardioSeconds)}
                       </p>

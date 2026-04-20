@@ -182,29 +182,57 @@ const equipmentLabels: Record<string, string> = {
 };
 
 // --- Per-set row input (local state, saves on blur) ---
-const SetRowInput = ({ index, sets, reps, weight, rest, onRepsChange, onWeightChange, onRestChange }: {
-  index: number; sets: number; reps: number; weight: number | null; rest: number;
+const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeightChange, onRestChange }: {
+  index: number; reps: number; weight: number | null; rest: number;
+  isCardio: boolean;
   onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onRestChange: (v: number) => void;
 }) => {
   const [r, setR] = useState(String(reps));
   const [w, setW] = useState(weight != null ? String(weight) : '');
   const [t, setT] = useState(String(rest));
+  const [cardioMin, setCardioMin] = useState(String(Math.floor(reps / 60)));
+  const [cardioSec, setCardioSec] = useState(String(reps % 60));
+
+  const saveCardio = (mStr: string, sStr: string) => {
+    const m = Math.max(0, parseInt(mStr) || 0);
+    const s = Math.max(0, Math.min(59, parseInt(sStr) || 0));
+    onRepsChange(Math.max(30, m * 60 + s));
+  };
 
   return (
     <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
       <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{index + 1}</span>
-      <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">Opak:</label>
-        <input type="number" value={r} onChange={(e) => setR(e.target.value)}
-          onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
-          className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
-      </div>
-      <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">kg:</label>
-        <input type="number" value={w} onChange={(e) => setW(e.target.value)}
-          onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
-          placeholder="–" className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} step={0.5} />
-      </div>
+      {isCardio ? (
+        <>
+          <div className="flex items-center gap-1">
+            <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
+              onBlur={() => { const m = Math.max(0, parseInt(cardioMin) || 0); setCardioMin(String(m)); saveCardio(String(m), cardioSec); }}
+              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} />
+            <span className="text-[10px] text-muted-foreground">min</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <input type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
+              onBlur={() => { const s = Math.max(0, Math.min(59, parseInt(cardioSec) || 0)); setCardioSec(String(s)); saveCardio(cardioMin, String(s)); }}
+              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} max={59} />
+            <span className="text-[10px] text-muted-foreground">sek</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-1">
+            <label className="text-xs text-muted-foreground">Opak:</label>
+            <input type="number" value={r} onChange={(e) => setR(e.target.value)}
+              onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
+              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
+          </div>
+          <div className="flex items-center gap-1">
+            <label className="text-xs text-muted-foreground">kg:</label>
+            <input type="number" value={w} onChange={(e) => setW(e.target.value)}
+              onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
+              placeholder="–" className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} step={0.5} />
+          </div>
+        </>
+      )}
       <div className="flex items-center gap-1">
         <label className="text-xs text-muted-foreground">⏱</label>
         <input type="number" value={t} onChange={(e) => setT(e.target.value)}
@@ -234,6 +262,13 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
+  const formatDuration = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return s > 0 ? `${m}min ${s}s` : `${m} min`;
   };
 
   return (
@@ -274,10 +309,14 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
             </button>
             {!isExpanded && (
-              <>
-                <span className="text-xs text-muted-foreground">{exercise.reps} opak.</span>
-                <span className="text-xs text-muted-foreground">{exercise.weight_kg != null ? `${exercise.weight_kg} kg` : '–'}</span>
-              </>
+              isCardio ? (
+                <span className="text-xs text-muted-foreground">{formatDuration(exercise.reps)}</span>
+              ) : (
+                <>
+                  <span className="text-xs text-muted-foreground">{exercise.reps} opak.</span>
+                  <span className="text-xs text-muted-foreground">{exercise.weight_kg != null ? `${exercise.weight_kg} kg` : '–'}</span>
+                </>
+              )
             )}
           </div>
         </div>
@@ -332,14 +371,16 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
               <SetRowInput
                 key={i}
                 index={i}
-                sets={exercise.sets}
                 reps={setReps}
                 weight={setWeight}
                 rest={setRest}
+                isCardio={isCardio}
                 onRepsChange={(val) => {
                   const arr = [...(exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps))];
                   arr[i] = val;
-                  onUpdate(exercise.id, { reps_per_set: arr });
+                  const updates: Record<string, any> = { reps_per_set: arr };
+                  if (isCardio) updates.reps = val;
+                  onUpdate(exercise.id, updates);
                 }}
                 onWeightChange={(val) => {
                   const arr = [...(exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg))];

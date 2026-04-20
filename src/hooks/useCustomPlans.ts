@@ -23,6 +23,8 @@ export interface CustomPlanExercise {
   rest_seconds: number;
   rest_per_set: number[] | null;
   order_index: number;
+  unit_type: string;
+  category: string;
 }
 
 export interface CustomPlan {
@@ -132,7 +134,7 @@ export function useCustomPlanDetail(planId: string | null) {
 
     const { data: exercisesData } = await supabase
       .from('custom_plan_exercises')
-      .select('*, exercises(name)')
+      .select('*, exercises(name, unit_type, category)')
       .in('day_id', (daysData || []).map(d => d.id))
       .order('order_index');
 
@@ -153,6 +155,8 @@ export function useCustomPlanDetail(planId: string | null) {
           rest_seconds: e.rest_seconds || 120,
           rest_per_set: e.rest_per_set || null,
           order_index: e.order_index,
+          unit_type: (e.exercises as any)?.unit_type || 'reps',
+          category: (e.exercises as any)?.category || '',
         })),
     }));
 
