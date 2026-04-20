@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
-import { playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 
 export interface WarmupExercise {
   id: string;
@@ -52,6 +52,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
+  const beeped1Ref = useRef(false);
 
   const currentExercise = exercises[currentIndex];
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
@@ -92,6 +93,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   useEffect(() => {
     beeped3Ref.current = false;
     beeped2Ref.current = false;
+    beeped1Ref.current = false;
   }, [currentIndex]);
 
   // Adjust end time when pausing/resuming
@@ -124,6 +126,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
       const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
       if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
       if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
+      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playCountdown1(); }
       if (remaining <= 0) {
         clearInterval(interval);
         playAlarmFinish();

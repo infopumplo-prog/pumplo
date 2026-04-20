@@ -1,7 +1,8 @@
 // Workout audio — beep patterns only, no TTS, no mute
 // Beep pattern at end of rests and cardio:
-//   T=3s: 3 short beeps (playCountdown3)
-//   T=2s: 2 short beeps (playCountdown2)
+//   T=3s: 1 short beep (playCountdown3)
+//   T=2s: 1 short beep (playCountdown2)
+//   T=1s: 1 short beep (playCountdown1)
 //   T=0s: 1 long beep  (playAlarmFinish)
 
 // --- Silent WAV for MediaSession lock screen support ---
@@ -109,18 +110,14 @@ export const playAlarmFinish = () => {
   alarmFinishEl.currentTime = 0; alarmFinishEl.play().catch(() => {});
 };
 
-/** 3 short beeps — play at T=3s remaining */
-export const playCountdown3 = () => {
-  _playAlarmBeep();
-  setTimeout(() => _playAlarmBeep(), 180);
-  setTimeout(() => _playAlarmBeep(), 360);
-};
+/** 1 short beep — play at T=3s remaining */
+export const playCountdown3 = () => _playAlarmBeep();
 
-/** 2 short beeps — play at T=2s remaining */
-export const playCountdown2 = () => {
-  _playAlarmBeep();
-  setTimeout(() => _playAlarmBeep(), 180);
-};
+/** 1 short beep — play at T=2s remaining */
+export const playCountdown2 = () => _playAlarmBeep();
+
+/** 1 short beep — play at T=1s remaining */
+export const playCountdown1 = () => _playAlarmBeep();
 
 /** Long beep — signals workout completion */
 export const announceWorkoutComplete = () => playAlarmFinish();

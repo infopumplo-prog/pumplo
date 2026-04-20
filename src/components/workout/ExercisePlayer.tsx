@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause } from 'lucide-react';
-import { playBeep, playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
+import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
@@ -124,7 +124,7 @@ export const ExercisePlayer = ({
   const cardioEndTimeRef = useRef(Date.now() + cardioTotalSeconds * 1000);
   const cardioPausedAtRef = useRef<number | null>(null);
   const cardioDoneRef = useRef(false);
-  const cardioB3 = useRef(false), cardioB2 = useRef(false);
+  const cardioB3 = useRef(false), cardioB2 = useRef(false), cardioB1 = useRef(false);
 
   const handleCardioComplete = useCallback(() => {
     if (cardioDoneRef.current) return;
@@ -141,6 +141,7 @@ export const ExercisePlayer = ({
       setCardioTimeLeft(remaining);
       if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playCountdown3(); }
       if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playCountdown2(); }
+      if (remaining === 1 && !cardioB1.current) { cardioB1.current = true; playCountdown1(); }
       if (remaining <= 0) handleCardioComplete();
     };
     tick();
@@ -158,6 +159,7 @@ export const ExercisePlayer = ({
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       cardioB3.current = remaining < 3;
       cardioB2.current = remaining < 2;
+      cardioB1.current = remaining < 1;
     } else {
       cardioPausedAtRef.current = Date.now();
     }

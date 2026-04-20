@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playCountdown3, playCountdown2, playAlarmFinish, unlockAudio, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -132,7 +132,7 @@ const CustomWorkoutPlayer = () => {
   const [cardioPaused, setCardioPaused] = useState(false);
   const cardioEndTimeRef = useRef<number>(0);
   const cardioPausedAtRef = useRef<number | null>(null);
-  const cardioBeepsRef = useRef({ b3: false, b2: false, done: false });
+  const cardioBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
 
   // Must be declared before the cardio useEffects — dep array evaluates immediately (not a closure)
   const currentExercise = exercises[currentExerciseIndex] || null;
@@ -147,7 +147,7 @@ const CustomWorkoutPlayer = () => {
     setCardioTotalSeconds(totalSec);
     setCardioPaused(false);
     cardioPausedAtRef.current = null;
-    cardioBeepsRef.current = { b3: false, b2: false, done: false };
+    cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
   }, [currentExerciseIndex, currentSet, isCurrentCardio, playerState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cardio timer tick
@@ -158,6 +158,7 @@ const CustomWorkoutPlayer = () => {
       setCardioSeconds(remaining);
       if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playCountdown3(); }
       if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playCountdown2(); }
+      if (remaining === 1 && !cardioBeepsRef.current.b1) { cardioBeepsRef.current.b1 = true; playCountdown1(); }
       if (remaining <= 0 && !cardioBeepsRef.current.done) {
         cardioBeepsRef.current.done = true;
         playAlarmFinish();
@@ -417,13 +418,13 @@ const CustomWorkoutPlayer = () => {
 
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
-  const restBeepsRef = useRef({ b3: false, b2: false, done: false });
+  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
 
   // Set end time when rest starts
   useEffect(() => {
     if (playerState === 'rest' && currentRestTotal > 0) {
       restEndTimeRef.current = Date.now() + currentRestTotal * 1000;
-      restBeepsRef.current = { b3: false, b2: false, done: false };
+      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
     }
   }, [playerState, currentRestTotal]);
 
@@ -438,6 +439,7 @@ const CustomWorkoutPlayer = () => {
       const b = restBeepsRef.current;
       if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
       if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
+      if (remaining === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
       if (remaining <= 0 && !b.done) {
         b.done = true;
         playAlarmFinish();
@@ -553,6 +555,7 @@ const CustomWorkoutPlayer = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       cardioBeepsRef.current.b3 = remaining < 3;
       cardioBeepsRef.current.b2 = remaining < 2;
+      cardioBeepsRef.current.b1 = remaining < 1;
     } else {
       cardioPausedAtRef.current = Date.now();
     }

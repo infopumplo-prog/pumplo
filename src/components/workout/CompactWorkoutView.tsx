@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
-import { playCountdown3, playCountdown2, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -141,6 +141,7 @@ export const CompactWorkoutView = ({
     const remaining = targetSec - timerSeconds;
     if (remaining === 3) playCountdown3();
     if (remaining === 2) playCountdown2();
+    if (remaining === 1) playCountdown1();
     if (timerSeconds >= targetSec && targetSec > 0) {
       playAlarmFinish();
       setTimerRunning(false);

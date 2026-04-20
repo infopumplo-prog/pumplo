@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
-import { playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -34,6 +34,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const endTimeRef = useRef(Date.now() + (exercises[initialIndex]?.duration || 30) * 1000);
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
+  const beeped1Ref = useRef(false);
 
   const currentExercise = exercises[currentIndex];
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
@@ -70,6 +71,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
     beeped3Ref.current = false;
     beeped2Ref.current = false;
+    beeped1Ref.current = false;
   }, [currentIndex]);
 
   // Countdown timer — wall-clock based, auto-advance
@@ -80,6 +82,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
       const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
       if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
       if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
+      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playCountdown1(); }
       if (remaining <= 0) {
         clearInterval(interval);
         playAlarmFinish();
