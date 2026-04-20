@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy, Volume2, VolumeX } from 'lucide-react';
+import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
-import { announceExercise, playAlarmBeep, playAlarmFinish, playBeep, unlockAudio, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -77,8 +77,8 @@ export const CompactWorkoutView = ({
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
-  const [muted, setMuted] = useState(isWorkoutMuted());
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerStartRef = useRef<number | null>(null);
 
   const currentExercise = exercises[currentExerciseIndex];
   const currentSets = setsDataByExercise.get(currentExerciseIndex) ||
@@ -91,35 +91,41 @@ export const CompactWorkoutView = ({
     activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [currentExerciseIndex]);
 
-  // Announce exercise — triggered after weight is loaded
-  const announcedExRef = useRef<number>(-1);
-  const announceCurrentExercise = useCallback((w?: string, r?: string) => {
-    if (!currentExercise || announcedExRef.current === currentExerciseIndex) return;
-    announcedExRef.current = currentExerciseIndex;
-    const name = currentExercise.exerciseName || TRAINING_ROLE_NAMES[currentExercise.roleId as keyof typeof TRAINING_ROLE_NAMES] || '';
-    const wNum = w ? parseFloat(w) : undefined;
-    announceExercise(name, wNum && wNum > 0 ? wNum : undefined, r || undefined);
-  }, [currentExercise, currentExerciseIndex]);
 
-  // Timer tick
+  // Timer tick — timestamp-based so background throttling doesn't desync it
   useEffect(() => {
     if (timerRunning) {
       timerIntervalRef.current = setInterval(() => {
-        setTimerSeconds(prev => prev + 1);
-      }, 1000);
-    } else if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
+        if (timerStartRef.current === null) return;
+        setTimerSeconds(Math.floor((Date.now() - timerStartRef.current) / 1000));
+      }, 500);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
     }
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
   }, [timerRunning]);
 
+  // Resync timer when app returns from background
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && timerStartRef.current !== null) {
+        setTimerSeconds(Math.floor((Date.now() - timerStartRef.current) / 1000));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
   // Reset timer when exercise or set changes
   useEffect(() => {
     setTimerRunning(false);
     setTimerSeconds(0);
+    timerStartRef.current = null;
   }, [currentExerciseIndex, currentSetIndex]);
 
   // Stable ref so the cardio auto-complete effect can call onCompleteSet without stale closure
@@ -133,59 +139,44 @@ export const CompactWorkoutView = ({
     if (!isCardio) return;
     const targetSec = currentExercise.repMax;
     const remaining = targetSec - timerSeconds;
-    if (remaining > 0 && remaining <= 3) {
-      playAlarmBeep();
-    }
+    if (remaining === 3) playCountdown3();
+    if (remaining === 2) playCountdown2();
     if (timerSeconds >= targetSec && targetSec > 0) {
       playAlarmFinish();
       setTimerRunning(false);
+      timerStartRef.current = null;
       setTimerSeconds(0);
       onCompleteSetRef.current(currentExerciseIndex, currentSetIndex, undefined, targetSec, timerSeconds);
     }
   }, [timerSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pre-fill reps and weight for current exercise, then announce
+  // Pre-fill reps and weight for current exercise
   useEffect(() => {
     if (!currentExercise) return;
-    announcedExRef.current = -1; // Reset so new exercise gets announced
 
-    // Per-set reps (if available), fallback to repMax
     const setIdx = currentSetIndex >= 0 ? currentSetIndex : 0;
     const r = `${currentExercise.repsPerSet?.[setIdx] ?? currentExercise.repMax}`;
     setReps(r);
 
     const isCardio = currentExercise.unit_type === 'time_min' || currentExercise.category === 'cardio';
     if (isCardio) {
-      // For cardio, announce with formatted duration — no weight lookup needed
-      const totalSec = currentExercise.repMax;
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
-      const durationStr = s > 0 ? `${m} minut ${s} sekund` : `${m} minut`;
       setWeight('');
-      setTimeout(() => announceCurrentExercise('', durationStr), 300);
       return;
     }
 
-    // Per-set weight (if available)
     const plannedWeight = currentExercise.weightPerSet?.[setIdx];
     if (plannedWeight != null) {
-      const w = `${plannedWeight}`;
-      setWeight(w);
-      setTimeout(() => announceCurrentExercise(w, r), 300);
+      setWeight(`${plannedWeight}`);
       return;
     }
 
-    // Try weight from current session's completed sets
     const sets = setsDataByExercise.get(currentExerciseIndex);
     const lastCompleted = sets?.filter(s => s.completed).pop();
     if (lastCompleted?.weight != null) {
-      const w = `${lastCompleted.weight}`;
-      setWeight(w);
-      setTimeout(() => announceCurrentExercise(w, r), 300);
+      setWeight(`${lastCompleted.weight}`);
       return;
     }
 
-    // Otherwise fetch last weight from workout history
     if (currentExercise.exerciseId) {
       supabase
         .from('workout_session_sets')
@@ -197,13 +188,10 @@ export const CompactWorkoutView = ({
         .limit(1)
         .single()
         .then(({ data }) => {
-          const w = data?.weight_kg ? `${data.weight_kg}` : '';
-          setWeight(w);
-          setTimeout(() => announceCurrentExercise(w, r), 300);
+          setWeight(data?.weight_kg ? `${data.weight_kg}` : '');
         });
     } else {
       setWeight('');
-      setTimeout(() => announceCurrentExercise('', r), 300);
     }
   }, [currentExerciseIndex, currentExercise, currentSetIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -219,6 +207,7 @@ export const CompactWorkoutView = ({
     // Timer mode: first tap starts, second tap stops & completes
     if (showTimer && !timerRunning && timerSeconds === 0) {
       unlockAudio(); // unlock audio context on user gesture so beeps work later
+      timerStartRef.current = Date.now();
       setTimerRunning(true);
       return;
     }
@@ -259,13 +248,6 @@ export const CompactWorkoutView = ({
           <span className="text-xs text-muted-foreground shrink-0">
             {completedTotal}/{totalSetsAll}
           </span>
-          <button
-            onClick={() => { const m = toggleWorkoutMute(); setMuted(m); }}
-            className="p-2 rounded-xl bg-muted text-foreground"
-            title={muted ? 'Zapnout zvuk' : 'Vypnout zvuk'}
-          >
-            {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
           <button
             onClick={onSwitchToVideo}
             className="p-2 rounded-xl bg-muted text-foreground"

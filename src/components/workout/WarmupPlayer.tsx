@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
-import { announceTimedExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
 
 export interface WarmupExercise {
   id: string;
@@ -50,7 +50,8 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const [muted, setMuted] = useState(isWorkoutMuted());
+  const beeped3Ref = useRef(false);
+  const beeped2Ref = useRef(false);
 
   const currentExercise = exercises[currentIndex];
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
@@ -87,18 +88,10 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
   }, [currentIndex]);
 
-  // Announce exercise name + duration on each new exercise.
-  // First exercise: 500ms delay so the iOS speechSynthesis unlock utterance
-  // (spoken in unlockAudio) can complete before we call speak() — cancelling
-  // it mid-speech leaves the synthesis engine in a broken state.
+  // Reset beep refs on each new exercise
   useEffect(() => {
-    if (!currentExercise) return;
-    const delay = currentIndex === initialIndex ? 500 : 0;
-    if (delay) {
-      const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
-      return () => clearTimeout(t);
-    }
-    announceTimedExercise(currentExercise.name, currentExercise.duration);
+    beeped3Ref.current = false;
+    beeped2Ref.current = false;
   }, [currentIndex]);
 
   // Adjust end time when pausing/resuming
@@ -129,8 +122,11 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
 
     const interval = setInterval(() => {
       const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
+      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
+      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
       if (remaining <= 0) {
         clearInterval(interval);
+        playAlarmFinish();
         if (currentIndex < exercises.length - 1) {
           setCurrentIndex(i => i + 1);
           setVideoError(false);
@@ -235,9 +231,6 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 🔥 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={() => { const nowMuted = toggleWorkoutMute(); setMuted(nowMuted); if (!nowMuted) announceTimedExercise(currentExercise.name, currentExercise.duration); }} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
-                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
               <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                 <SkipForward className="w-5 h-5" />
               </button>

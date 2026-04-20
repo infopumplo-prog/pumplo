@@ -8,7 +8,6 @@ import { RestTimer } from './RestTimer';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
-import { announceWorkoutComplete } from '@/lib/workoutAudio';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
@@ -406,7 +405,6 @@ export const WorkoutSession = ({
         });
 
         setWorkoutSaved(true);
-        announceWorkoutComplete();
       };
       autoSave();
     }

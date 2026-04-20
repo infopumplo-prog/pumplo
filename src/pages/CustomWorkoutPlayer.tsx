@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playAlarmBeep, playFinishSound, unlockAudio, announceExercise, speakText, announceWorkoutComplete, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { playBeep, playCountdown3, playCountdown2, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -106,7 +106,6 @@ const CustomWorkoutPlayer = () => {
   const [startTime] = useState<Date>(new Date());
   const [totalSetsCompleted, setTotalSetsCompleted] = useState(0);
   const [videoError, setVideoError] = useState(false);
-  const [muted, setMuted] = useState(isWorkoutMuted());
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
   const [exerciseDetail, setExerciseDetail] = useState<ExerciseDetail | null>(null);
@@ -133,7 +132,7 @@ const CustomWorkoutPlayer = () => {
   const [cardioPaused, setCardioPaused] = useState(false);
   const cardioEndTimeRef = useRef<number>(0);
   const cardioPausedAtRef = useRef<number | null>(null);
-  const cardioBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
+  const cardioBeepsRef = useRef({ b3: false, b2: false, done: false });
 
   // Must be declared before the cardio useEffects — dep array evaluates immediately (not a closure)
   const currentExercise = exercises[currentExerciseIndex] || null;
@@ -148,7 +147,7 @@ const CustomWorkoutPlayer = () => {
     setCardioTotalSeconds(totalSec);
     setCardioPaused(false);
     cardioPausedAtRef.current = null;
-    cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
+    cardioBeepsRef.current = { b3: false, b2: false, done: false };
   }, [currentExerciseIndex, currentSet, isCurrentCardio, playerState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cardio timer tick
@@ -157,12 +156,11 @@ const CustomWorkoutPlayer = () => {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       setCardioSeconds(remaining);
-      if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playAlarmBeep(); }
-      if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playAlarmBeep(); }
-      if (remaining === 1 && !cardioBeepsRef.current.b1) { cardioBeepsRef.current.b1 = true; playAlarmBeep(); }
+      if (remaining === 3 && !cardioBeepsRef.current.b3) { cardioBeepsRef.current.b3 = true; playCountdown3(); }
+      if (remaining === 2 && !cardioBeepsRef.current.b2) { cardioBeepsRef.current.b2 = true; playCountdown2(); }
       if (remaining <= 0 && !cardioBeepsRef.current.done) {
         cardioBeepsRef.current.done = true;
-        playFinishSound();
+        playAlarmFinish();
         handleCardioComplete();
       }
     };
@@ -374,14 +372,6 @@ const CustomWorkoutPlayer = () => {
     setCurrentSet(1);
     setTotalSetsCompleted(0);
 
-    // Announce first exercise — per-set values for set 1
-    if (loaded[0]) {
-      const ex = loaded[0];
-      const w = ex.weight_per_set?.[0] ?? ex.weight_kg;
-      const r = ex.reps_per_set?.[0] ?? ex.reps;
-      setTimeout(() => announceExercise(ex.exercise_name, w || undefined, `${r}`), 500);
-    }
-
     // Check equipment compatibility
     await checkEquipmentCompatibility(loaded);
   }, [plan, checkEquipmentCompatibility]);
@@ -427,61 +417,15 @@ const CustomWorkoutPlayer = () => {
 
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
-  const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false, spoken: false });
+  const restBeepsRef = useRef({ b3: false, b2: false, done: false });
 
   // Set end time when rest starts
   useEffect(() => {
     if (playerState === 'rest' && currentRestTotal > 0) {
       restEndTimeRef.current = Date.now() + currentRestTotal * 1000;
-      restBeepsRef.current = { b3: false, b2: false, b1: false, done: false, spoken: false };
+      restBeepsRef.current = { b3: false, b2: false, done: false };
     }
   }, [playerState, currentRestTotal]);
-
-  // Build announcement text for next set/exercise using per-set values
-  const buildAnnouncementText = () => {
-    const pending = pendingAdvanceRef.current;
-    let name = '';
-    let w: number | null = null;
-    let r: number | null = null;
-
-    if (pending?.type === 'next_exercise') {
-      const nextEx = exercises[pending.exIdx];
-      if (nextEx) {
-        name = nextEx.exercise_name;
-        w = nextEx.weight_per_set?.[0] ?? nextEx.weight_kg;
-        r = nextEx.reps_per_set?.[0] ?? nextEx.reps;
-      }
-    } else if (pending?.type === 'next_set') {
-      const ex = exercises[pending.exIdx];
-      if (ex) {
-        const setIdx = (pending.set || 1) - 1;
-        name = ex.exercise_name;
-        w = ex.weight_per_set?.[setIdx] ?? ex.weight_kg;
-        r = ex.reps_per_set?.[setIdx] ?? ex.reps;
-      }
-    } else if (currentExercise) {
-      // Video mode fallback
-      if (currentSet >= currentExercise.sets && currentExerciseIndex < exercises.length - 1) {
-        const nextEx = exercises[currentExerciseIndex + 1];
-        name = nextEx.exercise_name;
-        w = nextEx.weight_per_set?.[0] ?? nextEx.weight_kg;
-        r = nextEx.reps_per_set?.[0] ?? nextEx.reps;
-      } else if (currentSet < currentExercise.sets) {
-        const setIdx = currentSet; // next set (0-based = currentSet since currentSet is 1-based current)
-        name = currentExercise.exercise_name;
-        w = currentExercise.weight_per_set?.[setIdx] ?? currentExercise.weight_kg;
-        r = currentExercise.reps_per_set?.[setIdx] ?? currentExercise.reps;
-      }
-    }
-
-    let text = '3, 2, 1';
-    if (name) {
-      text += `, ${name}`;
-      if (w && w > 0) text += `, ${w} kilo`;
-      if (r) text += `, ${r} opakování`;
-    }
-    return text;
-  };
 
   // Tick rest timer
   useEffect(() => {
@@ -492,18 +436,11 @@ const CustomWorkoutPlayer = () => {
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      // Voice countdown at 5s — gives TTS time to load and play aligned with 3,2,1
-      if (remaining <= 5 && remaining > 3 && !b.spoken) {
-        b.spoken = true;
-        const text = buildAnnouncementText();
-        speakText(text);
-      }
-      if (remaining === 3 && !b.b3) { b.b3 = true; playAlarmBeep(); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playAlarmBeep(); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playAlarmBeep(); }
+      if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
+      if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
       if (remaining <= 0 && !b.done) {
         b.done = true;
-        playFinishSound();
+        playAlarmFinish();
         advanceAfterRest();
       }
     };
@@ -549,7 +486,6 @@ const CustomWorkoutPlayer = () => {
         setPlayerState('exercise');
       } else {
         setPlayerState('completed');
-        announceWorkoutComplete();
       }
     }
   };
@@ -617,7 +553,6 @@ const CustomWorkoutPlayer = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       cardioBeepsRef.current.b3 = remaining < 3;
       cardioBeepsRef.current.b2 = remaining < 2;
-      cardioBeepsRef.current.b1 = remaining < 1;
     } else {
       cardioPausedAtRef.current = Date.now();
     }
@@ -1297,9 +1232,6 @@ const CustomWorkoutPlayer = () => {
                   </span>
                   <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                     <List className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => { const m = toggleWorkoutMute(); setMuted(m); }} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
-                    {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
                   <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                     <X className="w-5 h-5" />

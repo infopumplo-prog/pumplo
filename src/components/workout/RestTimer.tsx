@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { playAlarmBeep, playFinishSound } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -18,10 +18,8 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
   const endTimeRef = useRef(Date.now() + duration * 1000);
   const pausedAtRef = useRef<number | null>(null);
   const completedRef = useRef(false);
-  const spokenRef = useRef(false);
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
-  const beeped1Ref = useRef(false);
 
   // No speech during rest — exercise announcement happens when next exercise loads
 
@@ -34,13 +32,12 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
 
-      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playAlarmBeep(); }
-      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playAlarmBeep(); }
-      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playAlarmBeep(); }
+      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
+      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
 
       if (remaining <= 0 && !completedRef.current) {
         completedRef.current = true;
-        playFinishSound();
+        playAlarmFinish();
         onComplete();
       }
     };
@@ -64,7 +61,6 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
       beeped3Ref.current = remaining < 3;
       beeped2Ref.current = remaining < 2;
-      beeped1Ref.current = remaining < 1;
     } else {
       pausedAtRef.current = Date.now();
     }
@@ -75,10 +71,8 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
     endTimeRef.current = Date.now() + duration * 1000;
     pausedAtRef.current = null;
     completedRef.current = false;
-    spokenRef.current = false;
     beeped3Ref.current = false;
     beeped2Ref.current = false;
-    beeped1Ref.current = false;
     setTimeLeft(duration);
     setIsPaused(false);
   }, [duration]);

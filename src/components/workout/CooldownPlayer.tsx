@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
+import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
-import { announceTimedExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -31,7 +31,9 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const [muted, setMuted] = useState(isWorkoutMuted());
+  const endTimeRef = useRef(Date.now() + (exercises[initialIndex]?.duration || 30) * 1000);
+  const beeped3Ref = useRef(false);
+  const beeped2Ref = useRef(false);
 
   const currentExercise = exercises[currentIndex];
   const hasInfo = !!(currentExercise?.primaryMuscles?.length || currentExercise?.description || currentExercise?.setupInstructions || currentExercise?.commonMistakes || currentExercise?.tips);
@@ -63,39 +65,34 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     } catch {}
   }, [timeRemaining, currentExercise, isPaused]);
 
-  // Announce exercise name + duration on each new exercise.
-  // First exercise: 500ms delay so the iOS speechSynthesis unlock utterance
-  // (spoken in unlockAudio) can complete before we call speak().
+  // Reset beep refs and clock on each new exercise
   useEffect(() => {
-    if (!currentExercise) return;
-    const delay = currentIndex === initialIndex ? 500 : 0;
-    if (delay) {
-      const t = setTimeout(() => announceTimedExercise(currentExercise.name, currentExercise.duration), delay);
-      return () => clearTimeout(t);
-    }
-    announceTimedExercise(currentExercise.name, currentExercise.duration);
+    endTimeRef.current = Date.now() + (currentExercise?.duration || 30) * 1000;
+    beeped3Ref.current = false;
+    beeped2Ref.current = false;
   }, [currentIndex]);
 
-  // Countdown timer — auto-advance
+  // Countdown timer — wall-clock based, auto-advance
   useEffect(() => {
     if (isPaused || !currentExercise) return;
 
     const interval = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          if (currentIndex < exercises.length - 1) {
-            setCurrentIndex(i => i + 1);
-            setVideoError(false);
-            return exercises[currentIndex + 1]?.duration || 30;
-          } else {
-            onComplete();
-            return 0;
-          }
+      const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000);
+      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
+      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
+      if (remaining <= 0) {
+        clearInterval(interval);
+        playAlarmFinish();
+        if (currentIndex < exercises.length - 1) {
+          setCurrentIndex(i => i + 1);
+          setVideoError(false);
+        } else {
+          onComplete();
         }
-        return prev - 1;
-      });
-    }, 1000);
+        return;
+      }
+      setTimeRemaining(remaining);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [currentIndex, isPaused, currentExercise]);
@@ -189,9 +186,6 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 💙 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={() => { const nowMuted = toggleWorkoutMute(); setMuted(nowMuted); if (!nowMuted) announceTimedExercise(currentExercise.name, currentExercise.duration); }} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
-                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
               <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
                 <SkipForward className="w-5 h-5" />
               </button>

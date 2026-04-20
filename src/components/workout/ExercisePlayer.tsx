@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Volume2, VolumeX, Play, Pause } from 'lucide-react';
-import { playBeep, playFinishSound, playAlarmBeep } from '@/lib/workoutAudio';
+import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause } from 'lucide-react';
+import { playBeep, playCountdown3, playCountdown2, playAlarmFinish } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
-import { announceExercise, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 
@@ -114,7 +113,6 @@ export const ExercisePlayer = ({
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [muted, setMuted] = useState(isWorkoutMuted());
 
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
@@ -126,12 +124,12 @@ export const ExercisePlayer = ({
   const cardioEndTimeRef = useRef(Date.now() + cardioTotalSeconds * 1000);
   const cardioPausedAtRef = useRef<number | null>(null);
   const cardioDoneRef = useRef(false);
-  const cardioB3 = useRef(false), cardioB2 = useRef(false), cardioB1 = useRef(false);
+  const cardioB3 = useRef(false), cardioB2 = useRef(false);
 
   const handleCardioComplete = useCallback(() => {
     if (cardioDoneRef.current) return;
     cardioDoneRef.current = true;
-    playFinishSound();
+    playAlarmFinish();
     onCompleteExercise([{ completed: true, reps: repMax }]);
   }, [onCompleteExercise, repMax]);
 
@@ -141,9 +139,8 @@ export const ExercisePlayer = ({
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       setCardioTimeLeft(remaining);
-      if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playAlarmBeep(); }
-      if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playAlarmBeep(); }
-      if (remaining === 1 && !cardioB1.current) { cardioB1.current = true; playAlarmBeep(); }
+      if (remaining === 3 && !cardioB3.current) { cardioB3.current = true; playCountdown3(); }
+      if (remaining === 2 && !cardioB2.current) { cardioB2.current = true; playCountdown2(); }
       if (remaining <= 0) handleCardioComplete();
     };
     tick();
@@ -161,7 +158,6 @@ export const ExercisePlayer = ({
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       cardioB3.current = remaining < 3;
       cardioB2.current = remaining < 2;
-      cardioB1.current = remaining < 1;
     } else {
       cardioPausedAtRef.current = Date.now();
     }
@@ -170,24 +166,12 @@ export const ExercisePlayer = ({
 
   const formatCardioTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // Pre-fill weight from last workout when it loads (async) + announce
-  const announcedRef = useRef<number>(-1);
+  // Pre-fill weight from last workout when it loads (async)
   useEffect(() => {
     if (lastWeight && !weight) {
       setWeight(`${lastWeight}`);
     }
-    // Announce once weight is available
-    if (announcedRef.current !== exerciseIndex && (lastWeight || lastWeight === null)) {
-      announcedRef.current = exerciseIndex;
-      const w = lastWeight || (weight ? parseFloat(weight) : undefined);
-      announceExercise(exerciseName, w && w > 0 ? w : undefined, reps || `${repMax}`);
-    }
   }, [lastWeight, exerciseIndex]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset announcement ref when exercise changes
-  useEffect(() => {
-    announcedRef.current = -1;
-  }, [exerciseIndex]);
 
   // Sync weight/reps inputs when navigating between sets (e.g. going back)
   useEffect(() => {
@@ -309,16 +293,6 @@ export const ExercisePlayer = ({
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 {exerciseIndex + 1}/{totalExercises}
               </span>
-              <button
-                onClick={() => {
-                  const nowMuted = toggleWorkoutMute();
-                  setMuted(nowMuted);
-                  if (!nowMuted) announceExercise(exerciseName, lastWeight && lastWeight > 0 ? lastWeight : undefined, reps || `${repMax}`);
-                }}
-                className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white"
-              >
-                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
               {onSwapExercise && (
                 <button onClick={onSwapExercise} disabled={isSwapping} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white disabled:opacity-50">
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
