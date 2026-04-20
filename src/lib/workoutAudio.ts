@@ -83,9 +83,15 @@ export const toggleWorkoutMute = (): boolean => {
   return _muted;
 };
 
-// --- Audio player ---
-let audioEl: HTMLAudioElement | null = null;
-let silentEl: HTMLAudioElement | null = null; // dedicated element for silent loop (MediaSession)
+// --- Audio elements (pre-created once, unlocked during user gesture, reused) ---
+// Root cause of "plays only first time": new Audio() in timer callbacks is blocked by
+// Chrome Android autoplay policy. Fix: create elements once, unlock all in gesture, reuse.
+let audioEl: HTMLAudioElement | null = null;   // TTS playback
+let silentEl: HTMLAudioElement | null = null;  // silent loop (keeps audio session alive)
+let beepEl: HTMLAudioElement | null = null;
+let highBeepEl: HTMLAudioElement | null = null;
+let alarmBeepEl: HTMLAudioElement | null = null;
+let alarmFinishEl: HTMLAudioElement | null = null;
 let unlocked = false;
 
 function play(url: string) {
@@ -96,26 +102,34 @@ function play(url: string) {
 
 export const unlockAudio = () => {
   if (unlocked) return;
+  unlocked = true; // synchronous — prevents re-entry and race conditions
   try {
-    // Unlock TTS audio element
-    if (!audioEl) { audioEl = new Audio(); audioEl.volume = 1.0; }
-    audioEl.src = PHRASES.start;
-    audioEl.muted = true;
-    audioEl.play().then(() => {
-      audioEl!.pause(); audioEl!.muted = false; audioEl!.currentTime = 0;
-      unlocked = true;
-    }).catch(() => {});
-    // Unlock silent loop element in the same gesture — Safari requires this
+    // Pre-create all elements with local blob URLs (no network dependency)
+    if (!audioEl) { audioEl = new Audio(beepUrl || ''); audioEl.volume = 1.0; }
+    if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
+    if (!highBeepEl && highBeepUrl) { highBeepEl = new Audio(highBeepUrl); highBeepEl.volume = 0.6; }
+    if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
+    if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
     if (!silentEl) { silentEl = new Audio(); silentEl.volume = 0.001; silentEl.loop = true; }
-    silentEl.src = PHRASES.start; // need a src for Safari to trust the element
-    silentEl.muted = true;
-    silentEl.play().then(() => {
-      silentEl!.pause(); silentEl!.muted = false;
-      // Start silent loop immediately after unlock to keep audio session alive
-      startSilentLoop();
-    }).catch(() => {});
-    // Unlock speechSynthesis on iOS — first speak() must be in user gesture context.
-    // Use a short space utterance and let it complete (don't cancel immediately).
+
+    // Play ALL elements muted in same gesture context — unlocks them for timer callbacks
+    [audioEl, beepEl, highBeepEl, alarmBeepEl, alarmFinishEl].forEach(el => {
+      if (!el) return;
+      el.muted = true;
+      el.play()
+        .then(() => { el.pause(); el.muted = false; el.currentTime = 0; })
+        .catch(() => { if (el) el.muted = false; });
+    });
+
+    // Start silent loop immediately using local silenceUrl — no remote file needed
+    if (silentEl && silenceUrl) {
+      silentEl.src = silenceUrl;
+      silentEl.loop = true;
+      silentEl.volume = 0.001;
+      silentEl.play().catch(() => {});
+    }
+
+    // Unlock speechSynthesis on iOS
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       const u = new SpeechSynthesisUtterance(' ');
       u.volume = 0;
@@ -127,6 +141,7 @@ export const unlockAudio = () => {
 /** Start silent audio loop to keep MediaSession active (lock screen widget) */
 export const startSilentLoop = () => {
   if (!silentEl || !silenceUrl) return;
+  if (!silentEl.paused) return; // already running
   silentEl.src = silenceUrl;
   silentEl.loop = true;
   silentEl.volume = 0.001;
@@ -165,12 +180,30 @@ try {
   alarmBeepUrl=generateWavBeep(880,120); alarmFinishUrl=generateWavBeep(1175,350);
 } catch{}
 
-export const playBeep = () => { if(_muted||!beepUrl)return; const b=new Audio(beepUrl);b.volume=0.6;b.play().catch(()=>{}); };
-export const playFinishSound = () => { if(_muted||!highBeepUrl)return; const b=new Audio(highBeepUrl);b.volume=0.6;b.play().catch(()=>{}); };
-/** Alarm beep — ignores mute, for cardio countdown */
-export const playAlarmBeep = () => { if(!alarmBeepUrl)return; const b=new Audio(alarmBeepUrl);b.volume=0.85;b.play().catch(()=>{}); };
-/** Alarm finish — ignores mute, signals end of cardio set */
-export const playAlarmFinish = () => { if(!alarmFinishUrl)return; const b=new Audio(alarmFinishUrl);b.volume=0.85;b.play().catch(()=>{}); };
+export const playBeep = () => {
+  if (_muted) return;
+  if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
+  if (!beepEl) return;
+  beepEl.currentTime = 0; beepEl.play().catch(() => {});
+};
+export const playFinishSound = () => {
+  if (_muted) return;
+  if (!highBeepEl && highBeepUrl) { highBeepEl = new Audio(highBeepUrl); highBeepEl.volume = 0.6; }
+  if (!highBeepEl) return;
+  highBeepEl.currentTime = 0; highBeepEl.play().catch(() => {});
+};
+/** Alarm beep — ignores mute, for countdown */
+export const playAlarmBeep = () => {
+  if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
+  if (!alarmBeepEl) return;
+  alarmBeepEl.currentTime = 0; alarmBeepEl.play().catch(() => {});
+};
+/** Alarm finish — ignores mute, signals end of timed set */
+export const playAlarmFinish = () => {
+  if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
+  if (!alarmFinishEl) return;
+  alarmFinishEl.currentTime = 0; alarmFinishEl.play().catch(() => {});
+};
 
 // --- TTS via Supabase Edge Function (full sentence, one MP3) ---
 const TTS_FUNCTION_URL = 'https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/tts';
