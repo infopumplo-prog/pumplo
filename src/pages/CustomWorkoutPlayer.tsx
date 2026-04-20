@@ -530,7 +530,8 @@ const CustomWorkoutPlayer = () => {
   };
 
   const handleCardioComplete = () => {
-    if (cardioBeepsRef.current.done && cardioSeconds > 0) return;
+    if (cardioBeepsRef.current.done && playerState !== 'exercise') return;
+    cardioBeepsRef.current.done = true;
     setCompletedSetsMap(prev => {
       const next = new Map(prev);
       const existing = next.get(currentExerciseIndex) || [];
@@ -1031,6 +1032,9 @@ const CustomWorkoutPlayer = () => {
           showTimer
           onShowInfo={handleShowInfo}
           onFinishWorkout={() => setPlayerState('completed')}
+          externalCardioSecondsRemaining={isCurrentCardio ? cardioSeconds : undefined}
+          externalCardioPaused={cardioPaused}
+          onToggleCardioPause={handleCardioPauseToggle}
         />
 
         {/* Exit confirmation dialog */}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy } from 'lucide-react';
+import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Square, Timer, Info, Trophy } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
@@ -51,6 +51,10 @@ interface CompactWorkoutViewProps {
   showTimer?: boolean;
   onShowInfo?: (exerciseId: string) => void;
   onFinishWorkout?: () => void;
+  // External cardio timer — when provided, CompactWorkoutView delegates timer control to parent
+  externalCardioSecondsRemaining?: number;
+  externalCardioPaused?: boolean;
+  onToggleCardioPause?: () => void;
 }
 
 export const CompactWorkoutView = ({
@@ -68,6 +72,9 @@ export const CompactWorkoutView = ({
   showTimer = false,
   onShowInfo,
   onFinishWorkout,
+  externalCardioSecondsRemaining,
+  externalCardioPaused,
+  onToggleCardioPause,
 }: CompactWorkoutViewProps) => {
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
@@ -134,6 +141,7 @@ export const CompactWorkoutView = ({
 
   // Cardio auto-complete: countdown beeps at T-3/2/1, auto-complete at target
   useEffect(() => {
+    if (externalCardioSecondsRemaining !== undefined) return; // parent handles beeps + completion
     if (!timerRunning || !currentExercise || allSetsComplete) return;
     const isCardio = currentExercise.unit_type === 'time_min' || currentExercise.category === 'cardio';
     if (!isCardio) return;
@@ -204,6 +212,13 @@ export const CompactWorkoutView = ({
 
   const handleCompleteCurrentSet = () => {
     if (allSetsComplete || !currentExercise) return;
+
+    // External cardio timer: button is pause/resume toggle
+    if (externalCardioSecondsRemaining !== undefined) {
+      unlockAudio();
+      onToggleCardioPause?.();
+      return;
+    }
 
     // Timer mode: first tap starts, second tap stops & completes
     if (showTimer && !timerRunning && timerSeconds === 0) {
@@ -400,10 +415,10 @@ export const CompactWorkoutView = ({
                           ? `Série ${currentSetIndex + 1} / ${ex.sets} · cíl ${fmtExTarget}`
                           : `Série ${currentSetIndex + 1} / ${ex.sets} · ${ex.repMin}-${ex.repMax} opak.`}
                       </p>
-                      {timerRunning && (
-                        <div className="flex items-center gap-1 text-xs font-mono font-semibold text-primary">
+                      {(timerRunning || externalCardioSecondsRemaining !== undefined) && (
+                        <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${externalCardioPaused ? 'text-amber-500' : 'text-primary'}`}>
                           <Timer className="w-3.5 h-3.5" />
-                          {formatTimer(timerSeconds)}
+                          {externalCardioSecondsRemaining !== undefined ? formatTimer(externalCardioSecondsRemaining) : formatTimer(timerSeconds)}
                         </div>
                       )}
                     </div>
@@ -413,7 +428,9 @@ export const CompactWorkoutView = ({
                         <div className="flex-1 flex items-center justify-center h-11 bg-muted rounded-xl">
                           <Timer className="w-4 h-4 text-muted-foreground mr-2" />
                           <span className="text-base font-semibold font-mono text-foreground">
-                            {timerRunning ? formatTimer(timerSeconds) : fmtExTarget}
+                            {externalCardioSecondsRemaining !== undefined
+                              ? formatTimer(externalCardioSecondsRemaining)
+                              : timerRunning ? formatTimer(timerSeconds) : fmtExTarget}
                           </span>
                         </div>
                       ) : (
@@ -444,14 +461,18 @@ export const CompactWorkoutView = ({
                       <button
                         onClick={handleCompleteCurrentSet}
                         className={`w-12 h-11 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-transform shrink-0 ${
-                          timerRunning
+                          externalCardioSecondsRemaining !== undefined
+                            ? externalCardioPaused ? 'bg-green-500' : 'bg-amber-500'
+                            : timerRunning
                             ? 'bg-red-500'
                             : isExCardio || (showTimer && timerSeconds === 0)
                             ? 'bg-green-500'
                             : 'bg-primary'
                         }`}
                       >
-                        {(!timerRunning && (isExCardio || timerSeconds === 0)) ? (
+                        {externalCardioSecondsRemaining !== undefined ? (
+                          externalCardioPaused ? <Play className="w-5 h-5 text-white" /> : <Pause className="w-5 h-5 text-white" />
+                        ) : (!timerRunning && (isExCardio || timerSeconds === 0)) ? (
                           <Play className="w-5 h-5 text-white" />
                         ) : timerRunning ? (
                           <Square className="w-5 h-5 text-white" />
