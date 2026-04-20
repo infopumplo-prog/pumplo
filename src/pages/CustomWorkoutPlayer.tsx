@@ -141,7 +141,7 @@ const CustomWorkoutPlayer = () => {
   // Init cardio timer when cardio exercise starts
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise') return;
-    const totalSec = currentExercise?.reps || 600;
+    const totalSec = (currentExercise?.reps || 10) * 60;
     cardioEndTimeRef.current = Date.now() + totalSec * 1000;
     setCardioSeconds(totalSec);
     setCardioTotalSeconds(totalSec);
@@ -1334,7 +1334,7 @@ const CustomWorkoutPlayer = () => {
                 <circle
                   cx="100" cy="100" r="90" fill="none" stroke="#5BC8F5" strokeWidth="6"
                   strokeDasharray={565.5}
-                  strokeDashoffset={565.5 * (1 - restSeconds / (currentSet < (currentExercise?.sets || 1) ? REST_BETWEEN_SETS : REST_BETWEEN_EXERCISES))}
+                  strokeDashoffset={565.5 * (1 - restSeconds / currentRestTotal)}
                   strokeLinecap="round"
                   className="transition-all duration-1000 ease-linear"
                 />

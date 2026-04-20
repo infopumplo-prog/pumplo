@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { unlockAudio, announceWarmupStart } from '@/lib/workoutAudio';
+import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -990,10 +990,6 @@ const Training = () => {
   
   // Handle starting warmup from preview
   const handleStartWarmup = useCallback(async () => {
-    // Refresh iOS speechSynthesis unlock in this gesture context.
-    // The initial unlock (handleConfirmGymAndStart) happened too long ago —
-    // iOS forgets it. Also gives audio feedback that warmup is starting.
-    announceWarmupStart();
     setIsGeneratingWarmup(true);
 
     try {
