@@ -461,6 +461,12 @@ const CustomWorkoutPlayer = () => {
 
   // What happens after rest ends
   const advanceAfterRest = () => {
+    // Always reset cardio state when starting next exercise/set — prevents stale cardioPaused=false
+    setCardioPaused(true);
+    cardioEndTimeRef.current = 0;
+    cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
+    cardioPausedAtRef.current = null;
+
     // Check if list mode triggered the rest (pendingAdvance)
     const pending = pendingAdvanceRef.current;
     if (pending) {
@@ -989,8 +995,8 @@ const CustomWorkoutPlayer = () => {
       // Check if all sets done for exercise → auto advance
       const exercise = exercises[exIdx];
       if (!exercise) return;
-      const setsForEx = (completedSetsMap.get(exIdx) || []).length + 1;
-      const completedSetIdx = setsForEx - 1; // just completed set (0-based)
+      const setsForEx = setIdx + 1; // setIdx is 0-based index of just-completed set
+      const completedSetIdx = setIdx;
       const exRestSec = exercise.rest_per_set?.[completedSetIdx] ?? exercise.rest_seconds ?? 120;
       if (setsForEx >= exercise.sets) {
         if (exIdx < exercises.length - 1) {
@@ -1020,8 +1026,9 @@ const CustomWorkoutPlayer = () => {
           setsDataByExercise={compactSetsMap}
           onCompleteSet={handleCompactComplete}
           onSelectExercise={(idx) => {
+            const completedCount = (completedSetsMap.get(idx) || []).filter(s => s.completed).length;
             setCurrentExerciseIndex(idx);
-            setCurrentSet(1);
+            setCurrentSet(Math.min(completedCount + 1, exercises[idx]?.sets || 1));
           }}
           onSwitchToVideo={() => {
             setViewMode('video');
