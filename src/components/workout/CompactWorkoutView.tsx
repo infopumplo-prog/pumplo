@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Square, Timer, Info, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
-import { announceExercise, playAlarmBeep, playAlarmFinish, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
+import { announceExercise, playAlarmBeep, playAlarmFinish, playBeep, unlockAudio, isWorkoutMuted, toggleWorkoutMute } from '@/lib/workoutAudio';
 
 const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
@@ -154,6 +154,18 @@ export const CompactWorkoutView = ({
     const r = `${currentExercise.repsPerSet?.[setIdx] ?? currentExercise.repMax}`;
     setReps(r);
 
+    const isCardio = currentExercise.unit_type === 'time_min' || currentExercise.category === 'cardio';
+    if (isCardio) {
+      // For cardio, announce with formatted duration — no weight lookup needed
+      const totalSec = currentExercise.repMax;
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      const durationStr = s > 0 ? `${m} minut ${s} sekund` : `${m} minut`;
+      setWeight('');
+      setTimeout(() => announceCurrentExercise('', durationStr), 300);
+      return;
+    }
+
     // Per-set weight (if available)
     const plannedWeight = currentExercise.weightPerSet?.[setIdx];
     if (plannedWeight != null) {
@@ -206,11 +218,13 @@ export const CompactWorkoutView = ({
 
     // Timer mode: first tap starts, second tap stops & completes
     if (showTimer && !timerRunning && timerSeconds === 0) {
+      unlockAudio(); // unlock audio context on user gesture so beeps work later
       setTimerRunning(true);
       return;
     }
 
     setTimerRunning(false);
+    playBeep();
     const weightNum = weight ? parseFloat(weight) : undefined;
     const repsNum = reps ? parseInt(reps) : currentExercise.repMax;
     const duration = showTimer && timerSeconds > 0 ? timerSeconds : undefined;
