@@ -142,10 +142,10 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!isCurrentCardio || playerState !== 'exercise') return;
     const totalSec = currentExercise?.reps || 600;
-    cardioEndTimeRef.current = Date.now() + totalSec * 1000;
+    cardioEndTimeRef.current = 0; // 0 = not started yet, user must tap play
     setCardioSeconds(totalSec);
     setCardioTotalSeconds(totalSec);
-    setCardioPaused(false);
+    setCardioPaused(true); // start paused, first tap will start the timer
     cardioPausedAtRef.current = null;
     cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
   }, [currentExerciseIndex, currentSet, isCurrentCardio, playerState]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -550,8 +550,14 @@ const CustomWorkoutPlayer = () => {
 
   const handleCardioPauseToggle = () => {
     if (cardioPaused) {
-      const pausedDur = Date.now() - (cardioPausedAtRef.current || Date.now());
-      cardioEndTimeRef.current += pausedDur;
+      if (cardioEndTimeRef.current === 0) {
+        // First start: set end time from current cardioSeconds (totalSec)
+        cardioEndTimeRef.current = Date.now() + cardioSeconds * 1000;
+      } else {
+        // Resume: adjust end time by pause duration
+        const pausedDur = Date.now() - (cardioPausedAtRef.current || Date.now());
+        cardioEndTimeRef.current += pausedDur;
+      }
       cardioPausedAtRef.current = null;
       const remaining = Math.max(0, Math.ceil((cardioEndTimeRef.current - Date.now()) / 1000));
       cardioBeepsRef.current.b3 = remaining < 3;
@@ -1035,6 +1041,10 @@ const CustomWorkoutPlayer = () => {
           externalCardioSecondsRemaining={isCurrentCardio ? cardioSeconds : undefined}
           externalCardioPaused={cardioPaused}
           onToggleCardioPause={handleCardioPauseToggle}
+          currentSetWeight={weight}
+          currentSetReps={reps}
+          onCurrentSetWeightChange={setWeight}
+          onCurrentSetRepsChange={setReps}
         />
 
         {/* Exit confirmation dialog */}

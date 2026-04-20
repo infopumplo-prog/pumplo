@@ -55,6 +55,11 @@ interface CompactWorkoutViewProps {
   externalCardioSecondsRemaining?: number;
   externalCardioPaused?: boolean;
   onToggleCardioPause?: () => void;
+  // Controlled weight/reps — when provided, parent is single source of truth
+  currentSetWeight?: string;
+  currentSetReps?: string;
+  onCurrentSetWeightChange?: (v: string) => void;
+  onCurrentSetRepsChange?: (v: string) => void;
 }
 
 export const CompactWorkoutView = ({
@@ -75,9 +80,19 @@ export const CompactWorkoutView = ({
   externalCardioSecondsRemaining,
   externalCardioPaused,
   onToggleCardioPause,
+  currentSetWeight,
+  currentSetReps,
+  onCurrentSetWeightChange,
+  onCurrentSetRepsChange,
 }: CompactWorkoutViewProps) => {
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
+
+  // When parent passes controlled weight/reps, use those as source of truth
+  const effectiveWeight = currentSetWeight !== undefined ? currentSetWeight : weight;
+  const effectiveReps = currentSetReps !== undefined ? currentSetReps : reps;
+  const setEffectiveWeight = (v: string) => onCurrentSetWeightChange ? onCurrentSetWeightChange(v) : setWeight(v);
+  const setEffectiveReps = (v: string) => onCurrentSetRepsChange ? onCurrentSetRepsChange(v) : setReps(v);
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
@@ -159,8 +174,9 @@ export const CompactWorkoutView = ({
     }
   }, [timerSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pre-fill reps and weight for current exercise
+  // Pre-fill reps and weight for current exercise (skipped when parent controls via props)
   useEffect(() => {
+    if (currentSetWeight !== undefined) return;
     if (!currentExercise) return;
 
     const setIdx = currentSetIndex >= 0 ? currentSetIndex : 0;
@@ -230,8 +246,8 @@ export const CompactWorkoutView = ({
 
     setTimerRunning(false);
     playBeep();
-    const weightNum = weight ? parseFloat(weight) : undefined;
-    const repsNum = reps ? parseInt(reps) : currentExercise.repMax;
+    const weightNum = effectiveWeight ? parseFloat(effectiveWeight) : undefined;
+    const repsNum = effectiveReps ? parseInt(effectiveReps) : currentExercise.repMax;
     const duration = showTimer && timerSeconds > 0 ? timerSeconds : undefined;
     onCompleteSet(currentExerciseIndex, currentSetIndex, weightNum, repsNum, duration);
     setTimerSeconds(0);
@@ -441,8 +457,8 @@ export const CompactWorkoutView = ({
                               type="number"
                               inputMode="decimal"
                               placeholder="např. 60"
-                              value={weight}
-                              onChange={(e) => setWeight(e.target.value)}
+                              value={effectiveWeight}
+                              onChange={(e) => setEffectiveWeight(e.target.value)}
                               className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
                             />
                           </div>
@@ -451,8 +467,8 @@ export const CompactWorkoutView = ({
                             <input
                               type="number"
                               inputMode="numeric"
-                              value={reps}
-                              onChange={(e) => setReps(e.target.value)}
+                              value={effectiveReps}
+                              onChange={(e) => setEffectiveReps(e.target.value)}
                               className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
                             />
                           </div>
