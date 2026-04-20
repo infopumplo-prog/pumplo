@@ -148,7 +148,7 @@ const CustomWorkoutPlayer = () => {
     setCardioPaused(false);
     cardioPausedAtRef.current = null;
     cardioBeepsRef.current = { b3: false, b2: false, b1: false, done: false };
-  }, [currentExerciseIndex, currentSet]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentExerciseIndex, currentSet, isCurrentCardio, playerState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cardio timer tick
   useEffect(() => {

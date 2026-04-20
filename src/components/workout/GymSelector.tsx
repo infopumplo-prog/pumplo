@@ -95,22 +95,22 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                 whileTap={!isDisabled ? { scale: 0.98 } : undefined}
               >
                 {gym.is_featured && !isDisabled && (
-                  <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
-                    <Star className="w-2.5 h-2.5 fill-white" />
-                    PREMIUM
+                  <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#5BC8F5] text-white text-[10px] font-bold shadow-sm">
+                    <Check className="w-2.5 h-2.5" />
+                    Ověřeno
                   </div>
                 )}
                 <div className="flex items-start gap-3">
                   {/* Logo/Icon */}
                   <div className={cn(
-                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
-                    gym.is_featured ? "bg-amber-500/10 ring-2 ring-amber-500/30" : "bg-muted"
+                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white",
+                    gym.is_featured ? "ring-2 ring-[#5BC8F5]/40" : "ring-1 ring-border"
                   )}>
                     {gym.logo_url ? (
                       <img
                         src={gym.logo_url}
                         alt={gym.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain p-1"
                       />
                     ) : (
                       <Building2 className="w-6 h-6 text-muted-foreground" />
