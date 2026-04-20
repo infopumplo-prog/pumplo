@@ -542,7 +542,8 @@ const CustomWorkoutPlayer = () => {
     setTotalSetsCompleted(prev => prev + 1);
     const isLastExercise = currentExerciseIndex >= exercises.length - 1;
     if (isLastExercise) { setPlayerState('completed'); announceWorkoutComplete(); return; }
-    const restTime = currentExercise?.rest_seconds ?? 60;
+    const setIdx = currentSet - 1;
+    const restTime = currentExercise?.rest_per_set?.[setIdx] ?? currentExercise?.rest_seconds ?? 120;
     setRestSeconds(restTime);
     setCurrentRestTotal(restTime);
     setPlayerState('rest');
