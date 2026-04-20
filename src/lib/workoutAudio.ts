@@ -7,6 +7,7 @@
 
 // --- Silent WAV for MediaSession lock screen support ---
 let silenceUrl: string|null = null;
+// eslint-disable-next-line no-empty
 try {
   const sr=22050,n=sr*60;const buf=new ArrayBuffer(44+n);const v=new DataView(buf);
   const w=(o:number,s:string)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
@@ -15,6 +16,7 @@ try {
   w(36,'data');v.setUint32(40,n,true);
   for(let i=0;i<n;i++)v.setUint8(44+i,128);
   silenceUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+// eslint-disable-next-line no-empty
 } catch{}
 
 // --- Audio elements (pre-created once, unlocked during user gesture, reused) ---
@@ -33,24 +35,17 @@ export const unlockAudio = () => {
     if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
     if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
     if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
-    if (!silentEl) { silentEl = new Audio(); silentEl.volume = 0.001; silentEl.loop = true; }
+    if (!silentEl) { silentEl = new Audio(); }
 
-    // Play ALL elements muted in same gesture context — unlocks them for timer callbacks
-    [beepEl, alarmBeepEl, alarmFinishEl].forEach(el => {
-      if (!el) return;
-      el.muted = true;
-      el.play()
-        .then(() => { el.pause(); el.muted = false; el.currentTime = 0; })
-        .catch(() => { if (el) el.muted = false; });
-    });
-
-    // Start silent loop immediately using local silenceUrl — no remote file needed
+    // Only start the silent loop — this unlocks the AudioContext for the whole page.
+    // Pre-playing beep elements caused an audible click/beep on some Android devices.
     if (silentEl && silenceUrl) {
       silentEl.src = silenceUrl;
       silentEl.loop = true;
-      silentEl.volume = 0.001;
+      silentEl.volume = 0;
       silentEl.play().catch(() => {});
     }
+  // eslint-disable-next-line no-empty
   } catch {}
 };
 
@@ -85,9 +80,11 @@ function generateWavBeep(freq: number, ms: number, sr = 22050): string {
 }
 let beepUrl: string|null=null;
 let alarmBeepUrl: string|null=null, alarmFinishUrl: string|null=null;
+// eslint-disable-next-line no-empty
 try {
   beepUrl=generateWavBeep(660,150);
   alarmBeepUrl=generateWavBeep(880,120); alarmFinishUrl=generateWavBeep(1175,500);
+// eslint-disable-next-line no-empty
 } catch{}
 
 /** Single short beep — for set completion */
