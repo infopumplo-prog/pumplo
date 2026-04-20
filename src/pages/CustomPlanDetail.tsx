@@ -196,7 +196,11 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
   const saveCardio = (mStr: string, sStr: string) => {
     const m = Math.max(0, parseInt(mStr) || 0);
     const s = Math.max(0, Math.min(59, parseInt(sStr) || 0));
-    onRepsChange(Math.max(30, m * 60 + s));
+    const total = m * 60 + s;
+    // Sync local state to exactly what gets stored (no hidden rounding surprises)
+    setCardioMin(String(m));
+    setCardioSec(String(s));
+    onRepsChange(total);
   };
 
   return (
@@ -206,13 +210,13 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
         <>
           <div className="flex items-center gap-1">
             <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
-              onBlur={() => { const m = Math.max(0, parseInt(cardioMin) || 0); setCardioMin(String(m)); saveCardio(String(m), cardioSec); }}
+              onBlur={() => saveCardio(cardioMin, cardioSec)}
               className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} />
             <span className="text-[10px] text-muted-foreground">min</span>
           </div>
           <div className="flex items-center gap-1">
             <input type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
-              onBlur={() => { const s = Math.max(0, Math.min(59, parseInt(cardioSec) || 0)); setCardioSec(String(s)); saveCardio(cardioMin, String(s)); }}
+              onBlur={() => saveCardio(cardioMin, cardioSec)}
               className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} max={59} />
             <span className="text-[10px] text-muted-foreground">sek</span>
           </div>
