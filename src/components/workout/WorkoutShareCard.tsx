@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, X, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
@@ -17,6 +17,7 @@ interface WorkoutShareCardProps {
   totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
+  onAbandon?: () => void;
 }
 
 interface Stat { icon: any; color: string; value: string; unit: string }
@@ -247,9 +248,10 @@ const TEMPLATE_NAMES = ['Dark', 'Minimal', 'Bold', 'Cviky', 'Detail'];
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving,
+  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon,
 }: WorkoutShareCardProps) => {
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const cachedBlobRef = useRef<Blob | null>(null);
   const [imageReady, setImageReady] = useState(false);
@@ -405,9 +407,32 @@ export const WorkoutShareCard = ({
       className="fixed inset-0 z-50 flex flex-col overflow-hidden"
       style={{ background: '#111', width: '100%', height: '100%' }}>
 
-      <div className="shrink-0 flex items-center px-3 pt-2 pb-1">
-        <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><X className="w-5 h-5" /></button>
+      <div className="shrink-0 flex items-center justify-between px-3 pt-2 pb-1">
+        <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><ArrowLeft className="w-5 h-5" /></button>
+        {onAbandon && (
+          <button type="button" onClick={() => setShowAbandonConfirm(true)} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.5)' }}><X className="w-5 h-5" /></button>
+        )}
       </div>
+
+      {/* Abandon confirmation dialog */}
+      {showAbandonConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.85)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-xs" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <p className="text-white font-semibold text-base mb-2 text-center">Ukončit trénink?</p>
+            <p className="text-center mb-6" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>Progres nebude uložen.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowAbandonConfirm(false)}
+                className="flex-1 rounded-xl py-3 font-medium text-sm" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                Zpět
+              </button>
+              <button type="button" onClick={onAbandon}
+                className="flex-1 rounded-xl py-3 font-semibold text-sm" style={{ background: '#ef4444', color: '#fff' }}>
+                Ukončit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">
         <div ref={cardRef} className="relative overflow-hidden w-full"

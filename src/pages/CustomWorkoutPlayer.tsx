@@ -928,6 +928,7 @@ const CustomWorkoutPlayer = () => {
         onClose={() => setPlayerState('exercise')}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}
+        onAbandon={() => navigate(-1)}
       />
     );
   }
