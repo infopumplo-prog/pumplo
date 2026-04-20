@@ -234,7 +234,7 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
         </>
       )}
       <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">⏱</label>
+        <label className="text-xs text-muted-foreground">Pauza</label>
         <input type="number" value={t} onChange={(e) => setT(e.target.value)}
           onBlur={() => { const v = Math.max(10, parseInt(t) || 120); setT(String(v)); onRestChange(v); }}
           className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={10} step={5} />

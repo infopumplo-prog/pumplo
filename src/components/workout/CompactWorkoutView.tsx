@@ -32,6 +32,8 @@ interface WorkoutExerciseCompact {
   slotCategory?: string | null;
   repsPerSet?: number[] | null;
   weightPerSet?: (number | null)[] | null;
+  unit_type?: string | null;
+  category?: string | null;
 }
 
 interface CompactWorkoutViewProps {
@@ -239,6 +241,9 @@ export const CompactWorkoutView = ({
             const completedSets = sets.filter(s => s.completed).length;
             const isActive = idx === currentExerciseIndex;
             const isDone = completedSets === ex.sets;
+            const isExCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
+            const exTargetSec = isExCardio ? ex.repMax : 0;
+            const fmtExTarget = isExCardio ? `${Math.floor(exTargetSec / 60)}:${String(exTargetSec % 60).padStart(2, '0')}` : '';
 
             return (
               <div
@@ -364,9 +369,11 @@ export const CompactWorkoutView = ({
                   <div className="px-3 pb-3 pt-1 border-t border-border/50">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">
-                        Série {currentSetIndex + 1} / {ex.sets} · {ex.repMin}-{ex.repMax} opak.
+                        {isExCardio
+                          ? `Série ${currentSetIndex + 1} / ${ex.sets} · cíl ${fmtExTarget}`
+                          : `Série ${currentSetIndex + 1} / ${ex.sets} · ${ex.repMin}-${ex.repMax} opak.`}
                       </p>
-                      {showTimer && timerRunning && (
+                      {timerRunning && (
                         <div className="flex items-center gap-1 text-xs font-mono font-semibold text-primary">
                           <Timer className="w-3.5 h-3.5" />
                           {formatTimer(timerSeconds)}
@@ -375,40 +382,51 @@ export const CompactWorkoutView = ({
                     </div>
 
                     <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Váha (kg)</label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="např. 60"
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Opakování</label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={reps}
-                          onChange={(e) => setReps(e.target.value)}
-                          className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
-                        />
-                      </div>
+                      {isExCardio ? (
+                        <div className="flex-1 flex items-center justify-center h-11 bg-muted rounded-xl">
+                          <Timer className="w-4 h-4 text-muted-foreground mr-2" />
+                          <span className="text-base font-semibold font-mono text-foreground">
+                            {timerRunning ? formatTimer(timerSeconds) : fmtExTarget}
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Váha (kg)</label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              placeholder="např. 60"
+                              value={weight}
+                              onChange={(e) => setWeight(e.target.value)}
+                              className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Opakování</label>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={reps}
+                              onChange={(e) => setReps(e.target.value)}
+                              className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
+                            />
+                          </div>
+                        </>
+                      )}
                       <button
                         onClick={handleCompleteCurrentSet}
                         className={`w-12 h-11 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-transform shrink-0 ${
-                          showTimer && timerRunning
+                          timerRunning
                             ? 'bg-red-500'
-                            : showTimer && timerSeconds === 0
+                            : isExCardio || (showTimer && timerSeconds === 0)
                             ? 'bg-green-500'
                             : 'bg-primary'
                         }`}
                       >
-                        {showTimer && !timerRunning && timerSeconds === 0 ? (
+                        {(!timerRunning && (isExCardio || timerSeconds === 0)) ? (
                           <Play className="w-5 h-5 text-white" />
-                        ) : showTimer && timerRunning ? (
+                        ) : timerRunning ? (
                           <Square className="w-5 h-5 text-white" />
                         ) : (
                           <ChevronRight className="w-6 h-6 text-white" />

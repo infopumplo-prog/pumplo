@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, X, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
@@ -10,7 +10,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
-interface ExerciseDetail { name: string; sets: { weight: number; reps: number }[] }
+interface ExerciseDetail { name: string; sets: { weight: number; reps: number }[]; isCardio?: boolean }
 
 interface WorkoutShareCardProps {
   dayLetter: string; dayName?: string; goalId: string; gymName: string; gymInstagram?: string | null;
@@ -116,6 +116,7 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }
             {exercises.slice(0, 6).map((ex, i) => {
               const maxW = Math.max(...ex.sets.map(s => s.weight), 0);
               const totalR = ex.sets.reduce((s, set) => s + set.reps, 0);
+              const fmtCardio = (sec: number) => { const m = Math.floor(sec / 60); const s = sec % 60; return s > 0 ? `${m}min ${s}s` : `${m} min`; };
               return (
                 <div key={i} className="rounded-xl px-4 py-2.5" style={{ background: 'rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between">
@@ -123,8 +124,14 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }
                     <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{ex.sets.length}x</span>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
-                    {maxW > 0 && <span style={{ color: '#34d399', fontSize: '12px' }}>{maxW} kg</span>}
-                    <span style={{ color: '#fbbf24', fontSize: '12px' }}>{totalR} opak.</span>
+                    {ex.isCardio ? (
+                      <span style={{ color: '#22d3ee', fontSize: '12px' }}>{fmtCardio(ex.sets[0]?.reps || 0)}</span>
+                    ) : (
+                      <>
+                        {maxW > 0 && <span style={{ color: '#34d399', fontSize: '12px' }}>{maxW} kg</span>}
+                        <span style={{ color: '#fbbf24', fontSize: '12px' }}>{totalR} opak.</span>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -399,7 +406,7 @@ export const WorkoutShareCard = ({
       style={{ background: '#111', width: '100%', height: '100%' }}>
 
       <div className="shrink-0 flex items-center px-3 pt-2 pb-1">
-        <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><ArrowLeft className="w-5 h-5" /></button>
+        <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><X className="w-5 h-5" /></button>
       </div>
 
       <div className="flex-1 min-h-0 flex items-center justify-center px-3 py-1">

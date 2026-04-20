@@ -923,7 +923,7 @@ const CustomWorkoutPlayer = () => {
         exerciseCount={totalExercises}
         exerciseDetails={exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
-          return { name: ex.exercise_name, sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
+          return { name: ex.exercise_name, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         })}
         onClose={() => setPlayerState('exercise')}
         onFinish={handleFinishWorkout}
@@ -1007,6 +1007,8 @@ const CustomWorkoutPlayer = () => {
       slotCategory: null as string | null,
       repsPerSet: ex.reps_per_set,
       weightPerSet: ex.weight_per_set,
+      unit_type: ex.unit_type,
+      category: ex.category,
     }));
 
     const compactSetsMap = new Map<number, { completed: boolean; weight?: number; reps?: number; durationSeconds?: number }[]>();
