@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playCountdown3, playCountdown2, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
+import { playBeep, playCountdown3, playCountdown2, playAlarmFinish, unlockAudio, announceWorkoutComplete } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;

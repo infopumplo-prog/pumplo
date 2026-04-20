@@ -127,3 +127,7 @@ export const playCountdown2 = () => {
   _playAlarmBeep();
   setTimeout(() => _playAlarmBeep(), 180);
 };
+
+/** Long beep — signals workout or warmup completion */
+export const announceWarmupStart = () => playAlarmFinish();
+export const announceWorkoutComplete = () => playAlarmFinish();
