@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1408,11 +1409,16 @@ const Training = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDayIndex, daysInViewingWeek[selectedDayIndex]?.sessionId]);
 
-  // Get day name for preview
+  // Get day name for preview — use plan.currentDayLetter as source of truth,
+  // not the calendar position (the two can diverge after skipped/missed days)
   const getTodayDayName = useCallback(() => {
+    if (plan?.currentDayLetter && plan?.allDays) {
+      const currentDay = plan.allDays.find(d => d.dayLetter === plan.currentDayLetter);
+      if (currentDay?.dayName) return currentDay.dayName;
+    }
     const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
     return todayTrainingDay?.workoutName || 'Trénink';
-  }, [daysInViewingWeek]);
+  }, [plan, daysInViewingWeek]);
 
   // Workout preview screen
   if (showWorkoutPreview && generatedExercises.length > 0) {
