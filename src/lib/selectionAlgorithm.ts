@@ -19,6 +19,7 @@ export interface Exercise {
   secondary_muscles: string[];
   banned_injuries?: string[];
   is_compound?: boolean;
+  is_unilateral?: boolean;
   stability_rating?: number;
   slot_type?: string;
   required_bench_config?: string | null;
@@ -57,6 +58,7 @@ export interface SelectionContext {
   usedExerciseIdsToday: string[];
   usedEquipmentTypes: Set<string>;
   roleOccurrence: number; // 1 = first time this role appears, 2+ = duplicate
+  slotCategory: string; // 'main' | 'secondary' | 'isolation' | 'core_or_compensatory' | 'conditioning'
   durationMinutes: number;
   // BMI-based adjustments for obese users
   bmiPreferMachines?: boolean;
@@ -455,6 +457,11 @@ export const getCandidates = async (
 
     // Strict injuries filter
     if (options.strictInjuries && isContraindicated(ex, context.injuries)) {
+      return false;
+    }
+
+    // Exclude unilateral exercises from main slots
+    if (context.slotCategory === 'main' && ex.is_unilateral) {
       return false;
     }
 

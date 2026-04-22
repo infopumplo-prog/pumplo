@@ -597,6 +597,7 @@ export const useWorkoutGenerator = () => {
             usedExerciseIdsToday,
             usedEquipmentTypes,
             roleOccurrence: currentOccurrence,
+            slotCategory: slot.slotCategory,
             durationMinutes,
             bmiPreferMachines: bmiAdjustments.preferMachines,
             bmiPenaltyHighImpact: bmiAdjustments.penaltyHighImpact,
