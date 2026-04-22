@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // useWorkoutGenerator v2.0.0 - PUMPLO Training System Refactor
 // 
 // Key changes in v2.0:
@@ -164,6 +165,9 @@ export const useWorkoutGenerator = () => {
   // Goal-based rep range overrides (trainer rules v3)
   // Replaces template rep ranges with goal-specific values
   const getRepRangeForGoal = (goalId: string, slotCategory: SlotCategory): { repMin: number; repMax: number } => {
+    // Core and isolation always use higher reps regardless of goal
+    if (slotCategory === 'core_or_compensatory') return { repMin: 10, repMax: 15 };
+    if (slotCategory === 'isolation') return { repMin: 8, repMax: 12 };
     switch (goalId) {
       case 'strength':
         return { repMin: 3, repMax: 5 };
@@ -172,10 +176,7 @@ export const useWorkoutGenerator = () => {
       case 'general_fitness':
         return { repMin: 12, repMax: 20 };
       case 'fat_loss':
-        // Main exercises: 5-12, others: 12+
-        if (slotCategory === 'main') {
-          return { repMin: 5, repMax: 12 };
-        }
+        if (slotCategory === 'main') return { repMin: 5, repMax: 12 };
         return { repMin: 12, repMax: 20 };
       default:
         return { repMin: 8, repMax: 12 };
@@ -316,7 +317,7 @@ export const useWorkoutGenerator = () => {
 
     // Calculate total time for all template slots
     const targetSec = durationMinutes * 60;
-    let selected = [...sortedSlots];
+    const selected = [...sortedSlots];
 
     // Trim low-priority slots if they don't fit in the time budget
     while (selected.length > MIN_EXERCISES) {
