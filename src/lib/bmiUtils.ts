@@ -70,7 +70,7 @@ export const isSeverelyObese = (bmiResult: BmiResult | null): boolean => {
  * Equipment types that are safer for obese users
  * Machines provide stability and reduce joint stress
  */
-export const OBESE_PREFERRED_EQUIPMENT = ['machine', 'cable', 'plate_loaded'];
+export const OBESE_PREFERRED_EQUIPMENT = ['machine'];
 
 /**
  * Roles/exercises to AVOID for obese users (BMI >= 30)

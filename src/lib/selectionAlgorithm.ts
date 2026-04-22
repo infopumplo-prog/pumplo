@@ -167,10 +167,10 @@ export const matchesEquipmentPreference = (
   const exType = exercise.equipment_type || 'bodyweight';
   
   if (preference === 'machines') {
-    return ['machine', 'cable', 'plate_loaded'].includes(exType);
+    return exType === 'machine';
   }
   if (preference === 'free_weights') {
-    return ['barbell', 'dumbbell', 'kettlebell', 'resistance_band'].includes(exType);
+    return exType === 'free_weight';
   }
   if (preference === 'bodyweight') {
     return exType === 'bodyweight';
@@ -241,7 +241,7 @@ export const calculateExerciseScore = (
   if (context.bmiPreferMachines) {
     // Prefer machines/cables for obese users
     const exType = exercise.equipment_type || 'bodyweight';
-    if (['machine', 'cable', 'plate_loaded'].includes(exType)) {
+    if (exType === 'machine') {
       bmiBonus += 10;
     }
   }
@@ -444,10 +444,10 @@ export const getCandidates = async (
             if (exType !== 'bodyweight') return false;
           }
           if (context.equipmentPreference === 'machines') {
-            if (!['machine', 'cable', 'plate_loaded'].includes(exType)) return false;
+            if (exType !== 'machine') return false;
           }
           if (context.equipmentPreference === 'free_weights') {
-            if (!['barbell', 'dumbbell', 'kettlebell', 'resistance_band', 'free_weight'].includes(exType)) return false;
+            if (exType !== 'free_weight') return false;
           }
         }
       }
