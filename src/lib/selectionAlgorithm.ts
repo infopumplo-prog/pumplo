@@ -447,7 +447,7 @@ export const getCandidates = async (
             if (!['machine', 'cable', 'plate_loaded'].includes(exType)) return false;
           }
           if (context.equipmentPreference === 'free_weights') {
-            if (!['barbell', 'dumbbell', 'kettlebell', 'resistance_band'].includes(exType)) return false;
+            if (!['barbell', 'dumbbell', 'kettlebell', 'resistance_band', 'free_weight'].includes(exType)) return false;
           }
         }
       }
