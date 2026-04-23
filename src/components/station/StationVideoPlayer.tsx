@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Exercise {
   id: string;
@@ -20,13 +19,6 @@ interface StationVideoPlayerProps {
   machineName: string;
   bannerVisible?: boolean;
 }
-
-const extractVideoFilePath = (videoPath: string): string => {
-  const bucketMarker = '/exercise-videos/';
-  const idx = videoPath.indexOf(bucketMarker);
-  if (idx !== -1) return videoPath.substring(idx + bucketMarker.length);
-  return videoPath;
-};
 
 const DifficultyDots = ({ level }: { level: number | null }) => {
   const max = 4;
@@ -49,62 +41,21 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
 export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = false }: StationVideoPlayerProps) => {
   const topOffset = bannerVisible ? '60px' : '12px';
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [activeUrl, setActiveUrl] = useState<string | null>(null);
-  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const activeVideoRef = useRef<HTMLVideoElement>(null);
-  const nextVideoRef = useRef<HTMLVideoElement>(null);
 
   const currentExercise = exercises[currentIndex] ?? null;
-
-  const fetchSignedUrl = useCallback(async (videoPath: string) => {
-    try {
-      const filePath = extractVideoFilePath(videoPath);
-      const { data, error } = await supabase.storage
-        .from('exercise-videos')
-        .createSignedUrl(filePath, 3600);
-      if (!error && data?.signedUrl) {
-        if (!activeUrl) {
-          // First load — set directly as active
-          setActiveUrl(data.signedUrl);
-        } else {
-          // Subsequent loads — preload in hidden video
-          setNextUrl(data.signedUrl);
-        }
-      }
-    } catch {}
-  }, [activeUrl]);
+  const nextExercise = exercises[currentIndex + 1] ?? null;
+  const activeUrl = currentExercise?.video_path ?? null;
+  const nextUrl = nextExercise?.video_path ?? null;
 
   useEffect(() => {
-    if (currentExercise?.video_path) {
-      fetchSignedUrl(currentExercise.video_path);
-    }
     setInfoOpen(false);
-  }, [currentIndex]);
-
-  // When active URL changes, start playback
-  useEffect(() => {
-    if (activeUrl && activeVideoRef.current) {
+    if (activeVideoRef.current) {
       activeVideoRef.current.load();
       activeVideoRef.current.play().catch(() => {});
     }
-  }, [activeUrl]);
-
-  // When next video loads in background, start it
-  useEffect(() => {
-    if (nextUrl && nextVideoRef.current) {
-      nextVideoRef.current.load();
-      nextVideoRef.current.play().catch(() => {});
-    }
-  }, [nextUrl]);
-
-  // When next video is ready, promote it to active
-  const handleNextCanPlay = useCallback(() => {
-    if (nextUrl) {
-      setActiveUrl(nextUrl);
-      setNextUrl(null);
-    }
-  }, [nextUrl]);
+  }, [currentIndex]);
 
   const goTo = useCallback((index: number) => {
     setCurrentIndex(Math.max(0, Math.min(index, exercises.length - 1)));
@@ -137,6 +88,13 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
     navigator.mediaSession.playbackState = activeUrl ? 'playing' : 'none';
   }, [activeUrl]);
 
+  // Tap anywhere on video to play (iOS autoplay workaround)
+  const handleVideoTap = useCallback(() => {
+    if (activeVideoRef.current) {
+      activeVideoRef.current.play().catch(() => {});
+    }
+  }, []);
+
   if (!currentExercise) {
     return (
       <div
@@ -147,13 +105,6 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
       </div>
     );
   }
-
-  // Tap anywhere on video to play (iOS autoplay workaround)
-  const handleVideoTap = useCallback(() => {
-    if (activeVideoRef.current) {
-      activeVideoRef.current.play().catch(() => {});
-    }
-  }, []);
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ background: '#000' }}>
@@ -167,28 +118,26 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
           loop
           muted
           playsInline
-          // @ts-ignore — webkit prefix for iOS
+          preload="auto"
+          // @ts-expect-error — webkit prefix for iOS
           webkit-playsinline="true"
           className="w-full h-full object-cover"
           style={{ opacity: activeUrl ? 1 : 0, transition: 'opacity 0.3s' }}
         />
-        {/* Next video — hidden, preloading */}
+        {/* Next video — hidden, preloads in background while current plays */}
         {nextUrl && (
           <video
-            ref={nextVideoRef}
             src={nextUrl}
-            autoPlay
-            loop
             muted
             playsInline
-            onCanPlay={handleNextCanPlay}
-            // @ts-ignore
+            preload="auto"
+            // @ts-expect-error — webkit prefix for iOS
             webkit-playsinline="true"
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: 0 }}
+            style={{ opacity: 0, pointerEvents: 'none' }}
           />
         )}
-        {/* Loading spinner — only on first load */}
+        {/* Loading spinner — only when no video_path */}
         {!activeUrl && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#4CC9FF', borderTopColor: 'transparent' }} />
