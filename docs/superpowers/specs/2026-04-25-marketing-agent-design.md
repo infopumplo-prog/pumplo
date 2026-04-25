@@ -123,9 +123,14 @@ Každý článek psaný agentem prochází automaticky dvojí optimalizací.
 
 ### Keyword research workflow (`/suggest`)
 1. Agent prohledá trendy (web search) ve fitness/SaaS/gym management
-2. Vyhodnotí objem hledání, obtížnost, relevanci pro Pumplo
-3. Navrhne 5 témat s odůvodněním — David vybere
-4. Vybrané téma zpracuje jako SEO+GEO optimalizovaný článek
+2. Vyhodnotí každé téma podle tří kritérií:
+   - **Povědomí** — dosah, sdílitelnost, brand awareness
+   - **Konverze** — přivede nové uživatele nebo zákazníky (gymy)?
+   - **Autorita** — posiluje Pumplo jako experta v oboru?
+3. Automaticky vybere nejlepší téma pro Pumplo a odůvodní volbu jednou větou
+4. Ukáže zbývající témata jako alternativy
+5. David schválí doporučené téma ("ok") nebo zvolí alternativu
+6. Agent napíše SEO+GEO optimalizovaný článek bez dalšího vstupu
 
 ---
 
