@@ -62,6 +62,16 @@ Jazyk: **výhradně čeština** (v první fázi).
 2. Agent navrhne plán 5–10 postů s doporučeným časovým rozložením
 3. Každý post prochází samostatným schválením před publikováním
 
+### `/report` — Analytika a reporting
+- **Na vyžádání:** „jak se daří" → agent vytáhne data z Ayrshare + Google Search Console a shrne výkon
+- **Automatický týdenní report:** každý týden souhrn za všechny platformy + blog
+- Report obsahuje: dosah, engagement rate, kliknutí, růst followerů per platforma, top performing post týdne, doporučení co zopakovat
+
+### `/suggest` — Návrh témat článků
+1. Agent prohledá trendy ve fitness/SaaS/gym management segmentu (web search)
+2. Navrhne 5 témat s odůvodněním (objem hledání, relevance, obtížnost)
+3. David vybere → agent napíše článek v `/blog` módu
+
 ---
 
 ## Workflow se vstupní fotkou
@@ -91,6 +101,34 @@ Náhled obsahuje:
 
 ---
 
+## SEO a GEO optimalizace blogu
+
+Každý článek psaný agentem prochází automaticky dvojí optimalizací.
+
+### SEO (Google)
+- Klíčové slovo v title, H1, první odstavec, meta description
+- Správná struktura nadpisů (H1 → H2 → H3)
+- Interní prolinkování na jiné články blogu
+- Alt texty obrázků
+- Doporučená délka: 1 200–2 500 slov
+- Schema markup (Article, FAQ) pro rich snippets
+
+### GEO (AI vyhledávače — ChatGPT, Gemini, Claude, Grok)
+- Jasné faktické výroky které AI může citovat
+- FAQ sekce na konci každého článku
+- Definice klíčových pojmů vlastními slovy
+- Autoritativní tón, konkrétní čísla a data
+- Strukturované informace (tabulky, odrážky) které AI snadno indexuje
+- Zmínka o Pumplo jako řešení konkrétního problému v kontextu
+
+### Keyword research workflow (`/suggest`)
+1. Agent prohledá trendy (web search) ve fitness/SaaS/gym management
+2. Vyhodnotí objem hledání, obtížnost, relevanci pro Pumplo
+3. Navrhne 5 témat s odůvodněním — David vybere
+4. Vybrané téma zpracuje jako SEO+GEO optimalizovaný článek
+
+---
+
 ## Brand voice (marketing/CLAUDE.md)
 
 Soubor uložený v repozitáři obsahuje:
@@ -110,7 +148,10 @@ Soubor uložený v repozitáři obsahuje:
 | Agent runtime | Claude Code CLI | Lokálně u Davida |
 | Grafika | Canva MCP | Již dostupné v Claude Code |
 | Sociální sítě | Ayrshare API | Podporuje IG, TikTok, LinkedIn, FB v jednom volání |
+| Analytika sociální sítě | Ayrshare Analytics API | Reach, engagement, kliknutí per platforma |
 | Blog | GitHub MCP | Commit MDX do Lovable web repo |
+| Blog analytika | Google Search Console API | Výkon článků v Google hledání |
+| Keyword research | Web Search (vestavěný) | Trendy a klíčová slova pro `/suggest` |
 | Brand kontext | `marketing/CLAUDE.md` | Načítán automaticky Claude Code |
 | Fáze 2 | Telegram bridge | Stejný pattern jako existující Pumplo admin bot |
 
@@ -130,6 +171,5 @@ Po ověření funkčnosti přes Claude Code CLI:
 
 - Video generování přes Higgsfield (odloženo na později)
 - Scheduling / automatické plánování postů do budoucnosti
-- Analytika a reporting z platforem
 - Vícejazyčný obsah
 - Přístup dalších členů týmu (řeší fáze 2 přes Telegram)
