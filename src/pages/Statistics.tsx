@@ -1,4 +1,3 @@
-// AGENT TEST
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, Dumbbell, Clock, TrendingUp, Trophy, Target, Weight, Search, ChevronDown, X } from 'lucide-react';
