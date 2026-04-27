@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useGymAttendanceData } from '@/hooks/useGymAttendanceData';
 
 // Static popular times data based on Google Maps (hourly popularity 0-100)
-// TODO: Move to Supabase when gyms have their own attendance data
 const POPULAR_TIMES: Record<string, number[]> = {
   monday:    [0,0,0,0,0,0,10,25,35,40,35,30,35,30,25,30,45,60,55,40,25,15,5,0],
   tuesday:   [0,0,0,0,0,0,10,20,30,35,30,30,35,30,25,35,50,65,55,40,25,15,5,0],
@@ -16,15 +16,22 @@ const POPULAR_TIMES: Record<string, number[]> = {
 const DAY_LABELS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-const GymAttendanceChart = () => {
+interface GymAttendanceChartProps {
+  gymId?: string;
+}
+
+const GymAttendanceChart = ({ gymId }: GymAttendanceChartProps) => {
   const now = new Date();
   const currentDayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0=Monday
   const currentHour = now.getHours();
 
   const [selectedDay, setSelectedDay] = useState(currentDayIndex);
 
+  const { data: realData, isLoading, hasRealData } = useGymAttendanceData(gymId ?? null);
+
+  const chartData = hasRealData ? realData : POPULAR_TIMES;
   const selectedKey = DAY_KEYS[selectedDay];
-  const hours = POPULAR_TIMES[selectedKey] || [];
+  const hours = chartData[selectedKey] || [];
   const isToday = selectedDay === currentDayIndex;
 
   // Show hours 6-23 (opening range)
@@ -53,7 +60,7 @@ const GymAttendanceChart = () => {
       </div>
 
       {/* Bar chart */}
-      <div className="flex items-end gap-[2px] h-16">
+      <div className={cn("flex items-end gap-[2px] h-16", isLoading && "opacity-50")}>
         {visibleHours.map((val, i) => {
           const hour = startHour + i;
           const isCurrent = isToday && hour === currentHour;

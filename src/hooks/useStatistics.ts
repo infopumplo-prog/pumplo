@@ -113,7 +113,7 @@ export const useStatistics = () => {
 
       // Fetch exercise details for muscle groups
       const exerciseIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
-      let exerciseMap = new Map<string, { name: string; muscles: string[] }>();
+      const exerciseMap = new Map<string, { name: string; muscles: string[] }>();
       if (exerciseIds.length > 0) {
         const { data: exercises } = await supabase
           .from('exercises')
@@ -198,15 +198,15 @@ export const useStatistics = () => {
 
       // Sort sets by date ascending to track progression
       const sortedSets = [...allSets].sort((a, b) =>
-        new Date((a.workout_sessions as any)?.started_at || a.created_at).getTime() -
-        new Date((b.workout_sessions as any)?.started_at || b.created_at).getTime()
+        new Date((a.workout_sessions as { started_at: string } | null)?.started_at || a.created_at).getTime() -
+        new Date((b.workout_sessions as { started_at: string } | null)?.started_at || b.created_at).getTime()
       );
 
       sortedSets.forEach(set => {
         if (!set.exercise_id || !set.weight_kg || set.weight_kg <= 0) return;
         const exInfo = exerciseMap.get(set.exercise_id);
         const name = exInfo?.name || set.exercise_name || 'Neznámý';
-        const date = (set.workout_sessions as any)?.started_at || set.created_at;
+        const date = (set.workout_sessions as { started_at: string } | null)?.started_at || set.created_at;
         const reps = set.reps || 1;
         const est1RM = calc1RM(set.weight_kg, reps);
         const setEntry: SetHistory = { weight: set.weight_kg, reps, date, estimated1RM: est1RM };

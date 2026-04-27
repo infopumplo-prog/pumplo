@@ -62,7 +62,7 @@ const TrainingRolesManagement = () => {
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => {
       const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
+      if (next.has(cat)) { next.delete(cat); } else { next.add(cat); }
       return next;
     });
   };
@@ -70,7 +70,7 @@ const TrainingRolesManagement = () => {
   const toggleRole = (id: string) => {
     setExpandedRoles(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };

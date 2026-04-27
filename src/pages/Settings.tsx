@@ -136,10 +136,10 @@ const Settings = () => {
         description: 'Zkontrolujte svou novou e-mailovou schránku a potvrďte změnu.',
       });
       setNewEmail('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Chyba',
-        description: error.message || 'Nepodařilo se změnit e-mail.',
+        description: (error as Error).message || 'Nepodařilo se změnit e-mail.',
         variant: 'destructive',
       });
     } finally {
@@ -209,10 +209,10 @@ const Settings = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Chyba',
-        description: error.message || 'Nepodařilo se změnit heslo.',
+        description: (error as Error).message || 'Nepodařilo se změnit heslo.',
         variant: 'destructive',
       });
     } finally {
@@ -298,11 +298,11 @@ const Settings = () => {
       // Sign out locally and redirect
       await supabase.auth.signOut();
       navigate('/auth');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete account error:', error);
       toast({
         title: 'Chyba',
-        description: error.message || 'Nepodařilo se smazat účet. Zkuste to znovu.',
+        description: (error as Error).message || 'Nepodařilo se smazat účet. Zkuste to znovu.',
         variant: 'destructive',
       });
     } finally {

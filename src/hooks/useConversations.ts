@@ -57,11 +57,11 @@ export const useConversations = () => {
 
     // Collect trainer IDs for joined data
     const trainerIds = convos
-      .map((c: any) => c.trainer_id)
-      .filter((id: string | null): id is string => id !== null);
+      .map((c) => c.trainer_id)
+      .filter((id): id is string => id !== null);
 
     // Fetch trainer info
-    let trainerMap: Record<string, { name: string; photo_url: string | null }> = {};
+    const trainerMap: Record<string, { name: string; photo_url: string | null }> = {};
     if (trainerIds.length > 0) {
       const { data: trainers } = await supabase
         .from('gym_trainers')
@@ -69,14 +69,14 @@ export const useConversations = () => {
         .in('id', trainerIds);
 
       if (trainers) {
-        for (const t of trainers as any[]) {
+        for (const t of trainers) {
           trainerMap[t.id] = { name: t.name, photo_url: t.photo_url };
         }
       }
     }
 
     // Fetch last message preview and unread count for each conversation
-    const convoIds = convos.map((c: any) => c.id);
+    const convoIds = convos.map((c) => c.id);
 
     // Get last message per conversation
     const { data: lastMessages } = await supabase
@@ -88,7 +88,7 @@ export const useConversations = () => {
     // Build a map: conversation_id -> last message body
     const lastMsgMap: Record<string, string> = {};
     if (lastMessages) {
-      for (const msg of lastMessages as any[]) {
+      for (const msg of lastMessages) {
         // Only take the first (most recent) message per conversation
         if (!lastMsgMap[msg.conversation_id]) {
           lastMsgMap[msg.conversation_id] = msg.body;
@@ -107,7 +107,7 @@ export const useConversations = () => {
     const unreadMap: Record<string, number> = {};
     let totalUnread = 0;
     if (unreadMessages) {
-      for (const msg of unreadMessages as any[]) {
+      for (const msg of unreadMessages) {
         unreadMap[msg.conversation_id] = (unreadMap[msg.conversation_id] || 0) + 1;
         totalUnread++;
       }
@@ -121,7 +121,7 @@ export const useConversations = () => {
       .single();
 
     // Assemble enriched conversations
-    const enriched: Conversation[] = convos.map((c: any) => ({
+    const enriched: Conversation[] = convos.map((c) => ({
       id: c.id,
       gym_id: c.gym_id,
       participant_user_id: c.participant_user_id,

@@ -117,7 +117,7 @@ export const useWorkoutPlan = () => {
 
       const currentDayIndex = profileData?.current_day_index || 0;
       const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
-      const goalName = (planData.training_goals as any)?.name || 'Trénink';
+      const goalName = (planData.training_goals as { name: string } | null)?.name || 'Trénink';
 
       // 3. Get exercises for this plan with machine info
       const { data: exercisesData, error: exError } = await supabase
@@ -140,8 +140,8 @@ export const useWorkoutPlan = () => {
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
       // 5. Determine split_type: use stored value, snapshot, or derive from exercise roles
-      const splitType: SplitType = (planData as any).split_type 
-        || (planData.inputs_snapshot_json as any)?.split_type
+      const splitType: SplitType = (planData as Record<string, unknown>).split_type as SplitType
+        || ((planData.inputs_snapshot_json as Record<string, unknown> | null)?.split_type as SplitType)
         || deriveSplitTypeFromExercises(exercisesData || []);
 
       // 6. Get day templates for day names and slot categories - by split_type and goal_id
@@ -162,7 +162,7 @@ export const useWorkoutPlan = () => {
           }
           const key = `${dt.day_letter}:${dt.slot_order}`;
           slotCategoryMap[key] = dt.slot_category || 'secondary';
-          rirMap[key] = { min: (dt as any).rir_min ?? null, max: (dt as any).rir_max ?? null };
+          rirMap[key] = { min: (dt as Record<string, unknown>).rir_min as number | null ?? null, max: (dt as Record<string, unknown>).rir_max as number | null ?? null };
         });
       }
 
@@ -173,16 +173,16 @@ export const useWorkoutPlan = () => {
         slotOrder: ex.slot_order,
         roleId: ex.role_id,
         exerciseId: ex.exercise_id,
-        exerciseName: (ex.exercises as any)?.name || null,
-        equipment: (ex.exercises as any)?.equipment || [],
-        machineName: (ex.exercises as any)?.machines?.name || null,
+        exerciseName: (ex.exercises as Record<string, unknown> | null)?.name as string | null || null,
+        equipment: (ex.exercises as Record<string, unknown> | null)?.equipment as string[] || [],
+        machineName: ((ex.exercises as Record<string, unknown> | null)?.machines as Record<string, unknown> | null)?.name as string | null || null,
         sets: ex.sets,
         repMin: ex.rep_min || 8,
         repMax: ex.rep_max || 12,
         isFallback: ex.is_fallback || false,
         fallbackReason: ex.fallback_reason,
         selectionScore: ex.selection_score,
-        slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as any,
+        slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as WorkoutExercise['slotCategory'],
         rirMin: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null,
         rirMax: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null,
       }));
@@ -200,10 +200,10 @@ export const useWorkoutPlan = () => {
 
         // Get machine_ids from exercises
         const exerciseMachines = (exercisesData || [])
-          .filter(e => e.exercises && (e.exercises as any).machine_id)
+          .filter(e => e.exercises && (e.exercises as Record<string, unknown>).machine_id)
           .map(e => ({
             exercise_id: e.exercise_id,
-            machine_id: (e.exercises as any).machine_id
+            machine_id: (e.exercises as Record<string, unknown>).machine_id as string
           }));
 
         const validity = await checkPlanEquipmentValidity(exerciseMachines, currentMachineIds);

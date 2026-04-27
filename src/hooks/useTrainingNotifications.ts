@@ -270,7 +270,7 @@ export const useTrainingNotifications = () => {
       const now = new Date();
       const targetHour = getNotificationHour(profile.preferred_time || null);
       
-      let nextCheck = new Date(now);
+      const nextCheck = new Date(now);
       nextCheck.setHours(targetHour, 0, 0, 0);
       
       if (now >= nextCheck) {

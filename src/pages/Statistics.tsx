@@ -36,7 +36,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const CustomTooltip = ({ active, payload, metric }: any) => {
+interface TooltipProps { active?: boolean; payload?: { payload: SessionDataPoint }[]; metric: MetricKey }
+
+const CustomTooltip = ({ active, payload, metric }: TooltipProps) => {
   if (!active || !payload?.[0]) return null;
   const data = payload[0].payload as SessionDataPoint;
   const m = METRICS.find(m => m.key === metric)!;

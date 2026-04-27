@@ -36,7 +36,14 @@ export const useMachineGyms = (machineId: string | null) => {
         console.error('Error fetching machine gyms:', error);
         setGyms([]);
       } else {
-        const mapped: MachineGymEntry[] = (data || []).map((item: any) => ({
+        type GymMachineRow = {
+          gym_id: string;
+          quantity: number;
+          max_weight_kg: number | null;
+          bench_configs: string[] | null;
+          gyms: { name: string } | null;
+        };
+        const mapped: MachineGymEntry[] = (data || []).map((item: GymMachineRow) => ({
           gym_id: item.gym_id,
           gym_name: item.gyms?.name || 'Unknown',
           quantity: item.quantity,

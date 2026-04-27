@@ -162,7 +162,7 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, servi
             <Users className="w-5 h-5 text-muted-foreground" />
             <span className="text-sm font-medium">Průměrná návštěvnost</span>
           </div>
-          <GymAttendanceChart />
+          <GymAttendanceChart gymId={gymId} />
         </div>
       </TabsContent>
 

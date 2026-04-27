@@ -63,7 +63,9 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
         position: Math.max(0, currentExercise.duration - timeRemaining),
         playbackRate: isPaused ? 0 : 1,
       });
-    } catch {}
+    } catch {
+      // MediaSession API not available in all environments
+    }
   }, [timeRemaining, currentExercise, isPaused]);
 
   // Reset beep refs and clock on each new exercise

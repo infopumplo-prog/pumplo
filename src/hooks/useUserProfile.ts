@@ -84,7 +84,7 @@ export const useUserProfile = () => {
 
     const { error } = await supabase
       .from('user_profiles')
-      .update(updates as any)
+      .update(updates as Partial<UserProfile>)
       .eq('user_id', user.id);
 
     if (error) {

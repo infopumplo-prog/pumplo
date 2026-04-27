@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { type LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Camera, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -20,7 +21,7 @@ interface WorkoutShareCardProps {
   onAbandon?: () => void;
 }
 
-interface Stat { icon: any; color: string; value: string; unit: string }
+interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
 
 // ===== TEMPLATES =====
 

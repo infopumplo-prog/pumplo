@@ -63,11 +63,11 @@ export function useCustomPlans() {
 
     if (!error && data) {
       setPlans(
-        data.map((p: any) => ({
+        data.map((p) => ({
           id: p.id,
           name: p.name,
           created_at: p.created_at,
-          day_count: p.custom_plan_days?.length || 0,
+          day_count: (p.custom_plan_days as { id: string }[] | null)?.length || 0,
         }))
       );
     }
@@ -138,11 +138,26 @@ export function useCustomPlanDetail(planId: string | null) {
       .in('day_id', (daysData || []).map(d => d.id))
       .order('order_index');
 
+    type ExerciseWithJoin = {
+      id: string;
+      day_id: string;
+      exercise_id: string;
+      sets: number;
+      reps: number;
+      reps_per_set: number[] | null;
+      weight_kg: number | null;
+      weight_per_set: number[] | null;
+      rest_seconds: number | null;
+      rest_per_set: number[] | null;
+      order_index: number;
+      exercises: { name: string; unit_type: string; category: string } | null;
+    };
+
     const days: CustomPlanDay[] = (daysData || []).map(d => ({
       ...d,
       exercises: (exercisesData || [])
-        .filter((e: any) => e.day_id === d.id)
-        .map((e: any) => ({
+        .filter((e: ExerciseWithJoin) => e.day_id === d.id)
+        .map((e: ExerciseWithJoin) => ({
           id: e.id,
           day_id: e.day_id,
           exercise_id: e.exercise_id,
@@ -155,8 +170,8 @@ export function useCustomPlanDetail(planId: string | null) {
           rest_seconds: e.rest_seconds || 120,
           rest_per_set: e.rest_per_set || null,
           order_index: e.order_index,
-          unit_type: (e.exercises as any)?.unit_type || 'reps',
-          category: (e.exercises as any)?.category || '',
+          unit_type: e.exercises?.unit_type || 'reps',
+          category: e.exercises?.category || '',
         })),
     }));
 

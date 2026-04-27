@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -172,7 +173,9 @@ export const WorkoutSession = ({
         position: Math.min(elapsedSeconds, 5400),
         playbackRate: 1,
       });
-    } catch {}
+    } catch {
+      // MediaSession API not available in all environments
+    }
   }, [currentExercise, gymName, elapsedSeconds]);
 
   const [showSkipDialog, setShowSkipDialog] = useState(false);

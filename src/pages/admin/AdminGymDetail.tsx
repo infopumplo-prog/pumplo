@@ -298,7 +298,7 @@ const AdminGymDetail = () => {
       return;
     }
 
-    type === 'cover' ? setIsUploadingCover(true) : setIsUploadingLogo(true);
+    if (type === 'cover') { setIsUploadingCover(true); } else { setIsUploadingLogo(true); }
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${gym.owner_id}/${type}-${Date.now()}.${fileExt}`;
@@ -309,7 +309,7 @@ const AdminGymDetail = () => {
 
     if (uploadError) {
       toast.error('Nepodarilo sa nahrať obrázok');
-      type === 'cover' ? setIsUploadingCover(false) : setIsUploadingLogo(false);
+      if (type === 'cover') { setIsUploadingCover(false); } else { setIsUploadingLogo(false); }
       return;
     }
 

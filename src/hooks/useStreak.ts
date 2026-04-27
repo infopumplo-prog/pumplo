@@ -66,7 +66,7 @@ export const useStreak = () => {
     // Start from today: if today is a training day, only count it if user already worked out
     // (don't break the streak just because user hasn't trained yet today)
     let consecutiveDays = 0;
-    let checkDate = new Date(endDate);
+    const checkDate = new Date(endDate);
 
     while (true) {
       const dateKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;

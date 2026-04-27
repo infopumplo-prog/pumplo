@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect } from 'react';
 import { MapPin, Play, ArrowLeft, ChevronDown, Globe, Mail, Phone, Heart, Check, CheckCircle2 } from 'lucide-react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';

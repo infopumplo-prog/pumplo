@@ -80,8 +80,17 @@ export const useWorkoutHistory = () => {
       if (sessionError) throw sessionError;
 
       // 2. Create set records
-      const setInserts: any[] = [];
-      
+      interface SetInsert {
+        session_id: string;
+        exercise_id: string | null;
+        exercise_name: string;
+        set_number: number;
+        weight_kg: number | null;
+        reps: number | null;
+        completed: boolean;
+      }
+      const setInserts: SetInsert[] = [];
+
       data.results.forEach(exercise => {
         exercise.sets.forEach((set, index) => {
           setInserts.push({

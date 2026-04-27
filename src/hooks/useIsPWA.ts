@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 
+interface NavigatorStandalone extends Navigator {
+  standalone?: boolean;
+}
+
 /**
  * Hook to detect if the app is running as an installed PWA
  */
@@ -9,9 +13,9 @@ export const useIsPWA = () => {
   useEffect(() => {
     // Check if running in standalone mode (installed PWA)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    
+
     // iOS Safari specific check
-    const isIOSStandalone = (window.navigator as any).standalone === true;
+    const isIOSStandalone = (window.navigator as NavigatorStandalone).standalone === true;
     
     // Check if running in fullscreen mode
     const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;

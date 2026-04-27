@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -172,9 +173,9 @@ const BecomeTrainer = () => {
         description: isAutoApproved ? `Nyní jste trenérem v ${inviteGymName}.` : 'Vyčkejte na schválení majitelem posilovny.',
       });
       navigate('/profile');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Trainer registration error:', error);
-      toast({ title: 'Chyba', description: error.message || 'Nepodařilo se odeslat žádost.', variant: 'destructive' });
+      toast({ title: 'Chyba', description: (error as Error).message || 'Nepodařilo se odeslat žádost.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

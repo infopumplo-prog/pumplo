@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
@@ -102,8 +103,6 @@ const Map = () => {
       return;
     }
 
-    let watchId: number;
-
     // First try getCurrentPosition for quick initial location
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -121,7 +120,7 @@ const Map = () => {
     );
 
     // Also use watchPosition for continuous updates
-    watchId = navigator.geolocation.watchPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
         console.log('Watch position update:', position.coords);
         setUserLocation({

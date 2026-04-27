@@ -43,7 +43,16 @@ export const useMachineExercises = (machineId: string | null) => {
       console.error('Error fetching machine exercises:', error);
       setExercises([]);
     } else {
-      const mapped = (data || []).map((ex: any) => ({
+      type ExerciseRow = {
+        id: string;
+        name: string;
+        equipment_type: string | null;
+        machine_id: string | null;
+        secondary_machine_id: string | null;
+        primary_machine: { name: string } | null;
+        secondary_machine: { name: string } | null;
+      };
+      const mapped = (data || []).map((ex: ExerciseRow) => ({
         id: ex.id,
         name: ex.name,
         equipment_type: ex.equipment_type,

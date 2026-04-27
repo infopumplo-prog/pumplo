@@ -60,7 +60,7 @@ export const useStationData = (shortCode: string | undefined) => {
         .select('id, name, video_path, description, setup_instructions, common_mistakes, tips, primary_muscles, secondary_muscles, difficulty, category, equipment_type')
         .eq('machine_id', gymMachine.machine_id);
 
-      const machine = gymMachine.machines as any;
+      const machine = gymMachine.machines as { name: string; description: string | null } | null;
 
       setData({
         machineName: machine?.name || 'Cvičiště',

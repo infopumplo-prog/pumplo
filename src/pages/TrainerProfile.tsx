@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -172,11 +173,11 @@ const TrainerProfile = () => {
         title: 'Uloženo',
         description: 'Trenérský profil byl úspěšně aktualizován.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save error:', error);
       toast({
         title: 'Chyba',
-        description: error.message || 'Nepodařilo se uložit změny.',
+        description: (error as Error).message || 'Nepodařilo se uložit změny.',
         variant: 'destructive',
       });
     } finally {
