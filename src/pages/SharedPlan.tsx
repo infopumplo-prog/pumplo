@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Dumbbell, Calendar, CheckCircle, LogIn } from 'lucide-react';
@@ -7,18 +7,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+interface SharedPlanExercise {
+  exercise_id: string;
+  exercise_name: string;
+  sets: number;
+  reps: number;
+  weight_kg: number | null;
+  rest_seconds: number | null;
+  unit_type: string | null;
+}
+
 interface SharedPlanDay {
   id: string;
   day_number: number;
   name: string | null;
-  exercises: {
-    exercise_name: string;
-    sets: number;
-    reps: number;
-    weight_kg: number | null;
-    rest_seconds: number | null;
-    unit_type: string | null;
-  }[];
+  exercises: SharedPlanExercise[];
 }
 
 interface SharedPlanData {
@@ -27,6 +30,23 @@ interface SharedPlanData {
   user_id: string;
   days: SharedPlanDay[];
 }
+
+const PENDING_SAVE_KEY = 'pumplo_pending_plan_save';
+
+const formatReps = (reps: number, unitType: string | null) => {
+  if (unitType === 'time') {
+    const m = Math.floor(reps / 60);
+    const s = reps % 60;
+    return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`;
+  }
+  return `${reps} opak`;
+};
+
+const formatRest = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`;
+};
 
 const SharedPlan = () => {
   const { token } = useParams<{ token: string }>();
@@ -63,7 +83,8 @@ const SharedPlan = () => {
       const { data: exercisesData } = dayIds.length
         ? await supabase
             .from('custom_plan_exercises')
-            .select('day_id, sets, reps, weight_kg, rest_seconds, exercises(name, unit_type)')
+            // exercise_id is the FK we need for saving — fetch it directly
+            .select('day_id, exercise_id, sets, reps, weight_kg, rest_seconds, exercises(name, unit_type)')
             .in('day_id', dayIds)
             .order('order_index')
         : { data: [] };
@@ -75,6 +96,7 @@ const SharedPlan = () => {
         exercises: (exercisesData || [])
           .filter((e: any) => e.day_id === d.id)
           .map((e: any) => ({
+            exercise_id: e.exercise_id,
             exercise_name: e.exercises?.name || 'Cvik',
             sets: e.sets,
             reps: e.reps,
@@ -91,9 +113,7 @@ const SharedPlan = () => {
     fetchPlan();
   }, [token]);
 
-  const totalExercises = plan?.days.reduce((sum, d) => sum + d.exercises.length, 0) || 0;
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!user || !plan) return;
     setIsSaving(true);
 
@@ -116,47 +136,42 @@ const SharedPlan = () => {
         .select('id')
         .single();
 
-      if (!newDay) continue;
+      if (!newDay || !day.exercises.length) continue;
 
-      const exerciseRows = day.exercises.map((ex, idx) => ({
-        day_id: newDay.id,
-        exercise_id: ex.exercise_name,
-        sets: ex.sets,
-        reps: ex.reps,
-        order_index: idx,
-      }));
-
-      if (exerciseRows.length) {
-        // Re-fetch exercise IDs from names
-        const { data: exData } = await supabase
-          .from('exercises')
-          .select('id, name')
-          .in('name', day.exercises.map(e => e.exercise_name));
-
-        const nameToId = Object.fromEntries((exData || []).map(e => [e.name, e.id]));
-
-        const rows = day.exercises
-          .map((ex, idx) => ({
-            day_id: newDay.id,
-            exercise_id: nameToId[ex.exercise_name],
-            sets: ex.sets,
-            reps: ex.reps,
-            weight_kg: ex.weight_kg ?? null,
-            rest_seconds: ex.rest_seconds ?? null,
-            order_index: idx,
-          }))
-          .filter(r => r.exercise_id);
-
-        if (rows.length) {
-          await supabase.from('custom_plan_exercises').insert(rows);
-        }
-      }
+      await supabase.from('custom_plan_exercises').insert(
+        day.exercises.map((ex, idx) => ({
+          day_id: newDay.id,
+          exercise_id: ex.exercise_id,   // use ID directly — no name lookup
+          sets: ex.sets,
+          reps: ex.reps,
+          weight_kg: ex.weight_kg,
+          rest_seconds: ex.rest_seconds,
+          order_index: idx,
+        }))
+      );
     }
 
+    sessionStorage.removeItem(PENDING_SAVE_KEY);
     setSaved(true);
     setIsSaving(false);
     toast({ title: 'Trénink uložen!', description: `"${plan.name}" přidán do tvých plánů.` });
+  }, [user, plan, toast]);
+
+  // Auto-save after login redirect
+  useEffect(() => {
+    if (!user || !plan || saved || isSaving) return;
+    const pending = sessionStorage.getItem(PENDING_SAVE_KEY);
+    if (pending === token) {
+      handleSave();
+    }
+  }, [user, plan, saved, isSaving, token, handleSave]);
+
+  const handleLoginAndSave = () => {
+    sessionStorage.setItem(PENDING_SAVE_KEY, token!);
+    navigate(`/auth?redirect=/plan/${token}`);
   };
+
+  const totalExercises = plan?.days.reduce((sum, d) => sum + d.exercises.length, 0) || 0;
 
   if (isLoading) {
     return (
@@ -225,31 +240,26 @@ const SharedPlan = () => {
               {day.exercises.length === 0 ? (
                 <p className="py-3 text-sm text-muted-foreground">Žádné cviky</p>
               ) : (
-                day.exercises.map((ex, j) => {
-                  const isCardio = ex.unit_type === 'time';
-                  const repsLabel = isCardio
-                    ? (() => { const m = Math.floor(ex.reps / 60); const s = ex.reps % 60; return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`; })()
-                    : `${ex.reps} opak`;
-                  const restLabel = ex.rest_seconds != null
-                    ? (() => { const m = Math.floor(ex.rest_seconds / 60); const s = ex.rest_seconds % 60; return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`; })()
-                    : null;
-                  return (
-                    <div key={j} className="py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{ex.exercise_name}</span>
-                        <span className="text-xs font-semibold text-primary">{ex.sets}×{repsLabel}</span>
-                      </div>
+                day.exercises.map((ex, j) => (
+                  <div key={j} className="py-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{ex.exercise_name}</span>
+                      <span className="text-xs font-semibold text-primary">
+                        {ex.sets}×{formatReps(ex.reps, ex.unit_type)}
+                      </span>
+                    </div>
+                    {(ex.weight_kg != null || ex.rest_seconds != null) && (
                       <div className="flex items-center gap-3 mt-0.5">
                         {ex.weight_kg != null && (
                           <span className="text-xs text-muted-foreground">{ex.weight_kg} kg</span>
                         )}
-                        {restLabel && (
-                          <span className="text-xs text-muted-foreground">pauza {restLabel}</span>
+                        {ex.rest_seconds != null && (
+                          <span className="text-xs text-muted-foreground">pauza {formatRest(ex.rest_seconds)}</span>
                         )}
                       </div>
-                    </div>
-                  );
-                })
+                    )}
+                  </div>
+                ))
               )}
             </div>
           </motion.div>
@@ -277,11 +287,11 @@ const SharedPlan = () => {
           <div className="space-y-3">
             <p className="text-center text-sm text-muted-foreground">Přihlas se a ulož si tento trénink</p>
             <Button
-              onClick={() => navigate(`/auth?redirect=/plan/${token}`)}
+              onClick={handleLoginAndSave}
               className="w-full h-12 text-base font-semibold rounded-xl"
             >
               <LogIn className="w-5 h-5 mr-2" />
-              Přihlásit se
+              Přihlásit se a uložit
             </Button>
           </div>
         )}
