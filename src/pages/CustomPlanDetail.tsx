@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
 import { cn } from '@/lib/utils';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
@@ -410,10 +411,13 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
 const CustomPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const {
     plan, isLoading, addDay, removeDay, renameDay,
     addExercise, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
+    sharePlan, unsharePlan,
   } = useCustomPlanDetail(id || null);
+  const [isSharing, setIsSharing] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -591,6 +595,30 @@ const CustomPlanDetail = () => {
     setEditingPlanName(false);
   };
 
+  const handleShare = async () => {
+    if (!plan) return;
+    setIsSharing(true);
+    let token = plan.share_token;
+    if (!plan.is_public || !token) {
+      token = await sharePlan() ?? token;
+    }
+    if (token) {
+      const url = `${window.location.origin}/plan/${token}`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: plan.name, url });
+        } else {
+          await navigator.clipboard.writeText(url);
+          toast({ title: 'Odkaz zkopírován!', description: url });
+        }
+      } catch {
+        await navigator.clipboard.writeText(url);
+        toast({ title: 'Odkaz zkopírován!', description: url });
+      }
+    }
+    setIsSharing(false);
+  };
+
   const handleDayNameSave = async (dayId: string) => {
     if (editingDayName.trim()) {
       await renameDay(dayId, editingDayName.trim());
@@ -688,11 +716,19 @@ const CustomPlanDetail = () => {
             ) : (
               <button
                 onClick={() => { setEditingPlanName(true); setPlanNameValue(plan.name); }}
-                className="text-2xl font-bold truncate hover:text-primary transition-colors text-left"
+                className="text-2xl font-bold truncate hover:text-primary transition-colors text-left flex-1 min-w-0"
               >
                 {plan.name}
               </button>
             )}
+            <button
+              onClick={handleShare}
+              disabled={isSharing}
+              className={`p-2 rounded-xl transition-colors shrink-0 ${plan.is_public ? 'text-primary bg-primary/10' : 'hover:bg-muted text-muted-foreground'}`}
+              title={plan.is_public ? 'Sdíleno — zkopírovat odkaz' : 'Sdílet trénink'}
+            >
+              {plan.is_public ? <Link className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+            </button>
           </div>
         </div>
 

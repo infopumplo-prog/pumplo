@@ -32,6 +32,8 @@ export interface CustomPlan {
   user_id: string;
   name: string;
   created_at: string;
+  share_token: string;
+  is_public: boolean;
   days: CustomPlanDay[];
 }
 
@@ -251,6 +253,25 @@ export function useCustomPlanDetail(planId: string | null) {
     await fetchPlan();
   };
 
+  const sharePlan = async (): Promise<string | null> => {
+    if (!planId) return null;
+    const { data, error } = await supabase
+      .from('custom_plans')
+      .update({ is_public: true })
+      .eq('id', planId)
+      .select('share_token')
+      .single();
+    if (error || !data) return null;
+    await fetchPlan();
+    return (data as { share_token: string }).share_token;
+  };
+
+  const unsharePlan = async () => {
+    if (!planId) return;
+    await supabase.from('custom_plans').update({ is_public: false }).eq('id', planId);
+    await fetchPlan();
+  };
+
   const reorderExercises = async (dayId: string, orderedIds: string[]) => {
     if (!plan) return;
     // Optimistic update
@@ -291,5 +312,7 @@ export function useCustomPlanDetail(planId: string | null) {
     renamePlan,
     reorderExercises,
     duplicateExercise,
+    sharePlan,
+    unsharePlan,
   };
 }

@@ -46,6 +46,7 @@ import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
+import SharedPlan from "@/pages/SharedPlan";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
 
@@ -140,6 +141,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/install" element={<Install />} />
+    <Route path="/plan/:token" element={<SharedPlan />} />
     <Route path="/s/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>

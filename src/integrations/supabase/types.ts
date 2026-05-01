@@ -130,18 +130,24 @@ export type Database = {
           user_id: string
           name: string
           created_at: string
+          share_token: string
+          is_public: boolean
         }
         Insert: {
           id?: string
           user_id: string
           name: string
           created_at?: string
+          share_token?: string
+          is_public?: boolean
         }
         Update: {
           id?: string
           user_id?: string
           name?: string
           created_at?: string
+          share_token?: string
+          is_public?: boolean
         }
         Relationships: []
       }

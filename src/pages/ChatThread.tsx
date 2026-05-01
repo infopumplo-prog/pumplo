@@ -1,12 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Send, Dumbbell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDirectMessages, DirectMessage } from '@/hooks/useDirectMessages';
+import { useCustomPlans } from '@/hooks/useCustomPlans';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import WorkoutMessageCard from '@/components/messages/WorkoutMessageCard';
 import PageTransition from '@/components/PageTransition';
 
 interface TrainerInfo {
@@ -39,9 +43,13 @@ function shouldShowTimestamp(current: DirectMessage, previous: DirectMessage | n
 const ChatThread = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
-  const { messages, isLoading, sendMessage, markAllRead } = useDirectMessages(conversationId);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { messages, isLoading, sendMessage, sendWorkoutMessage, markAllRead } = useDirectMessages(conversationId);
+  const { plans } = useCustomPlans();
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
   const [trainerInfo, setTrainerInfo] = useState<TrainerInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +130,39 @@ const ChatThread = () => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleSendWorkout = async (planId: string) => {
+    setShowWorkoutPicker(false);
+    setIsSending(true);
+
+    // Get share_token — ensure plan is public
+    const { data, error } = await supabase
+      .from('custom_plans')
+      .update({ is_public: true })
+      .eq('id', planId)
+      .select('share_token, name, custom_plan_days(id, custom_plan_exercises(id))')
+      .single();
+
+    if (error || !data) {
+      toast({ title: 'Chyba při sdílení tréninku', variant: 'destructive' });
+      setIsSending(false);
+      return;
+    }
+
+    const dayCount = (data as any).custom_plan_days?.length || 0;
+    const exerciseCount = (data as any).custom_plan_days?.reduce(
+      (sum: number, d: any) => sum + (d.custom_plan_exercises?.length || 0), 0
+    ) || 0;
+
+    await sendWorkoutMessage(
+      planId,
+      (data as any).name,
+      (data as any).share_token,
+      dayCount,
+      exerciseCount
+    );
+    setIsSending(false);
   };
 
   const containerVariants = {
@@ -215,24 +256,34 @@ const ChatThread = () => {
                       variants={bubbleVariants}
                       className={`flex ${isMember ? 'justify-end' : 'justify-start'} mb-1`}
                     >
-                      <div
-                        className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
-                          isMember
-                            ? 'bg-primary text-white rounded-2xl rounded-br-md'
-                            : 'bg-muted rounded-2xl rounded-bl-md'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                        {!showTimestamp && (
-                          <p
-                            className={`text-[10px] mt-1 ${
-                              isMember ? 'text-white/60' : 'text-muted-foreground'
-                            }`}
-                          >
-                            {formatMessageTime(msg.created_at)}
-                          </p>
-                        )}
-                      </div>
+                      {msg.message_type === 'workout_share' && msg.metadata?.share_token ? (
+                        <WorkoutMessageCard
+                          planName={msg.metadata.plan_name || 'Trénink'}
+                          shareToken={msg.metadata.share_token}
+                          dayCount={msg.metadata.day_count}
+                          exerciseCount={msg.metadata.exercise_count}
+                          isMine={isMember}
+                        />
+                      ) : (
+                        <div
+                          className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
+                            isMember
+                              ? 'bg-primary text-white rounded-2xl rounded-br-md'
+                              : 'bg-muted rounded-2xl rounded-bl-md'
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                          {!showTimestamp && (
+                            <p
+                              className={`text-[10px] mt-1 ${
+                                isMember ? 'text-white/60' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {formatMessageTime(msg.created_at)}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </motion.div>
                   </div>
                 );
@@ -245,6 +296,15 @@ const ChatThread = () => {
         {/* Fixed bottom input bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-6 safe-bottom z-10">
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-xl shrink-0"
+              onClick={() => setShowWorkoutPicker(v => !v)}
+              disabled={isSending}
+            >
+              <Dumbbell className="w-5 h-5 text-muted-foreground" />
+            </Button>
             <Input
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -263,6 +323,48 @@ const ChatThread = () => {
             </Button>
           </div>
         </div>
+
+        {/* Workout picker drawer */}
+        <AnimatePresence>
+          {showWorkoutPicker && (
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-2xl z-20 pb-safe-bottom"
+            >
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
+                <h3 className="font-semibold text-base">Odeslat trénink</h3>
+                <button
+                  onClick={() => setShowWorkoutPicker(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="max-h-64 overflow-y-auto px-4 py-3 space-y-2">
+                {plans.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nemáš žádné vlastní tréninky</p>
+                ) : (
+                  plans.map(plan => (
+                    <button
+                      key={plan.id}
+                      onClick={() => handleSendWorkout(plan.id)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{plan.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{plan.day_count} {plan.day_count === 1 ? 'den' : plan.day_count < 5 ? 'dny' : 'dní'}</p>
+                      </div>
+                      <Dumbbell className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

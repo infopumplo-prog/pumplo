@@ -8,6 +8,14 @@ export interface DirectMessage {
   sender_type: 'member' | 'trainer' | 'gym_owner';
   sender_id: string | null;
   body: string;
+  message_type: 'text' | 'workout_share';
+  metadata: {
+    plan_id?: string;
+    plan_name?: string;
+    share_token?: string;
+    day_count?: number;
+    exercise_count?: number;
+  } | null;
   read_at: string | null;
   created_at: string;
 }
@@ -93,6 +101,41 @@ export const useDirectMessages = (conversationId: string | undefined) => {
       .eq('id', conversationId);
   }, [user, conversationId]);
 
+  const sendWorkoutMessage = useCallback(async (planId: string, planName: string, shareToken: string, dayCount: number, exerciseCount: number) => {
+    if (!user || !conversationId) return;
+
+    const now = new Date().toISOString();
+    const metadata = { plan_id: planId, plan_name: planName, share_token: shareToken, day_count: dayCount, exercise_count: exerciseCount };
+
+    const optimisticMsg: DirectMessage = {
+      id: `temp-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_type: 'member',
+      sender_id: user.id,
+      body: `Sdílím trénink: ${planName}`,
+      message_type: 'workout_share',
+      metadata,
+      read_at: null,
+      created_at: now,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+
+    const { data: inserted, error } = await supabase
+      .from('direct_messages')
+      .insert({ conversation_id: conversationId, sender_type: 'member', sender_id: user.id, body: `Sdílím trénink: ${planName}`, message_type: 'workout_share', metadata })
+      .select('*')
+      .single();
+
+    if (error) {
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      return;
+    }
+    if (inserted) {
+      setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? (inserted as DirectMessage) : m));
+    }
+    await supabase.from('conversations').update({ last_message_at: now }).eq('id', conversationId);
+  }, [user, conversationId]);
+
   const markAllRead = useCallback(async () => {
     if (!user || !conversationId) return;
 
@@ -138,5 +181,5 @@ export const useDirectMessages = (conversationId: string | undefined) => {
     };
   }, [conversationId]);
 
-  return { messages, isLoading, sendMessage, markAllRead };
+  return { messages, isLoading, sendMessage, sendWorkoutMessage, markAllRead };
 };
