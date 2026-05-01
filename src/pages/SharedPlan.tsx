@@ -11,7 +11,14 @@ interface SharedPlanDay {
   id: string;
   day_number: number;
   name: string | null;
-  exercises: { exercise_name: string; sets: number; reps: number }[];
+  exercises: {
+    exercise_name: string;
+    sets: number;
+    reps: number;
+    weight_kg: number | null;
+    rest_seconds: number | null;
+    unit_type: string | null;
+  }[];
 }
 
 interface SharedPlanData {
@@ -56,7 +63,7 @@ const SharedPlan = () => {
       const { data: exercisesData } = dayIds.length
         ? await supabase
             .from('custom_plan_exercises')
-            .select('day_id, sets, reps, exercises(name)')
+            .select('day_id, sets, reps, weight_kg, rest_seconds, exercises(name, unit_type)')
             .in('day_id', dayIds)
             .order('order_index')
         : { data: [] };
@@ -71,6 +78,9 @@ const SharedPlan = () => {
             exercise_name: e.exercises?.name || 'Cvik',
             sets: e.sets,
             reps: e.reps,
+            weight_kg: e.weight_kg ?? null,
+            rest_seconds: e.rest_seconds ?? null,
+            unit_type: e.exercises?.unit_type ?? null,
           })),
       }));
 
@@ -131,6 +141,8 @@ const SharedPlan = () => {
             exercise_id: nameToId[ex.exercise_name],
             sets: ex.sets,
             reps: ex.reps,
+            weight_kg: ex.weight_kg ?? null,
+            rest_seconds: ex.rest_seconds ?? null,
             order_index: idx,
           }))
           .filter(r => r.exercise_id);
@@ -213,12 +225,31 @@ const SharedPlan = () => {
               {day.exercises.length === 0 ? (
                 <p className="py-3 text-sm text-muted-foreground">Žádné cviky</p>
               ) : (
-                day.exercises.map((ex, j) => (
-                  <div key={j} className="py-2.5 flex items-center justify-between">
-                    <span className="text-sm">{ex.exercise_name}</span>
-                    <span className="text-xs text-muted-foreground">{ex.sets}×{ex.reps}</span>
-                  </div>
-                ))
+                day.exercises.map((ex, j) => {
+                  const isCardio = ex.unit_type === 'time';
+                  const repsLabel = isCardio
+                    ? (() => { const m = Math.floor(ex.reps / 60); const s = ex.reps % 60; return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`; })()
+                    : `${ex.reps} opak`;
+                  const restLabel = ex.rest_seconds != null
+                    ? (() => { const m = Math.floor(ex.rest_seconds / 60); const s = ex.rest_seconds % 60; return m > 0 ? (s > 0 ? `${m}min ${s}s` : `${m} min`) : `${s}s`; })()
+                    : null;
+                  return (
+                    <div key={j} className="py-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{ex.exercise_name}</span>
+                        <span className="text-xs font-semibold text-primary">{ex.sets}×{repsLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        {ex.weight_kg != null && (
+                          <span className="text-xs text-muted-foreground">{ex.weight_kg} kg</span>
+                        )}
+                        {restLabel && (
+                          <span className="text-xs text-muted-foreground">pauza {restLabel}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </motion.div>
