@@ -58,6 +58,7 @@ const SharedPlan = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -153,9 +154,16 @@ const SharedPlan = () => {
 
     sessionStorage.removeItem(PENDING_SAVE_KEY);
     setSaved(true);
+    setSavedPlanId(newPlan.id);
     setIsSaving(false);
     toast({ title: 'Trénink uložen!', description: `"${plan.name}" přidán do tvých plánů.` });
+    return newPlan.id;
   }, [user, plan, toast]);
+
+  const handleSaveAndStart = useCallback(async () => {
+    const planId = savedPlanId ?? await handleSave();
+    if (planId) navigate(`/custom-workout/${planId}`);
+  }, [savedPlanId, handleSave, navigate]);
 
   // Auto-save after login redirect
   useEffect(() => {
@@ -270,28 +278,46 @@ const SharedPlan = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-6 pt-4 pb-8">
         {user ? (
           saved ? (
-            <div className="flex items-center justify-center gap-2 text-primary font-semibold py-3">
-              <CheckCircle className="w-5 h-5" />
-              Uloženo do tvých plánů
+            <div className="space-y-2">
+              <Button
+                onClick={() => navigate(`/custom-workout/${savedPlanId}`)}
+                className="w-full h-12 text-base font-semibold rounded-xl"
+              >
+                Spustit trénink
+              </Button>
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-1">
+                <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                Uloženo do tvých plánů
+              </div>
             </div>
           ) : (
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full h-12 text-base font-semibold rounded-xl"
-            >
-              {isSaving ? 'Ukládám...' : 'Uložit trénink do svých plánů'}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={handleSaveAndStart}
+                disabled={isSaving}
+                className="w-full h-12 text-base font-semibold rounded-xl"
+              >
+                {isSaving ? 'Ukládám...' : 'Spustit trénink'}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                variant="outline"
+                className="w-full h-10 text-sm rounded-xl"
+              >
+                Jen uložit do plánů
+              </Button>
+            </div>
           )
         ) : (
           <div className="space-y-3">
-            <p className="text-center text-sm text-muted-foreground">Přihlas se a ulož si tento trénink</p>
+            <p className="text-center text-sm text-muted-foreground">Přihlas se a spusť nebo ulož trénink</p>
             <Button
               onClick={handleLoginAndSave}
               className="w-full h-12 text-base font-semibold rounded-xl"
             >
               <LogIn className="w-5 h-5 mr-2" />
-              Přihlásit se a uložit
+              Přihlásit se a spustit
             </Button>
           </div>
         )}
