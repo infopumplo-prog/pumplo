@@ -641,6 +641,10 @@ const Settings = () => {
                 <ExternalLink className="w-4 h-4" />
                 Zásady ochrany osobních údajů
               </Button>
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => navigate('/terms')}>
+                <ExternalLink className="w-4 h-4" />
+                Podmínky používání
+              </Button>
             </div>
           </motion.div>
 

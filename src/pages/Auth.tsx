@@ -430,6 +430,9 @@ const Auth = () => {
               </Button>
               <p className="text-xs text-muted-foreground text-center leading-relaxed">
                 Kliknutím souhlasíš s{' '}
+                <Link to="/terms" className="underline hover:text-foreground" target="_blank">
+                  Podmínkami používání
+                </Link>{' '}a{' '}
                 <Link to="/privacy" className="underline hover:text-foreground" target="_blank">
                   Zásadami ochrany osobních údajů
                 </Link>.

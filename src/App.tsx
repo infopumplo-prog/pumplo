@@ -15,6 +15,7 @@ import { setUpdateBannerCallback, updateSW } from "@/main";
 import { forceAppRefresh } from "@/lib/appVersion";
 import Auth from "@/pages/Auth";
 import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
 import Profile from "@/pages/Profile";
@@ -142,6 +143,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/privacy" element={<Privacy />} />
+    <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
     <Route path="/s/:code" element={
