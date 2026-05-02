@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +59,7 @@ const Auth = () => {
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
   const [showGymStep, setShowGymStep] = useState(false);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
@@ -92,7 +93,7 @@ const Auth = () => {
       case 4: return gender !== null && age !== '' && height !== '' && weight !== '';
       case 5: return injuries.length > 0;
       case 6: return equipmentPreference !== null;
-      case 7: return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6;
+      case 7: return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6 && privacyConsent;
       default: return false;
     }
   };
@@ -402,6 +403,22 @@ const Auth = () => {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 pl-1">Minimálně 6 znaků</p>
               </div>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={privacyConsent}
+                  onChange={e => setPrivacyConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                />
+                <span className="text-xs text-muted-foreground leading-relaxed">
+                  Souhlasím se{' '}
+                  <Link to="/privacy" className="text-primary underline" target="_blank">
+                    Zásadami ochrany osobních údajů
+                  </Link>{' '}
+                  a se zpracováním mých osobních údajů za účelem poskytování služby Pumplo.
+                </span>
+              </label>
 
               {error && (
                 <motion.p

@@ -14,6 +14,7 @@ import UpdateBanner from "@/components/UpdateBanner";
 import { setUpdateBannerCallback, updateSW } from "@/main";
 import { forceAppRefresh } from "@/lib/appVersion";
 import Auth from "@/pages/Auth";
+import Privacy from "@/pages/Privacy";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
 import Profile from "@/pages/Profile";
@@ -140,6 +141,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+    <Route path="/privacy" element={<Privacy />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
     <Route path="/s/:code" element={

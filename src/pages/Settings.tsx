@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -270,6 +270,31 @@ const Settings = () => {
         description: 'Nepodařilo se uložit nastavení.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    try {
+      const [{ data: profile }, { data: sessions }] = await Promise.all([
+        supabase.from('user_profiles').select('*').eq('user_id', user.id).single(),
+        supabase.from('workout_sessions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
+      ]);
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        user: { id: user.id, email: user.email },
+        profile,
+        workout_sessions: sessions ?? [],
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pumplo-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Chyba', description: 'Export se nezdařil. Zkuste to znovu.', variant: 'destructive' });
     }
   };
 
@@ -608,6 +633,14 @@ const Settings = () => {
                   Vaše osobní údaje a historie tréninků jsou bezpečně uloženy a nejsou sdíleny s třetími stranami.
                 </p>
               </div>
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={handleExportData}>
+                <Download className="w-4 h-4" />
+                Stáhnout moje data (JSON)
+              </Button>
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => navigate('/privacy')}>
+                <ExternalLink className="w-4 h-4" />
+                Zásady ochrany osobních údajů
+              </Button>
             </div>
           </motion.div>
 
