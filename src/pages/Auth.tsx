@@ -59,7 +59,6 @@ const Auth = () => {
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
-  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
   const [showGymStep, setShowGymStep] = useState(false);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
@@ -93,7 +92,7 @@ const Auth = () => {
       case 4: return gender !== null && age !== '' && height !== '' && weight !== '';
       case 5: return injuries.length > 0;
       case 6: return equipmentPreference !== null;
-      case 7: return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6 && privacyConsent;
+      case 7: return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6;
       default: return false;
     }
   };
@@ -404,22 +403,6 @@ const Auth = () => {
                 <p className="text-xs text-muted-foreground mt-1 pl-1">Minimálně 6 znaků</p>
               </div>
 
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={privacyConsent}
-                  onChange={e => setPrivacyConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                />
-                <span className="text-xs text-muted-foreground leading-relaxed">
-                  Souhlasím se{' '}
-                  <Link to="/privacy" className="text-primary underline" target="_blank">
-                    Zásadami ochrany osobních údajů
-                  </Link>{' '}
-                  a se zpracováním mých osobních údajů za účelem poskytování služby Pumplo.
-                </span>
-              </label>
-
               {error && (
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
@@ -445,6 +428,12 @@ const Auth = () => {
                   <span>Dokončit registraci</span>
                 )}
               </Button>
+              <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                Kliknutím souhlasíš s{' '}
+                <Link to="/privacy" className="underline hover:text-foreground" target="_blank">
+                  Zásadami ochrany osobních údajů
+                </Link>.
+              </p>
             </form>
 
             {/* OAuth divider */}
