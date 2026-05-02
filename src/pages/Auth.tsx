@@ -18,6 +18,8 @@ import {
   OnboardingInjuriesStep,
   OnboardingEquipmentStep,
   OnboardingTrainerTip,
+  OnboardingTrainerWelcome,
+  OnboardingOutcomeStep,
 } from '@/components/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +58,8 @@ const Auth = () => {
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
+  const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
+  const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword } = useAuth();
@@ -231,19 +235,31 @@ const Auth = () => {
 
   const handleNextStep = () => {
     if (isStepValid() && onboardingStep < ONBOARDING_TOTAL_STEPS) {
-      // After injuries step, show trainer tip if user has injuries
       if (onboardingStep === 5 && hasRealInjuries && !showTrainerTip) {
         setShowTrainerTip(true);
         return;
       }
       setShowTrainerTip(false);
+      if (onboardingStep === 6) {
+        setShowOutcomeStep(true);
+        return;
+      }
       setOnboardingStep(onboardingStep + 1);
     }
   };
 
   const handlePrevStep = () => {
+    if (showOutcomeStep) {
+      setShowOutcomeStep(false);
+      return;
+    }
     if (showTrainerTip) {
       setShowTrainerTip(false);
+      return;
+    }
+    if (onboardingStep === 7) {
+      setShowOutcomeStep(true);
+      setOnboardingStep(6);
       return;
     }
     if (onboardingStep > 0) {
@@ -252,9 +268,12 @@ const Auth = () => {
   };
 
   const toggleMode = () => {
-    setMode(mode === 'login' ? 'register' : 'login');
+    const newMode = mode === 'login' ? 'register' : 'login';
+    setMode(newMode);
     setError('');
     setOnboardingStep(0);
+    setShowOutcomeStep(false);
+    setShowTrainerWelcome(newMode === 'register');
   };
 
   const progress = ((onboardingStep + 1) / (ONBOARDING_TOTAL_STEPS + 1)) * 100;
@@ -487,7 +506,7 @@ const Auth = () => {
                   Přihlášení
                 </button>
                 <button
-                  onClick={() => setMode('register')}
+                  onClick={toggleMode}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all duration-200 text-muted-foreground"
                 >
                   Registrace
@@ -627,74 +646,125 @@ const Auth = () => {
             </>
           ) : (
             <>
-              {/* Progress bar for onboarding */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Krok {onboardingStep + 1} z {ONBOARDING_TOTAL_STEPS + 1}</span>
-                  <span className="font-medium text-primary">{Math.round(progress)}%</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
+              {showTrainerWelcome ? (
+                <>
+                  <OnboardingTrainerWelcome onStart={() => setShowTrainerWelcome(false)} />
+                  <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
+                    Už máte účet?{' '}
+                    <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
+                      Přihlaste se
+                    </button>
+                  </p>
+                </>
+              ) : showOutcomeStep ? (
+                <>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key="outcome"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <OnboardingOutcomeStep
+                        goal={primaryGoal!}
+                        level={userLevel!}
+                        trainingDays={trainingDays}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                  <div className="flex gap-3 mt-6 pb-4">
+                    <Button variant="outline" onClick={() => setShowOutcomeStep(false)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Zpět
+                    </Button>
+                    <Button
+                      onClick={() => { setShowOutcomeStep(false); setOnboardingStep(7); }}
+                      className="flex-1 bg-green-500 hover:bg-green-600"
+                    >
+                      Vytvořit účet
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                  <p className="text-center text-muted-foreground text-sm pb-8">
+                    Už máte účet?{' '}
+                    <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
+                      Přihlaste se
+                    </button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  {/* Progress bar for onboarding */}
+                  <div className="mb-6">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Krok {onboardingStep + 1} z {ONBOARDING_TOTAL_STEPS + 1}</span>
+                      <span className="font-medium text-primary">{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                  </div>
 
-              {/* Onboarding Steps */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={onboardingStep}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {renderOnboardingStep()}
-                </motion.div>
-              </AnimatePresence>
+                  {/* Onboarding Steps */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={onboardingStep}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {renderOnboardingStep()}
+                    </motion.div>
+                  </AnimatePresence>
 
-              {/* Navigation buttons (not for registration step) */}
-              {onboardingStep < 7 && (
-                <div className="flex gap-3 mt-8 pb-8">
-                  <Button
-                    variant="outline"
-                    onClick={handlePrevStep}
-                    disabled={onboardingStep === 0}
-                    className="flex-1"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Zpět
-                  </Button>
-                  <Button 
-                    onClick={handleNextStep} 
-                    className="flex-1"
-                    disabled={!isStepValid()}
-                  >
-                    Další
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
+                  {/* Navigation buttons (not for registration step) */}
+                  {onboardingStep < 7 && (
+                    <div className="flex gap-3 mt-8 pb-8">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        disabled={onboardingStep === 0}
+                        className="flex-1"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Zpět
+                      </Button>
+                      <Button
+                        onClick={handleNextStep}
+                        className="flex-1"
+                        disabled={!isStepValid()}
+                      >
+                        Další
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Back to step navigation for registration step */}
+                  {onboardingStep === 7 && (
+                    <div className="mt-4 pb-8">
+                      <Button
+                        variant="ghost"
+                        onClick={handlePrevStep}
+                        className="w-full"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Zpět k dotazníku
+                      </Button>
+                    </div>
+                  )}
+
+                  <p className="text-center text-muted-foreground text-sm pb-8">
+                    Už máte účet?{' '}
+                    <button
+                      onClick={toggleMode}
+                      className="text-primary font-semibold hover:underline"
+                    >
+                      Přihlaste se
+                    </button>
+                  </p>
+                </>
               )}
-
-              {/* Back to step navigation for registration step */}
-              {onboardingStep === 7 && (
-                <div className="mt-4 pb-8">
-                  <Button
-                    variant="ghost"
-                    onClick={handlePrevStep}
-                    className="w-full"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Zpět k dotazníku
-                  </Button>
-                </div>
-              )}
-
-              <p className="text-center text-muted-foreground text-sm pb-8">
-                Už máte účet?{' '}
-                <button
-                  onClick={toggleMode}
-                  className="text-primary font-semibold hover:underline"
-                >
-                  Přihlaste se
-                </button>
-              </p>
             </>
           )}
         </div>
