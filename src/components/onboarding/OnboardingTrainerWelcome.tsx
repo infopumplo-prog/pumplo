@@ -16,7 +16,7 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
       className="flex flex-col items-center text-center py-2"
     >
       <div className="relative mb-5">
-        <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-primary/25 shadow-xl">
+        <div className="w-44 h-44 rounded-full overflow-hidden border-4 border-primary/25 shadow-xl">
           <img
             src={davidPhoto}
             alt="David Beníšek"
@@ -33,7 +33,7 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
 
       <div className="bg-muted/60 rounded-2xl p-5 text-left mb-8 border border-border/40 w-full">
         <p className="text-sm leading-relaxed text-foreground/90">
-          "Za 12 let v posilovně jsem pracoval se stovkami lidí. A vím, že největší problém není motivace —{' '}
+          "Za 12 let jsem natrénoval desítky klientů od nuly až po první závody. A vím, že největší problém není motivace —{' '}
           <span className="font-semibold text-foreground">je to plán, který nesedí.</span>
         </p>
         <p className="text-sm leading-relaxed text-foreground/90 mt-3">
