@@ -8,3 +8,4 @@ export { default as OnboardingEquipmentStep } from './OnboardingEquipmentStep';
 export { default as OnboardingTrainerTip } from './OnboardingTrainerTip';
 export { default as OnboardingTrainerWelcome } from './OnboardingTrainerWelcome';
 export { default as OnboardingOutcomeStep } from './OnboardingOutcomeStep';
+export { default as OnboardingGymStep } from './OnboardingGymStep';

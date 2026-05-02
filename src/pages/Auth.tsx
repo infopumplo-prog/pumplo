@@ -20,6 +20,7 @@ import {
   OnboardingTrainerTip,
   OnboardingTrainerWelcome,
   OnboardingOutcomeStep,
+  OnboardingGymStep,
 } from '@/components/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -59,7 +60,9 @@ const Auth = () => {
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
+  const [showGymStep, setShowGymStep] = useState(false);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
+  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword } = useAuth();
@@ -157,6 +160,7 @@ const Auth = () => {
             weight_kg: weight ? parseFloat(weight) : null,
             injuries,
             equipment_preference: equipmentPreference,
+            selected_gym_id: selectedGymId,
             training_split: trainingSplit,
             onboarding_completed: true,
             current_step: ONBOARDING_TOTAL_STEPS,
@@ -241,7 +245,7 @@ const Auth = () => {
       }
       setShowTrainerTip(false);
       if (onboardingStep === 6) {
-        setShowOutcomeStep(true);
+        setShowGymStep(true);
         return;
       }
       setOnboardingStep(onboardingStep + 1);
@@ -251,6 +255,11 @@ const Auth = () => {
   const handlePrevStep = () => {
     if (showOutcomeStep) {
       setShowOutcomeStep(false);
+      setShowGymStep(true);
+      return;
+    }
+    if (showGymStep) {
+      setShowGymStep(false);
       return;
     }
     if (showTrainerTip) {
@@ -273,6 +282,7 @@ const Auth = () => {
     setError('');
     setOnboardingStep(0);
     setShowOutcomeStep(false);
+    setShowGymStep(false);
     setShowTrainerWelcome(newMode === 'register');
   };
 
@@ -650,6 +660,50 @@ const Auth = () => {
                 <>
                   <OnboardingTrainerWelcome onStart={() => setShowTrainerWelcome(false)} />
                   <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
+                    Už máte účet?{' '}
+                    <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
+                      Přihlaste se
+                    </button>
+                  </p>
+                </>
+              ) : showGymStep ? (
+                <>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key="gym"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <OnboardingGymStep
+                        selectedGymId={selectedGymId}
+                        onSelect={setSelectedGymId}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                  <div className="flex gap-3 mt-6 pb-4">
+                    <Button variant="outline" onClick={() => setShowGymStep(false)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Zpět
+                    </Button>
+                    <Button
+                      onClick={() => { setShowGymStep(false); setShowOutcomeStep(true); }}
+                      className="flex-1"
+                      disabled={!selectedGymId}
+                    >
+                      Pokračovat
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setSelectedGymId(null); setShowGymStep(false); setShowOutcomeStep(true); }}
+                    className="w-full text-muted-foreground text-sm pb-2"
+                  >
+                    Přeskočit
+                  </Button>
+                  <p className="text-center text-muted-foreground text-sm pb-8">
                     Už máte účet?{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
                       Přihlaste se
