@@ -6,6 +6,7 @@
  import { Separator } from '@/components/ui/separator';
  import { Plus, Trash2, Loader2 } from 'lucide-react';
  import { GymPricing, PricingItem } from '@/contexts/GymContext';
+ import { useTranslation } from 'react-i18next';
  
  interface GymPricingEditorProps {
    pricing: GymPricing | null;
@@ -22,6 +23,7 @@
  });
  
  const GymPricingEditor = ({ pricing, onSave, onChange, showSaveButton = true }: GymPricingEditorProps) => {
+   const { t } = useTranslation();
    const [groups, setGroups] = useState<string[]>(DEFAULT_GROUPS);
    const [singleEntries, setSingleEntries] = useState<PricingItem[]>([]);
    const [memberships, setMemberships] = useState<PricingItem[]>([]);
@@ -154,7 +156,7 @@
            <div key={itemIndex} className="space-y-3 p-3 bg-muted/30 rounded-lg">
              <div className="flex items-center gap-2">
                <Input
-                 placeholder="Název položky (např. Po-Pá do 14:00)"
+                 placeholder={t('business.pricing_item_name_placeholder')}
                  value={item.name}
                  onChange={(e) => handleUpdateItemName(section, itemIndex, e.target.value)}
                  className="flex-1"

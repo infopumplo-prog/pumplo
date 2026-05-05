@@ -1,5 +1,17 @@
 # Pumplo — Claude Code Context
 
+## POVINNÉ: Před jakoukoliv finanční nebo tržní analýzou
+
+**Přečti `/Users/davidnovotny/Desktop/pumplo/PUMPLO_KB.md` PŘED generováním:**
+- jakýchkoliv MRR/ARR projekcí
+- cen (B2B, B2C, trainer)
+- počtu gymů nebo tržní velikosti
+- finančního modelu nebo cashflow
+
+Bez přečtení KB = generuješ halucince. Čísla z konverzace nebo jiných dokumentů jsou nespolehlivá.
+
+---
+
 ## Co je Pumplo
 SaaS retention platforma pro nezávislé fitness posilovny. Řeší vysoký churn členů (30–50 % nových členů odchází do 6 měsíců) a konkurenci řetězcových posiloven. Klíčové funkce: personalizované tréninkové plány, gamifikace, datová analytika.
 

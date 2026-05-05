@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, Clock, Dumbbell, Weight, Flame } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,7 @@ interface WorkoutSessionCardProps {
 }
 
 export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSessionCardProps) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [isLoadingSets, setIsLoadingSets] = useState(false);
@@ -138,7 +140,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
             {variant === 'full' && (
               <div className="text-right mr-2">
                 <p className="font-semibold text-foreground">{durationMinutes} min</p>
-                <p className="text-sm text-muted-foreground">{session.total_sets || 0} sérií</p>
+                <p className="text-sm text-muted-foreground">{session.total_sets || 0} {t('workout.session_sets')}</p>
               </div>
             )}
             <motion.div
@@ -155,15 +157,15 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
           <div className="grid grid-cols-3 gap-2 text-sm mt-3">
             <div className="text-center">
               <p className="font-semibold text-foreground">{durationMinutes} min</p>
-              <p className="text-xs text-muted-foreground">Čas</p>
+              <p className="text-xs text-muted-foreground">{t('workout.session_time')}</p>
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">{session.total_sets || 0}</p>
-              <p className="text-xs text-muted-foreground">Série</p>
+              <p className="text-xs text-muted-foreground">{t('workout.session_sets_label')}</p>
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">{session.total_weight_kg || 0} kg</p>
-              <p className="text-xs text-muted-foreground">Váha</p>
+              <p className="text-xs text-muted-foreground">{t('workout.session_weight')}</p>
             </div>
           </div>
         )}
@@ -190,7 +192,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
                   <div className="bg-muted/50 rounded-lg p-2 text-center">
                     <Dumbbell className="w-4 h-4 text-primary mx-auto mb-1" />
                     <p className="text-sm font-semibold">{session.total_sets || 0}</p>
-                    <p className="text-xs text-muted-foreground">sérií</p>
+                    <p className="text-xs text-muted-foreground">{t('workout.session_sets_label')}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-2 text-center">
                     <Weight className="w-4 h-4 text-primary mx-auto mb-1" />
@@ -206,7 +208,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
 
                 {/* Exercises List */}
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Cviky</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">{t('workout.session_exercises')}</h4>
                   {isLoadingSets ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map(i => (
@@ -215,7 +217,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
                     </div>
                   ) : Object.values(exerciseGroups).length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      Žádné záznamy
+                      {t('workout.no_records')}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -233,7 +235,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{group.exerciseName}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {completedSets.length} sérií • {totalReps} opakování
+                                  {completedSets.length} {t('workout.sets_count')} • {totalReps} {t('workout.reps_count')}
                                   {maxWeight > 0 && ` • max ${maxWeight} kg`}
                                 </p>
                               </div>

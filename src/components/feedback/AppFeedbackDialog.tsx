@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ interface AppFeedbackDialogProps {
 }
 
 export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [rating, setRating] = useState(0);
   const [satisfaction, setSatisfaction] = useState('');
@@ -118,7 +120,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
               id="satisfaction"
               value={satisfaction}
               onChange={(e) => setSatisfaction(e.target.value)}
-              placeholder="Např. jednoduchost, cviky, design..."
+              placeholder={t('feedback.satisfaction_placeholder')}
               className="mt-2"
             />
           </div>
@@ -129,7 +131,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
               id="improvements"
               value={improvements}
               onChange={(e) => setImprovements(e.target.value)}
-              placeholder="Tvé návrhy..."
+              placeholder={t('feedback.improvements_placeholder')}
               className="mt-2"
             />
           </div>
@@ -140,7 +142,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
               id="favoriteFeature"
               value={favoriteFeature}
               onChange={(e) => setFavoriteFeature(e.target.value)}
-              placeholder="Např. generované tréninky, videa cviků..."
+              placeholder={t('feedback.favorite_placeholder')}
               className="mt-2"
             />
           </div>
@@ -151,7 +153,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
               id="issues"
               value={issues}
               onChange={(e) => setIssues(e.target.value)}
-              placeholder="Bugy, chyby, nejasnosti..."
+              placeholder={t('feedback.issues_placeholder')}
               className="mt-2"
             />
           </div>

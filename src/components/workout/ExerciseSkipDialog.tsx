@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -27,14 +28,6 @@ interface ExerciseSkipDialogProps {
   dayLetter?: string;
 }
 
-const SKIP_REASONS = [
-  { id: 'too_difficult', label: 'Byl cvik příliš náročný?' },
-  { id: 'dont_want', label: 'Cvik se mi nechce dělat.' },
-  { id: 'health', label: 'Zdravotní důvod' },
-  { id: 'machine_missing', label: 'Stroj se v posilovně nenachází' },
-  { id: 'other', label: 'Jiné' },
-];
-
 export const ExerciseSkipDialog = ({
   open,
   onOpenChange,
@@ -45,8 +38,18 @@ export const ExerciseSkipDialog = ({
   planId,
   dayLetter,
 }: ExerciseSkipDialogProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
-  const [skipReason, setSkipReason] = useState<string>('');
+
+  const SKIP_REASONS = [
+    { id: 'too_difficult', label: t('workout.skip_reason_too_difficult') },
+    { id: 'dont_want', label: t('workout.skip_reason_dont_want') },
+    { id: 'health', label: t('workout.skip_reason_health') },
+    { id: 'machine_missing', label: t('workout.skip_reason_machine_missing') },
+    { id: 'other', label: t('workout.skip_reason_other') },
+  ];
+
+  const [skipReason, setSkipReason] = useState<string>(SKIP_REASONS[0].id);
   const [otherReason, setOtherReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,21 +72,21 @@ export const ExerciseSkipDialog = ({
 
       if (error) {
         console.error('Error saving skip feedback:', error);
-        toast.error('Chyba při ukládání feedbacku');
+        toast.error(t('workout.skip_feedback_error'));
       }
     } catch (err) {
       console.error('Error saving skip feedback:', err);
     }
 
     setIsSubmitting(false);
-    setSkipReason('');
+    setSkipReason(SKIP_REASONS[0].id);
     setOtherReason('');
     onOpenChange(false);
     onConfirmSkip();
   };
 
   const handleCancel = () => {
-    setSkipReason('');
+    setSkipReason(SKIP_REASONS[0].id);
     setOtherReason('');
     onOpenChange(false);
   };
@@ -94,9 +97,9 @@ export const ExerciseSkipDialog = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle>Proč přeskakuješ cvik?</AlertDialogTitle>
+          <AlertDialogTitle>{t('workout.skip_reason_title')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Tvoje zpětná vazba nám pomáhá zlepšit tréninky
+            {t('workout.skip_reason_desc')}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -116,7 +119,7 @@ export const ExerciseSkipDialog = ({
 
         {skipReason === 'other' && (
           <Textarea
-            placeholder="Napiš důvod..."
+            placeholder={t('workout.skip_other_placeholder')}
             value={otherReason}
             onChange={(e) => setOtherReason(e.target.value)}
             className="mt-2"
@@ -125,12 +128,12 @@ export const ExerciseSkipDialog = ({
         )}
 
         <AlertDialogFooter className="mt-4">
-          <AlertDialogCancel onClick={handleCancel}>Zpět</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleCancel}>{t('workout.skip_back')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirmSkip}
             disabled={!isValid || isSubmitting}
           >
-            {isSubmitting ? 'Ukládám...' : 'Přeskočit'}
+            {isSubmitting ? t('workout.skip_saving') : t('workout.skip_confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

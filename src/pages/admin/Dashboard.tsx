@@ -6,6 +6,7 @@ import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing, Send, Loader2, 
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
+import { useTranslation } from 'react-i18next';
 
 interface Stats {
   totalUsers: number;
@@ -21,6 +22,7 @@ interface DataQuality {
 }
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     completedOnboarding: 0,
@@ -31,28 +33,25 @@ const Dashboard = () => {
   const [dataQuality, setDataQuality] = useState<DataQuality>({
     exercisesNoRole: 0, exercisesNoVideo: 0, machinesNoExercises: 0, rolesNoEquipment: 0,
   });
-  
-  const { 
-    isSupported, 
-    notificationPermission, 
-    requestPermission, 
-    sendTestNotification 
+
+  const {
+    isSupported,
+    notificationPermission,
+    requestPermission,
+    sendTestNotification
   } = useTrainingNotifications();
 
   useEffect(() => {
     const fetchStats = async () => {
-      // Fetch user count
       const { count: userCount } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch completed onboarding count
       const { count: completedCount } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .eq('onboarding_completed', true);
 
-      // Fetch machines count
       const { count: machineCount } = await supabase
         .from('machines')
         .select('*', { count: 'exact', head: true });
@@ -63,7 +62,6 @@ const Dashboard = () => {
         totalMachines: machineCount || 0,
       });
 
-      // Data quality checks
       const [noRoleRes, noVideoRes, rolesRes] = await Promise.all([
         supabase.from('exercises').select('id', { count: 'exact', head: true }).is('primary_role', null).eq('allowed_phase', 'main'),
         supabase.from('exercises').select('id', { count: 'exact', head: true }).is('video_path', null).not('allowed_phase', 'eq', 'cooldown'),
@@ -88,19 +86,19 @@ const Dashboard = () => {
   const handleRequestPermission = async () => {
     const granted = await requestPermission();
     if (granted) {
-      toast.success('Notifikace povoleny!');
+      toast.success(t('admin.notif_granted'));
     } else {
-      toast.error('Notifikace nebyly povoleny');
+      toast.error(t('admin.notif_not_granted'));
     }
   };
 
   const handleTestNotification = (type: 'morning' | 'missed' | 'closing') => {
     if (notificationPermission !== 'granted') {
-      toast.error('Nejprve povol notifikace');
+      toast.error(t('admin.notif_first'));
       return;
     }
     sendTestNotification(type);
-    toast.success('Testovací notifikace odeslána');
+    toast.success(t('admin.test_notif_sent'));
   };
 
   const handleBroadcastNotification = async () => {
@@ -109,20 +107,20 @@ const Dashboard = () => {
       const response = await supabase.functions.invoke('send-push-notifications', {
         body: { type: 'test' }
       });
-      
+
       if (response.error) {
-        toast.error(`Chyba: ${response.error.message}`);
+        toast.error(`${t('admin.save_error_detail', { msg: response.error.message })}`);
         return;
       }
-      
+
       const results = response.data?.results?.test;
       if (results) {
-        toast.success(`Odoslaných: ${results.sent}, Preskočených: ${results.skipped}, Chýb: ${results.errors}`);
+        toast.success(`Sent: ${results.sent}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
       } else {
-        toast.success('Broadcast dokončený');
+        toast.success(t('admin.broadcast_done'));
       }
     } catch (error) {
-      toast.error('Nepodarilo sa odoslať broadcast');
+      toast.error(t('admin.broadcast_error'));
       console.error('Broadcast error:', error);
     } finally {
       setIsBroadcasting(false);
@@ -131,29 +129,29 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: 'Celkom používateľov',
+      title: t('admin.total_users'),
       value: stats.totalUsers,
       icon: Users,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
     {
-      title: 'Dokončený onboarding',
+      title: t('admin.onboarding_done'),
       value: stats.completedOnboarding,
       icon: UserCheck,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
     },
     {
-      title: 'Strojov v databáze',
+      title: t('admin.total_machines_db'),
       value: stats.totalMachines,
       icon: Dumbbell,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
     {
-      title: 'Miera dokončenia',
-      value: stats.totalUsers > 0 
+      title: t('admin.completion_rate'),
+      value: stats.totalUsers > 0
         ? `${Math.round((stats.completedOnboarding / stats.totalUsers) * 100)}%`
         : '0%',
       icon: TrendingUp,
@@ -165,7 +163,7 @@ const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
+        <h2 className="text-2xl font-bold text-foreground">{t('admin.dashboard')}</h2>
 
         <div className="grid grid-cols-2 gap-4">
           {statCards.map((stat) => (
@@ -189,51 +187,51 @@ const Dashboard = () => {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-4">
             <BellRing className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Testování notifikací</h3>
+            <h3 className="font-semibold text-foreground">{t('admin.notification_testing')}</h3>
           </div>
-          
+
           {!isSupported ? (
             <p className="text-sm text-muted-foreground">
-              Notifikace nejsou v tomto prohlížeči podporovány.
+              {t('admin.notif_not_supported')}
             </p>
           ) : notificationPermission !== 'granted' ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Pro testování notifikací je potřeba povolit oprávnění.
+                {t('admin.notif_need_permission')}
               </p>
               <Button onClick={handleRequestPermission} variant="outline" className="w-full">
                 <Bell className="w-4 h-4 mr-2" />
-                Povolit notifikace
+                {t('admin.allow_notifications')}
               </Button>
             </div>
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground mb-3">
-                Notifikace povoleny. Klikni pro odeslání testovací notifikace:
+                {t('admin.notif_enabled_click')}
               </p>
-              <Button 
+              <Button
                 onClick={() => handleTestNotification('morning')}
-                variant="outline" 
+                variant="outline"
                 className="w-full justify-start"
               >
                 <Bell className="w-4 h-4 mr-2" />
-                Ranní připomínka
+                {t('admin.morning_reminder')}
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleTestNotification('missed')}
                 variant="outline"
                 className="w-full justify-start"
               >
                 <Bell className="w-4 h-4 mr-2" />
-                Zmeškaný trénink
+                {t('admin.missed_workout')}
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleTestNotification('closing')}
                 variant="outline"
                 className="w-full justify-start"
               >
                 <Bell className="w-4 h-4 mr-2" />
-                Zavírá brzy (se streakem)
+                {t('admin.closing_soon_streak')}
               </Button>
             </div>
           )}
@@ -243,23 +241,23 @@ const Dashboard = () => {
         <Card className="p-4 border-orange-500/30">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <h3 className="font-semibold text-foreground">Kvalita dat</h3>
+            <h3 className="font-semibold text-foreground">{t('admin.data_quality')}</h3>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Hlavní cviky bez role</span>
+              <span className="text-muted-foreground">{t('admin.exercises_no_role')}</span>
               <span className={dataQuality.exercisesNoRole > 0 ? 'text-destructive font-bold' : 'text-green-500'}>
                 {isLoading ? '...' : dataQuality.exercisesNoRole}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Cviky bez videa</span>
+              <span className="text-muted-foreground">{t('admin.exercises_no_video')}</span>
               <span className={dataQuality.exercisesNoVideo > 0 ? 'text-orange-500 font-bold' : 'text-green-500'}>
                 {isLoading ? '...' : dataQuality.exercisesNoVideo}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Role bez vybavení</span>
+              <span className="text-muted-foreground">{t('admin.roles_no_equipment')}</span>
               <span className={dataQuality.rolesNoEquipment > 0 ? 'text-destructive font-bold' : 'text-green-500'}>
                 {isLoading ? '...' : dataQuality.rolesNoEquipment}
               </span>
@@ -271,12 +269,12 @@ const Dashboard = () => {
         <Card className="p-4 border-primary/30">
           <div className="flex items-center gap-2 mb-4">
             <Send className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Push Broadcast (všem)</h3>
+            <h3 className="font-semibold text-foreground">{t('admin.push_broadcast')}</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Odošle testovací push notifikáciu všetkým používateľom s aktívnym push subscription.
+            {t('admin.broadcast_desc')}
           </p>
-          <Button 
+          <Button
             onClick={handleBroadcastNotification}
             disabled={isBroadcasting}
             className="w-full"
@@ -284,12 +282,12 @@ const Dashboard = () => {
             {isBroadcasting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Odosiela sa...
+                {t('admin.broadcasting')}
               </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Broadcast Test Notifikáciu
+                {t('admin.broadcast_btn')}
               </>
             )}
           </Button>

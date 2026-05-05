@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -185,10 +187,14 @@ const App = () => {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   useEffect(() => {
-    // Register callback for update banner
     setUpdateBannerCallback(() => {
       setShowUpdateBanner(true);
     });
+
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setOverlaysWebView({ overlay: true });
+      StatusBar.setStyle({ style: Style.Dark });
+    }
   }, []);
 
   const handleUpdate = async () => {

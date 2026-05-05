@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingDemographicsStepProps {
   gender: string | null;
@@ -21,26 +22,33 @@ const OnboardingDemographicsStep = ({
   onHeightChange,
   onWeightChange,
 }: OnboardingDemographicsStepProps) => {
+  const { t } = useTranslation();
+
+  const genders = [
+    { id: 'muž', label: t('onboarding.male'), emoji: '👨' },
+    { id: 'žena', label: t('onboarding.female'), emoji: '👩' },
+  ];
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-center">O tobě</h2>
-      
+      <h2 className="text-2xl font-bold text-center">{t('onboarding.demographics_title')}</h2>
+
       {/* Gender Selection */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium">Pohlaví</label>
+        <label className="block text-sm font-medium">{t('onboarding.gender')}</label>
         <div className="grid grid-cols-2 gap-4">
-          {['Muž', 'Žena'].map((g) => (
+          {genders.map((g) => (
             <button
-              key={g}
-              onClick={() => onGenderChange(g.toLowerCase())}
+              key={g.id}
+              onClick={() => onGenderChange(g.id)}
               className={`p-4 rounded-xl border-2 transition-all ${
-                gender === g.toLowerCase()
+                gender === g.id
                   ? 'border-primary bg-primary/10 shadow-primary'
                   : 'border-border bg-card hover:border-primary/50'
               }`}
             >
-              <span className="text-2xl block mb-1">{g === 'Muž' ? '👨' : '👩'}</span>
-              <span className="font-medium">{g}</span>
+              <span className="text-2xl block mb-1">{g.emoji}</span>
+              <span className="font-medium">{g.label}</span>
             </button>
           ))}
         </div>
@@ -48,7 +56,7 @@ const OnboardingDemographicsStep = ({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Kolik ti je let?</label>
+          <label className="block text-sm font-medium mb-2">{t('onboarding.age_label')}</label>
           <Input
             type="number"
             value={age}
@@ -58,7 +66,7 @@ const OnboardingDemographicsStep = ({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Kolik měříš? (cm)</label>
+          <label className="block text-sm font-medium mb-2">{t('onboarding.height_label')}</label>
           <Input
             type="number"
             value={height}
@@ -68,7 +76,7 @@ const OnboardingDemographicsStep = ({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Kolik vážíš? (kg)</label>
+          <label className="block text-sm font-medium mb-2">{t('onboarding.weight_label')}</label>
           <Input
             type="number"
             value={weight}

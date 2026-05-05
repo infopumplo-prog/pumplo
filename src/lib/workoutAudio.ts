@@ -1,4 +1,4 @@
-// Workout audio — beep patterns only, no TTS, no mute
+// Workout audio — beep patterns + mute support
 // Beep pattern at end of rests and cardio:
 //   T=3s: 1 short beep (playCountdown3)
 //   T=2s: 1 short beep (playCountdown2)
@@ -27,6 +27,9 @@ let beepEl: HTMLAudioElement | null = null;
 let alarmBeepEl: HTMLAudioElement | null = null;
 let alarmFinishEl: HTMLAudioElement | null = null;
 let unlocked = false;
+let _muted = false;
+export const setAudioMuted = (muted: boolean) => { _muted = muted; };
+export const isAudioMuted = () => _muted;
 
 export const unlockAudio = () => {
   if (unlocked) return;
@@ -89,12 +92,14 @@ try {
 
 /** Single short beep — for set completion */
 export const playBeep = () => {
+  if (_muted) return;
   if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
   if (!beepEl) return;
   beepEl.currentTime = 0; beepEl.play().catch(() => {});
 };
 
 function _playAlarmBeep() {
+  if (_muted) return;
   if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
   if (!alarmBeepEl) return;
   alarmBeepEl.currentTime = 0; alarmBeepEl.play().catch(() => {});
@@ -102,6 +107,7 @@ function _playAlarmBeep() {
 
 /** Long beep — signals end of rest or cardio (T=0) */
 export const playAlarmFinish = () => {
+  if (_muted) return;
   if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
   if (!alarmFinishEl) return;
   alarmFinishEl.currentTime = 0; alarmFinishEl.play().catch(() => {});

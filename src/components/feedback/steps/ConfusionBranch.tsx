@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ const helpTypes: { id: HelpType; label: string }[] = [
 ];
 
 export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
+  const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
 
   const updateResponses = (updates: Record<string, unknown>) => {
@@ -113,7 +115,7 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
         <Textarea
           value={(responses.confusion_detail as string) || ''}
           onChange={(e) => updateResponses({ confusion_detail: e.target.value })}
-          placeholder="Detailnější popis"
+          placeholder={t('feedback.confusion_detail_placeholder')}
           className="mt-2"
         />
       </div>

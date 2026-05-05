@@ -3,11 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Save, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
+import { useTranslation } from 'react-i18next';
 
 interface TrainingRole {
   id: string;
@@ -35,14 +35,13 @@ const PHASE_OPTIONS = ['main', 'warmup', 'cooldown', 'accessory'];
 const CATEGORY_GROUPS = ['upper', 'lower', 'core', 'compound', 'cardio'];
 
 const TrainingRolesManagement = () => {
+  const { t } = useTranslation();
   const [roles, setRoles] = useState<TrainingRole[]>([]);
   const [muscles, setMuscles] = useState<RoleMuscle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [expandedRoles, setExpandedRoles] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [newEquipment, setNewEquipment] = useState<Record<string, string>>({});
-  const [newInjury, setNewInjury] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchAll();
@@ -89,9 +88,9 @@ const TrainingRolesManagement = () => {
       .eq('id', role.id);
 
     if (error) {
-      toast.error(`Chyba: ${error.message}`);
+      toast.error(t('admin.role_save_error', { msg: error.message }));
     } else {
-      toast.success(`${role.name} uloženo`);
+      toast.success(t('admin.role_saved', { name: role.name }));
     }
     setSaving(null);
   };
@@ -134,9 +133,9 @@ const TrainingRolesManagement = () => {
   return (
     <AdminLayout>
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Tréninkové role</h2>
+        <h2 className="text-2xl font-bold text-foreground">{t('admin.roles_title')}</h2>
         <p className="text-sm text-muted-foreground">
-          Správa training_roles — povolené vybavení, kontraindikovaná zranění, obtížnost.
+          {t('admin.roles_desc')}
         </p>
 
         {CATEGORY_GROUPS.map(cat => {
@@ -152,7 +151,7 @@ const TrainingRolesManagement = () => {
               >
                 {isCatExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 <h3 className="text-lg font-semibold text-foreground capitalize">{cat}</h3>
-                <span className="text-sm text-muted-foreground ml-auto">{catRoles.length} rolí</span>
+                <span className="text-sm text-muted-foreground ml-auto">{t('admin.roles_count', { n: catRoles.length })}</span>
               </button>
 
               {isCatExpanded && (
@@ -174,7 +173,7 @@ const TrainingRolesManagement = () => {
                           <span className="text-xs text-muted-foreground font-mono">({role.id})</span>
                           <div className="ml-auto flex gap-1">
                             {(role.allowed_equipment_categories?.length || 0) === 0 && (
-                              <Badge variant="destructive" className="text-[10px]">Bez vybavení</Badge>
+                              <Badge variant="destructive" className="text-[10px]">{t('admin.no_equipment_badge')}</Badge>
                             )}
                           </div>
                         </button>
@@ -183,7 +182,7 @@ const TrainingRolesManagement = () => {
                           <div className="px-3 pb-3 space-y-3">
                             {/* Equipment */}
                             <div>
-                              <label className="text-xs font-medium text-muted-foreground">Povolené vybavení</label>
+                              <label className="text-xs font-medium text-muted-foreground">{t('admin.allowed_equipment')}</label>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {(role.allowed_equipment_categories || []).map(eq => (
                                   <Badge key={eq} variant="secondary" className="text-xs gap-1">
@@ -193,12 +192,9 @@ const TrainingRolesManagement = () => {
                                     </button>
                                   </Badge>
                                 ))}
-                                <Select
-                                  value=""
-                                  onValueChange={(v) => addTag(role.id, 'allowed_equipment_categories', v)}
-                                >
+                                <Select value="" onValueChange={(v) => addTag(role.id, 'allowed_equipment_categories', v)}>
                                   <SelectTrigger className="w-28 h-6 text-[10px]">
-                                    <SelectValue placeholder="+ přidat" />
+                                    <SelectValue placeholder="+ add" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {EQUIPMENT_OPTIONS.filter(o => !(role.allowed_equipment_categories || []).includes(o)).map(o => (
@@ -211,7 +207,7 @@ const TrainingRolesManagement = () => {
 
                             {/* Injuries */}
                             <div>
-                              <label className="text-xs font-medium text-muted-foreground">Kontraindikovaná zranění</label>
+                              <label className="text-xs font-medium text-muted-foreground">{t('admin.contraindicated_injuries')}</label>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {(role.banned_injury_tags || []).map(inj => (
                                   <Badge key={inj} variant="outline" className="text-xs gap-1 border-destructive/50">
@@ -221,12 +217,9 @@ const TrainingRolesManagement = () => {
                                     </button>
                                   </Badge>
                                 ))}
-                                <Select
-                                  value=""
-                                  onValueChange={(v) => addTag(role.id, 'banned_injury_tags', v)}
-                                >
+                                <Select value="" onValueChange={(v) => addTag(role.id, 'banned_injury_tags', v)}>
                                   <SelectTrigger className="w-28 h-6 text-[10px]">
-                                    <SelectValue placeholder="+ přidat" />
+                                    <SelectValue placeholder="+ add" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {INJURY_OPTIONS.filter(o => !(role.banned_injury_tags || []).includes(o)).map(o => (
@@ -240,7 +233,7 @@ const TrainingRolesManagement = () => {
                             {/* Difficulty & Phase */}
                             <div className="flex gap-3">
                               <div>
-                                <label className="text-xs font-medium text-muted-foreground">Obtížnost</label>
+                                <label className="text-xs font-medium text-muted-foreground">{t('admin.difficulty')}</label>
                                 <Select
                                   value={role.difficulty_level || 'all'}
                                   onValueChange={(v) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, difficulty_level: v } : r))}
@@ -256,7 +249,7 @@ const TrainingRolesManagement = () => {
                                 </Select>
                               </div>
                               <div>
-                                <label className="text-xs font-medium text-muted-foreground">Fáze</label>
+                                <label className="text-xs font-medium text-muted-foreground">{t('admin.phase')}</label>
                                 <Select
                                   value={role.phase_type || 'main'}
                                   onValueChange={(v) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, phase_type: v } : r))}
@@ -276,7 +269,7 @@ const TrainingRolesManagement = () => {
                             {/* Muscles */}
                             {roleMuscles.length > 0 && (
                               <div>
-                                <label className="text-xs font-medium text-muted-foreground">Svaly</label>
+                                <label className="text-xs font-medium text-muted-foreground">{t('admin.muscles')}</label>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {primaryMuscles.map(m => (
                                     <Badge key={m.id} className="text-[10px]">{m.muscle}</Badge>
@@ -295,7 +288,7 @@ const TrainingRolesManagement = () => {
                               className="w-full"
                             >
                               {saving === role.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                              Uložit změny
+                              {t('admin.save_role_btn')}
                             </Button>
                           </div>
                         )}

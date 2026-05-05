@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useTranslation } from 'react-i18next';
 
 // Fix for default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -18,6 +19,7 @@ interface LocationPickerProps {
 }
 
 const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPickerProps) => {
+  const { t } = useTranslation();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -106,7 +108,7 @@ const LocationPicker = ({ latitude, longitude, onLocationChange }: LocationPicke
         className="w-full h-64 rounded-lg overflow-hidden border border-border"
       />
       <p className="text-xs text-muted-foreground mt-2 px-1">
-        Klikněte na mapu pro výběr lokace
+        {t('business.map_click_hint')}
       </p>
     </div>
   );

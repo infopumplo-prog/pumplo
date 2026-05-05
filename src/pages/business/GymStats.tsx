@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { cs } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface GymStatsData {
   totalMembers: number;
@@ -87,14 +88,8 @@ const DAY_COLORS = [
   'hsl(var(--accent))',
 ];
 
-const chartConfig = {
-  workouts: {
-    label: 'Tréninky',
-    color: 'hsl(var(--primary))',
-  },
-};
-
 const GymStats = () => {
+  const { t } = useTranslation();
   const { gyms, gym, selectGym, isLoading: gymsLoading } = useGym();
   const [stats, setStats] = useState<GymStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,47 +97,49 @@ const GymStats = () => {
   const [showMissedHistory, setShowMissedHistory] = useState(false);
   const [loadingMissedHistory, setLoadingMissedHistory] = useState(false);
 
-  // Get today's weekday
+  const chartConfig = {
+    workouts: {
+      label: t('business.chart_workouts'),
+      color: 'hsl(var(--primary))',
+    },
+  };
+
   const todayWeekday = useMemo(() => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     return days[new Date().getDay()];
   }, []);
 
-  // Fetch missed workout history (up to yesterday, last 7 days)
   const fetchMissedHistory = async () => {
     if (!gym?.id || loadingMissedHistory) return;
-    
+
     setLoadingMissedHistory(true);
     try {
       const history: MissedHistoryEntry[] = [];
       const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      
-      // Check last 7 days (excluding today)
+
       for (let i = 1; i <= 7; i++) {
         const date = subDays(new Date(), i);
         const dayKey = daysOfWeek[date.getDay()];
         const dateStart = startOfDay(date).toISOString();
         const dateEnd = endOfDay(date).toISOString();
-        
-        // Get members who had this day in their training schedule
+
         const { data: membersWithSchedule } = await supabase
           .from('user_profiles')
           .select('user_id, first_name, last_name, training_days')
           .eq('selected_gym_id', gym.id)
           .contains('training_days', [dayKey]);
-        
+
         if (!membersWithSchedule?.length) continue;
-        
-        // Get users who worked out on that date
+
         const { data: sessionsOnDay } = await supabase
           .from('workout_sessions')
           .select('user_id')
           .eq('gym_id', gym.id)
           .gte('started_at', dateStart)
           .lte('started_at', dateEnd);
-        
+
         const workedOutUserIds = new Set(sessionsOnDay?.map(s => s.user_id) || []);
-        
+
         const missedUsers = membersWithSchedule
           .filter(m => !workedOutUserIds.has(m.user_id))
           .map(m => ({
@@ -151,7 +148,7 @@ const GymStats = () => {
             lastName: m.last_name,
             expectedDay: dayKey
           }));
-        
+
         if (missedUsers.length > 0) {
           history.push({
             date: date.toISOString(),
@@ -160,7 +157,7 @@ const GymStats = () => {
           });
         }
       }
-      
+
       setMissedHistory(history);
     } catch (err) {
       console.error('Error fetching missed history:', err);
@@ -184,27 +181,23 @@ const GymStats = () => {
         const todayStart = startOfDay(now).toISOString();
         const weekAgo = subDays(now, 7).toISOString();
 
-        // 1. Total members (users with this gym selected)
         const { count: memberCount } = await supabase
           .from('user_profiles')
           .select('*', { count: 'exact', head: true })
           .eq('selected_gym_id', gymId);
 
-        // 2. Today's workouts
         const { count: todayCount } = await supabase
           .from('workout_sessions')
           .select('*', { count: 'exact', head: true })
           .eq('gym_id', gymId)
           .gte('started_at', todayStart);
 
-        // 3. Weekly workouts
         const { count: weeklyCount } = await supabase
           .from('workout_sessions')
           .select('*', { count: 'exact', head: true })
           .eq('gym_id', gymId)
           .gte('started_at', weekAgo);
 
-        // 4. Average duration
         const { data: durationData } = await supabase
           .from('workout_sessions')
           .select('duration_seconds')
@@ -216,15 +209,12 @@ const GymStats = () => {
           ? durationData.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) / durationData.length / 60
           : 0;
 
-        // 5. Missed workouts today - users who have this gym selected, 
-        // have today in their training_days, but no session today
         const { data: membersWithSchedule } = await supabase
           .from('user_profiles')
           .select('user_id, first_name, last_name, training_days')
           .eq('selected_gym_id', gymId)
           .contains('training_days', [todayWeekday]);
 
-        // Get users who already worked out today at this gym
         const { data: todaySessions } = await supabase
           .from('workout_sessions')
           .select('user_id')
@@ -232,7 +222,7 @@ const GymStats = () => {
           .gte('started_at', todayStart);
 
         const todayUserIds = new Set(todaySessions?.map(s => s.user_id) || []);
-        
+
         const missedUsers: MissedUser[] = (membersWithSchedule || [])
           .filter(m => !todayUserIds.has(m.user_id))
           .map(m => ({
@@ -242,26 +232,22 @@ const GymStats = () => {
             expectedDay: todayWeekday
           }));
 
-        // 6. Top users (by workout count at this gym)
         const { data: topUserData } = await supabase
           .from('workout_sessions')
           .select('user_id')
           .eq('gym_id', gymId)
           .not('completed_at', 'is', null);
 
-        // Count workouts per user
         const userWorkoutCounts: Record<string, number> = {};
         topUserData?.forEach(session => {
           userWorkoutCounts[session.user_id] = (userWorkoutCounts[session.user_id] || 0) + 1;
         });
 
-        // Get top 5 users
         const topUserIds = Object.entries(userWorkoutCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
           .map(([userId]) => userId);
 
-        // Fetch user details for top users
         let topUsers: TopUser[] = [];
         if (topUserIds.length > 0) {
           const { data: userDetails } = await supabase
@@ -280,20 +266,19 @@ const GymStats = () => {
           });
         }
 
-        // 7. Weekly trend data (last 7 days)
         const weeklyTrend: WeeklyTrendData[] = [];
         for (let i = 6; i >= 0; i--) {
           const date = subDays(now, i);
           const dayStart = startOfDay(date).toISOString();
           const dayEnd = endOfDay(date).toISOString();
-          
+
           const { count } = await supabase
             .from('workout_sessions')
             .select('*', { count: 'exact', head: true })
             .eq('gym_id', gymId)
             .gte('started_at', dayStart)
             .lte('started_at', dayEnd);
-          
+
           weeklyTrend.push({
             date: date.toISOString(),
             label: format(date, 'EEE', { locale: cs }),
@@ -301,7 +286,6 @@ const GymStats = () => {
           });
         }
 
-        // 8. Distribution by day of week (all time)
         const { data: allSessions } = await supabase
           .from('workout_sessions')
           .select('started_at')
@@ -346,7 +330,6 @@ const GymStats = () => {
     fetchStats();
   }, [gym?.id, todayWeekday]);
 
-  // Load missed history when section is expanded
   useEffect(() => {
     if (showMissedHistory && missedHistory.length === 0 && !loadingMissedHistory) {
       fetchMissedHistory();
@@ -371,17 +354,16 @@ const GymStats = () => {
   return (
     <BusinessLayout>
       <div className="space-y-6">
-        {/* Header with gym selector */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold">Statistiky</h1>
-          
+          <h1 className="text-2xl font-bold">{t('business.stats_title')}</h1>
+
           {gyms.length > 1 && (
             <Select value={gym?.id || ''} onValueChange={(id) => {
               const selected = gyms.find(g => g.id === id);
               if (selected) selectGym(selected);
             }}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Vyber posilovnu" />
+                <SelectValue placeholder={t('business.select_gym_placeholder')} />
               </SelectTrigger>
               <SelectContent>
                 {gyms.map(g => (
@@ -395,7 +377,7 @@ const GymStats = () => {
         {!gym ? (
           <Card className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Nejdříve vytvoř posilovnu pro zobrazení statistik</p>
+            <p className="text-muted-foreground">{t('business.create_gym_first')}</p>
           </Card>
         ) : isLoading ? (
           <div className="space-y-6">
@@ -413,7 +395,6 @@ const GymStats = () => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            {/* Stat Cards */}
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">
                 <div className="flex items-center gap-3 mb-2">
@@ -422,7 +403,7 @@ const GymStats = () => {
                   </div>
                 </div>
                 <p className="text-2xl font-bold">{stats.totalMembers}</p>
-                <p className="text-sm text-muted-foreground">aktivních členů</p>
+                <p className="text-sm text-muted-foreground">{t('business.active_members')}</p>
               </Card>
 
               <Card className="p-4">
@@ -432,7 +413,7 @@ const GymStats = () => {
                   </div>
                 </div>
                 <p className="text-2xl font-bold">{stats.todayWorkouts}</p>
-                <p className="text-sm text-muted-foreground">tréninků dnes</p>
+                <p className="text-sm text-muted-foreground">{t('business.workouts_today')}</p>
               </Card>
 
               <Card className="p-4">
@@ -442,7 +423,7 @@ const GymStats = () => {
                   </div>
                 </div>
                 <p className="text-2xl font-bold">{stats.weeklyWorkouts}</p>
-                <p className="text-sm text-muted-foreground">za posledních 7 dní</p>
+                <p className="text-sm text-muted-foreground">{t('business.workouts_7days')}</p>
               </Card>
 
               <Card className="p-4">
@@ -452,49 +433,47 @@ const GymStats = () => {
                   </div>
                 </div>
                 <p className="text-2xl font-bold">{stats.avgDurationMinutes} min</p>
-                <p className="text-sm text-muted-foreground">průměrný trénink</p>
+                <p className="text-sm text-muted-foreground">{t('business.avg_workout')}</p>
               </Card>
             </div>
 
-            {/* Weekly Trend Chart */}
             <Card className="p-4">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                Týdenní trend návštěvnosti
+                {t('business.weekly_trend')}
               </h3>
               <ChartContainer config={chartConfig} className="h-[200px] w-full">
                 <BarChart data={stats.weeklyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis 
-                    dataKey="label" 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 12 }}
                   />
-                  <YAxis 
-                    tickLine={false} 
+                  <YAxis
+                    tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 12 }}
                     allowDecimals={false}
                   />
-                  <ChartTooltip 
+                  <ChartTooltip
                     content={<ChartTooltipContent />}
                     cursor={{ fill: 'hsl(var(--muted))' }}
                   />
-                  <Bar 
-                    dataKey="workouts" 
-                    fill="hsl(var(--primary))" 
+                  <Bar
+                    dataKey="workouts"
+                    fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
-                    name="Tréninky"
+                    name={t('business.chart_workouts')}
                   />
                 </BarChart>
               </ChartContainer>
             </Card>
 
-            {/* Day Distribution Chart */}
             <Card className="p-4">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-chart-2" />
-                Rozložení podle dne v týdnu
+                {t('business.by_day_of_week')}
               </h3>
               <div className="flex flex-col md:flex-row items-center gap-4">
                 <ChartContainer config={chartConfig} className="h-[200px] w-full md:w-1/2">
@@ -513,18 +492,18 @@ const GymStats = () => {
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [`${value} tréninků`, name]}
+                    <Tooltip
+                      formatter={(value: number, name: string) => [t('business.workouts_count', { n: value }), name]}
                     />
                   </PieChart>
                 </ChartContainer>
                 <div className="grid grid-cols-2 gap-2 w-full md:w-1/2">
                   {stats.dayDistribution.map((day) => (
-                    <div 
-                      key={day.dayKey} 
+                    <div
+                      key={day.dayKey}
                       className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
                     >
-                      <div 
+                      <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: day.fill }}
                       />
@@ -536,19 +515,18 @@ const GymStats = () => {
               </div>
             </Card>
 
-            {/* Missed Workouts Today */}
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4">
                 <UserX className="w-5 h-5 text-destructive" />
-                <h3 className="font-semibold">Zmeškaný trénink dnes</h3>
+                <h3 className="font-semibold">{t('business.missed_today')}</h3>
                 <span className="ml-auto text-sm text-muted-foreground">
                   {DAY_NAMES_CZ[todayWeekday]}
                 </span>
               </div>
-              
+
               {stats.missedWorkoutsToday.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  Všichni naplánovaní uživatelé už dnes cvičili! 🎉
+                  {t('business.all_trained')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -559,24 +537,23 @@ const GymStats = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium">
-                          {user.firstName || 'Neznámý'} {user.lastName || ''}
+                          {user.firstName || t('business.unknown')} {user.lastName || ''}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Měl cvičit v {DAY_NAMES_CZ[user.expectedDay]}
+                          {t('business.should_workout_day', { day: DAY_NAMES_CZ[user.expectedDay] })}
                         </p>
                       </div>
                     </div>
                   ))}
                   {stats.missedWorkoutsToday.length > 5 && (
                     <p className="text-sm text-muted-foreground text-center py-2">
-                      a dalších {stats.missedWorkoutsToday.length - 5} uživatelů
+                      {t('business.and_more', { n: stats.missedWorkoutsToday.length - 5 })}
                     </p>
                   )}
                 </div>
               )}
             </Card>
 
-            {/* Missed Workout History */}
             <Card className="p-4">
               <Button
                 variant="ghost"
@@ -585,7 +562,7 @@ const GymStats = () => {
               >
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Historie zmeškaných tréninků</h3>
+                  <h3 className="font-semibold">{t('business.missed_history')}</h3>
                 </div>
                 {showMissedHistory ? (
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
@@ -593,7 +570,7 @@ const GymStats = () => {
                   <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 )}
               </Button>
-              
+
               {showMissedHistory && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
@@ -609,7 +586,7 @@ const GymStats = () => {
                     </div>
                   ) : missedHistory.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">
-                      Žádné zmeškané tréninky za posledních 7 dní! 🎉
+                      {t('business.no_missed')}
                     </p>
                   ) : (
                     missedHistory.map((entry) => (
@@ -621,12 +598,12 @@ const GymStats = () => {
                           {entry.users.slice(0, 3).map(user => (
                             <div key={user.id} className="flex items-center gap-2 text-sm">
                               <UserX className="w-3 h-3 text-destructive/70" />
-                              <span>{user.firstName || 'Neznámý'} {user.lastName || ''}</span>
+                              <span>{user.firstName || t('business.unknown')} {user.lastName || ''}</span>
                             </div>
                           ))}
                           {entry.users.length > 3 && (
                             <p className="text-xs text-muted-foreground">
-                              +{entry.users.length - 3} dalších
+                              +{entry.users.length - 3} {t('business.and_more', { n: entry.users.length - 3 }).replace(`${entry.users.length - 3} `, '')}
                             </p>
                           )}
                         </div>
@@ -637,16 +614,15 @@ const GymStats = () => {
               )}
             </Card>
 
-            {/* Top Users */}
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Trophy className="w-5 h-5 text-chart-4" />
-                <h3 className="font-semibold">Top cvičenci</h3>
+                <h3 className="font-semibold">{t('business.top_athletes')}</h3>
               </div>
-              
+
               {stats.topUsers.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  Zatím žádné dokončené tréninky
+                  {t('business.no_completed')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -662,11 +638,11 @@ const GymStats = () => {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">
-                          {user.firstName || 'Neznámý'} {user.lastName || ''}
+                          {user.firstName || t('business.unknown')} {user.lastName || ''}
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-primary">
-                        {user.workoutCount} tréninků
+                        {t('business.workouts_count', { n: user.workoutCount })}
                       </span>
                     </div>
                   ))}

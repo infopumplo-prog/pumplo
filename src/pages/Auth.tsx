@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '@/i18n';
+import i18n from '@/i18n';
+import { Capacitor } from '@capacitor/core';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -66,6 +70,7 @@ const Auth = () => {
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword } = useAuth();
+  const { t } = useTranslation();
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setError('');
@@ -73,10 +78,10 @@ const Auth = () => {
     try {
       const result = await loginWithProvider(provider);
       if (!result.success) {
-        setError(result.error || 'Přihlášení se nezdařilo');
+        setError(result.error || t('auth.login_failed'));
       }
     } catch {
-      setError('Něco se pokazilo. Zkuste to prosím znovu.');
+      setError(t('auth.something_wrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -105,10 +110,10 @@ const Auth = () => {
     try {
       const result = await login(email, password);
       if (!result.success) {
-        setError(result.error || 'Přihlášení se nezdařilo');
+        setError(result.error || t('auth.login_failed'));
       }
     } catch {
-      setError('Něco se pokazilo. Zkuste to prosím znovu.');
+      setError(t('auth.something_wrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -124,9 +129,9 @@ const Auth = () => {
       const result = await register(regEmail, regPassword, firstName, lastName);
       if (!result.success || !result.userId) {
         if (result.error?.includes('rate limit') || result.error?.includes('429')) {
-          setError('Příliš mnoho registrací. Zkuste to prosím za pár minut.');
+          setError(t('auth.rate_limit'));
         } else {
-          setError(result.error || 'Registrace se nezdařila');
+          setError(result.error || t('auth.register_failed'));
         }
         setIsSubmitting(false);
         return;
@@ -229,7 +234,7 @@ const Auth = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
     } catch (err) {
       console.error('Registration error:', err);
-      setError('Něco se pokazilo. Zkuste to prosím znovu.');
+      setError(t('auth.something_wrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -341,9 +346,9 @@ const Auth = () => {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold">Vytvoř si účet</h2>
+              <h2 className="text-2xl font-bold">{t('auth.create_account_title')}</h2>
               <p className="text-muted-foreground mt-2 text-sm">
-                Poslední krok k tvému tréninkovému plánu
+                {t('auth.last_step')}
               </p>
             </div>
             <form onSubmit={handleRegister} className="space-y-4">
@@ -351,7 +356,7 @@ const Auth = () => {
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Jméno"
+                  placeholder={t('auth.first_name')}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   className="pl-12"
@@ -362,7 +367,7 @@ const Auth = () => {
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Příjmení"
+                  placeholder={t('auth.last_name')}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   className="pl-12"
@@ -385,7 +390,7 @@ const Auth = () => {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     type={showRegPassword ? 'text' : 'password'}
-                    placeholder="Heslo"
+                    placeholder={t('auth.password')}
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     className="pl-12 pr-12"
@@ -400,7 +405,7 @@ const Auth = () => {
                     {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 pl-1">Minimálně 6 znaků</p>
+                <p className="text-xs text-muted-foreground mt-1 pl-1">{t('auth.min_chars')}</p>
               </div>
 
               {error && (
@@ -422,19 +427,19 @@ const Auth = () => {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Vytváření účtu...</span>
+                    <span>{t('auth.creating_account')}</span>
                   </>
                 ) : (
-                  <span>Dokončit registraci</span>
+                  <span>{t('auth.complete_registration')}</span>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                Kliknutím souhlasíš s{' '}
+                {t('auth.terms_consent')}{' '}
                 <Link to="/terms" className="underline hover:text-foreground" target="_blank">
-                  Podmínkami používání
-                </Link>{' '}a{' '}
+                  {t('auth.terms')}
+                </Link>{' '}{t('auth.and')}{' '}
                 <Link to="/privacy" className="underline hover:text-foreground" target="_blank">
-                  Zásadami ochrany osobních údajů
+                  {t('auth.privacy')}
                 </Link>.
               </p>
             </form>
@@ -461,8 +466,9 @@ const Auth = () => {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Registrovat přes Google
+                {t('auth.google_register')}
               </Button>
+              {Capacitor.getPlatform() !== 'android' && (
               <Button
                 variant="outline"
                 size="lg"
@@ -473,8 +479,9 @@ const Auth = () => {
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                 </svg>
-                Registrovat přes Apple
+                {t('auth.apple_register')}
               </Button>
+              )}
             </div>
           </div>
         );
@@ -484,7 +491,23 @@ const Auth = () => {
   };
 
   return (
-    <div className="h-full bg-background flex flex-col safe-top safe-bottom">
+    <div className="h-full bg-background flex flex-col safe-top safe-bottom relative">
+      {/* Language toggle */}
+      <div className="absolute top-4 right-4 z-10 flex gap-1">
+        {(['cs', 'en'] as const).map((lang) => (
+          <button
+            key={lang}
+            onClick={() => changeLanguage(lang)}
+            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+              i18n.language === lang
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
+          </button>
+        ))}
+      </div>
       {/* Header with gradient */}
       <div className="flex-shrink-0 gradient-hero pt-12 pb-8 px-6">
         <motion.div 
@@ -501,7 +524,7 @@ const Auth = () => {
           >
             <img src={pumploWordmark} alt="Pumplo" className="h-10 object-contain" />
           </motion.div>
-          <p className="text-muted-foreground mt-2 text-sm">Tvůj fitness parťák</p>
+          <p className="text-muted-foreground mt-2 text-sm">{t('auth.tagline')}</p>
         </motion.div>
       </div>
 
@@ -522,13 +545,13 @@ const Auth = () => {
                   onClick={() => setMode('login')}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all duration-200 bg-background text-foreground shadow-card"
                 >
-                  Přihlášení
+                  {t('auth.login')}
                 </button>
                 <button
                   onClick={toggleMode}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all duration-200 text-muted-foreground"
                 >
-                  Registrace
+                  {t('auth.register')}
                 </button>
               </div>
 
@@ -538,7 +561,7 @@ const Auth = () => {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t('auth.email')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-12"
@@ -550,7 +573,7 @@ const Auth = () => {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Heslo"
+                    placeholder={t('auth.password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-12 pr-12"
@@ -585,10 +608,10 @@ const Auth = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Přihlašování...</span>
+                      <span>{t('auth.logging_in')}</span>
                     </>
                   ) : (
-                    <span>Přihlásit se</span>
+                    <span>{t('auth.login_btn')}</span>
                   )}
                 </Button>
 
@@ -596,7 +619,7 @@ const Auth = () => {
                   type="button"
                   onClick={async () => {
                     if (!email.trim()) {
-                      setError('Zadejte email pro reset hesla');
+                      setError(t('auth.enter_email_reset'));
                       return;
                     }
                     setIsSubmitting(true);
@@ -604,21 +627,21 @@ const Auth = () => {
                     const result = await resetPassword(email);
                     setIsSubmitting(false);
                     if (result.success) {
-                      toast({ title: 'Email odeslán', description: 'Zkontrolujte svou emailovou schránku pro odkaz na reset hesla.' });
+                      toast({ title: t('auth.email_sent'), description: t('auth.check_email') });
                     } else {
-                      setError(result.error || 'Nepodařilo se odeslat reset hesla');
+                      setError(result.error || t('auth.reset_failed'));
                     }
                   }}
                   className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors pt-2"
                 >
-                  Zapomněli jste heslo?
+                  {t('auth.forgot_password')}
                 </button>
               </form>
 
               {/* OAuth divider */}
               <div className="flex items-center gap-3 my-6">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">nebo</span>
+                <span className="text-xs text-muted-foreground">{t('auth.or')}</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
 
@@ -637,8 +660,9 @@ const Auth = () => {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  Pokračovat přes Google
+                  {t('auth.google_login')}
                 </Button>
+                {Capacitor.getPlatform() !== 'android' && (
                 <Button
                   variant="outline"
                   size="lg"
@@ -649,17 +673,18 @@ const Auth = () => {
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                   </svg>
-                  Pokračovat přes Apple
+                  {t('auth.apple_login')}
                 </Button>
+                )}
               </div>
 
               <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
-                Ještě nemáte účet?{' '}
+                {t('auth.no_account')}{' '}
                 <button
                   onClick={toggleMode}
                   className="text-primary font-semibold hover:underline"
                 >
-                  Zaregistrujte se
+                  {t('auth.sign_up')}
                 </button>
               </p>
             </>
@@ -669,9 +694,9 @@ const Auth = () => {
                 <>
                   <OnboardingTrainerWelcome onStart={() => setShowTrainerWelcome(false)} />
                   <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
-                    Už máte účet?{' '}
+                    {t('auth.have_account')}{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
-                      Přihlaste se
+                      {t('auth.sign_in')}
                     </button>
                   </p>
                 </>
@@ -694,14 +719,14 @@ const Auth = () => {
                   <div className="flex gap-3 mt-6 pb-4">
                     <Button variant="outline" onClick={() => setShowGymStep(false)} className="flex-1">
                       <ChevronLeft className="w-4 h-4 mr-1" />
-                      Zpět
+                      {t('auth.back')}
                     </Button>
                     <Button
                       onClick={() => { setShowGymStep(false); setShowOutcomeStep(true); }}
                       className="flex-1"
                       disabled={!selectedGymId}
                     >
-                      Pokračovat
+                      {t('auth.continue')}
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
@@ -710,12 +735,12 @@ const Auth = () => {
                     onClick={() => { setSelectedGymId(null); setShowGymStep(false); setShowOutcomeStep(true); }}
                     className="w-full text-muted-foreground text-sm pb-2"
                   >
-                    Přeskočit
+                    {t('auth.skip')}
                   </Button>
                   <p className="text-center text-muted-foreground text-sm pb-8">
-                    Už máte účet?{' '}
+                    {t('auth.have_account')}{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
-                      Přihlaste se
+                      {t('auth.sign_in')}
                     </button>
                   </p>
                 </>
@@ -739,20 +764,20 @@ const Auth = () => {
                   <div className="flex gap-3 mt-6 pb-4">
                     <Button variant="outline" onClick={() => setShowOutcomeStep(false)} className="flex-1">
                       <ChevronLeft className="w-4 h-4 mr-1" />
-                      Zpět
+                      {t('auth.back')}
                     </Button>
                     <Button
                       onClick={() => { setShowOutcomeStep(false); setOnboardingStep(7); }}
                       className="flex-1 bg-green-500 hover:bg-green-600"
                     >
-                      Vytvořit účet
+                      {t('auth.create_account')}
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
                   <p className="text-center text-muted-foreground text-sm pb-8">
-                    Už máte účet?{' '}
+                    {t('auth.have_account')}{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
-                      Přihlaste se
+                      {t('auth.sign_in')}
                     </button>
                   </p>
                 </>
@@ -761,7 +786,7 @@ const Auth = () => {
                   {/* Progress bar for onboarding */}
                   <div className="mb-6">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Krok {onboardingStep + 1} z {ONBOARDING_TOTAL_STEPS + 1}</span>
+                      <span className="text-muted-foreground">{t('auth.step')} {onboardingStep + 1} {t('auth.of')} {ONBOARDING_TOTAL_STEPS + 1}</span>
                       <span className="font-medium text-primary">{Math.round(progress)}%</span>
                     </div>
                     <Progress value={progress} className="h-2" />
@@ -790,14 +815,14 @@ const Auth = () => {
                         className="flex-1"
                       >
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        Zpět
+                        {t('auth.back')}
                       </Button>
                       <Button
                         onClick={handleNextStep}
                         className="flex-1"
                         disabled={!isStepValid()}
                       >
-                        Další
+                        {t('auth.next')}
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -812,18 +837,18 @@ const Auth = () => {
                         className="w-full"
                       >
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        Zpět k dotazníku
+                        {t('auth.back_to_questionnaire')}
                       </Button>
                     </div>
                   )}
 
                   <p className="text-center text-muted-foreground text-sm pb-8">
-                    Už máte účet?{' '}
+                    {t('auth.have_account')}{' '}
                     <button
                       onClick={toggleMode}
                       className="text-primary font-semibold hover:underline"
                     >
-                      Přihlaste se
+                      {t('auth.sign_in')}
                     </button>
                   </p>
                 </>

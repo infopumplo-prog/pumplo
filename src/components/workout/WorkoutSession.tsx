@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { X, Trophy, Clock, Dumbbell, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,6 +115,7 @@ export const WorkoutSession = ({
   skipNavigateOnComplete = false,
   cooldownExercises = [],
 }: WorkoutSessionProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -160,7 +162,7 @@ export const WorkoutSession = ({
     if (!('mediaSession' in navigator) || !currentExercise) return;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentExercise.exerciseName,
-      artist: gymName || 'Trénink · Pumplo',
+      artist: gymName || t('workout.media_artist'),
       artwork: [
         { src: '/pumplo-artwork-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/pumplo-artwork-512.png', sizes: '512x512', type: 'image/png' },
@@ -241,7 +243,7 @@ export const WorkoutSession = ({
 
       const { data: candidates, error } = await query;
       if (error || !candidates || candidates.length === 0) {
-        toast.error('Žádná náhrada nenalezena');
+        toast.error(t('workout.no_replacement'));
         return;
       }
 
@@ -256,7 +258,7 @@ export const WorkoutSession = ({
       console.log(`[Swap] Valid exercises:`, valid.map(v => v.name));
 
       if (valid.length === 0) {
-        toast.error('Žádná náhrada nenalezena');
+        toast.error(t('workout.no_replacement'));
         return;
       }
 
@@ -302,10 +304,10 @@ export const WorkoutSession = ({
         return updated;
       });
 
-      toast.success(`Vyměněno za: ${pick.name} (z ${valid.length} možností)`);
+      toast.success(t('workout.swap_success', { name: pick.name }));
     } catch (err) {
       console.error('[Swap] Error:', err);
-      toast.error('Chyba při výměně cviku');
+      toast.error(t('workout.swap_error'));
     } finally {
       setIsSwapping(false);
     }
@@ -334,7 +336,7 @@ export const WorkoutSession = ({
       const nextExercise = liveExercises[currentExerciseIndex + 1];
       const nextRest = getRestSecondsForCategory(goalId, nextExercise?.slotCategory);
       setRestDuration(nextRest);
-      setRestLabel('Příprava na další cvik');
+      setRestLabel(t('workout.next_exercise_prep'));
       setShowRestTimer(true);
       setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
@@ -501,7 +503,7 @@ export const WorkoutSession = ({
           setShowCooldown(false);
           setCooldownDone(true);
           setShowSummary(true);
-          toast.info('Protažení přeskočeno');
+          toast.info(t('workout.cooldown_skipped'));
         }}
       />
     );
@@ -525,6 +527,8 @@ export const WorkoutSession = ({
         onClose={() => setShowSummary(false)}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}
+        onAbandon={handleFinishWorkout}
+        abandonDescription={t('workout.abandon_desc')}
       />
     );
   }
@@ -567,7 +571,7 @@ export const WorkoutSession = ({
           open={showSkipDialog}
           onOpenChange={setShowSkipDialog}
           exerciseId={currentExercise.exerciseId}
-          exerciseName={currentExercise.exerciseName || 'Cvik'}
+          exerciseName={currentExercise.exerciseName || t('workout.exercise_label')}
           gymId={gymId}
           planId={planId || undefined}
           dayLetter={dayLetter}
@@ -627,7 +631,7 @@ export const WorkoutSession = ({
         open={showSkipDialog}
         onOpenChange={setShowSkipDialog}
         exerciseId={currentExercise.exerciseId}
-        exerciseName={currentExercise.exerciseName || 'Cvik'}
+        exerciseName={currentExercise.exerciseName || t('workout.exercise_label')}
         gymId={gymId}
         planId={planId || undefined}
         dayLetter={dayLetter}
@@ -767,7 +771,7 @@ const ExercisePlayerWithVideo = ({
   return (
     <ExercisePlayer
       exerciseId={exercise.exerciseId || undefined}
-      exerciseName={exercise.exerciseName || 'Cvik'}
+      exerciseName={exercise.exerciseName || t('workout.exercise_label')}
       exerciseDescription={videoData.description || undefined}
       setupInstructions={videoData.setupInstructions || undefined}
       commonMistakes={videoData.commonMistakes || undefined}

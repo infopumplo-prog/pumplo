@@ -2,8 +2,10 @@ import { useGym } from '@/contexts/GymContext';
 import { useGymMachines } from '@/hooks/useGymMachines';
 import { QRCodeCard } from '@/components/business/QRCodeCard';
 import { QrCode, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const GymQRCodes = () => {
+  const { t } = useTranslation();
   const { gym } = useGym();
   const { machines, isLoading } = useGymMachines(gym?.id || null);
 
@@ -19,14 +21,14 @@ const GymQRCodes = () => {
     <div className="px-4 py-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <QrCode className="w-6 h-6" style={{ color: '#4CC9FF' }} />
-        <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>QR kódy</h1>
+        <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>{t('business.qr_title')}</h1>
       </div>
       <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginBottom: '24px' }}>
-        QR kódy pro vaše cvičiště. Stáhněte a vytiskněte na samolepky.
+        {t('business.qr_desc')}
       </p>
       {machines.length === 0 ? (
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-          Zatím nemáte přidané žádné stroje.
+          {t('business.no_machines_yet')}
         </p>
       ) : (
         <div className="space-y-3">
@@ -34,7 +36,7 @@ const GymQRCodes = () => {
             <QRCodeCard
               key={m.id}
               shortCode={m.short_code}
-              machineName={m.machine?.name || 'Stroj'}
+              machineName={m.machine?.name || t('business.machine_fallback')}
               quantity={m.quantity || 1}
             />
           ))}

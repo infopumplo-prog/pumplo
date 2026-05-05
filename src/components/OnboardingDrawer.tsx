@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '@/i18n';
+import i18n from '@/i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,6 +33,7 @@ interface OnboardingDrawerProps {
 }
 
 const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
+  const { t } = useTranslation();
   const { profile, updateProfile, refetch } = useUserProfile();
   const { generateWorkoutPlan, isGenerating } = useWorkoutGenerator();
   const { toast } = useToast();
@@ -364,9 +368,26 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         {/* Header with progress */}
         <div className="px-4 pt-4 pb-4 border-b border-border">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Krok {currentStep + 1} z {TOTAL_STEPS}</span>
-              <span className="font-medium text-primary">{Math.round(progress)}%</span>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{t('onboarding.step_of', { n: currentStep + 1, total: TOTAL_STEPS })}</span>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {(['cs', 'en'] as const).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => changeLanguage(lang)}
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                        i18n.language === lang
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
+                    </button>
+                  ))}
+                </div>
+                <span className="font-medium text-primary">{Math.round(progress)}%</span>
+              </div>
             </div>
             <Progress value={progress} className="h-2" />
           </div>

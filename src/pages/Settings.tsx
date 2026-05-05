@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe } from 'lucide-react';
+import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -36,6 +38,8 @@ const Settings = () => {
     updateNotificationPreference 
   } = usePushNotifications();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language as 'cs' | 'en';
 
   // Profile state
   const [firstName, setFirstName] = useState('');
@@ -86,19 +90,12 @@ const Settings = () => {
       });
       
       if (result.success) {
-        toast({
-          title: 'Uloženo',
-          description: 'Profil byl úspěšně aktualizován.',
-        });
+        toast({ title: t('toast.saved'), description: t('toast.profile_updated') });
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      toast({
-        title: 'Chyba',
-        description: 'Nepodařilo se uložit změny.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.save_failed'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -106,20 +103,12 @@ const Settings = () => {
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) {
-      toast({
-        title: 'Chyba',
-        description: 'Zadejte nový e-mail.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.enter_email'), variant: 'destructive' });
       return;
     }
 
     if (newEmail === user?.email) {
-      toast({
-        title: 'Chyba',
-        description: 'Nový e-mail je stejný jako současný.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.same_email'), variant: 'destructive' });
       return;
     }
 
@@ -131,17 +120,10 @@ const Settings = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Ověřovací e-mail odeslán',
-        description: 'Zkontrolujte svou novou e-mailovou schránku a potvrďte změnu.',
-      });
+      toast({ title: t('toast.email_verify_sent'), description: t('toast.check_new_email') });
       setNewEmail('');
     } catch (error: unknown) {
-      toast({
-        title: 'Chyba',
-        description: (error as Error).message || 'Nepodařilo se změnit e-mail.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: (error as Error).message || t('toast.email_change_failed'), variant: 'destructive' });
     } finally {
       setIsChangingEmail(false);
     }
@@ -150,29 +132,17 @@ const Settings = () => {
   const handleChangePassword = async () => {
     // Validation
     if (!currentPassword) {
-      toast({
-        title: 'Chyba',
-        description: 'Zadejte aktuální heslo.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.enter_current_password'), variant: 'destructive' });
       return;
     }
 
     if (newPassword.length < 6) {
-      toast({
-        title: 'Chyba',
-        description: 'Nové heslo musí mít alespoň 6 znaků.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.min_password'), variant: 'destructive' });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast({
-        title: 'Chyba',
-        description: 'Hesla se neshodují.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.passwords_mismatch'), variant: 'destructive' });
       return;
     }
 
@@ -185,36 +155,21 @@ const Settings = () => {
       });
 
       if (signInError) {
-        toast({
-          title: 'Chyba',
-          description: 'Nesprávné aktuální heslo.',
-          variant: 'destructive',
-        });
+        toast({ title: t('toast.error'), description: t('toast.wrong_password'), variant: 'destructive' });
         return;
       }
 
-      // Change password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      toast({
-        title: 'Heslo změněno',
-        description: 'Vaše heslo bylo úspěšně aktualizováno.',
-      });
+      toast({ title: t('toast.password_changed'), description: t('toast.password_updated') });
       
       // Clear form
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: unknown) {
-      toast({
-        title: 'Chyba',
-        description: (error as Error).message || 'Nepodařilo se změnit heslo.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: (error as Error).message || t('toast.password_change_failed'), variant: 'destructive' });
     } finally {
       setIsChangingPassword(false);
     }
@@ -226,23 +181,13 @@ const Settings = () => {
       if (enabled) {
         const success = await subscribeToPush();
         if (success) {
-          toast({
-            title: 'Oznámení povolena',
-            description: 'Budete dostávat připomínky na trénink.',
-          });
+          toast({ title: t('toast.notifications_enabled'), description: t('toast.workout_reminders') });
         } else {
-          toast({
-            title: 'Oznámení zamítnuta',
-            description: 'Povolte oznámení v nastavení prohlížeče.',
-            variant: 'destructive',
-          });
+          toast({ title: t('toast.notifications_denied'), description: t('toast.allow_notifications'), variant: 'destructive' });
         }
       } else {
         await unsubscribeFromPush();
-        toast({
-          title: 'Oznámení vypnuta',
-          description: 'Nebudete dostávat žádná oznámení.',
-        });
+        toast({ title: t('toast.notifications_disabled'), description: t('toast.no_notifications') });
       }
     } finally {
       setIsTogglingNotifications(false);
@@ -265,11 +210,7 @@ const Settings = () => {
       if (type === 'morning_reminder') setMorningReminder(!enabled);
       if (type === 'missed_workout') setMissedWorkout(!enabled);
       if (type === 'closing_soon') setClosingSoon(!enabled);
-      toast({
-        title: 'Chyba',
-        description: 'Nepodařilo se uložit nastavení.',
-        variant: 'destructive',
-      });
+      toast({ title: t('toast.error'), description: t('toast.settings_save_failed'), variant: 'destructive' });
     }
   };
 
@@ -294,7 +235,7 @@ const Settings = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast({ title: 'Chyba', description: 'Export se nezdařil. Zkuste to znovu.', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.export_failed'), variant: 'destructive' });
     }
   };
 
@@ -315,19 +256,16 @@ const Settings = () => {
         throw new Error(data?.error || 'Nepodařilo se smazat účet');
       }
 
-      toast({
-        title: 'Účet smazán',
-        description: 'Váš účet byl úspěšně odstraněn.',
-      });
-      
+      toast({ title: t('toast.account_deleted'), description: t('toast.account_removed') });
+
       // Sign out locally and redirect
       await supabase.auth.signOut();
       navigate('/auth');
     } catch (error: unknown) {
       console.error('Delete account error:', error);
       toast({
-        title: 'Chyba',
-        description: (error as Error).message || 'Nepodařilo se smazat účet. Zkuste to znovu.',
+        title: t('toast.error'),
+        description: (error as Error).message || t('toast.delete_failed'),
         variant: 'destructive',
       });
     } finally {
@@ -358,8 +296,8 @@ const Settings = () => {
     {
       id: 'morning_reminder' as const,
       icon: Clock,
-      title: 'Ranní připomínka',
-      description: 'Připomenutí tréninku ráno',
+      title: t('settings.notif.morning_title'),
+      description: t('settings.notif.morning_desc'),
       enabled: morningReminder,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
@@ -367,8 +305,8 @@ const Settings = () => {
     {
       id: 'missed_workout' as const,
       icon: Flame,
-      title: 'Zmeškaný trénink',
-      description: 'Upozornění po vynechaném tréninku',
+      title: t('settings.notif.missed_title'),
+      description: t('settings.notif.missed_desc'),
       enabled: missedWorkout,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10'
@@ -376,8 +314,8 @@ const Settings = () => {
     {
       id: 'closing_soon' as const,
       icon: MapPin,
-      title: 'Posilovna zavírá',
-      description: 'Upozornění 2h před zavíračkou',
+      title: t('settings.notif.closing_title'),
+      description: t('settings.notif.closing_desc'),
       enabled: closingSoon,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10'
@@ -396,12 +334,12 @@ const Settings = () => {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold">Nastavení</h1>
+            <h1 className="text-xl font-bold">{t('settings.title')}</h1>
           </div>
         </div>
 
         <motion.div
-          className="px-4 py-6 space-y-6 pb-32"
+          className="px-4 py-6 space-y-6 pb-nav"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -412,25 +350,25 @@ const Settings = () => {
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                 <User className="w-5 h-5 text-primary" />
               </div>
-              <h2 className="text-lg font-semibold">Osobní údaje</h2>
+              <h2 className="text-lg font-semibold">{t('settings.personal')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">Jméno</Label>
+                <Label htmlFor="firstName">{t('settings.first_name')}</Label>
                 <Input
                   id="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Zadejte jméno"
+                  placeholder={t('settings.enter_first_name')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Příjmení</Label>
+                <Label htmlFor="lastName">{t('settings.last_name')}</Label>
                 <Input
                   id="lastName"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Zadejte příjmení"
+                  placeholder={t('settings.enter_last_name')}
                 />
               </div>
               <Button
@@ -441,12 +379,12 @@ const Settings = () => {
                 {isSaving ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                    Ukládám...
+                    {t('settings.saving')}
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Uložit změny
+                    {t('settings.save_changes')}
                   </>
                 )}
               </Button>
@@ -459,11 +397,11 @@ const Settings = () => {
               <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
                 <Mail className="w-5 h-5 text-blue-500" />
               </div>
-              <h2 className="text-lg font-semibold">E-mail</h2>
+              <h2 className="text-lg font-semibold">{t('settings.email')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <Label>Aktuální e-mail</Label>
+                <Label>{t('settings.current_email')}</Label>
                 <Input
                   value={user?.email || ''}
                   disabled
@@ -471,16 +409,16 @@ const Settings = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="newEmail">Nový e-mail</Label>
+                <Label htmlFor="newEmail">{t('settings.new_email')}</Label>
                 <Input
                   id="newEmail"
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="Zadejte nový e-mail"
+                  placeholder={t('settings.enter_new_email')}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Na novou adresu bude odeslán ověřovací e-mail
+                  {t('settings.email_verify_note')}
                 </p>
               </div>
               <Button
@@ -492,12 +430,12 @@ const Settings = () => {
                 {isChangingEmail ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                    Odesílám...
+                    {t('settings.sending')}
                   </>
                 ) : (
                   <>
                     <Mail className="w-4 h-4 mr-2" />
-                    Změnit e-mail
+                    {t('settings.change_email')}
                   </>
                 )}
               </Button>
@@ -510,37 +448,37 @@ const Settings = () => {
               <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
                 <Lock className="w-5 h-5 text-orange-500" />
               </div>
-              <h2 className="text-lg font-semibold">Změna hesla</h2>
+              <h2 className="text-lg font-semibold">{t('settings.change_password')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Aktuální heslo</Label>
+                <Label htmlFor="currentPassword">{t('settings.current_password')}</Label>
                 <Input
                   id="currentPassword"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Zadejte aktuální heslo"
+                  placeholder={t('settings.enter_current_password')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Nové heslo</Label>
+                <Label htmlFor="newPassword">{t('settings.new_password')}</Label>
                 <Input
                   id="newPassword"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimálně 6 znaků"
+                  placeholder={t('settings.min_6')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Potvrdit nové heslo</Label>
+                <Label htmlFor="confirmPassword">{t('settings.confirm_password')}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Zopakujte nové heslo"
+                  placeholder={t('settings.repeat_password')}
                 />
               </div>
               <Button
@@ -552,12 +490,12 @@ const Settings = () => {
                 {isChangingPassword ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                    Měním heslo...
+                    {t('settings.changing_password')}
                   </>
                 ) : (
                   <>
                     <Lock className="w-4 h-4 mr-2" />
-                    Změnit heslo
+                    {t('settings.change_password_btn')}
                   </>
                 )}
               </Button>
@@ -570,15 +508,15 @@ const Settings = () => {
               <div className="w-10 h-10 bg-chart-2/10 rounded-xl flex items-center justify-center">
                 <Bell className="w-5 h-5 text-chart-2" />
               </div>
-              <h2 className="text-lg font-semibold">Oznámení</h2>
+              <h2 className="text-lg font-semibold">{t('settings.notifications')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               {/* Master toggle */}
               <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div className="space-y-0.5">
-                  <p className="font-medium">Povolit oznámení</p>
+                  <p className="font-medium">{t('settings.enable_notifications')}</p>
                   <p className="text-sm text-muted-foreground">
-                    {isSubscribed ? 'Oznámení jsou aktivní' : 'Oznámení jsou vypnutá'}
+                    {isSubscribed ? t('settings.notifications_active') : t('settings.notifications_off')}
                   </p>
                 </div>
                 <Switch
@@ -613,37 +551,71 @@ const Settings = () => {
               
               {!isSupported && (
                 <p className="text-sm text-muted-foreground">
-                  Váš prohlížeč nepodporuje oznámení.
+                  {t('settings.no_notification_support')}
                 </p>
               )}
             </div>
           </motion.div>
+          {/* Language Section */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                <Globe className="w-5 h-5 text-purple-500" />
+              </div>
+              <h2 className="text-lg font-semibold">{t('settings.language')}</h2>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => changeLanguage('cs')}
+                  className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                    currentLang === 'cs'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  🇨🇿 Čeština
+                </button>
+                <button
+                  onClick={() => changeLanguage('en')}
+                  className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                    currentLang === 'en'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  🇬🇧 English
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Privacy Section */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center">
                 <Shield className="w-5 h-5 text-muted-foreground" />
               </div>
-              <h2 className="text-lg font-semibold">Soukromí a bezpečnost</h2>
+              <h2 className="text-lg font-semibold">{t('settings.privacy')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <p className="font-medium">Vaše data</p>
+                <p className="font-medium">{t('settings.your_data')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Vaše osobní údaje a historie tréninků jsou bezpečně uloženy a nejsou sdíleny s třetími stranami.
+                  {t('settings.data_desc')}
                 </p>
               </div>
               <Button variant="outline" className="w-full justify-start gap-2" onClick={handleExportData}>
                 <Download className="w-4 h-4" />
-                Stáhnout moje data (JSON)
+                {t('settings.download_data')}
               </Button>
               <Button variant="outline" className="w-full justify-start gap-2" onClick={() => navigate('/privacy')}>
                 <ExternalLink className="w-4 h-4" />
-                Zásady ochrany osobních údajů
+                {t('settings.privacy_policy')}
               </Button>
               <Button variant="outline" className="w-full justify-start gap-2" onClick={() => navigate('/terms')}>
                 <ExternalLink className="w-4 h-4" />
-                Podmínky používání
+                {t('settings.terms')}
               </Button>
             </div>
           </motion.div>
@@ -654,13 +626,13 @@ const Settings = () => {
               <div className="w-10 h-10 bg-destructive/10 rounded-xl flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
-              <h2 className="text-lg font-semibold text-destructive">Nebezpečná zóna</h2>
+              <h2 className="text-lg font-semibold text-destructive">{t('settings.danger_zone')}</h2>
             </div>
             <div className="bg-card border border-destructive/30 rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <p className="font-medium">Smazat účet</p>
+                <p className="font-medium">{t('settings.delete_account')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Tato akce je nevratná. Všechny vaše data budou trvale odstraněny.
+                  {t('settings.delete_desc')}
                 </p>
               </div>
               <Button
@@ -669,7 +641,7 @@ const Settings = () => {
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Smazat účet
+                {t('settings.delete_btn')}
               </Button>
             </div>
           </motion.div>
@@ -679,13 +651,13 @@ const Settings = () => {
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Opravdu chcete smazat účet?</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.confirm_delete')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Tato akce je nevratná. Všechny vaše tréninky, statistiky a osobní údaje budou trvale smazány.
+                {t('settings.confirm_delete_desc')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogCancel>{t('settings.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
@@ -694,10 +666,10 @@ const Settings = () => {
                 {isDeleting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                    Mažu...
+                    {t('settings.deleting')}
                   </>
                 ) : (
-                  'Smazat účet'
+                  t('settings.delete_btn')
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

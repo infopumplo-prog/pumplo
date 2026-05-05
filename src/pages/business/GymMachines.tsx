@@ -9,6 +9,7 @@ import { useGym, GymMachine } from '@/hooks/useGym';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { BenchConfigSelector, BENCH_CONFIGS } from '@/components/business/BenchConfigSelector';
+import { useTranslation } from 'react-i18next';
 
 interface Machine {
   id: string;
@@ -55,6 +56,7 @@ export const GYM_EQUIPMENT_BRANDS = [
 ];
 
 const GymMachines = () => {
+  const { t } = useTranslation();
   const { gym, gyms, gymMachines, isLoading, addMachine, updateMachine, removeMachine } = useGym();
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,7 +75,6 @@ const GymMachines = () => {
     fetchMachines();
   }, []);
 
-  // Sync editState when gymMachines loads (only for machines not yet in editState)
   useEffect(() => {
     setEditState(prev => {
       const next = { ...prev };
@@ -161,14 +162,14 @@ const GymMachines = () => {
         <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
-            Najprv vytvorte profil posilňovne
+            {t('business.create_profile_first')}
           </AlertTitle>
           <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Pre správu strojov musíte mať vytvorený profil posilňovne.
+            {t('business.machines_need_gym')}
           </AlertDescription>
         </Alert>
         <Link to="/business" className="block mt-4 w-full text-center py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">
-          Vytvoriť profil
+          {t('business.settings_create_profile')}
         </Link>
       </BusinessLayout>
     );
@@ -180,23 +181,23 @@ const GymMachines = () => {
         {gyms.length > 1 && (
           <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
             <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Stroje pre:</span>
+            <span className="text-sm text-muted-foreground">{t('business.machines_for')}</span>
             <Badge variant="secondary">{gym.name}</Badge>
-            <Link to="/business" className="ml-auto text-xs text-primary hover:underline">Zmeniť</Link>
+            <Link to="/business" className="ml-auto text-xs text-primary hover:underline">{t('business.machines_change')}</Link>
           </div>
         )}
 
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Dumbbell className="w-5 h-5" />
-            Vybavení ({gymMachines.length})
+            {t('business.machines_count', { n: gymMachines.length })}
           </h2>
         </div>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Hledat vybavení..."
+            placeholder={t('business.search_equipment')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -216,7 +217,6 @@ const GymMachines = () => {
                 key={machine.id}
                 className={`rounded-lg border transition-colors ${isChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}
               >
-                {/* Main row */}
                 <div className="flex items-center gap-3 px-3 py-2.5">
                   {isBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
@@ -257,15 +257,14 @@ const GymMachines = () => {
                   )}
                 </div>
 
-                {/* Expanded section */}
                 {isChecked && isExpanded && (
                   <div className="px-3 pb-3 pt-0 border-t border-border/50 space-y-3">
                     <div className="flex gap-3 pt-3">
                       <div className="flex-1 space-y-1">
-                        <label className="text-xs text-muted-foreground">Max váha (kg)</label>
+                        <label className="text-xs text-muted-foreground">{t('business.max_weight')}</label>
                         <Input
                           type="number"
-                          placeholder="Nepovinné"
+                          placeholder={t('business.optional')}
                           value={state.maxWeight}
                           onChange={e => updateField(machine.id, 'maxWeight', e.target.value)}
                           onBlur={() => saveEdits(machine.id)}
@@ -273,7 +272,7 @@ const GymMachines = () => {
                         />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <label className="text-xs text-muted-foreground">Značka</label>
+                        <label className="text-xs text-muted-foreground">{t('business.brand')}</label>
                         <select
                           value={state.brand}
                           onChange={e => {
@@ -282,7 +281,7 @@ const GymMachines = () => {
                           }}
                           className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm"
                         >
-                          <option value="">— Vybrat —</option>
+                          <option value="">{t('business.select')}</option>
                           {GYM_EQUIPMENT_BRANDS.map(b => (
                             <option key={b} value={b}>{b}</option>
                           ))}
@@ -314,7 +313,7 @@ const GymMachines = () => {
 
           {filteredMachines.length === 0 && (
             <p className="text-center text-muted-foreground py-8 text-sm">
-              Žiadne stroje nenájdené
+              {t('business.no_machines')}
             </p>
           )}
         </div>

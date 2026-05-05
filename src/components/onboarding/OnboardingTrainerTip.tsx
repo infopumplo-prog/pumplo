@@ -1,11 +1,14 @@
 import { motion } from 'framer-motion';
 import { Shield, UserCheck, ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingTrainerTipProps {
   onContinue: () => void;
 }
 
 const OnboardingTrainerTip = ({ onContinue }: OnboardingTrainerTipProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col items-center text-center px-2">
       {/* Illustration */}
@@ -38,45 +41,30 @@ const OnboardingTrainerTip = ({ onContinue }: OnboardingTrainerTipProps) => {
         className="space-y-4"
       >
         <h2 className="text-2xl font-bold text-foreground">
-          Tvé zdraví je na prvním místě
+          {t('onboarding.trainer_tip_title')}
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed max-w-[300px] mx-auto">
-          Zaznamenali jsme, že máš zdravotní omezení. Tvůj plán se tomu přizpůsobí,
-          ale pro nejlepší výsledky doporučujeme <span className="text-foreground font-medium">konzultaci s trenérem</span>.
+          {t('onboarding.trainer_tip_desc')}
         </p>
 
         <div className="bg-muted/50 border border-border/50 rounded-xl p-4 text-left space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-primary">1</span>
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-primary">{n}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t(`onboarding.trainer_tip_${n}`)}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Trenér posoudí tvé omezení a navrhne úpravy cviků
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-primary">2</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Pomůže ti s technikou, abys předešel dalším zraněním
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-primary">3</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Trenéry najdeš v detailu své posilovny v sekci <span className="font-medium text-foreground">Trenéři</span>
-            </p>
-          </div>
+          ))}
         </div>
 
         <button
           onClick={onContinue}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform mt-2"
         >
-          Rozumím, pokračovat
+          {t('onboarding.trainer_tip_continue')}
           <ArrowRight className="w-4 h-4" />
         </button>
       </motion.div>

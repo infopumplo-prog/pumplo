@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Pause, X, Play } from 'lucide-react';
@@ -17,18 +18,20 @@ export const WorkoutExitDialog = ({
   onPause,
   isWarmup = false
 }: WorkoutExitDialogProps) => {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="rounded-2xl">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-xl">
-            {isWarmup ? 'Ukončit rozcvičku?' : 'Ukončit trénink?'}
+            {isWarmup ? t('workout.exit_warmup') : t('workout.exit_workout')}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-base space-y-2">
-            <span className="block">Co chceš udělat?</span>
+            <span className="block">{t('workout.what_to_do')}</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <div className="space-y-3 py-2">
           <Button
             variant="outline"
@@ -42,11 +45,11 @@ export const WorkoutExitDialog = ({
               <Pause className="w-5 h-5 text-primary" />
             </div>
             <div className="text-left">
-              <p className="font-semibold">Pozastavit</p>
-              <p className="text-xs text-muted-foreground">Můžeš pokračovat později</p>
+              <p className="font-semibold">{t('workout.pause')}</p>
+              <p className="text-xs text-muted-foreground">{t('workout.pause_desc')}</p>
             </div>
           </Button>
-          
+
           <Button
             variant="outline"
             className="w-full justify-start gap-3 h-14 rounded-xl border-destructive/30 hover:bg-destructive/10"
@@ -59,16 +62,16 @@ export const WorkoutExitDialog = ({
               <X className="w-5 h-5 text-destructive" />
             </div>
             <div className="text-left">
-              <p className="font-semibold text-destructive">Ukončit</p>
-              <p className="text-xs text-muted-foreground">Progress nebude uložen</p>
+              <p className="font-semibold text-destructive">{t('workout.end')}</p>
+              <p className="text-xs text-muted-foreground">{t('workout.end_desc')}</p>
             </div>
           </Button>
         </div>
-        
+
         <AlertDialogFooter>
           <AlertDialogCancel className="w-full gap-2 rounded-xl">
             <Play className="w-4 h-4" />
-            Pokračovat v tréninku
+            {t('workout.continue_workout')}
           </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>

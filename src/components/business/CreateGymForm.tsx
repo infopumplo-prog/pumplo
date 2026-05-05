@@ -12,23 +12,16 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import LocationPicker from './LocationPicker';
 import { useGym, OpeningHours } from '@/hooks/useGym';
-
-const formSchema = z.object({
-  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
-  description: z.string().optional(),
-  address: z.string().optional(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { useTranslation } from 'react-i18next';
 
 const DAYS = [
-  { key: 'monday', label: 'Pondělí' },
-  { key: 'tuesday', label: 'Úterý' },
-  { key: 'wednesday', label: 'Středa' },
-  { key: 'thursday', label: 'Čtvrtek' },
-  { key: 'friday', label: 'Pátek' },
-  { key: 'saturday', label: 'Sobota' },
-  { key: 'sunday', label: 'Neděle' },
+  { key: 'monday', labelKey: 'business.day_mon' },
+  { key: 'tuesday', labelKey: 'business.day_tue' },
+  { key: 'wednesday', labelKey: 'business.day_wed' },
+  { key: 'thursday', labelKey: 'business.day_thu' },
+  { key: 'friday', labelKey: 'business.day_fri' },
+  { key: 'saturday', labelKey: 'business.day_sat' },
+  { key: 'sunday', labelKey: 'business.day_sun' },
 ];
 
 interface CreateGymFormProps {
@@ -36,6 +29,16 @@ interface CreateGymFormProps {
 }
 
 const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
+  const { t } = useTranslation();
+
+  const formSchema = z.object({
+    name: z.string().min(2, t('business.name_min')),
+    description: z.string().optional(),
+    address: z.string().optional(),
+  });
+
+  type FormData = z.infer<typeof formSchema>;
+
   const { createGym } = useGym();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -59,7 +62,7 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
 
   const onSubmit = async (data: FormData) => {
     if (!location) {
-      toast.error('Vyberte prosím lokaci na mapě');
+      toast.error(t('business.select_location'));
       return;
     }
 
@@ -73,7 +76,7 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
       opening_hours: openingHours,
     });
     setIsSubmitting(false);
-    
+
     if (result.success) {
       onSuccess?.();
     } else if (result.error) {
@@ -85,15 +88,15 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Základní informace</CardTitle>
+          <CardTitle className="text-lg">{t('business.gym_name_label')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Název posilovny *</Label>
+            <Label htmlFor="name">{t('business.gym_name_field')}</Label>
             <Input
               id="name"
               {...register('name')}
-              placeholder="Např. FitZone Gym"
+              placeholder={t('business.gym_name_placeholder')}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -101,21 +104,21 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Popis</Label>
+            <Label htmlFor="description">{t('business.description')}</Label>
             <Textarea
               id="description"
               {...register('description')}
-              placeholder="Popište svou posilovnu..."
+              placeholder={t('business.description_placeholder')}
               rows={3}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Adresa</Label>
+            <Label htmlFor="address">{t('business.address')}</Label>
             <Input
               id="address"
               {...register('address')}
-              placeholder="Např. Hlavní 123, Praha"
+              placeholder={t('business.address_placeholder')}
             />
           </div>
         </CardContent>
@@ -123,7 +126,7 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Lokace na mapě *</CardTitle>
+          <CardTitle className="text-lg">{t('business.map_location')}</CardTitle>
         </CardHeader>
         <CardContent>
           <LocationPicker
@@ -131,7 +134,7 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
           />
           {location && (
             <p className="text-sm text-muted-foreground mt-2">
-              Vybraná pozice: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+              {t('business.selected_position', { lat: location.lat.toFixed(5), lng: location.lng.toFixed(5) })}
             </p>
           )}
         </CardContent>
@@ -139,13 +142,13 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Otevírací hodiny</CardTitle>
+          <CardTitle className="text-lg">{t('business.opening_hours')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {DAYS.map(day => (
             <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{day.label}</span>
+                <span className="text-sm font-medium">{t(day.labelKey)}</span>
                 <Switch
                   checked={!openingHours[day.key]?.closed}
                   onCheckedChange={(checked) => updateOpeningHours(day.key, 'closed', !checked)}
@@ -168,25 +171,25 @@ const CreateGymForm = ({ onSuccess }: CreateGymFormProps) => {
                   />
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">Zavřeno</span>
+                <span className="text-sm text-muted-foreground">{t('business.closed')}</span>
               )}
             </div>
           ))}
         </CardContent>
       </Card>
 
-      <Button 
-        type="submit" 
-        className="w-full" 
+      <Button
+        type="submit"
+        className="w-full"
         disabled={isSubmitting || !location}
       >
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Vytvářím...
+            {t('business.creating')}
           </>
         ) : (
-          'Vytvořit posilovnu'
+          t('business.create_gym_btn')
         )}
       </Button>
     </form>

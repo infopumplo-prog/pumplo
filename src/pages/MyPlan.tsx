@@ -19,6 +19,7 @@ import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 // Week type based on RIR methodology
 type WeekType = 'normal' | 'moderate' | 'hardcore' | 'deload';
@@ -32,82 +33,54 @@ const getWeekType = (weekNumber: number): WeekType => {
 };
 
 const weekTypeStyles: Record<WeekType, { bg: string; border: string; text: string; icon: React.ReactNode }> = {
-  normal: { 
-    bg: 'bg-muted/50', 
-    border: 'border-border', 
-    text: 'text-muted-foreground',
-    icon: <Activity className="w-3 h-3" />
-  },
-  moderate: { 
-    bg: 'bg-amber-500/20', 
-    border: 'border-amber-500/30', 
-    text: 'text-amber-600',
-    icon: <Zap className="w-3 h-3" />
-  },
-  hardcore: { 
-    bg: 'bg-red-500/20', 
-    border: 'border-red-500/30', 
-    text: 'text-red-600',
-    icon: <Flame className="w-3 h-3" />
-  },
-  deload: { 
-    bg: 'bg-green-500/20', 
-    border: 'border-green-500/30', 
-    text: 'text-green-600',
-    icon: <Leaf className="w-3 h-3" />
-  }
-};
-
-const weekTypeLabels: Record<WeekType, string> = {
-  normal: 'Normální',
-  moderate: 'Náročný',
-  hardcore: 'Hardcore',
-  deload: 'Deload'
-};
-
-// Split type labels in Czech
-const SPLIT_TYPE_LABELS: Record<string, string> = {
-  full_body: 'Full Body',
-  upper_lower: 'Upper/Lower',
-  ppl: 'Push/Pull/Legs'
-};
-
-// Goal labels in Czech
-const GOAL_LABELS: Record<string, string> = {
-  muscle_gain: 'Nabrat svaly',
-  hypertrophy: 'Nabrat svaly',
-  strength: 'Získat sílu',
-  fat_loss: 'Zhubnout',
-  weight_loss: 'Zhubnout',
-  general_fitness: 'Celková kondice',
-  endurance: 'Celková kondice'
-};
-
-// Day names in Czech
-const DAY_NAMES_CZ: Record<string, string> = {
-  monday: 'Pondělí',
-  tuesday: 'Úterý',
-  wednesday: 'Středa',
-  thursday: 'Čtvrtek',
-  friday: 'Pátek',
-  saturday: 'Sobota',
-  sunday: 'Neděle'
-};
-
-const DAY_NAMES_SHORT: Record<string, string> = {
-  monday: 'Po',
-  tuesday: 'Út',
-  wednesday: 'St',
-  thursday: 'Čt',
-  friday: 'Pá',
-  saturday: 'So',
-  sunday: 'Ne'
+  normal: { bg: 'bg-muted/50', border: 'border-border', text: 'text-muted-foreground', icon: <Activity className="w-3 h-3" /> },
+  moderate: { bg: 'bg-amber-500/20', border: 'border-amber-500/30', text: 'text-amber-600', icon: <Zap className="w-3 h-3" /> },
+  hardcore: { bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-600', icon: <Flame className="w-3 h-3" /> },
+  deload: { bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-600', icon: <Leaf className="w-3 h-3" /> }
 };
 
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const MyPlan = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const weekTypeLabels: Record<WeekType, string> = {
+    normal: t('myplan.week_type_normal'),
+    moderate: t('myplan.week_type_moderate'),
+    hardcore: t('myplan.week_type_hardcore'),
+    deload: t('myplan.week_type_deload'),
+  };
+
+  const GOAL_LABELS: Record<string, string> = {
+    muscle_gain: t('myplan.goal_muscle_gain'),
+    hypertrophy: t('myplan.goal_muscle_gain'),
+    strength: t('myplan.goal_strength'),
+    fat_loss: t('myplan.goal_fat_loss'),
+    weight_loss: t('myplan.goal_fat_loss'),
+    general_fitness: t('myplan.goal_general_fitness'),
+    endurance: t('myplan.goal_general_fitness'),
+  };
+
+  const DAY_NAMES_CZ: Record<string, string> = {
+    monday: t('myplan.day_monday'),
+    tuesday: t('myplan.day_tuesday'),
+    wednesday: t('myplan.day_wednesday'),
+    thursday: t('myplan.day_thursday'),
+    friday: t('myplan.day_friday'),
+    saturday: t('myplan.day_saturday'),
+    sunday: t('myplan.day_sunday'),
+  };
+
+  const DAY_NAMES_SHORT: Record<string, string> = {
+    monday: t('myplan.day_short_monday'),
+    tuesday: t('myplan.day_short_tuesday'),
+    wednesday: t('myplan.day_short_wednesday'),
+    thursday: t('myplan.day_short_thursday'),
+    friday: t('myplan.day_short_friday'),
+    saturday: t('myplan.day_short_saturday'),
+    sunday: t('myplan.day_short_sunday'),
+  };
   const { plan, isLoading: planLoading, refetch: refetchPlan } = useWorkoutPlan();
   const { profile, isLoading: profileLoading, refetch: refetchProfile } = useUserProfile();
   const { generateWorkoutPlan, isGenerating } = useWorkoutGenerator();
@@ -212,7 +185,7 @@ const MyPlan = () => {
   // Handle plan regeneration
   const handleRegeneratePlan = useCallback(async () => {
     if (!profile?.primary_goal) {
-      toast.error('Nejprve vyplňte dotazník');
+      toast.error(t('myplan.questionnaire_missing'));
       return;
     }
     
@@ -224,7 +197,7 @@ const MyPlan = () => {
       
       const mappedGoalId = PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal];
       if (!mappedGoalId) {
-        toast.error('Neplatný cíl tréninku');
+        toast.error(t('myplan.invalid_goal'));
         return;
       }
       
@@ -277,10 +250,10 @@ const MyPlan = () => {
       await refetchProfile();
       await refetchPlan();
       
-      toast.success('Nový plán byl vytvořen! 🎉');
+      toast.success(t('myplan.new_plan_created'));
     } catch (err) {
       console.error('Error regenerating plan:', err);
-      toast.error('Nepodařilo se vytvořit nový plán');
+      toast.error(t('myplan.plan_create_failed'));
     } finally {
       setIsRegenerating(false);
     }
@@ -322,19 +295,19 @@ const MyPlan = () => {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <h1 className="text-2xl font-bold text-foreground">Můj plán</h1>
+              <h1 className="text-2xl font-bold text-foreground">{t('myplan.title')}</h1>
             </div>
           </div>
           <div className="px-6 py-6">
             <Card className="border-border rounded-2xl">
               <CardContent className="p-6 text-center">
                 <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Žádný aktivní plán</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('myplan.no_plan')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Vyplňte dotazník pro vytvoření tréninkového plánu.
+                  {t('myplan.no_plan_desc')}
                 </p>
                 <Button onClick={() => setOnboardingOpen(true)}>
-                  Vyplnit dotazník
+                  {t('myplan.fill_questionnaire')}
                 </Button>
               </CardContent>
             </Card>
@@ -360,7 +333,7 @@ const MyPlan = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-24">
+      <div className="min-h-screen bg-background safe-top pb-nav">
         {/* Header */}
         <div className="gradient-hero px-6 pt-8 pb-6">
           <motion.div
@@ -380,7 +353,7 @@ const MyPlan = () => {
             <div>
               <h1 className="text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
               <p className="text-sm text-muted-foreground">
-                {totalWeeks} týdnů • {trainingDaysCount}× týdně
+                {t('myplan.weeks_per_frequency', { weeks: totalWeeks, days: trainingDaysCount })}
               </p>
             </div>
           </motion.div>
@@ -398,19 +371,19 @@ const MyPlan = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
                   <Target className="w-5 h-5 text-primary" />
-                  Přehled plánu
+                  {t('myplan.plan_overview')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Progress */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-muted-foreground">Celkový progress</span>
+                    <span className="text-sm text-muted-foreground">{t('myplan.total_progress')}</span>
                     <span className="text-lg font-bold text-primary">{Math.round(progressPercent)}%</span>
                   </div>
                   <Progress value={progressPercent} className="h-2" />
                   <p className="text-sm text-muted-foreground mt-1">
-                    {completedSessions}/{totalPlanSessions} tréninků
+                    {t('myplan.sessions_progress', { completed: completedSessions, total: totalPlanSessions })}
                   </p>
                 </div>
 
@@ -422,7 +395,7 @@ const MyPlan = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm truncate">{gymName || 'Nevybráno'}</span>
+                    <span className="text-sm truncate">{gymName || t('myplan.no_gym')}</span>
                   </div>
                 </div>
 
@@ -474,7 +447,7 @@ const MyPlan = () => {
                             </div>
                           )}
                           <span className="text-lg font-bold">
-                            Týden {viewingWeek}
+                            {t('myplan.week', { n: viewingWeek })}
                           </span>
                           <span className={cn("text-sm", styles.text)}>
                             {weekTypeLabels[weekType]}
@@ -487,7 +460,7 @@ const MyPlan = () => {
                             RIR {getRIRGuidance(viewingWeek).rir}
                           </Badge>
                           {isCurrent && (
-                            <Badge className="text-xs bg-primary/15 text-primary border-0">Aktuální</Badge>
+                            <Badge className="text-xs bg-primary/15 text-primary border-0">{t('myplan.current')}</Badge>
                           )}
                         </div>
 
@@ -531,7 +504,7 @@ const MyPlan = () => {
                       <div className="space-y-2">
                         {weekSchedule.length === 0 ? (
                           <div className="text-center py-4 text-muted-foreground">
-                            <p className="text-sm">Nastav si tréninkové dny</p>
+                            <p className="text-sm">{t('myplan.set_training_days')}</p>
                           </div>
                         ) : (
                           weekSchedule.map((day, index) => {
@@ -572,7 +545,7 @@ const MyPlan = () => {
                                 {isDayCompleted ? (
                                   <Check className="w-4 h-4 text-green-500" />
                                 ) : isToday ? (
-                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">Dnes</Badge>
+                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">{t('myplan.today')}</Badge>
                                 ) : null}
                               </div>
                             );
@@ -597,16 +570,16 @@ const MyPlan = () => {
               {(isRegenerating || isGenerating) ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Generuji...</span>
+                  <span>{t('myplan.generating')}</span>
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-5 h-5" />
-                  <span>Regenerovat plán</span>
+                  <span>{t('myplan.regenerate')}</span>
                 </>
               )}
             </Button>
-            
+
             <Button
               variant="outline"
               className="w-full"
@@ -614,7 +587,7 @@ const MyPlan = () => {
               onClick={() => setOnboardingOpen(true)}
             >
               <Settings className="w-5 h-5" />
-              <span>Změnit plán</span>
+              <span>{t('myplan.change_plan')}</span>
             </Button>
           </motion.div>
         </motion.div>
@@ -628,22 +601,19 @@ const MyPlan = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Regenerovat plán?
+                {t('myplan.regenerate_confirm_title')}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2" asChild>
                 <div>
-                  <p>
-                    Aktuální tréninkový plán bude <strong>smazán a nepůjde obnovit</strong>.
-                    Vytvoří se nový plán podle tvého profilu a aktuální posilovny.
-                  </p>
+                  <p>{t('myplan.regenerate_confirm_desc')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Tvůj streak a historie tréninků zůstanou zachovány.
+                    {t('myplan.regenerate_history_note')}
                   </p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogCancel>{t('myplan.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setShowRegenerateConfirm(false);
@@ -655,12 +625,12 @@ const MyPlan = () => {
                 {(isRegenerating || isGenerating) ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generuji plán...
+                    {t('myplan.generating_plan')}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4" />
-                    Ano, regenerovat
+                    {t('myplan.yes_regenerate')}
                   </>
                 )}
               </AlertDialogAction>

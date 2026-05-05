@@ -10,39 +10,31 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Drawer, 
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle, 
-  DrawerTrigger 
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger
 } from '@/components/ui/drawer';
 import { Loader2, Clock, Pencil, Image } from 'lucide-react';
 import LocationPicker from './LocationPicker';
 import GymImageUpload from './GymImageUpload';
 import GymProfilePreview from './GymProfilePreview';
 import GymPhotosManager from './GymPhotosManager';
- import GymPricingEditor from './GymPricingEditor';
+import GymPricingEditor from './GymPricingEditor';
 import { useGym, Gym, OpeningHours } from '@/hooks/useGym';
- import { GymPricing } from '@/contexts/GymContext';
-
-const formSchema = z.object({
-  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
-  description: z.string().optional(),
-  address: z.string().optional(),
-  instagram_handle: z.string().optional(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { GymPricing } from '@/contexts/GymContext';
+import { useTranslation } from 'react-i18next';
 
 const DAYS = [
-  { key: 'monday', label: 'Po' },
-  { key: 'tuesday', label: 'Út' },
-  { key: 'wednesday', label: 'St' },
-  { key: 'thursday', label: 'Čt' },
-  { key: 'friday', label: 'Pá' },
-  { key: 'saturday', label: 'So' },
-  { key: 'sunday', label: 'Ne' },
+  { key: 'monday', labelKey: 'business.day_mon' },
+  { key: 'tuesday', labelKey: 'business.day_tue' },
+  { key: 'wednesday', labelKey: 'business.day_wed' },
+  { key: 'thursday', labelKey: 'business.day_thu' },
+  { key: 'friday', labelKey: 'business.day_fri' },
+  { key: 'saturday', labelKey: 'business.day_sat' },
+  { key: 'sunday', labelKey: 'business.day_sun' },
 ];
 
 interface GymProfileProps {
@@ -50,6 +42,14 @@ interface GymProfileProps {
 }
 
 const GymProfile = ({ gym }: GymProfileProps) => {
+  const { t } = useTranslation();
+  const formSchema = z.object({
+    name: z.string().min(2, t('business.name_min')),
+    description: z.string().optional(),
+    address: z.string().optional(),
+    instagram_handle: z.string().optional(),
+  });
+  type FormData = z.infer<typeof formSchema>;
   const { updateGym, togglePublish } = useGym();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -74,6 +74,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
       instagram_handle: (gym as any).instagram_handle || '',
     },
   });
+
 
   const updateOpeningHoursField = (day: string, field: 'open' | 'close' | 'closed', value: string | boolean) => {
     setOpeningHours(prev => ({
@@ -131,7 +132,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
           className="flex-1"
           onClick={togglePublish}
         >
-          {gym.is_published ? 'Skrýt z mapy' : 'Zveřejnit na mapě'}
+          {gym.is_published ? t('business.hide_from_map_btn') : t('business.publish_btn')}
         </Button>
         
         <Drawer open={isPhotoDrawerOpen} onOpenChange={setIsPhotoDrawerOpen}>
@@ -142,11 +143,11 @@ const GymProfile = ({ gym }: GymProfileProps) => {
           </DrawerTrigger>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Upravit fotky</DrawerTitle>
+              <DrawerTitle>{t('business.edit_photos')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 space-y-6 overflow-y-auto max-h-[75vh]">
               <div className="space-y-2">
-                <Label>Titulní fotka</Label>
+                <Label>{t('business.cover_photo')}</Label>
                 <GymImageUpload
                   type="cover"
                   currentUrl={coverPhotoUrl}
@@ -154,7 +155,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Logo posilovny</Label>
+                <Label>{t('business.gym_logo')}</Label>
                 <div className="flex justify-center">
                   <GymImageUpload
                     type="logo"
@@ -180,13 +181,13 @@ const GymProfile = ({ gym }: GymProfileProps) => {
           </DrawerTrigger>
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
-              <DrawerTitle>Upravit posilovnu</DrawerTitle>
+              <DrawerTitle>{t('business.edit_gym')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 overflow-y-auto">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Název posilovny</Label>
+                    <Label htmlFor="name">{t('business.gym_name_field')}</Label>
                     <Input id="name" {...register('name')} />
                     {errors.name && (
                       <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -194,12 +195,12 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Popis</Label>
+                    <Label htmlFor="description">{t('business.description')}</Label>
                     <Textarea id="description" {...register('description')} rows={3} />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">Adresa</Label>
+                    <Label htmlFor="address">{t('business.address')}</Label>
                     <Input id="address" {...register('address')} />
                   </div>
 
@@ -214,7 +215,7 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Lokace na mapě</Label>
+                  <Label>{t('business.map_location')}</Label>
                   <LocationPicker
                     latitude={location.lat}
                     longitude={location.lng}
@@ -223,11 +224,11 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label>Otevírací hodiny</Label>
+                  <Label>{t('business.opening_hours')}</Label>
                   {DAYS.map(day => (
                     <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{day.label}</span>
+                        <span className="text-sm font-medium">{t(day.labelKey)}</span>
                         <Switch
                           checked={!openingHours[day.key]?.closed}
                           onCheckedChange={(checked) => updateOpeningHoursField(day.key, 'closed', !checked)}
@@ -250,31 +251,31 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                           />
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Zavřeno</span>
+                        <span className="text-sm text-muted-foreground">{t('business.closed')}</span>
                       )}
                     </div>
                   ))}
                 </div>
 
                <Separator className="my-4" />
- 
+
                <div className="space-y-3">
-                 <Label>Ceník</Label>
-                 <GymPricingEditor 
-                   pricing={pricing} 
+                 <Label>{t('business.tab_pricing')}</Label>
+                 <GymPricingEditor
+                   pricing={pricing}
                    onChange={setPricing}
                    showSaveButton={false}
                  />
                </div>
- 
+
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Ukládám...
+                      {t('business.saving')}
                     </>
                   ) : (
-                    'Uložit změny'
+                    t('business.save_changes')
                   )}
                 </Button>
               </form>

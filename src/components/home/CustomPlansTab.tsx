@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Plus, Calendar, ChevronRight, Trash2, Dumbbell, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 const CustomPlansTab = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { plans, isLoading, createPlan, deletePlan } = useCustomPlans();
   const { pausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const [showNewPlan, setShowNewPlan] = useState(false);
@@ -55,7 +57,7 @@ const CustomPlansTab = () => {
         >
           <input
             type="text"
-            placeholder="Název plánu..."
+            placeholder={t('home.plan_name_placeholder')}
             value={newPlanName}
             onChange={(e) => setNewPlanName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -105,7 +107,7 @@ const CustomPlansTab = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-white text-sm truncate">{pausedWorkout.planName}</p>
-              <p className="text-white/80 text-xs">{pausedWorkout.dayName} · Pozastaveno</p>
+              <p className="text-white/80 text-xs">{t('workout.day_paused', { day: pausedWorkout.dayName })}</p>
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -113,7 +115,7 @@ const CustomPlansTab = () => {
               onClick={() => navigate(`/custom-workout/${pausedWorkout.planId}?resume=true`)}
               className="flex-1 py-2.5 rounded-xl bg-white text-amber-600 font-bold text-sm hover:bg-white/90 transition-colors"
             >
-              Pokračovat v tréninku
+              {t('workout.continue_workout')}
             </button>
             <button
               onClick={clearPausedWorkout}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, MapPin, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 interface Gym {
   id: string;
@@ -17,6 +18,7 @@ interface OnboardingGymStepProps {
 }
 
 const OnboardingGymStep = ({ selectedGymId, onSelect }: OnboardingGymStepProps) => {
+  const { t } = useTranslation();
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [search, setSearch] = useState('');
 
@@ -41,16 +43,16 @@ const OnboardingGymStep = ({ selectedGymId, onSelect }: OnboardingGymStepProps) 
       transition={{ duration: 0.3 }}
     >
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Ve které posilovně trénuješ?</h2>
+        <h2 className="text-2xl font-bold">{t('onboarding.gym_title')}</h2>
         <p className="text-sm text-muted-foreground mt-2">
-          Odemkneme ti obsah a vybavení té správné posilovny
+          {t('onboarding.gym_subtitle')}
         </p>
       </div>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Hledat posilovnu..."
+          placeholder={t('onboarding.gym_search')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pl-9"
@@ -88,7 +90,7 @@ const OnboardingGymStep = ({ selectedGymId, onSelect }: OnboardingGymStepProps) 
 
         {filtered.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">
-            Žádná posilovna nenalezena
+            {t('onboarding.gym_not_found')}
           </p>
         )}
       </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
-import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 
 export interface WarmupExercise {
   id: string;
@@ -39,6 +40,7 @@ interface WarmupPlayerProps {
 }
 
 export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd, initialIndex = 0 }: WarmupPlayerProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -50,6 +52,13 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  const handleToggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setAudioMuted(next);
+  };
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
   const beeped1Ref = useRef(false);
@@ -186,7 +195,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <motion.div
         key={`warmup-${currentIndex}`}
         initial={{ opacity: 0, x: 30 }}
@@ -194,6 +203,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
         exit={{ opacity: 0, x: -30 }}
         transition={{ duration: 0.2 }}
         className="flex-1 flex flex-col relative"
+        style={{ pointerEvents: 'auto' }}
       >
         {/* Full-screen video */}
         <div className="flex-1 relative">
@@ -205,22 +215,23 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               autoPlay loop muted playsInline
               preload="auto"
               className="w-full h-full object-cover"
+              style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-900">
               <div className="text-center">
                 <Dumbbell className="w-12 h-12 mx-auto mb-2 text-white/20" />
-                <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
+                <p className="text-white/30 text-sm">{videoError ? t('workout.video_unavailable') : t('workout.no_video')}</p>
               </div>
             </div>
           )}
 
           {/* Top overlay: back + progress + counter + skip */}
-          <div className="absolute top-0 left-0 right-0 safe-top">
+          <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
             <div className="flex items-center gap-3 px-4 pt-4 pb-2">
               {currentIndex > 0 && (
-                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
@@ -236,20 +247,26 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 🔥 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                 <SkipForward className="w-5 h-5" />
               </button>
-              <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+              <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+              <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Top-left: exercise name + info */}
-          <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+          <div
+            className="absolute left-0 px-4 flex items-start gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
+          >
             <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[65vw]">
               <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
-              <p className="text-white/70 text-sm mt-0.5">Rozcvička</p>
+              <p className="text-white/70 text-sm mt-0.5">{t('workout.warmup_label')}</p>
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {currentExercise.primaryMuscles.slice(0, 3).map(m => (
@@ -262,6 +279,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               <button
                 onClick={() => setShowInfoDrawer(true)}
                 className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+                style={{ pointerEvents: 'auto' }}
               >
                 <Info className="w-5 h-5" />
               </button>
@@ -276,7 +294,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                 {formatTime(timeRemaining)}
               </p>
               <p className="text-white/50 text-xs text-center mt-1">
-                Drž pozici {currentExercise.duration} sekund
+                {t('workout.hold_position', { duration: currentExercise.duration })}
               </p>
             </div>
 
@@ -287,7 +305,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                   onClick={() => setShowSkipWarning(true)}
                   className="w-full bg-white/10 backdrop-blur-sm text-white/60 text-sm font-medium rounded-xl h-12 active:scale-95 transition-transform"
                 >
-                  Přeskočit rozcvičku
+                  {t('workout.skip_warmup')}
                 </button>
               </div>
 
@@ -309,17 +327,17 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Přeskočit rozcvičku?
+              {t('workout.skip_warmup_title')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Rozcvička snižuje riziko zranění a připravuje svaly na trénink.
-              <strong className="block mt-2 text-amber-600">Nedoporučujeme ji přeskakovat.</strong>
+              {t('workout.skip_warmup_desc')}
+              <strong className="block mt-2 text-amber-600">{t('workout.skip_warmup_warning')}</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Zpět na rozcvičku</AlertDialogCancel>
+            <AlertDialogCancel>{t('workout.back_to_warmup')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSkipAll} className="bg-destructive hover:bg-destructive/90">
-              Přesto přeskočit
+              {t('workout.skip_anyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -343,7 +361,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
           <div className="px-4 pb-6 overflow-y-auto space-y-4">
             {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Svaly</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentExercise.primaryMuscles.map(m => (
                     <span key={m} className="text-xs bg-orange-400/15 text-orange-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m)}</span>
@@ -353,25 +371,25 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
             )}
             {currentExercise.description && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Popis</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.description')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.description}</p>
               </div>
             )}
             {currentExercise.setupInstructions && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Nastavení</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.setup')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.setupInstructions}</p>
               </div>
             )}
             {currentExercise.commonMistakes && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Časté chyby</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.common_mistakes')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.commonMistakes}</p>
               </div>
             )}
             {currentExercise.tips && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Tipy</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.tips')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.tips}</p>
               </div>
             )}

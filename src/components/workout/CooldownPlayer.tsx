@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
-import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 
 interface CooldownPlayerProps {
   exercises: WarmupExercise[];
@@ -24,6 +25,7 @@ interface CooldownPlayerProps {
 }
 
 export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex = 0 }: CooldownPlayerProps) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [timeRemaining, setTimeRemaining] = useState(exercises[initialIndex]?.duration || 30);
@@ -31,6 +33,13 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  const handleToggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setAudioMuted(next);
+  };
   const endTimeRef = useRef(Date.now() + (exercises[initialIndex]?.duration || 30) * 1000);
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
@@ -141,7 +150,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <motion.div
         key={`cooldown-${currentIndex}`}
         initial={{ opacity: 0, x: 30 }}
@@ -149,6 +158,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
         exit={{ opacity: 0, x: -30 }}
         transition={{ duration: 0.2 }}
         className="flex-1 flex flex-col relative"
+        style={{ pointerEvents: 'auto' }}
       >
         {/* Full-screen video */}
         <div className="flex-1 relative">
@@ -160,22 +170,23 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               autoPlay loop muted playsInline
               preload="auto"
               className="w-full h-full object-cover"
+              style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-900">
               <div className="text-center">
                 <Dumbbell className="w-12 h-12 mx-auto mb-2 text-white/20" />
-                <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
+                <p className="text-white/30 text-sm">{videoError ? t('workout.video_unavailable') : t('workout.no_video')}</p>
               </div>
             </div>
           )}
 
           {/* Top overlay: back + progress + counter + skip */}
-          <div className="absolute top-0 left-0 right-0 safe-top">
+          <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
             <div className="flex items-center gap-3 px-4 pt-4 pb-2">
               {currentIndex > 0 && (
-                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
@@ -191,17 +202,23 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 💙 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                 <SkipForward className="w-5 h-5" />
+              </button>
+              <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
           {/* Top-left: exercise name + info */}
-          <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+          <div
+            className="absolute left-0 px-4 flex items-start gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
+          >
             <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[65vw]">
               <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
-              <p className="text-white/70 text-sm mt-0.5">Protažení</p>
+              <p className="text-white/70 text-sm mt-0.5">{t('workout.cooldown_label')}</p>
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {currentExercise.primaryMuscles.slice(0, 3).map(m => (
@@ -214,6 +231,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <button
                 onClick={() => setShowInfoDrawer(true)}
                 className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+                style={{ pointerEvents: 'auto' }}
               >
                 <Info className="w-5 h-5" />
               </button>
@@ -228,7 +246,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
                 {formatTime(timeRemaining)}
               </p>
               <p className="text-white/50 text-xs text-center mt-1">
-                Drž pozici {currentExercise.duration} sekund
+                {t('workout.hold_position', { duration: currentExercise.duration })}
               </p>
             </div>
 
@@ -238,7 +256,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
                   onClick={() => setShowSkipWarning(true)}
                   className="w-full bg-white/10 backdrop-blur-sm text-white/60 text-sm font-medium rounded-xl h-12 active:scale-95 transition-transform"
                 >
-                  Přeskočit protažení
+                  {t('workout.skip_cooldown')}
                 </button>
               </div>
 
@@ -260,17 +278,17 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Přeskočit protažení?
+              {t('workout.skip_cooldown_title')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Protažení urychluje regeneraci a snižuje svalovou bolest po tréninku.
-              <strong className="block mt-2 text-amber-600">Doporučujeme ho nevynechávat.</strong>
+              {t('workout.skip_cooldown_desc')}
+              <strong className="block mt-2 text-amber-600">{t('workout.skip_cooldown_warning')}</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Zpět na protažení</AlertDialogCancel>
+            <AlertDialogCancel>{t('workout.back_to_cooldown')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSkipAll} className="bg-destructive hover:bg-destructive/90">
-              Přesto přeskočit
+              {t('workout.skip_anyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -285,7 +303,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
           <div className="px-4 pb-6 overflow-y-auto space-y-4">
             {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Svaly</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentExercise.primaryMuscles.map(m => (
                     <span key={m} className="text-xs bg-blue-400/15 text-blue-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m)}</span>
@@ -295,25 +313,25 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
             )}
             {currentExercise.description && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Popis</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.description')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.description}</p>
               </div>
             )}
             {currentExercise.setupInstructions && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Nastavení</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.setup')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.setupInstructions}</p>
               </div>
             )}
             {currentExercise.commonMistakes && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Časté chyby</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.common_mistakes')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.commonMistakes}</p>
               </div>
             )}
             {currentExercise.tips && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Tipy</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.tips')}</p>
                 <p className="text-sm leading-relaxed">{currentExercise.tips}</p>
               </div>
             )}

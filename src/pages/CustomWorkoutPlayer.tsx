@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -17,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
-import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete } from '@/lib/workoutAudio';
+import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 
 interface ExerciseWithVideo {
   id: string;
@@ -86,6 +87,7 @@ type PlayerState = 'select_gym' | 'select_day' | 'equipment_warning' | 'exercise
 const CustomWorkoutPlayer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { plan, isLoading } = useCustomPlanDetail(id || null);
   const { pausedWorkout, savePausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
@@ -116,6 +118,7 @@ const CustomWorkoutPlayer = () => {
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<SuggestedAlternative[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'video' | 'list'>('list');
+  const [isMuted, setIsMuted] = useState(() => isAudioMuted());
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
   // Track completed sets per exercise: Map<exerciseIndex, CompletedSetData[]>
@@ -547,14 +550,27 @@ const CustomWorkoutPlayer = () => {
       return next;
     });
     setTotalSetsCompleted(prev => prev + 1);
+
+    const isLastSet = currentSet >= (currentExercise?.sets || 1);
     const isLastExercise = currentExerciseIndex >= exercises.length - 1;
-    if (isLastExercise) { setPlayerState('completed'); announceWorkoutComplete(); return; }
     const setIdx = currentSet - 1;
     const restTime = currentExercise?.rest_per_set?.[setIdx] ?? currentExercise?.rest_seconds ?? 120;
+
+    if (isLastSet && isLastExercise) {
+      setPlayerState('completed');
+      announceWorkoutComplete();
+      return;
+    }
+
     setRestSeconds(restTime);
     setCurrentRestTotal(restTime);
     setPlayerState('rest');
-    pendingAdvanceRef.current = { type: 'next_exercise', exIdx: currentExerciseIndex + 1 };
+
+    if (isLastSet) {
+      pendingAdvanceRef.current = { type: 'next_exercise', exIdx: currentExerciseIndex + 1 };
+    } else {
+      pendingAdvanceRef.current = { type: 'next_set', exIdx: currentExerciseIndex, set: currentSet + 1 };
+    }
   };
 
   const handleCardioPauseToggle = () => {
@@ -582,6 +598,12 @@ const CustomWorkoutPlayer = () => {
   const handleSkipRest = () => {
     setRestSeconds(0);
     advanceAfterRest();
+  };
+
+  const handleToggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setAudioMuted(next);
   };
 
   // Go back to previous set
@@ -892,7 +914,18 @@ const CustomWorkoutPlayer = () => {
   if (viewMode === 'list' && playerState === 'rest') {
     return (
       <div className="h-[100dvh] bg-background flex flex-col items-center justify-center px-6">
-        <button onClick={() => setShowExitDialog(true)} className="absolute top-4 right-4 safe-top p-2 rounded-xl bg-muted text-muted-foreground">
+        <button
+          onClick={handleToggleMute}
+          className="absolute right-16 p-2 rounded-xl bg-muted text-muted-foreground"
+          style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        >
+          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={() => setShowExitDialog(true)}
+          className="absolute right-4 p-2 rounded-xl bg-muted text-muted-foreground"
+          style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        >
           <X className="w-5 h-5" />
         </button>
         <p className="text-muted-foreground text-sm font-medium mb-4">Odpočinek</p>
@@ -1139,8 +1172,10 @@ const CustomWorkoutPlayer = () => {
                       <video
                         key={exerciseDetail.video_path}
                         src={exerciseDetail.video_path}
-                        controls playsInline autoPlay loop muted preload="auto"
+                        playsInline autoPlay loop muted preload="auto"
                         className="w-full h-full object-contain"
+                        style={{ opacity: 0, transition: 'opacity 0.3s' }}
+                        onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
                         onError={() => setInfoVideoError(true)}
                       />
                     )}
@@ -1209,7 +1244,7 @@ const CustomWorkoutPlayer = () => {
 
   // --- Exercise / Rest Screen ---
   return (
-    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <AnimatePresence mode="wait">
         {playerState === 'exercise' && currentExercise && (
           <motion.div
@@ -1219,6 +1254,7 @@ const CustomWorkoutPlayer = () => {
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.2 }}
             className="flex-1 flex flex-col relative"
+            style={{ pointerEvents: 'auto' }}
           >
             {/* Full-screen video */}
             <div className="flex-1 relative">
@@ -1229,6 +1265,7 @@ const CustomWorkoutPlayer = () => {
                   autoPlay loop muted playsInline
                   preload="auto"
                   className="w-full h-full object-cover"
+                  style={{ pointerEvents: 'none' }}
                   onError={() => setVideoError(true)}
                 />
               ) : (
@@ -1238,10 +1275,10 @@ const CustomWorkoutPlayer = () => {
               )}
 
               {/* Top overlay: back + progress + counter */}
-              <div className="absolute top-0 left-0 right-0 safe-top">
-                <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+              <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
+                <div className="flex items-center gap-1 px-4 pt-4 pb-2">
                   {(currentExerciseIndex > 0 || currentSet > 1 || playerState === 'rest') && (
-                    <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                    <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                       <ArrowLeft className="w-5 h-5" />
                     </button>
                   )}
@@ -1257,17 +1294,23 @@ const CustomWorkoutPlayer = () => {
                   <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                     {currentExerciseIndex + 1}/{totalExercises}
                   </span>
-                  <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                     <List className="w-5 h-5" />
                   </button>
-                  <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                  <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <button onClick={() => setShowExitDialog(true)} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
               {/* Top-left: exercise name + set info + info button */}
-              <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+              <div
+                className="absolute left-0 px-4 flex items-start gap-2"
+                style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
+              >
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
                   <p className="text-white font-bold text-base leading-tight">{currentExercise.exercise_name}</p>
                   <p className="text-white/70 text-sm mt-0.5">
@@ -1277,6 +1320,7 @@ const CustomWorkoutPlayer = () => {
                 <button
                   onClick={() => handleShowInfo(currentExercise.exercise_id)}
                   className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   <Info className="w-5 h-5" />
                 </button>
@@ -1320,7 +1364,7 @@ const CustomWorkoutPlayer = () => {
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
-                            <input type="number" inputMode="decimal" placeholder="např. 60" value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30" />
+                            <input type="number" inputMode="decimal" placeholder={t('workout.weight_placeholder')} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30" />
                           </div>
                           <div className="flex-1">
                             <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
@@ -1348,8 +1392,19 @@ const CustomWorkoutPlayer = () => {
             transition={{ duration: 0.2 }}
             className="flex-1 flex flex-col items-center justify-center px-6 relative bg-white"
           >
-            {/* Exit button on rest screen */}
-            <button onClick={() => setShowExitDialog(true)} className="absolute top-4 right-4 safe-top p-2 rounded-xl bg-black/5 text-neutral-400">
+            {/* Exit + mute buttons on rest screen */}
+            <button
+              onClick={handleToggleMute}
+              className="absolute right-16 p-2 rounded-xl bg-black/5 text-neutral-400"
+              style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setShowExitDialog(true)}
+              className="absolute right-4 p-2 rounded-xl bg-black/5 text-neutral-400"
+              style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+            >
               <X className="w-5 h-5" />
             </button>
             <p className="text-neutral-400 text-sm font-medium mb-4">Odpočinek</p>
@@ -1476,8 +1531,10 @@ const CustomWorkoutPlayer = () => {
                     <video
                       key={exerciseDetail.video_path}
                       src={exerciseDetail.video_path}
-                      controls playsInline autoPlay loop muted preload="auto"
+                      playsInline autoPlay loop muted preload="auto"
                       className="w-full h-full object-contain"
+                      style={{ opacity: 0, transition: 'opacity 0.3s' }}
+                      onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
                       onError={() => setInfoVideoError(true)}
                     />
                   )}

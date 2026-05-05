@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Exercise {
   id: string;
@@ -39,6 +40,7 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
 };
 
 export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = false }: StationVideoPlayerProps) => {
+  const { t } = useTranslation();
   const topOffset = bannerVisible ? '60px' : '12px';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -158,7 +160,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             onClick={(e) => { e.stopPropagation(); goTo(currentIndex - 1); }}
             className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-sm"
             style={{ background: 'rgba(0,0,0,0.4)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
-            aria-label="Předchozí cvik"
+            aria-label={t('station.prev_exercise')}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -171,7 +173,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             onClick={(e) => { e.stopPropagation(); goTo(currentIndex + 1); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-sm"
             style={{ background: 'rgba(0,0,0,0.4)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
-            aria-label="Další cvik"
+            aria-label={t('station.next_exercise')}
           >
             <ChevronRight className="w-6 h-6" />
           </button>
@@ -243,7 +245,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
               onClick={() => setInfoOpen(false)}
               className="flex items-center justify-center w-9 h-9 rounded-full"
               style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}
-              aria-label="Zavřít"
+              aria-label={t('station.close')}
             >
               <X className="w-5 h-5" />
             </button>

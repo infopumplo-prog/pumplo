@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Drawer,
@@ -23,12 +22,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Loader2, Search, ChevronRight, Plus, Trash2, Building2, MapPin, Globe, Lock } from 'lucide-react';
+import { Pencil, Loader2, Search, ChevronRight, Plus, Trash2, Building2, Globe, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
 import MobileCard from '@/components/admin/MobileCard';
 import AdminPagination from '@/components/admin/AdminPagination';
 import AdminCreateGymForm from '@/components/admin/AdminCreateGymForm';
+import { useTranslation } from 'react-i18next';
 
 interface GymData {
   id: string;
@@ -50,6 +50,7 @@ interface GymData {
 const ITEMS_PER_PAGE = 100;
 
 const GymsManagement = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [gyms, setGyms] = useState<GymData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +63,7 @@ const GymsManagement = () => {
 
   const fetchGyms = async () => {
     setIsLoading(true);
-    
+
     const { data: gymsData, error: gymsError } = await supabase
       .from('gyms')
       .select('*')
@@ -74,7 +75,6 @@ const GymsManagement = () => {
       return;
     }
 
-    // Fetch owner names for each gym
     const gymsWithOwners = await Promise.all(
       (gymsData || []).map(async (gym) => {
         const { data: profileData } = await supabase
@@ -86,9 +86,9 @@ const GymsManagement = () => {
         return {
           ...gym,
           opening_hours: gym.opening_hours as Record<string, { open: string; close: string; closed: boolean }>,
-          owner_name: profileData 
-            ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Bez mena'
-            : 'Neznámy'
+          owner_name: profileData
+            ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || '—'
+            : '—'
         };
       })
     );
@@ -123,7 +123,6 @@ const GymsManagement = () => {
   }, [searchTerm]);
 
   const handleViewGym = (gym: GymData) => {
-    // Navigate to detail page instead of opening drawer
     navigate(`/admin/gym/${gym.id}`);
   };
 
@@ -147,10 +146,10 @@ const GymsManagement = () => {
       .eq('id', deleteGym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa zmazať posilovňu');
+      toast.error(t('admin.gym_delete_error'));
       console.error('Delete error:', error);
     } else {
-      toast.success('Posilovňa bola zmazaná');
+      toast.success(t('admin.gym_deleted_ok'));
       fetchGyms();
     }
     setIsDeleting(false);
@@ -159,16 +158,16 @@ const GymsManagement = () => {
 
   const togglePublish = async (gym: GymData, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     const { error } = await supabase
       .from('gyms')
       .update({ is_published: !gym.is_published })
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa zmeniť stav zverejnenia');
+      toast.error(t('admin.toggle_publish_error'));
     } else {
-      toast.success(gym.is_published ? 'Posilovňa je teraz súkromná' : 'Posilovňa bola zverejnená');
+      toast.success(gym.is_published ? t('admin.gym_now_private') : t('admin.gym_published'));
       fetchGyms();
     }
   };
@@ -188,12 +187,12 @@ const GymsManagement = () => {
       <div className="space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Posilovne</h2>
+          <h2 className="text-xl font-bold">{t('admin.gyms_title')}</h2>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{gyms.length} celkom</span>
+            <span className="text-sm text-muted-foreground">{t('admin.total_count', { n: gyms.length })}</span>
             <Button size="sm" onClick={() => setDrawerMode('create')}>
               <Plus className="w-4 h-4 mr-1" />
-              Pridať
+              {t('admin.add')}
             </Button>
           </div>
         </div>
@@ -202,7 +201,7 @@ const GymsManagement = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Hľadať posilovňu..."
+            placeholder={t('admin.search_gym')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -232,9 +231,9 @@ const GymsManagement = () => {
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={gym.is_published ? 'default' : 'secondary'} className="text-xs">
                           {gym.is_published ? (
-                            <><Globe className="w-3 h-3 mr-1" /> Verejná</>
+                            <><Globe className="w-3 h-3 mr-1" />{t('admin.gym_public')}</>
                           ) : (
-                            <><Lock className="w-3 h-3 mr-1" /> Súkromná</>
+                            <><Lock className="w-3 h-3 mr-1" />{t('admin.gym_private')}</>
                           )}
                         </Badge>
                         <span className="text-xs text-muted-foreground truncate">
@@ -244,32 +243,13 @@ const GymsManagement = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={(e) => togglePublish(gym, e)}
-                    >
-                      {gym.is_published ? (
-                        <Lock className="w-4 h-4" />
-                      ) : (
-                        <Globe className="w-4 h-4" />
-                      )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => togglePublish(gym, e)}>
+                      {gym.is_published ? <Lock className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={(e) => handleEditGym(gym, e)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => handleEditGym(gym, e)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
-                      onClick={(e) => handleDeleteGym(gym, e)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive hover:text-destructive" onClick={(e) => handleDeleteGym(gym, e)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <ChevronRight className="w-5 h-5 text-muted-foreground ml-1" />
@@ -280,13 +260,12 @@ const GymsManagement = () => {
 
             {paginatedGyms.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                Žiadne posilovne
+                {t('admin.no_gyms')}
               </div>
             )}
           </div>
         )}
 
-        {/* Pagination */}
         <AdminPagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -299,58 +278,18 @@ const GymsManagement = () => {
         <Drawer open={drawerMode === 'view'} onOpenChange={closeDrawer}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Detail posilovne</DrawerTitle>
+              <DrawerTitle>{t('admin.gym_detail_title')}</DrawerTitle>
             </DrawerHeader>
             {selectedGym && (
               <div className="px-4 pb-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 {selectedGym.cover_photo_url && (
-                  <img 
-                    src={selectedGym.cover_photo_url} 
-                    alt={selectedGym.name}
-                    className="w-full h-40 object-cover rounded-lg"
-                  />
+                  <img src={selectedGym.cover_photo_url} alt={selectedGym.name} className="w-full h-40 object-cover rounded-lg" />
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground text-xs">Názov</Label>
-                    <p className="font-medium">{selectedGym.name}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground text-xs">Popis</Label>
-                    <p className="font-medium">{selectedGym.description || '-'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground text-xs">Adresa</Label>
-                    <p className="font-medium">{selectedGym.address || '-'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Majiteľ</Label>
-                    <p className="font-medium">{selectedGym.owner_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Stav</Label>
-                    <Badge variant={selectedGym.is_published ? 'default' : 'secondary'}>
-                      {selectedGym.is_published ? 'Verejná' : 'Súkromná'}
-                    </Badge>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Vytvorené</Label>
-                    <p className="font-medium">
-                      {new Date(selectedGym.created_at).toLocaleDateString('sk-SK')}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Lokácia</Label>
-                    <p className="font-medium text-sm">
-                      {selectedGym.latitude.toFixed(4)}, {selectedGym.longitude.toFixed(4)}
-                    </p>
-                  </div>
-                </div>
               </div>
             )}
             <DrawerFooter>
               <DrawerClose asChild>
-                <Button variant="outline">Zavrieť</Button>
+                <Button variant="outline">{t('admin.close')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
@@ -360,31 +299,31 @@ const GymsManagement = () => {
         <Drawer open={drawerMode === 'create'} onOpenChange={closeDrawer}>
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
-              <DrawerTitle>Nová posilovňa</DrawerTitle>
+              <DrawerTitle>{t('admin.new_gym_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 overflow-y-auto max-h-[70vh]">
               <AdminCreateGymForm onSuccess={handleCreateSuccess} onCancel={closeDrawer} />
             </div>
           </DrawerContent>
         </Drawer>
+
         {/* Delete Confirmation */}
         <AlertDialog open={!!deleteGym} onOpenChange={() => setDeleteGym(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Zmazať posilovňu?</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.delete_gym_confirm_title')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Táto akcia je nevratná. Posilovňa <strong>{deleteGym?.name}</strong> bude 
-                natrvalo zmazaná spolu so všetkými strojmi.
+                {t('admin.delete_gym_confirm_desc', { name: deleteGym?.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Zrušiť</AlertDialogCancel>
+              <AlertDialogCancel>{t('admin.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={isDeleting}
               >
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Zmazať'}
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : t('admin.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

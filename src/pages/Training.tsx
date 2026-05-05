@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
@@ -26,6 +27,7 @@ import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import NotificationOnboardingDrawer from '@/components/notifications/NotificationOnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
+import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
@@ -61,31 +63,31 @@ interface HistoryExercise {
   weight: number | null;
 }
 
-// Day names in Czech
-const DAY_NAMES_CZ: Record<string, string> = {
-  monday: 'Pondělí',
-  tuesday: 'Úterý',
-  wednesday: 'Středa',
-  thursday: 'Čtvrtek',
-  friday: 'Pátek',
-  saturday: 'Sobota',
-  sunday: 'Neděle'
-};
-
-const DAY_NAMES_SHORT_CZ: Record<string, string> = {
-  monday: 'Po',
-  tuesday: 'Út',
-  wednesday: 'St',
-  thursday: 'Čt',
-  friday: 'Pá',
-  saturday: 'So',
-  sunday: 'Ne'
-};
-
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const Training = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const DAY_NAMES_CZ: Record<string, string> = {
+    monday: t('myplan.day_monday'),
+    tuesday: t('myplan.day_tuesday'),
+    wednesday: t('myplan.day_wednesday'),
+    thursday: t('myplan.day_thursday'),
+    friday: t('myplan.day_friday'),
+    saturday: t('myplan.day_saturday'),
+    sunday: t('myplan.day_sunday'),
+  };
+
+  const DAY_NAMES_SHORT_CZ: Record<string, string> = {
+    monday: t('myplan.day_short_monday'),
+    tuesday: t('myplan.day_short_tuesday'),
+    wednesday: t('myplan.day_short_wednesday'),
+    thursday: t('myplan.day_short_thursday'),
+    friday: t('myplan.day_short_friday'),
+    saturday: t('myplan.day_short_saturday'),
+    sunday: t('myplan.day_short_sunday'),
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile, isLoading: profileLoading, updateProfile, refetch: refetchProfile } = useUserProfile();
   const { plan, isLoading: planLoading, getCurrentDayExercises, advanceToNextDay, refetch: refetchPlan, getExercisesForDay } = useWorkoutPlan();
@@ -382,12 +384,16 @@ const Training = () => {
       setSearchParams(searchParams, { replace: true });
       
       // Start workout flow directly (gym already confirmed in Home)
+      const gymIdParam = searchParams.get('gymId') || profile.selected_gym_id;
+      searchParams.delete('gymId');
+      setSearchParams(searchParams, { replace: true });
+
       const exercisesFromPlan = getCurrentDayExercises()
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
 
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
-        setSelectedWorkoutGymId(profile.selected_gym_id);
+        setSelectedWorkoutGymId(gymIdParam);
         setShowWorkoutPreview(true);
       } else {
         setShowMissingExercisesDialog(true);
@@ -513,10 +519,10 @@ const Training = () => {
       setCompletedWorkouts([]);
       setShowPlanCompleteDialog(false);
       
-      toast.success('Nový plán byl vytvořen! 🎉');
+      toast.success(t('training.plan_created'));
     } catch (err) {
       console.error('Error regenerating plan:', err);
-      toast.error('Nepodařilo se vytvořit nový plán');
+      toast.error(t('training.plan_failed'));
     } finally {
       setIsRegeneratingPlan(false);
     }
@@ -648,7 +654,7 @@ const Training = () => {
         dayNameShort: DAY_NAMES_SHORT_CZ[dayOfWeek] || dayOfWeek.slice(0, 2),
         workoutLetter,
         // Show split name, NOT "Den A" - use dayName from template
-        workoutName: dayInfo?.dayName || `Trénink ${workoutLetter}`,
+        workoutName: dayInfo?.dayName || t('training.workout_letter', { letter: workoutLetter }),
         isCompleted,
         isCurrentDay,
         isToday,
@@ -722,7 +728,7 @@ const Training = () => {
     if (!selectedGoalId || !profile?.user_level) {
       console.warn('[handleCreatePlanSchedule] BLOCKED — missing:', !selectedGoalId ? 'selectedGoalId' : 'user_level');
       if (!profile?.user_level) {
-        toast.error('Chybí úroveň zkušenosti. Vyplňte prosím profil.');
+        toast.error(t('training.no_experience'));
       }
       return;
     }
@@ -749,7 +755,7 @@ const Training = () => {
           .eq('id', planId);
         
         await refetchPlan();
-        toast.success('Plán vytvořen!');
+        toast.success(t('training.plan_ok'));
       }
     } else {
       // No gym selected - create plan with training_days snapshot
@@ -776,7 +782,7 @@ const Training = () => {
 
       if (!error) {
         await refetchPlan();
-        toast.info('Plán vytvořen. Pro generování cviků vyber posilovnu.');
+        toast.info(t('training.plan_select_gym'));
       }
     }
   };
@@ -806,7 +812,7 @@ const Training = () => {
       }
     } catch (err) {
       console.error('Error loading exercises:', err);
-      toast.error('Nepodařilo se načíst cviky');
+      toast.error(t('training.exercises_failed'));
     } finally {
       setIsGeneratingDayExercises(false);
     }
@@ -869,9 +875,13 @@ const Training = () => {
     return Math.max(3, Math.min(12, count));
   };
 
-  // State for gym confirmation dialog
-  const [showGymConfirmDialog, setShowGymConfirmDialog] = useState(false);
-  const [confirmedGymName, setConfirmedGymName] = useState<string>('');
+  // State for gym selection + location check flow
+  const [showGymSelectorForStart, setShowGymSelectorForStart] = useState(false);
+  const [showLocationGateForStart, setShowLocationGateForStart] = useState(false);
+  const [startGymLat, setStartGymLat] = useState<number | null>(null);
+  const [startGymLng, setStartGymLng] = useState<number | null>(null);
+  const [startGymName, setStartGymName] = useState('');
+  const [startGymId, setStartGymId] = useState<string | null>(null);
 
   const currentExercises = plan ? getCurrentDayExercises() : [];
 
@@ -886,67 +896,46 @@ const Training = () => {
     autoGenerateExercises();
   }, [plan?.id, profile?.selected_gym_id, profile?.user_level, generatedExercises.length]);
 
-  // State for gym closed warning
-  const [showGymClosedWarning, setShowGymClosedWarning] = useState(false);
-  const [closedGymName, setClosedGymName] = useState<string>('');
-
-  // Open workout preview with gym confirmation
-  const handleStartWorkout = async () => {
-    // Uživatel musí mít vybranou posilovnu
-    if (!profile?.selected_gym_id) {
-      toast.error('Nejdříve vyber posilovnu na mapě');
-      navigate('/map');
-      return;
-    }
-    
-    // Načti název posilovny
-    const { data: gymData } = await supabase
-      .from('gyms')
-      .select('name, opening_hours')
-      .eq('id', profile.selected_gym_id)
-      .single();
-    
-    if (!gymData) {
-      toast.error('Posilovna nebyla nalezena');
-      return;
-    }
-    
-    // Zkontroluj otevírací hodiny
-    if (gymData.opening_hours) {
-      const isOpen = isGymCurrentlyOpen(gymData.opening_hours as OpeningHours);
-      if (!isOpen) {
-        setClosedGymName(gymData.name || 'Vybraná posilovna');
-        setShowGymClosedWarning(true);
-        return;
-      }
-    }
-    
-    // Zobraz potvrzovací dialog
-    setConfirmedGymName(gymData.name || 'Vybraná posilovna');
-    setShowGymConfirmDialog(true);
+  // Otevře GymSelector před startem tréninku
+  const handleStartWorkout = () => {
+    setShowGymSelectorForStart(true);
   };
 
-  // Potvrzení posilovny a start tréninku
-  const handleConfirmGymAndStart = async () => {
-    unlockAudio(); // Unlock audio on user gesture for mobile
-    setShowGymConfirmDialog(false);
-    
+  // Po výběru posilovny v GymSelector → zkontroluj polohu
+  const handleGymSelectedForStart = async (gymId: string) => {
+    unlockAudio();
+    setShowGymSelectorForStart(false);
+    setStartGymId(gymId);
+
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('name, latitude, longitude')
+      .eq('id', gymId)
+      .single();
+
+    if (gymData?.latitude != null && gymData?.longitude != null) {
+      setStartGymName(gymData.name || t('training.gym_fallback'));
+      setStartGymLat(gymData.latitude);
+      setStartGymLng(gymData.longitude);
+      setShowLocationGateForStart(true);
+    } else {
+      handleProceedWithGym(gymId);
+    }
+  };
+
+  // Spustí trénink po ověření polohy (nebo bez ověření)
+  const handleProceedWithGym = (gymId: string) => {
+    setShowLocationGateForStart(false);
     const exercisesFromPlan = getCurrentDayExercises()
-      .filter(ex => ex.exerciseId); // Remove F5 skipped slots (no exercise assigned)
+      .filter(ex => ex.exerciseId);
 
     if (exercisesFromPlan.length > 0) {
       setGeneratedExercises(exercisesFromPlan);
-      setSelectedWorkoutGymId(profile!.selected_gym_id!);
+      setSelectedWorkoutGymId(gymId);
       setShowWorkoutPreview(true);
     } else {
       setShowMissingExercisesDialog(true);
     }
-  };
-
-  // Změna posilovny
-  const handleChangeGym = () => {
-    setShowGymConfirmDialog(false);
-    navigate('/map');
   };
   
   // Generate warmup or cooldown exercises based on split type and muscles
@@ -1006,7 +995,7 @@ const Training = () => {
         // No warmup exercises available, go straight to workout
         setShowWorkoutPreview(false);
         setIsWorkoutActive(true);
-        toast.info('Žádné rozcvičkové cviky nejsou k dispozici');
+        toast.info(t('training.no_warmup'));
       } else {
         setWarmupExercises(warmups);
         setShowWorkoutPreview(false);
@@ -1014,7 +1003,7 @@ const Training = () => {
       }
     } catch (err) {
       console.error('Error generating warmup:', err);
-      toast.error('Nepodařilo se vygenerovat rozcvičku');
+      toast.error(t('training.warmup_failed'));
       setShowWorkoutPreview(false);
       setIsWorkoutActive(true);
     } finally {
@@ -1032,7 +1021,7 @@ const Training = () => {
   const handleWarmupSkip = useCallback(() => {
     setShowWarmup(false);
     setIsWorkoutActive(true);
-    toast.info('Rozcvička přeskočena');
+    toast.info(t('training.warmup_skipped'));
   }, []);
 
   // Handle pausing from warmup or workout
@@ -1058,7 +1047,7 @@ const Training = () => {
     
     setShowWarmup(false);
     setShowWorkoutPreview(false);
-    toast.info('Trénink pozastaven');
+    toast.info(t('training.workout_paused'));
   }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
 
   const handlePauseFromWorkout = useCallback((currentExerciseIndex: number, results: any[], currentSetIndex: number, currentExerciseSets: any[]) => {
@@ -1086,7 +1075,7 @@ const Training = () => {
     });
     
     setIsWorkoutActive(false);
-    toast.info('Trénink pozastaven');
+    toast.info(t('training.workout_paused'));
   }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
 
   const handleEndFromPreview = useCallback(() => {
@@ -1114,7 +1103,7 @@ const Training = () => {
     });
     
     setShowWorkoutPreview(false);
-    toast.info('Trénink pozastaven');
+    toast.info(t('training.workout_paused'));
   }, [plan, profile?.selected_gym_id, generatedExercises, savePausedWorkout]);
 
   const handleGymSelect = async (gymId: string) => {
@@ -1135,11 +1124,11 @@ const Training = () => {
       const { newStreak, isNewRecord, justActivated } = await updateStreakOnWorkoutComplete();
 
       if (justActivated) {
-        toast.success('🔥 Streak aktivován! Máš 3 tréninky za sebou!', {
+        toast.success(t('training.streak_3'), {
           duration: 5000
         });
       } else if (isNewRecord && newStreak > 3) {
-        toast.success(`🔥 Nový rekord! ${newStreak} dní streak!`, {
+        toast.success(t('training.streak_record', { n: newStreak }), {
           duration: 5000
         });
       }
@@ -1205,13 +1194,13 @@ const Training = () => {
 
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
-        toast.success('Cviky byly načteny!');
+        toast.success(t('training.exercises_loaded'));
       } else {
-        toast.error('Pro regenerování cviků prosím regeneruj celý plán v nastavení.');
+        toast.error(t('training.regen_exercises_hint'));
       }
     } catch (err) {
       console.error('Error loading exercises:', err);
-      toast.error('Nepodařilo se načíst cviky');
+      toast.error(t('training.exercises_failed'));
     } finally {
       setIsGeneratingDayExercises(false);
     }
@@ -1417,7 +1406,7 @@ const Training = () => {
       if (currentDay?.dayName) return currentDay.dayName;
     }
     const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-    return todayTrainingDay?.workoutName || 'Trénink';
+    return todayTrainingDay?.workoutName || t('training.workout_fallback');
   }, [plan, daysInViewingWeek]);
 
   // Workout preview screen
@@ -1522,12 +1511,12 @@ const Training = () => {
   if (!isOnboardingComplete) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4 pb-24">
+        <div className="min-h-screen bg-background p-4 pb-nav">
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Trénink</h1>
+            <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
           <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
@@ -1540,12 +1529,12 @@ const Training = () => {
             >
               <Dumbbell className="w-10 h-10 text-muted-foreground" />
             </motion.div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Trénink je uzamčený</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t('training.locked_title')}</h2>
             <p className="text-muted-foreground mb-6">
-              Pro přístup k tréninku nejdříve vyplň dotazník
+              {t('training.fill_questionnaire_hint')}
             </p>
             <Button onClick={() => setOnboardingOpen(true)}>
-              Vyplnit dotazník
+              {t('training.fill_questionnaire_btn')}
             </Button>
           </div>
 
@@ -1559,12 +1548,12 @@ const Training = () => {
   if (!plan && !planLoading && !isGenerating) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4 pb-24">
+        <div className="min-h-screen bg-background p-4 pb-nav">
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Trénink</h1>
+            <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
           <motion.div
@@ -1575,9 +1564,9 @@ const Training = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Target className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-xl font-bold mb-2">Vyber si cíl</h2>
+              <h2 className="text-xl font-bold mb-2">{t('training.select_goal')}</h2>
               <p className="text-muted-foreground text-sm">
-                Tvůj plán na {trainingFrequency}× týdně
+                {t('training.plan_frequency', { n: trainingFrequency })}
               </p>
             </div>
 
@@ -1610,7 +1599,7 @@ const Training = () => {
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {goal.day_count} typy tréninků • {goal.duration_weeks || 8} týdnů
+                          {t('training.goal_types_weeks', { types: goal.day_count, weeks: goal.duration_weeks || 8 })}
                         </p>
                       </div>
                       <div className={cn(
@@ -1636,7 +1625,7 @@ const Training = () => {
               disabled={!selectedGoalId}
             >
               <Dumbbell className="w-5 h-5" />
-              Vytvořit plán
+              {t('training.create_plan_btn')}
             </Button>
           </motion.div>
         </div>
@@ -1653,9 +1642,9 @@ const Training = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Trénink</h1>
+            <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
-          
+
           <div className="text-center py-12">
             <motion.div
               animate={{ rotate: 360 }}
@@ -1664,7 +1653,7 @@ const Training = () => {
             >
               <RefreshCw className="w-16 h-16 text-primary" />
             </motion.div>
-            <h2 className="text-lg font-medium mb-2">Načítám tréninkový plán...</h2>
+            <h2 className="text-lg font-medium mb-2">{t('training.loading_plan')}</h2>
           </div>
         </div>
       </PageTransition>
@@ -1680,14 +1669,14 @@ const Training = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Trénink</h1>
+            <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
-          
+
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
-            <h2 className="text-lg font-medium mb-2">Chyba při generování plánu</h2>
+            <h2 className="text-lg font-medium mb-2">{t('training.plan_error')}</h2>
             <p className="text-muted-foreground text-sm mb-4">{generatorError}</p>
           </div>
         </div>
@@ -1725,9 +1714,9 @@ const Training = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold">{goalInfo?.name || 'Můj plán'}</h1>
+                <h1 className="text-xl font-bold">{goalInfo?.name || t('myplan.title')}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {totalWeeks} týdnů • {trainingFrequency}× týdně
+                  {t('training.weeks_frequency', { weeks: totalWeeks, freq: trainingFrequency })}
                 </p>
               </div>
             </div>
@@ -1742,12 +1731,12 @@ const Training = () => {
                         size="icon" 
                         onClick={async () => {
                           if (notificationsEnabled) {
-                            toast.info('Notifikace jsou již povoleny. Uprav je v nastavení.');
+                            toast.info(t('training.notif_already_enabled'));
                             navigate('/settings');
                           } else {
                             const granted = await subscribeToPush();
                             if (granted) {
-                              toast.success('Notifikace povoleny! Budeme ti připomínat tréninky.');
+                              toast.success(t('training.notif_enabled'));
                             } else {
                               toast.error('Notifikace nebyly povoleny');
                             }
@@ -1765,15 +1754,15 @@ const Training = () => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {notificationsEnabled 
-                        ? 'Notifikace povoleny - klikni pro nastavení' 
-                        : 'Klikni pro povolení notifikací'
+                      {notificationsEnabled
+                        ? t('training.notif_enabled_tooltip')
+                        : t('training.notif_click_to_enable')
                       }
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title="Zrušit plán">
+              <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title={t('training.cancel_plan')}>
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -1788,11 +1777,11 @@ const Training = () => {
             >
               <div className="flex items-center gap-2 bg-orange-500/10 text-orange-500 px-3 py-1.5 rounded-full">
                 <Flame className="w-4 h-4" />
-                <span className="font-bold text-sm">{currentStreak} dní streak</span>
+                <span className="font-bold text-sm">{t('training.streak_days', { n: currentStreak })}</span>
               </div>
               {maxStreak > currentStreak && (
                 <span className="text-xs text-muted-foreground">
-                  Rekord: {maxStreak}
+                  {t('training.streak_record_label', { n: maxStreak })}
                 </span>
               )}
             </motion.div>
@@ -1801,8 +1790,8 @@ const Training = () => {
           {/* Progress bar */}
           <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Celkový progress</span>
-              <span className="font-medium text-primary">{totalCompletedDays}/{totalDaysInPlan} tréninků</span>
+              <span className="text-muted-foreground">{t('home.total_progress')}</span>
+              <span className="font-medium text-primary">{t('training.workouts_progress', { done: totalCompletedDays, total: totalDaysInPlan })}</span>
             </div>
             <Progress value={progressPercentage} className="h-2" />
           </div>
@@ -1821,10 +1810,10 @@ const Training = () => {
                 <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                    Plán obsahuje příliš mnoho cviků
+                    {t('training.plan_too_many_exercises')}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Dle aktuální metodiky by trénink měl mít max 7 cviků. Regeneruj plán pro optimální rozložení.
+                    {t('training.plan_too_many_exercises_desc')}
                   </p>
                   <Button
                     onClick={() => setShowRegenerateConfirm(true)}
@@ -1836,12 +1825,12 @@ const Training = () => {
                     {isRegeneratingPlan ? (
                       <>
                         <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                        Regeneruji...
+                        {t('training.regenerating')}
                       </>
                     ) : (
                       <>
                         <RefreshCw className="w-3 h-3 mr-1" />
-                        Regenerovat plán
+                        {t('myplan.regenerate')}
                       </>
                     )}
                   </Button>
@@ -1868,10 +1857,10 @@ const Training = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">
-              Týden {viewingWeek}/{skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks}
+              {t('training.week_of', { week: viewingWeek, total: skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks })}
             </span>
             {isViewingCurrentWeek && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">teď</Badge>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t('training.now_badge')}</Badge>
             )}
           </div>
           
@@ -1953,10 +1942,10 @@ const Training = () => {
                     {day.dayName}
                   </h3>
                   {day.isToday && isViewingCurrentWeek && !day.isCompleted && !day.isMissed && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">Dnes</Badge>
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">{t('training.today_badge')}</Badge>
                   )}
                   {day.isUpcoming && !day.isToday && (
-                    <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">Ďalší</Badge>
+                    <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">{t('training.next_badge')}</Badge>
                   )}
                 </div>
                 <p className={cn(
@@ -1976,7 +1965,7 @@ const Training = () => {
                 {day.isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                 ) : day.isMissed ? (
-                  <span className="text-[10px] font-medium text-destructive">Vynecháno</span>
+                  <span className="text-[10px] font-medium text-destructive">{t('training.skipped_label')}</span>
                 ) : day.isFuture ? (
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 ) : null}
@@ -2035,24 +2024,24 @@ const Training = () => {
                           </div>
                         ) : (
                           <p className="text-sm text-muted-foreground">
-                            Žádné záznamy cviků
+                            {t('training.no_exercise_records')}
                           </p>
                         )
                       ) : day.isMissed ? (
                         <p className="text-sm text-destructive/70">
-                          Tento trénink byl vynechán
+                          {t('training.workout_skipped')}
                         </p>
                       ) : day.isShiftedDay && day.isFuture ? (
                         <p className="text-sm text-blue-500/70">
-                          Doplnkový trénink z prvého týždňa
+                          {t('training.bonus_from_first_week')}
                         </p>
                       ) : day.isFuture ? (
                         <p className="text-sm text-muted-foreground">
-                          Tento trénink je naplánován na později
+                          {t('training.workout_scheduled_later')}
                         </p>
                       ) : day.isToday && !day.isCompleted ? (
                         <p className="text-sm text-muted-foreground">
-                          Cviky budou vygenerovány při začátku tréninku
+                          {t('training.exercises_on_start')}
                         </p>
                       ) : selectedDayExercises.length > 0 ? (
                         <div className="space-y-2">
@@ -2068,7 +2057,7 @@ const Training = () => {
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          Žádné informace o tréninku
+                          {t('training.no_workout_info')}
                         </p>
                       )}
                     </>
@@ -2097,15 +2086,15 @@ const Training = () => {
                     <Star className="w-6 h-6 text-amber-500" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">Bonusový trénink</h3>
+                    <h3 className="font-bold text-lg">{t('training.bonus_workout')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Dnes nemáš naplánovaný trénink
+                      {t('training.no_workout_today')}
                     </p>
                   </div>
                 </div>
 
                 <p className="text-sm text-muted-foreground mb-4">
-                  Chceš přesto zacvičit? Vygeneruj si bonusový trénink, který se nepočítá do tvého plánu.
+                  {t('training.bonus_workout_desc')}
                 </p>
 
                 <ExtendWorkoutSelector 
@@ -2123,7 +2112,7 @@ const Training = () => {
             <Card className="p-4 bg-amber-500/5 border-amber-500/30">
               <div className="flex items-center gap-2 mb-3">
                 <Star className="w-4 h-4 text-amber-500" />
-                <h3 className="font-semibold text-sm">Bonusové tréninky dnes</h3>
+                <h3 className="font-semibold text-sm">{t('training.bonus_workouts_today')}</h3>
               </div>
               <div className="space-y-2">
                 {todayBonusWorkouts.map((workout, idx) => (
@@ -2133,7 +2122,7 @@ const Training = () => {
                     </span>
                     <Badge variant="outline" className="text-amber-600 border-amber-500/50">
                       <Check className="w-3 h-3 mr-1" />
-                      Dokončeno
+                      {t('training.completed_badge')}
                     </Badge>
                   </div>
                 ))}
@@ -2159,7 +2148,7 @@ const Training = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-bold">
-                      Dnešní trénink
+                      {t('workout.today_workout')}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       {todayTrainingDay.dayName} • {todayTrainingDay.workoutName}
@@ -2173,7 +2162,7 @@ const Training = () => {
                 </div>
                 
                 {isGeneratingDayExercises ? (
-                  <p className="text-sm text-muted-foreground">Generuji cviky...</p>
+                  <p className="text-sm text-muted-foreground">{t('workout.generating_exercises')}</p>
                 ) : generatedExercises.length > 0 ? (
                   <div className="space-y-2 mb-4">
                     {generatedExercises.map((ex, idx) => (
@@ -2188,11 +2177,11 @@ const Training = () => {
                   </div>
                 ) : !profile?.selected_gym_id ? (
                   <p className="text-sm text-muted-foreground mb-4">
-                    Vyber posilovnu pro vygenerování cviků
+                    {t('training.select_gym_for_exercises')}
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground mb-4">
-                    Klikni na Začít pro vygenerování cviků
+                    {t('training.click_to_start')}
                   </p>
                 )}
               </Card>
@@ -2211,7 +2200,7 @@ const Training = () => {
           if (!showButton) return null;
           
           return (
-            <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto flex gap-2">
+            <div className="fixed left-4 right-4 max-w-md mx-auto flex gap-2" style={{ bottom: 'calc(var(--bottom-nav-offset) + 8px)' }}>
               {/* Regenerate exercises button - only show when exercises are already generated */}
               {generatedExercises.length > 0 && (
                 <Button 
@@ -2233,12 +2222,12 @@ const Training = () => {
                 {isGeneratingDayExercises ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    Generuji...
+                    {t('training.generating')}
                   </>
                 ) : (
                   <>
                     <Play className="w-5 h-5" />
-                    Začít trénink
+                    {t('workout_preview.start')}
                   </>
                 )}
               </Button>
@@ -2252,20 +2241,19 @@ const Training = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
-                Zrušit tréninkový plán?
+                {t('training.cancel_plan_title')}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Tato akce je nevratná. Ztratíš veškerý dosavadní progress ({totalCompletedDays} dokončených tréninků). 
-                Nový plán začne od prvního týdne a prvního dne.
+                {t('training.cancel_plan_desc', { count: totalCompletedDays })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogCancel>{t('myplan.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
                 onClick={handleCancelPlan}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Ano, zrušit plán
+                {t('training.confirm_cancel_plan')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -2277,22 +2265,21 @@ const Training = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-xl">
                 <CheckCircle2 className="w-6 h-6 text-primary" />
-                Plán dokončen! 🎉
+                {t('training.plan_completed')}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-3">
                 <p>
-                  Gratulujeme! Dokončil jsi všech <strong>{totalDaysInPlan}</strong> tréninků
-                  v rámci <strong>{totalWeeks}</strong>-týdenního plánu "{goalInfo?.name}".
+                  {t('training.plan_completed_desc', { total: totalDaysInPlan, weeks: totalWeeks })}
                 </p>
                 {isStreakActive && (
                   <div className="flex items-center gap-2 bg-orange-500/10 text-orange-500 px-3 py-2 rounded-lg">
                     <Flame className="w-5 h-5" />
-                    <span className="font-semibold">Streak: {currentStreak} dní</span>
-                    <span className="text-sm opacity-70">(zůstává zachován!)</span>
+                    <span className="font-semibold">{t('training.streak_label', { n: currentStreak })}</span>
+                    <span className="text-sm opacity-70">{t('training.streak_preserved')}</span>
                   </div>
                 )}
                 <p className="text-sm">
-                  Vygenerujeme ti nový plán podle tvého profilu. Aktuální plán bude nahrazen a nepůjde obnovit.
+                  {t('training.new_plan_will_be_generated')}
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -2305,12 +2292,12 @@ const Training = () => {
                 {isRegeneratingPlan ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Generuji...
+                    {t('training.generating')}
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    Pokračovat v tréninku
+                    {t('workout.continue_workout')}
                   </>
                 )}
               </AlertDialogAction>
@@ -2324,20 +2311,20 @@ const Training = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Posilovna je zavřená
+                {t('training.gym_closed')}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-3">
                 <p>
-                  <strong>{closedGymName}</strong> je momentálně zavřená. Nemůžeš začít trénink.
+                  {t('training.gym_closed_desc', { gym: closedGymName })}
                 </p>
                 <p className="text-sm">
-                  Můžeš vybrat jinou posilovnu nebo počkat na otevírací dobu.
+                  {t('training.gym_closed_hint')}
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel>Zavřít</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogCancel>{t('training.close')}</AlertDialogCancel>
+              <AlertDialogAction
                 onClick={() => {
                   setShowGymClosedWarning(false);
                   navigate('/map');
@@ -2345,7 +2332,7 @@ const Training = () => {
                 className="gap-2"
               >
                 <MapPin className="w-4 h-4" />
-                Vybrat jinou posilovnu
+                {t('training.select_other_gym')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -2357,26 +2344,24 @@ const Training = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-amber-500" />
-                Plán nemá vygenerované cviky
+                {t('training.no_exercises_title')}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-3" asChild>
                 <div>
-                  <p>
-                    Tvůj tréninkový plán nemá vygenerované cviky. To se může stát, když:
-                  </p>
+                  <p>{t('training.no_exercises_desc')}</p>
                   <ul className="list-disc list-inside text-sm space-y-1">
-                    <li>Změnila se dostupná vybavení v posilovně</li>
-                    <li>Plán byl vytvořen bez vybrané posilovny</li>
+                    <li>{t('training.no_exercises_reason1')}</li>
+                    <li>{t('training.no_exercises_reason2')}</li>
                   </ul>
                   <p className="text-sm font-medium text-amber-600">
-                    Aktuální plán bude smazán a nepůjde obnovit.
+                    {t('training.plan_will_be_deleted')}
                   </p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogCancel>{t('myplan.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
                 onClick={handleRegeneratePlan}
                 disabled={isRegeneratingPlan}
                 className="gap-2"
@@ -2384,12 +2369,12 @@ const Training = () => {
                 {isRegeneratingPlan ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Generuji plán...
+                    {t('myplan.generating_plan')}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4" />
-                    Regenerovat plán
+                    {t('myplan.regenerate')}
                   </>
                 )}
               </AlertDialogAction>
@@ -2403,22 +2388,19 @@ const Training = () => {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Regenerovat plán?
+                {t('myplan.regenerate_confirm_title')}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2" asChild>
                 <div>
-                  <p>
-                    Aktuální tréninkový plán bude <strong>smazán a nepůjde obnovit</strong>.
-                    Vytvoří se nový plán podle tvého profilu a aktuální posilovny.
-                  </p>
+                  <p>{t('myplan.regenerate_confirm_desc')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Tvůj streak a historie tréninků zůstanou zachovány.
+                    {t('myplan.regenerate_history_note')}
                   </p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogCancel>{t('myplan.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setShowRegenerateConfirm(false);
@@ -2430,12 +2412,12 @@ const Training = () => {
                 {isRegeneratingPlan ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Generuji plán...
+                    {t('myplan.generating_plan')}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4" />
-                    Ano, regenerovat
+                    {t('myplan.yes_regenerate')}
                   </>
                 )}
               </AlertDialogAction>
@@ -2443,29 +2425,25 @@ const Training = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Gym Confirmation Dialog */}
-        <AlertDialog open={showGymConfirmDialog} onOpenChange={setShowGymConfirmDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                Potvrzení posilovny
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Jdeš cvičit do <strong>{confirmedGymName}</strong>?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel onClick={handleChangeGym}>
-                Vybrat jinou
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmGymAndStart} className="gap-2">
-                <Play className="w-4 h-4" />
-                Ano, začít trénink
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Gym selector for workout start */}
+        {showGymSelectorForStart && (
+          <GymSelector
+            onSelect={handleGymSelectedForStart}
+            onCancel={() => setShowGymSelectorForStart(false)}
+            selectedGymId={profile?.selected_gym_id}
+          />
+        )}
+
+        {/* Location gate after gym selection */}
+        {showLocationGateForStart && startGymLat !== null && startGymLng !== null && (
+          <GymLocationGate
+            gymLat={startGymLat}
+            gymLng={startGymLng}
+            gymName={startGymName}
+            onConfirmed={() => handleProceedWithGym(startGymId!)}
+            onCancel={() => setShowLocationGateForStart(false)}
+          />
+        )}
 
         {/* Notification Onboarding Drawer */}
         <NotificationOnboardingDrawer

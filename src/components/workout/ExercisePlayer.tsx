@@ -1,23 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause } from 'lucide-react';
-import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 
-const categoryLabels: Record<string, string> = {
-  chest: 'Hrudník', back: 'Záda', shoulders: 'Ramena', arms: 'Paže',
-  legs: 'Nohy', core: 'Střed těla', cardio: 'Kardio',
-  full_body: 'Celé tělo', abdominals: 'Břicho', strength: 'Síla',
-};
-
-const equipmentLabels: Record<string, string> = {
-  bodyweight: 'Vlastní váha', barbell: 'Činka', dumbbell: 'Jednoručky',
-  kettlebell: 'Kettlebell', machine: 'Stroj', cable: 'Kladka',
-  free_weight: 'Volné závaží', plate_loaded: 'Kotouče', other: 'Jiné',
-};
 
 interface SetData {
   completed: boolean;
@@ -102,6 +92,7 @@ export const ExercisePlayer = ({
   initialSetsData,
   onSetChange
 }: ExercisePlayerProps) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
@@ -113,6 +104,13 @@ export const ExercisePlayer = ({
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  const handleToggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setAudioMuted(next);
+  };
 
   const completedSets = setsData.filter(s => s.completed).length;
   const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
@@ -244,13 +242,13 @@ export const ExercisePlayer = ({
       <RestTimer
         duration={restBetweenSets}
         onComplete={handleRestComplete}
-        label={`Odpočinek před ${currentSet + 2}. sérií`}
+        label={t('workout.rest_before_set', { n: currentSet + 2 })}
       />
     );
   }
 
   return (
-    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none', touchAction: 'none' }}>
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <motion.div
         key={`exercise-${exerciseIndex}-${currentSet}`}
         initial={{ opacity: 0, x: 30 }}
@@ -258,6 +256,7 @@ export const ExercisePlayer = ({
         exit={{ opacity: 0, x: -30 }}
         transition={{ duration: 0.2 }}
         className="flex-1 flex flex-col relative"
+        style={{ pointerEvents: 'auto' }}
       >
         {/* Full-screen video */}
         <div className="flex-1 relative">
@@ -269,17 +268,18 @@ export const ExercisePlayer = ({
               autoPlay loop muted playsInline
               preload="auto"
               className="w-full h-full object-cover"
+              style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
             />
           ) : (
             <div className="w-full h-full bg-neutral-900" />
           )}
 
-          {/* Top overlay: back + progress + counter + skip */}
-          <div className="absolute top-0 left-0 right-0 safe-top">
-            <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+          {/* Top overlay: back + progress + counter + swap + skip + list + mute + close */}
+          <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
+            <div className="flex items-center gap-1 px-4 pt-4 pb-2">
               {(exerciseIndex > 0 || currentSet > 0) && (
-                <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
@@ -296,22 +296,25 @@ export const ExercisePlayer = ({
                 {exerciseIndex + 1}/{totalExercises}
               </span>
               {onSwapExercise && (
-                <button onClick={onSwapExercise} disabled={isSwapping} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white disabled:opacity-50">
+                <button onClick={onSwapExercise} className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`} style={{ pointerEvents: 'auto' }}>
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
                 </button>
               )}
               {onSkipExercise && (
-                <button onClick={onSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={onSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <SkipForward className="w-5 h-5" />
                 </button>
               )}
               {onSwitchToList && (
-                <button onClick={onSwitchToList} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={onSwitchToList} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <List className="w-5 h-5" />
                 </button>
               )}
+              <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
               {onClose && (
-                <button onClick={onClose} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white">
+                <button onClick={onClose} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -319,12 +322,15 @@ export const ExercisePlayer = ({
           </div>
 
           {/* Top-left: exercise name + set info */}
-          <div className="absolute top-16 left-0 px-4 safe-top flex items-start gap-2">
+          <div
+            className="absolute left-0 px-4 flex items-start gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
+          >
             <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[70vw]">
               <p className="text-white font-bold text-base leading-tight truncate">{exerciseName}</p>
               <p className="text-white/70 text-sm mt-0.5">
-                Série {currentSet + 1} / {totalSets}
-                {isCompleted && ' · Hotovo'}
+                {t('workout.set_label', { current: currentSet + 1, total: totalSets })}
+                {isCompleted && t('workout.done_label')}
               </p>
               {machineName && (
                 <p className="text-white/50 text-xs mt-0.5 truncate">{machineName}</p>
@@ -333,6 +339,7 @@ export const ExercisePlayer = ({
             <button
               onClick={() => setShowInfoDrawer(!showInfoDrawer)}
               className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              style={{ pointerEvents: 'auto' }}
             >
               <Info className="w-5 h-5" />
             </button>
@@ -343,11 +350,11 @@ export const ExercisePlayer = ({
             {isCardio ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
-                  <p className="text-white/60 text-xs mb-1">Kardio · {repMax} min</p>
+                  <p className="text-white/60 text-xs mb-1">{t('workout.cardio_minutes', { n: repMax })}</p>
                   <p className={`text-5xl font-bold tabular-nums ${cardioTimeLeft <= 10 ? 'text-red-400' : 'text-white'}`}>
                     {formatCardioTime(cardioTimeLeft)}
                   </p>
-                  {cardioPaused && <p className="text-white/50 text-xs mt-1">Pozastaveno</p>}
+                  {cardioPaused && <p className="text-white/50 text-xs mt-1">{t('workout.paused')}</p>}
                 </div>
                 <div className="flex items-center gap-4">
                   <button
@@ -384,14 +391,12 @@ export const ExercisePlayer = ({
                     {/* Reps + RIR display */}
                     <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
                       <p className="text-white text-2xl font-bold leading-tight">
-                        {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">opak.</span>
+                        {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">{t('workout.reps_abbr')}</span>
                       </p>
                       {(rirMin != null || rirMax != null) && (() => {
                         const rir = rirMax ?? rirMin ?? 2;
-                        const label = rir >= 4 ? 'Lehké' : rir >= 3 ? 'Pohodlné' : rir >= 2 ? 'Náročné' : rir >= 1 ? 'Těžké' : 'Maximum';
-                        const desc = rir >= 3 ? `Nechte si ${rir} opak. v zásobě`
-                          : rir >= 1 ? `Nechte si ${rir} opak. v zásobě`
-                          : 'Dejte do toho vše';
+                        const label = rir >= 4 ? t('workout.rir_easy') : rir >= 3 ? t('workout.rir_comfortable') : rir >= 2 ? t('workout.rir_challenging') : rir >= 1 ? t('workout.rir_hard') : t('workout.rir_max');
+                        const desc = rir >= 1 ? t('workout.rir_reserve', { n: rir }) : t('workout.rir_all_out');
                         const color = rir >= 3 ? 'text-green-400' : rir >= 2 ? 'text-amber-400' : 'text-red-400';
                         return (
                           <div className={`mt-1 flex items-center gap-2 ${color}`}>
@@ -406,18 +411,18 @@ export const ExercisePlayer = ({
                     {showWeightInput && currentSet < totalSets && (
                       <div className="flex gap-2">
                         <div className="flex-1">
-                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
+                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.weight_kg')}</label>
                           <input
                             type="number"
                             inputMode="decimal"
-                            placeholder="např. 60"
+                            placeholder={t('workout.weight_placeholder')}
                             value={weight}
                             onChange={(e) => setWeight(e.target.value)}
                             className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
                           />
                         </div>
                         <div className="flex-1">
-                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
+                          <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.reps')}</label>
                           <input
                             type="number"
                             inputMode="numeric"
@@ -454,8 +459,8 @@ export const ExercisePlayer = ({
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
             <p className="text-sm text-muted-foreground mb-4">
-              {categoryLabels[category] || category}
-              {equipmentType && ` · ${equipmentLabels[equipmentType] || equipmentType}`}
+              {t('category.' + category, { defaultValue: category })}
+              {equipmentType && ` · ${t('equipment.' + equipmentType, { defaultValue: equipmentType })}`}
               {machineName && ` · ${machineName}`}
             </p>
 
@@ -467,12 +472,12 @@ export const ExercisePlayer = ({
               className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
-              Zpětná vazba k tomuto cviku
+              {t('workout.feedback_btn')}
             </button>
 
             {primaryMuscles.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {primaryMuscles.map((m) => (
                     <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -482,7 +487,7 @@ export const ExercisePlayer = ({
             )}
             {secondaryMuscles.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {secondaryMuscles.map((m) => (
                     <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
@@ -493,25 +498,25 @@ export const ExercisePlayer = ({
 
             {exerciseDescription && (
               <div className="mb-4 p-3 bg-muted/50 rounded-xl">
-                <p className="text-xs font-semibold text-foreground mb-1">Popis & technika</p>
+                <p className="text-xs font-semibold text-foreground mb-1">{t('workout.description_technique')}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDescription}</p>
               </div>
             )}
             {setupInstructions && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-foreground mb-1">Nastavení</p>
+                <p className="text-xs font-semibold text-foreground mb-1">{t('workout.setup')}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{setupInstructions}</p>
               </div>
             )}
             {commonMistakes && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-amber-600 mb-1">Časté chyby</p>
+                <p className="text-xs font-semibold text-amber-600 mb-1">{t('workout.common_mistakes')}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{commonMistakes}</p>
               </div>
             )}
             {tips && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-green-600 mb-1">Tipy</p>
+                <p className="text-xs font-semibold text-green-600 mb-1">{t('workout.tips')}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tips}</p>
               </div>
             )}

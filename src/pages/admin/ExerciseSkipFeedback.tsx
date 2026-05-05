@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { SkipForward, Filter, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface SkipFeedback {
   id: string;
@@ -26,20 +27,21 @@ interface Gym {
   name: string;
 }
 
-const REASON_LABELS: Record<string, string> = {
-  too_difficult: 'Příliš náročný',
-  dont_want: 'Nechce se mi',
-  health: 'Zdravotní důvod',
-  machine_missing: 'Stroj chybí',
-  other: 'Jiné',
-};
-
 export default function ExerciseSkipFeedback() {
+  const { t } = useTranslation();
   const [feedback, setFeedback] = useState<SkipFeedback[]>([]);
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGym, setSelectedGym] = useState<string>('all');
   const [selectedReason, setSelectedReason] = useState<string>('all');
+
+  const REASON_LABELS: Record<string, string> = {
+    too_difficult: t('admin.reason_too_difficult'),
+    dont_want: t('admin.reason_dont_want'),
+    health: t('admin.reason_health'),
+    machine_missing: t('admin.reason_machine_missing'),
+    other: t('admin.reason_other'),
+  };
 
   useEffect(() => {
     fetchGyms();
@@ -54,7 +56,7 @@ export default function ExerciseSkipFeedback() {
       .from('gyms')
       .select('id, name')
       .order('name');
-    
+
     if (data) {
       setGyms(data);
     }
@@ -62,7 +64,7 @@ export default function ExerciseSkipFeedback() {
 
   const fetchFeedback = async () => {
     setLoading(true);
-    
+
     let query = supabase
       .from('exercise_skip_feedback')
       .select('*')
@@ -84,20 +86,16 @@ export default function ExerciseSkipFeedback() {
     } else {
       setFeedback(data || []);
     }
-    
+
     setLoading(false);
   };
 
   const getReasonBadgeVariant = (reason: string) => {
     switch (reason) {
-      case 'machine_missing':
-        return 'destructive';
-      case 'health':
-        return 'secondary';
-      case 'too_difficult':
-        return 'outline';
-      default:
-        return 'default';
+      case 'machine_missing': return 'destructive';
+      case 'health': return 'secondary';
+      case 'too_difficult': return 'outline';
+      default: return 'default';
     }
   };
 
@@ -108,10 +106,10 @@ export default function ExerciseSkipFeedback() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <SkipForward className="w-6 h-6 text-primary" />
-            Přeskočené cviky
+            {t('admin.skip_feedback_title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Zpětná vazba od uživatelů k přeskočeným cvikům
+            {t('admin.skip_feedback_desc')}
           </p>
         </div>
 
@@ -120,19 +118,19 @@ export default function ExerciseSkipFeedback() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Filter className="w-4 h-4" />
-              Filtry
+              {t('admin.filters')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
-                <label className="text-sm text-muted-foreground mb-1.5 block">Posilovna</label>
+                <label className="text-sm text-muted-foreground mb-1.5 block">{t('admin.gym_label')}</label>
                 <Select value={selectedGym} onValueChange={setSelectedGym}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Všechny posilovny" />
+                    <SelectValue placeholder={t('admin.all_gyms')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Všechny posilovny</SelectItem>
+                    <SelectItem value="all">{t('admin.all_gyms')}</SelectItem>
                     {gyms.map(gym => (
                       <SelectItem key={gym.id} value={gym.id}>{gym.name}</SelectItem>
                     ))}
@@ -140,13 +138,13 @@ export default function ExerciseSkipFeedback() {
                 </Select>
               </div>
               <div className="flex-1 min-w-[200px]">
-                <label className="text-sm text-muted-foreground mb-1.5 block">Důvod</label>
+                <label className="text-sm text-muted-foreground mb-1.5 block">{t('admin.reason_label')}</label>
                 <Select value={selectedReason} onValueChange={setSelectedReason}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Všechny důvody" />
+                    <SelectValue placeholder={t('admin.all_reasons')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Všechny důvody</SelectItem>
+                    <SelectItem value="all">{t('admin.all_reasons')}</SelectItem>
                     {Object.entries(REASON_LABELS).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
@@ -169,16 +167,16 @@ export default function ExerciseSkipFeedback() {
             ) : feedback.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground">
                 <SkipForward className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Žádná zpětná vazba k zobrazení</p>
+                <p>{t('admin.no_feedback')}</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cvik</TableHead>
-                    <TableHead>Důvod</TableHead>
-                    <TableHead>Den</TableHead>
-                    <TableHead>Datum</TableHead>
+                    <TableHead>{t('admin.exercise_col')}</TableHead>
+                    <TableHead>{t('admin.reason_col')}</TableHead>
+                    <TableHead>{t('admin.day_col')}</TableHead>
+                    <TableHead>{t('admin.date_col')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -195,7 +193,7 @@ export default function ExerciseSkipFeedback() {
                       </TableCell>
                       <TableCell>
                         {item.day_letter && (
-                          <Badge variant="outline">Den {item.day_letter}</Badge>
+                          <Badge variant="outline">{t('admin.day_letter', { letter: item.day_letter })}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">

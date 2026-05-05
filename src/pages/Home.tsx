@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -66,6 +67,7 @@ const Home = () => {
     refetch: refetchStats
   } = useWorkoutStats();
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
+  const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
   const [favoriteTab, setFavoriteTab] = useState<'pumplo' | 'custom'>(() => {
@@ -139,13 +141,13 @@ const Home = () => {
 
   // Day names in Czech
   const dayNamesCz: Record<string, string> = {
-    monday: 'Pondělí',
-    tuesday: 'Úterý',
-    wednesday: 'Středa',
-    thursday: 'Čtvrtek',
-    friday: 'Pátek',
-    saturday: 'Sobota',
-    sunday: 'Neděle'
+    monday: t('myplan.day_monday'),
+    tuesday: t('myplan.day_tuesday'),
+    wednesday: t('myplan.day_wednesday'),
+    thursday: t('myplan.day_thursday'),
+    friday: t('myplan.day_friday'),
+    saturday: t('myplan.day_saturday'),
+    sunday: t('myplan.day_sunday'),
   };
   const today = getCurrentWeekday();
 
@@ -177,7 +179,7 @@ const Home = () => {
     }
   };
   return <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-24 relative">
+      <div className="min-h-screen bg-background safe-top pb-nav relative">
         {/* Blue wave decoration */}
         <div className="absolute top-0 left-0 right-0 h-24 overflow-hidden pointer-events-none z-0">
           <svg viewBox="0 0 400 150" preserveAspectRatio="none" className="w-full h-full">
@@ -208,15 +210,15 @@ const Home = () => {
             <div className="flex items-center gap-3 mt-3">
               {role === 'business' && <Link to="/business" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Building2 className="w-4 h-4" />
-                  Business
+                  {t('home.business')}
                 </Link>}
               {isTrainer && <Link to="/trainer-profile" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Dumbbell className="w-4 h-4" />
-                  Trenér
+                  {t('home.trainer')}
                 </Link>}
               {isAdmin && <Link to="/admin" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Shield className="w-4 h-4" />
-                  Admin
+                  {t('home.admin')}
                 </Link>}
             </div>
           </motion.div>
@@ -232,9 +234,9 @@ const Home = () => {
           duration: 0.4,
           delay: 0.1
         }}>
-            <p className="text-muted-foreground text-sm">Ahoj,</p>
+            <p className="text-muted-foreground text-sm">{t('home.hello')}</p>
             <h1 className="text-3xl font-bold text-foreground">
-              {profile?.first_name || 'Športovec'} 💪
+              {profile?.first_name || t('home.athlete')} 💪
             </h1>
           </motion.div>
         </div>
@@ -258,7 +260,7 @@ const Home = () => {
                 )}
               >
                 <Zap className="w-3.5 h-3.5" />
-                Pumplo trénink
+                {t('home.pumplo_workout')}
                 {activeTab === 'pumplo' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('pumplo'); }}
@@ -283,7 +285,7 @@ const Home = () => {
                 )}
               >
                 <Dumbbell className="w-3.5 h-3.5" />
-                Vlastní trénink
+                {t('home.custom_workout')}
                 {activeTab === 'custom' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('custom'); }}
@@ -323,13 +325,13 @@ const Home = () => {
                       <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
                         <MapPin className="w-8 h-8 text-primary" />
                       </div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Vyber si posilovnu</h3>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{t('home.select_gym')}</h3>
                       <p className="text-muted-foreground mb-6">
-                        Pro vytvoření personalizovaného plánu nejdříve vyber posilovnu, kde budeš cvičit
+                        {t('home.select_gym_desc')}
                       </p>
                       <Button onClick={() => navigate('/map')} size="lg" className="gap-2 rounded-xl">
                         <MapPin className="w-5 h-5" />
-                        Najít posilovnu
+                        {t('home.find_gym')}
                       </Button>
                     </div>
                   </div>
@@ -343,13 +345,13 @@ const Home = () => {
                       <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
                         <Dumbbell className="w-8 h-8 text-primary" />
                       </div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Vytvoř si plán</h3>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{t('home.create_plan')}</h3>
                       <p className="text-muted-foreground mb-6">
-                        Vyber si tréninkový cíl a začni cvičit podle personalizovaného plánu
+                        {t('home.create_plan_desc')}
                       </p>
                       <Button onClick={() => navigate('/my-plan')} size="lg" className="gap-2 rounded-xl">
                         <Target className="w-5 h-5" />
-                        Vytvořit plán
+                        {t('home.create_plan_btn')}
                       </Button>
                     </div>
                   </div>
@@ -366,7 +368,7 @@ const Home = () => {
                               <Flame className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                              <h3 className="text-2xl font-bold text-white">Týden {currentWeek}</h3>
+                              <h3 className="text-2xl font-bold text-white">{t('home.week')} {currentWeek}</h3>
                               <p className="text-white/70 text-sm">{plan.goalName}</p>
                             </div>
                           </div>
@@ -379,7 +381,7 @@ const Home = () => {
                       {/* Progress section */}
                       <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] px-4 py-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-white/80 text-xs font-medium">Celkový progress</span>
+                          <span className="text-white/80 text-xs font-medium">{t('home.total_progress')}</span>
                           <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
                         </div>
                         <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
@@ -417,7 +419,7 @@ const Home = () => {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="font-bold text-white text-base">
-                                      Trénink dokončen!
+                                      {t('home.workout_completed')}
                                     </p>
                                     <p className="text-white/70 text-xs">
                                       {dayNamesCz[nextDay.dayOfWeek] || nextDay.dayOfWeek}
@@ -430,19 +432,19 @@ const Home = () => {
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
                                       <p className="text-white font-bold text-lg">{durationMin}</p>
-                                      <p className="text-white/60 text-[10px] font-medium">minut</p>
+                                      <p className="text-white/60 text-[10px] font-medium">{t('home.minutes')}</p>
                                     </div>
                                     <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
                                       <p className="text-white font-bold text-lg">{todayWorkoutSession.total_sets || 0}</p>
-                                      <p className="text-white/60 text-[10px] font-medium">sérií</p>
+                                      <p className="text-white/60 text-[10px] font-medium">{t('home.sets')}</p>
                                     </div>
                                     <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
                                       <p className="text-white font-bold text-lg">{todayWorkoutSession.total_weight_kg || 0}</p>
-                                      <p className="text-white/60 text-[10px] font-medium">kg celkem</p>
+                                      <p className="text-white/60 text-[10px] font-medium">{t('home.kg_total')}</p>
                                     </div>
                                   </div>
                                 )}
-                                <p className="text-white/50 text-[10px] text-center mt-2">Klikni pro zobrazení detailů</p>
+                                <p className="text-white/50 text-[10px] text-center mt-2">{t('home.click_for_details')}</p>
                               </div>
                             );
                           }
@@ -457,7 +459,7 @@ const Home = () => {
                                   {dayTypeName || `Den ${nextDay.dayLetter}`}
                                 </p>
                                 <p className="text-xs text-[#6B7280]">
-                                  {isCurrentDay ? 'Dnešní trénink' : 'Další trénink'}
+                                  {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}
                                 </p>
                               </div>
                             </div>
@@ -505,7 +507,7 @@ const Home = () => {
                 <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
                   <Trophy className="w-5 h-5 text-green-500" />
                 </div>
-                Dnešní trénink dokončen
+                {t('home.today_completed')}
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto">

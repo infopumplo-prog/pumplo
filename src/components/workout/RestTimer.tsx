@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -12,8 +13,16 @@ interface RestTimerProps {
   nextExerciseName?: string;
 }
 
-export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', nextExerciseName }: RestTimerProps) => {
+export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName }: RestTimerProps) => {
+  const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  const handleToggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setAudioMuted(next);
+  };
   const [timeLeft, setTimeLeft] = useState(duration);
   const endTimeRef = useRef(Date.now() + duration * 1000);
   const pausedAtRef = useRef<number | null>(null);
@@ -96,11 +105,19 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
       exit={{ opacity: 0, scale: 0.9 }}
       className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-6"
     >
-      <p className="text-lg text-muted-foreground mb-2">{label}</p>
+      <button
+        onClick={handleToggleMute}
+        className="absolute right-4 p-2.5 rounded-xl bg-muted/80 text-foreground"
+        style={{ top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))' }}
+      >
+        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+      </button>
+
+      <p className="text-lg text-muted-foreground mb-2">{label ?? t('workout.rest')}</p>
 
       {nextExerciseName && (
         <p className="text-sm font-medium text-primary mb-4">
-          Další: {nextExerciseName}
+          {t('workout.next_exercise', { name: nextExerciseName })}
         </p>
       )}
 
@@ -136,7 +153,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
               {formatTime(timeLeft)}
             </motion.span>
           )}
-          {isPaused && <span className="text-sm text-muted-foreground mt-2">Pozastaveno</span>}
+          {isPaused && <span className="text-sm text-muted-foreground mt-2">{t('workout.paused')}</span>}
         </div>
       </div>
 
@@ -152,7 +169,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label = 'Odpočinek', 
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mt-6">Klikni pro přeskočení</p>
+      <p className="text-sm text-muted-foreground mt-6">{t('workout.skip_tap')}</p>
     </motion.div>
   );
 };

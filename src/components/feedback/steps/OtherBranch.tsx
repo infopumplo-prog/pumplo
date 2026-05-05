@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -5,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { FeedbackStepProps } from '../types';
 
 export const OtherBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
+  const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
 
   const updateResponses = (updates: Record<string, unknown>) => {
@@ -34,7 +36,7 @@ export const OtherBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProp
         <Textarea
           value={(responses.other_message as string) || ''}
           onChange={(e) => updateResponses({ other_message: e.target.value })}
-          placeholder="Co tě trápí nebo co bys chtěl/a říct?"
+          placeholder={t('feedback.other_placeholder')}
           className="mt-2"
           rows={5}
         />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Plus, Minus, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -12,14 +13,15 @@ interface ExtendWorkoutSelectorProps {
   showCard?: boolean;
 }
 
-export const ExtendWorkoutSelector = ({ 
-  onConfirm, 
+export const ExtendWorkoutSelector = ({
+  onConfirm,
   isLoading,
   title,
   description,
   buttonText,
   showCard = false
 }: ExtendWorkoutSelectorProps) => {
+  const { t } = useTranslation();
   const [count, setCount] = useState(3);
 
   const minCount = 3;
@@ -34,9 +36,9 @@ export const ExtendWorkoutSelector = ({
   };
 
   const getExerciseWord = (n: number) => {
-    if (n === 1) return 'cvik';
-    if (n < 5) return 'cviky';
-    return 'cvikov';
+    if (n === 1) return t('workout.exercise_word_1');
+    if (n < 5) return t('workout.exercise_word_2_4');
+    return t('workout.exercise_word_5plus');
   };
 
   const content = (
@@ -85,10 +87,10 @@ export const ExtendWorkoutSelector = ({
         disabled={isLoading}
       >
         {isLoading ? (
-          'Generujem cviky...'
+          t('workout.generating_exercises')
         ) : (
           <>
-            {buttonText || `Pridať ${count} ${getExerciseWord(count)}`}
+            {buttonText || t('workout.add_n_exercises', { n: count, word: getExerciseWord(count) })}
             <ChevronRight className="w-4 h-4" />
           </>
         )}

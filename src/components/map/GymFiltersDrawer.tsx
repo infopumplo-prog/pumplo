@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const stripDiacritics = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -273,6 +274,7 @@ const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onC
 };
 
 export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps, maxSinglePrice, maxMembershipPrice, availableMachines }: Props) => {
+  const { t } = useTranslation();
   const [machineSearch, setMachineSearch] = useState('');
   const machineInputRef = useRef<HTMLInputElement>(null);
 
@@ -316,7 +318,7 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           </Section>
 
           {/* Parkování */}
-          <Section title="Parkování">
+          <Section title={t('map.filter_parking')}>
             <div className="flex gap-2">
               <Toggle active={filters.parking} onClick={() => set({ parking: !filters.parking })}>🅿 S parkováním</Toggle>
             </div>
@@ -326,13 +328,13 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           <DistanceSlider value={filters.distanceLimit} onChange={v => set({ distanceLimit: v })} hasGps={hasGps} />
 
           {/* Jednorázový vstup */}
-          <RangeSlider label="Jednorázový vstup" value={filters.singlePriceLimit} max={maxSinglePrice} step={10} unit="Kč" onChange={v => set({ singlePriceLimit: v })} />
+          <RangeSlider label={t('map.filter_single_entry')} value={filters.singlePriceLimit} max={maxSinglePrice} step={10} unit="Kč" onChange={v => set({ singlePriceLimit: v })} />
 
           {/* Permanentka */}
-          <RangeSlider label="Permanentka (měsíčně)" value={filters.membershipPriceLimit} max={maxMembershipPrice} step={50} unit="Kč/měs." onChange={v => set({ membershipPriceLimit: v })} />
+          <RangeSlider label={t('map.filter_membership')} value={filters.membershipPriceLimit} max={maxMembershipPrice} step={50} unit="Kč/měs." onChange={v => set({ membershipPriceLimit: v })} />
 
           {/* Stroje — vyhledávání */}
-          <Section title="Stroje a cvičiště">
+          <Section title={t('map.filter_machines')}>
             {filters.machines.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {filters.machines.map(m => (
@@ -345,7 +347,7 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
             <input
               ref={machineInputRef}
               type="text"
-              placeholder="Hledat stroj nebo cvičiště..."
+              placeholder={t('map.filter_machine_search')}
               value={machineSearch}
               onChange={e => setMachineSearch(e.target.value)}
               onFocus={() => setTimeout(() => machineInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350)}
@@ -361,14 +363,14 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           </Section>
 
           {/* Platební karty */}
-          <Section title="Platební karty">
+          <Section title={t('map.filter_payment_cards')}>
             <div className="flex flex-wrap gap-2">
               {CARDS.map(c => <Chip key={c.key} active={filters.cards.includes(c.key)} onClick={() => toggleCard(c.key)}>{c.label}</Chip>)}
             </div>
           </Section>
 
           {/* Služby */}
-          <Section title="Vybavení a služby">
+          <Section title={t('map.filter_services')}>
             <div className="flex flex-wrap gap-2">
               {SERVICES.map(s => <Chip key={s.key} active={filters.services.includes(s.key)} onClick={() => toggleService(s.key)}>{s.label}</Chip>)}
             </div>

@@ -213,3 +213,14 @@
     padding-top: env(safe-area-inset-top, 0);
   }
 }
+
+:root {
+  /* Total height occupied by BottomNav from the bottom edge:
+     64px card height + 24px gap + safe-area-inset-bottom */
+  --bottom-nav-offset: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Padding that clears the floating bottom nav (replaces pb-24 on scrollable pages) */
+.pb-nav {
+  padding-bottom: var(--bottom-nav-offset);
+}

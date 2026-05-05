@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Check, X, Building2, Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { MapPin, Check, X, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
+import { usePublishedGyms } from '@/hooks/usePublishedGyms';
 import { getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 import { OpeningHours } from '@/hooks/useGym';
@@ -16,18 +16,17 @@ interface GymSelectorProps {
 }
 
 export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorProps) => {
+  const { t } = useTranslation();
   const { gyms, isLoading } = usePublishedGyms();
   const [selected, setSelected] = useState<string | null>(selectedGymId || null);
 
   // Sort order: Premium (featured) > open > closed, then alphabetical
   const sortedGyms = [...gyms].sort((a, b) => {
-    // Premium gyms always on top
     if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
 
     const aStatus = getTodayOpeningStatus(a.opening_hours as OpeningHours);
     const bStatus = getTodayOpeningStatus(b.opening_hours as OpeningHours);
 
-    // Then open gyms before closed
     if (aStatus.isOpen && !bStatus.isOpen) return -1;
     if (!aStatus.isOpen && bStatus.isOpen) return 1;
 
@@ -50,8 +49,8 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h1 className="text-xl font-bold">Kde budeš cvičit?</h1>
-          <p className="text-sm text-muted-foreground">Vyber posilovnu pro dnešní trénink</p>
+          <h1 className="text-xl font-bold">{t('workout.where_to_train')}</h1>
+          <p className="text-sm text-muted-foreground">{t('workout.select_gym_today')}</p>
         </div>
         <Button variant="ghost" size="icon" onClick={onCancel}>
           <X className="w-5 h-5" />
@@ -69,14 +68,14 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
         ) : sortedGyms.length === 0 ? (
           <div className="text-center py-12">
             <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Žádné posilovny nejsou k dispozici</p>
+            <p className="text-muted-foreground">{t('workout.no_gyms')}</p>
           </div>
         ) : (
           sortedGyms.map((gym) => {
             const status = getTodayOpeningStatus(gym.opening_hours as OpeningHours);
             const isSelected = selected === gym.id;
             const isDisabled = !status.isOpen;
-            
+
             return (
               <motion.button
                 key={gym.id}
@@ -97,7 +96,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                 {gym.is_featured && !isDisabled && (
                   <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#5BC8F5] text-white text-[10px] font-bold shadow-sm">
                     <Check className="w-2.5 h-2.5" />
-                    Ověřeno
+                    {t('workout.verified')}
                   </div>
                 )}
                 <div className="flex items-start gap-3">
@@ -158,14 +157,14 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
 
       {/* Confirm Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border safe-bottom">
-        <Button 
-          size="lg" 
+        <Button
+          size="lg"
           className="w-full gap-2"
           onClick={handleConfirm}
           disabled={!selected}
         >
           <MapPin className="w-5 h-5" />
-          Potvrdit výběr
+          {t('workout.confirm_selection')}
         </Button>
       </div>
     </motion.div>

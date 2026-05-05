@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,6 +103,7 @@ const BENCH_CONFIGS = [
 const ITEMS_PER_PAGE = 100;
 
 const ExercisesManagement = () => {
+  const { t } = useTranslation();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -368,7 +370,7 @@ const ExercisesManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Hľadať cvik..."
+              placeholder={t('admin.search_exercise')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -376,7 +378,7 @@ const ExercisesManagement = () => {
           </div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger>
-              <SelectValue placeholder="Kategória" />
+              <SelectValue placeholder={t('admin.category_label')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Všetky kategórie</SelectItem>
@@ -483,7 +485,7 @@ const ExercisesManagement = () => {
                 <Textarea
                   value={form.setup_instructions}
                   onChange={(e) => setForm({ ...form, setup_instructions: e.target.value })}
-                  placeholder="Jak nastavit stroj, sedačku, opěrku..."
+                  placeholder={t('admin.machine_setup_placeholder')}
                   rows={2}
                 />
               </div>
@@ -493,7 +495,7 @@ const ExercisesManagement = () => {
                 <Textarea
                   value={form.common_mistakes}
                   onChange={(e) => setForm({ ...form, common_mistakes: e.target.value })}
-                  placeholder="Na co si dát pozor..."
+                  placeholder={t('admin.exercise_caution_placeholder')}
                   rows={2}
                 />
               </div>
@@ -503,7 +505,7 @@ const ExercisesManagement = () => {
                 <Textarea
                   value={form.tips}
                   onChange={(e) => setForm({ ...form, tips: e.target.value })}
-                  placeholder="Tipy pro správné provedení..."
+                  placeholder={t('admin.exercise_tips_placeholder')}
                   rows={2}
                 />
               </div>
@@ -565,7 +567,7 @@ const ExercisesManagement = () => {
                   onValueChange={(value) => setForm({ ...form, allowed_phase: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Vyber fázu" />
+                    <SelectValue placeholder={t('admin.select_phase')} />
                   </SelectTrigger>
                   <SelectContent>
                     {ALLOWED_PHASES.map((phase) => (
@@ -584,7 +586,7 @@ const ExercisesManagement = () => {
                   onValueChange={(value) => setForm({ ...form, machine_id: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Vyber vybavení" />
+                    <SelectValue placeholder={t('admin.select_equipment')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Žádné</SelectItem>
@@ -604,7 +606,7 @@ const ExercisesManagement = () => {
                   onValueChange={(value) => setForm({ ...form, secondary_machine_id: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Vyber sekundární vybavení" />
+                    <SelectValue placeholder={t('admin.select_secondary')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Žádné</SelectItem>
@@ -624,7 +626,7 @@ const ExercisesManagement = () => {
                   onValueChange={(value) => setForm({ ...form, required_bench_config: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Nevyžaduje lavici" />
+                    <SelectValue placeholder={t('admin.no_bench')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Nevyžaduje</SelectItem>

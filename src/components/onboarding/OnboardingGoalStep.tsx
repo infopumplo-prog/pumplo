@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check } from 'lucide-react';
 import { MVP_GOALS, TrainingGoalId, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingGoalStepProps {
   value: TrainingGoalId | null;
@@ -10,6 +11,7 @@ interface OnboardingGoalStepProps {
 }
 
 const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps) => {
+  const { t } = useTranslation();
   const [expandedGoal, setExpandedGoal] = useState<TrainingGoalId | null>(null);
   const expandedRef = useRef<HTMLDivElement>(null);
 
@@ -31,12 +33,12 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold">Co je tvůj hlavní cíl?</h2>
+        <h2 className="text-2xl font-bold">{t('onboarding.goal_title')}</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Klikni na cíl pro více informací
+          {t('onboarding.goal_subtitle')}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Délka plánu: {PLAN_DURATION_WEEKS} týdnů
+          {t('onboarding.plan_duration', { weeks: PLAN_DURATION_WEEKS })}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3">
@@ -98,7 +100,7 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
                         onClick={() => handleConfirm(goal.id)}
                         className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm active:scale-[0.98] transition-transform"
                       >
-                        Zvolit tento cíl
+                        {t('onboarding.select_goal')}
                       </button>
                     </div>
                   </motion.div>

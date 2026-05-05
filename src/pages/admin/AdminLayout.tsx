@@ -6,6 +6,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut, Layout, Target } from 'lucide-react';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
+import { useTranslation } from 'react-i18next';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAdmin, isLoading } = useUserRole();
   const location = useLocation();
   const { logout } = useAuth();
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
@@ -29,15 +31,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   }
 
   const navItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/users', icon: Users, label: 'Uživatelé' },
-    { path: '/admin/gyms', icon: Building2, label: 'Posilovny' },
-    { path: '/admin/machines', icon: Dumbbell, label: 'Stroje' },
-    { path: '/admin/exercises', icon: Activity, label: 'Cviky' },
-    { path: '/admin/templates', icon: Layout, label: 'Šablony' },
-    { path: '/admin/roles', icon: Target, label: 'Role' },
-    { path: '/admin/feedback/skipped', icon: SkipForward, label: 'Přeskočené' },
-    { path: '/admin/feedback/user', icon: MessageSquare, label: 'User FB' },
+    { path: '/admin', icon: LayoutDashboard, label: t('admin.dashboard') },
+    { path: '/admin/users', icon: Users, label: t('admin.users') },
+    { path: '/admin/gyms', icon: Building2, label: t('admin.gyms') },
+    { path: '/admin/machines', icon: Dumbbell, label: t('admin.machines') },
+    { path: '/admin/exercises', icon: Activity, label: t('admin.exercises') },
+    { path: '/admin/templates', icon: Layout, label: t('admin.templates') },
+    { path: '/admin/roles', icon: Target, label: t('admin.roles') },
+    { path: '/admin/feedback/skipped', icon: SkipForward, label: t('admin.skipped') },
+    { path: '/admin/feedback/user', icon: MessageSquare, label: t('admin.user_fb') },
   ];
 
   return (
@@ -45,8 +47,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Minimal Top Bar - just back button */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-semibold">Admin</h1>
-          <button 
+          <h1 className="text-lg font-semibold">{t('admin.title')}</h1>
+          <button
             onClick={logout}
             className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
           >
@@ -79,12 +81,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     isActive ? 'bg-primary/10' : ''
                   }`}
                 >
-                  <item.icon 
+                  <item.icon
                     className={`w-4 h-4 transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
-                    }`} 
+                    }`}
                   />
-                  <span 
+                  <span
                     className={`text-[10px] font-medium transition-colors whitespace-nowrap ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`}

@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { type LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Camera, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Camera, Images, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
@@ -18,7 +19,7 @@ interface WorkoutShareCardProps {
   totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
-  onAbandon?: () => void;
+  onAbandon?: () => void; abandonDescription?: string;
 }
 
 interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
@@ -249,8 +250,9 @@ const TEMPLATE_NAMES = ['Dark', 'Minimal', 'Bold', 'Cviky', 'Detail'];
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon,
+  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
 }: WorkoutShareCardProps) => {
+  const { t } = useTranslation();
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -393,22 +395,13 @@ export const WorkoutShareCard = ({
     }
   };
 
-  // Camera button overlay (only without photo, not part of draggable)
-  const cameraOverlay = !userPhoto && (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 15, pointerEvents: 'none' }}>
-      <div className="relative w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', pointerEvents: 'auto', marginBottom: '180px' }}>
-        <Camera className="w-7 h-7" style={{ color: 'rgba(255,255,255,0.8)' }} />
-        <input type="file" accept="image/*" onChange={handlePhoto} className="absolute inset-0 w-full h-full cursor-pointer" style={{ opacity: 0.01 }} />
-      </div>
-    </div>
-  );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col overflow-hidden"
       style={{ background: '#111', width: '100%', height: '100%' }}>
 
-      <div className="shrink-0 flex items-center justify-between px-3 pt-2 pb-1">
+      <div className="shrink-0 flex items-center justify-between px-3 pb-1" style={{ paddingTop: 'max(8px, env(safe-area-inset-top, 8px))' }}>
         <button type="button" onClick={onClose} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.7)' }}><ArrowLeft className="w-5 h-5" /></button>
         {onAbandon && (
           <button type="button" onClick={() => setShowAbandonConfirm(true)} className="p-2 rounded-full" style={{ color: 'rgba(255,255,255,0.5)' }}><X className="w-5 h-5" /></button>
@@ -419,16 +412,16 @@ export const WorkoutShareCard = ({
       {showAbandonConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.85)' }}>
           <div className="rounded-2xl p-6 w-full max-w-xs" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <p className="text-white font-semibold text-base mb-2 text-center">Ukončit trénink?</p>
-            <p className="text-center mb-6" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>Progres nebude uložen.</p>
+            <p className="text-white font-semibold text-base mb-2 text-center">{t('workout.abandon_confirm')}</p>
+            <p className="text-center mb-6" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>{abandonDescription ?? t('workout.abandon_desc')}</p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowAbandonConfirm(false)}
                 className="flex-1 rounded-xl py-3 font-medium text-sm" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
-                Zpět
+                {t('workout.skip_back')}
               </button>
               <button type="button" onClick={onAbandon}
                 className="flex-1 rounded-xl py-3 font-semibold text-sm" style={{ background: '#ef4444', color: '#fff' }}>
-                Ukončit
+                {t('workout.end')}
               </button>
             </div>
           </div>
@@ -439,30 +432,36 @@ export const WorkoutShareCard = ({
         <div ref={cardRef} className="relative overflow-hidden w-full"
           style={{ background: '#000', aspectRatio: '9/16', maxHeight: '100%' }}>
           {renderTemplate()}
-          {cameraOverlay}
           {/* Transparent touch overlay — on top of everything, catches all gestures */}
           <div ref={touchOverlayRef} className="absolute inset-0" style={{ zIndex: 10, touchAction: 'none' }} />
         </div>
       </div>
 
-      <div className="shrink-0 px-4 pb-3 space-y-1.5">
-        {userPhoto && (
-          <div className="relative flex items-center justify-center gap-2 w-full rounded-xl overflow-hidden" style={{ height: '38px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
+      <div className="shrink-0 px-4 space-y-1.5" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="flex gap-2">
+          {/* Camera button — directly opens camera on Android */}
+          <div className="relative flex-1 flex items-center justify-center gap-1.5 rounded-xl overflow-hidden" style={{ height: '38px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
             <Camera className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.8)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: 500 }}>Zmenit fotku</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: 500 }}>{t('workout.photo')}</span>
+            <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="absolute inset-0 cursor-pointer" style={{ opacity: 0.01, fontSize: '200px' }} />
+          </div>
+          {/* Gallery button */}
+          <div className="relative flex-1 flex items-center justify-center gap-1.5 rounded-xl overflow-hidden" style={{ height: '38px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
+            <Images className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.8)' }} />
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: 500 }}>{t('workout.gallery')}</span>
             <input type="file" accept="image/*" onChange={handlePhoto} className="absolute inset-0 cursor-pointer" style={{ opacity: 0.01, fontSize: '200px' }} />
           </div>
-        )}
+        </div>
         <button type="button" onClick={handleShare} disabled={isGenerating || !imageReady}
           className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
           style={{ height: '44px', background: '#4CC9FF', color: '#fff', fontSize: '15px', fontWeight: 600, border: 'none' }}>
           <Share2 className="w-4 h-4" />
-          {isGenerating ? 'Pripravuji...' : imageReady ? 'Sdilet trenink' : 'Pripravuji...'}
+          {isGenerating ? t('workout.preparing') : imageReady ? t('workout.share') : t('workout.preparing')}
         </button>
         <button type="button" onClick={onFinish} disabled={isSaving || isGenerating}
           className="w-full flex items-center justify-center rounded-xl disabled:opacity-50"
           style={{ height: '44px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '15px', fontWeight: 600, background: 'transparent' }}>
-          {isSaving ? 'Ukladam...' : 'Dokoncit trenink'}
+          {isSaving ? t('workout.saving') : t('workout.finish')}
         </button>
       </div>
     </motion.div>

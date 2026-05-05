@@ -3,12 +3,14 @@ import { Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Building2, Dumbbell, Loader2, Settings, BarChart3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface BusinessLayoutProps {
   children: ReactNode;
 }
 
 const BusinessLayout = ({ children }: BusinessLayoutProps) => {
+  const { t } = useTranslation();
   const { isBusiness, isLoading } = useUserRole();
   const location = useLocation();
 
@@ -25,10 +27,10 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
   }
 
   const navItems = [
-    { path: '/business/stats', icon: BarChart3, label: 'Statistiky' },
-    { path: '/business', icon: Building2, label: 'Posilovna' },
-    { path: '/business/machines', icon: Dumbbell, label: 'Stroje' },
-    { path: '/business/settings', icon: Settings, label: 'Nastavení' },
+    { path: '/business/stats', icon: BarChart3, label: t('business.nav_stats') },
+    { path: '/business', icon: Building2, label: t('business.nav_gym') },
+    { path: '/business/machines', icon: Dumbbell, label: t('business.nav_machines') },
+    { path: '/business/settings', icon: Settings, label: t('business.nav_settings') },
   ];
 
   return (
@@ -36,7 +38,7 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
       {/* Minimal Top Bar */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3 px-4 py-3">
-          <h1 className="text-lg font-semibold">Business</h1>
+          <h1 className="text-lg font-semibold">{t('business.nav_title')}</h1>
         </div>
       </header>
 
@@ -64,12 +66,12 @@ const BusinessLayout = ({ children }: BusinessLayoutProps) => {
                     isActive ? 'bg-primary/10' : ''
                   }`}
                 >
-                  <item.icon 
+                  <item.icon
                     className={`w-5 h-5 transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
-                    }`} 
+                    }`}
                   />
-                  <span 
+                  <span
                     className={`text-xs font-medium transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     }`}

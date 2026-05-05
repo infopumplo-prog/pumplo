@@ -12,10 +12,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import WorkoutMessageCard from '@/components/messages/WorkoutMessageCard';
 import PageTransition from '@/components/PageTransition';
+import { useTranslation } from 'react-i18next';
 
 interface TrainerInfo {
   name: string;
   photoUrl: string | null;
+  isGym?: boolean;
 }
 
 function formatMessageTime(dateStr: string): string {
@@ -23,14 +25,14 @@ function formatMessageTime(dateStr: string): string {
   return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDateSeparator(dateStr: string): string {
+function formatDateSeparator(dateStr: string, today: string, yesterday: string): string {
   const d = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return 'Dnes';
-  if (diffDays === 1) return 'Včera';
+  if (diffDays === 0) return today;
+  if (diffDays === 1) return yesterday;
   return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
 }
 
@@ -45,6 +47,7 @@ const ChatThread = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { messages, isLoading, sendMessage, sendWorkoutMessage, markAllRead } = useDirectMessages(conversationId);
   const { plans } = useCustomPlans();
   const [inputText, setInputText] = useState('');
@@ -53,6 +56,8 @@ const ChatThread = () => {
   const [trainerInfo, setTrainerInfo] = useState<TrainerInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const dayLabel = (n: number) => n === 1 ? t('messages.day_singular') : n < 5 ? t('messages.day_2_4') : t('messages.day_plural');
 
   // Fetch conversation partner info (trainer or gym)
   const fetchTrainerInfo = useCallback(async () => {
@@ -95,6 +100,7 @@ const ChatThread = () => {
         setTrainerInfo({
           name: (gym as any).name,
           photoUrl: (gym as any).logo_url || null,
+          isGym: true,
         });
       }
     }
@@ -145,7 +151,7 @@ const ChatThread = () => {
       .single();
 
     if (error || !data) {
-      toast({ title: 'Chyba při sdílení tréninku', variant: 'destructive' });
+      toast({ title: t('messages.error_sharing'), variant: 'destructive' });
       setIsSending(false);
       return;
     }
@@ -191,11 +197,9 @@ const ChatThread = () => {
             {trainerInfo ? (
               <div className="flex items-center gap-3">
                 {trainerInfo.photoUrl ? (
-                  <img
-                    src={trainerInfo.photoUrl}
-                    alt={trainerInfo.name}
-                    className="w-9 h-9 rounded-full object-cover"
-                  />
+                  trainerInfo.isGym
+                    ? <img src={trainerInfo.photoUrl} alt={trainerInfo.name} className="w-9 h-9 rounded-xl object-contain bg-white border border-border p-0.5" />
+                    : <img src={trainerInfo.photoUrl} alt={trainerInfo.name} className="w-9 h-9 rounded-full object-cover" />
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
                     {trainerInfo.name
@@ -207,7 +211,7 @@ const ChatThread = () => {
                 <h1 className="text-lg font-bold">{trainerInfo.name}</h1>
               </div>
             ) : (
-              <h1 className="text-lg font-bold">Konverzace</h1>
+              <h1 className="text-lg font-bold">{t('messages.conversation')}</h1>
             )}
           </div>
         </div>
@@ -215,7 +219,7 @@ const ChatThread = () => {
         {/* Message area */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-4 pb-24"
+          className="flex-1 overflow-y-auto px-4 py-4 pb-nav"
         >
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
@@ -224,7 +228,7 @@ const ChatThread = () => {
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-sm text-muted-foreground">
-                Zatím žádné zprávy. Napište první!
+                {t('messages.no_messages_yet')}
               </p>
             </div>
           ) : (
@@ -245,7 +249,7 @@ const ChatThread = () => {
                     {showTimestamp && (
                       <div className="flex justify-center my-4">
                         <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                          {formatDateSeparator(msg.created_at)}{' '}
+                          {formatDateSeparator(msg.created_at, t('messages.today'), t('messages.yesterday'))}{' '}
                           {formatMessageTime(msg.created_at)}
                         </span>
                       </div>
@@ -309,7 +313,7 @@ const ChatThread = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Napsat zprávu..."
+              placeholder={t('messages.input_placeholder')}
               className="flex-1 h-11 rounded-xl"
               disabled={isSending}
             />
@@ -335,7 +339,7 @@ const ChatThread = () => {
               className="fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-2xl z-20 pb-safe-bottom"
             >
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
-                <h3 className="font-semibold text-base">Odeslat trénink</h3>
+                <h3 className="font-semibold text-base">{t('messages.send_workout_title')}</h3>
                 <button
                   onClick={() => setShowWorkoutPicker(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
@@ -345,7 +349,7 @@ const ChatThread = () => {
               </div>
               <div className="max-h-64 overflow-y-auto px-4 py-3 space-y-2">
                 {plans.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Nemáš žádné vlastní tréninky</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">{t('messages.no_workouts')}</p>
                 ) : (
                   plans.map(plan => (
                     <button
@@ -355,7 +359,7 @@ const ChatThread = () => {
                     >
                       <div>
                         <p className="text-sm font-medium">{plan.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{plan.day_count} {plan.day_count === 1 ? 'den' : plan.day_count < 5 ? 'dny' : 'dní'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{plan.day_count} {dayLabel(plan.day_count)}</p>
                       </div>
                       <Dumbbell className="w-4 h-4 text-muted-foreground" />
                     </button>

@@ -4,14 +4,7 @@ import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Squ
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
-
-const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
-  main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
-  secondary: { label: 'Pomocný', color: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
-  isolation: { label: 'Izolace', color: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
-  core_or_compensatory: { label: 'Core', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
-  conditioning: { label: 'Kardio', color: 'bg-green-500/15 text-green-600 border-green-500/30' },
-};
+import { useTranslation } from 'react-i18next';
 
 interface SetData {
   completed: boolean;
@@ -85,6 +78,16 @@ export const CompactWorkoutView = ({
   onCurrentSetWeightChange,
   onCurrentSetRepsChange,
 }: CompactWorkoutViewProps) => {
+  const { t } = useTranslation();
+
+  const slotCategoryLabels: Record<string, { label: string; color: string }> = {
+    main: { label: t('slot.main'), color: 'bg-primary/15 text-primary border-primary/30' },
+    secondary: { label: t('slot.secondary'), color: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
+    isolation: { label: t('slot.isolation'), color: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
+    core_or_compensatory: { label: t('slot.core'), color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+    conditioning: { label: t('slot.conditioning'), color: 'bg-green-500/15 text-green-600 border-green-500/30' },
+  };
+
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
 
@@ -283,7 +286,7 @@ export const CompactWorkoutView = ({
           <button
             onClick={onSwitchToVideo}
             className="p-2 rounded-xl bg-muted text-foreground"
-            title="Přepnout na video"
+            title={t('workout.switch_to_video')}
           >
             <Video className="w-5 h-5" />
           </button>
@@ -340,9 +343,9 @@ export const CompactWorkoutView = ({
                       <p className={`font-medium text-sm truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>
                         {ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
                       </p>
-                      {ex.slotCategory && SLOT_CATEGORY_LABELS[ex.slotCategory] && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${SLOT_CATEGORY_LABELS[ex.slotCategory].color}`}>
-                          {SLOT_CATEGORY_LABELS[ex.slotCategory].label}
+                      {ex.slotCategory && slotCategoryLabels[ex.slotCategory] && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${slotCategoryLabels[ex.slotCategory].color}`}>
+                          {slotCategoryLabels[ex.slotCategory].label}
                         </span>
                       )}
                     </div>
@@ -396,7 +399,7 @@ export const CompactWorkoutView = ({
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="text-muted-foreground text-[10px]">
-                          <th className="text-left font-medium py-1">Série</th>
+                          <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
                           <th className="text-center font-medium py-1">Váha</th>
                           <th className="text-center font-medium py-1">Opak.</th>
                           {showTimer && <th className="text-center font-medium py-1">Čas</th>}
@@ -428,8 +431,8 @@ export const CompactWorkoutView = ({
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">
                         {isExCardio
-                          ? `Série ${currentSetIndex + 1} / ${ex.sets} · cíl ${fmtExTarget}`
-                          : `Série ${currentSetIndex + 1} / ${ex.sets} · ${ex.repMin}-${ex.repMax} opak.`}
+                          ? t('workout.compact_cardio_series', { n: currentSetIndex + 1, total: ex.sets, target: fmtExTarget })
+                          : t('workout.compact_series', { n: currentSetIndex + 1, total: ex.sets, min: ex.repMin, max: ex.repMax })}
                       </p>
                       {(timerRunning || externalCardioSecondsRemaining !== undefined) && (
                         <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${externalCardioPaused ? 'text-amber-500' : 'text-primary'}`}>
@@ -452,18 +455,18 @@ export const CompactWorkoutView = ({
                       ) : (
                         <>
                           <div className="flex-1">
-                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Váha (kg)</label>
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t('workout.weight_kg')}</label>
                             <input
                               type="number"
                               inputMode="decimal"
-                              placeholder="např. 60"
+                              placeholder={t('workout.weight_placeholder')}
                               value={effectiveWeight}
                               onChange={(e) => setEffectiveWeight(e.target.value)}
                               className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
                             />
                           </div>
                           <div className="flex-1">
-                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Opakování</label>
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t('workout.reps')}</label>
                             <input
                               type="number"
                               inputMode="numeric"
@@ -503,7 +506,7 @@ export const CompactWorkoutView = ({
                       <table className="w-full text-xs mt-2">
                         <thead>
                           <tr className="text-muted-foreground text-[10px]">
-                            <th className="text-left font-medium py-1">Série</th>
+                            <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
                             <th className="text-center font-medium py-1">Váha</th>
                             <th className="text-center font-medium py-1">Opak.</th>
                             {showTimer && <th className="text-center font-medium py-1">Čas</th>}
@@ -533,8 +536,7 @@ export const CompactWorkoutView = ({
                       {onSwapExercise && (
                         <button
                           onClick={onSwapExercise}
-                          disabled={isSwapping}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium disabled:opacity-50"
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium ${isSwapping ? 'opacity-50' : ''}`}
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${isSwapping ? 'animate-spin' : ''}`} />
                           Vyměnit
@@ -545,7 +547,7 @@ export const CompactWorkoutView = ({
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium"
                       >
                         <SkipForward className="w-3.5 h-3.5" />
-                        Přeskočit
+                        {t('workout.skip_confirm')}
                       </button>
                     </div>
                   </div>
@@ -567,7 +569,7 @@ export const CompactWorkoutView = ({
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-muted-foreground text-[10px]">
-                            <th className="text-left font-medium py-1">Série</th>
+                            <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
                             <th className="text-center font-medium py-1">Váha</th>
                             <th className="text-center font-medium py-1">Opak.</th>
                             {showTimer && <th className="text-center font-medium py-1">Čas</th>}
@@ -604,7 +606,7 @@ export const CompactWorkoutView = ({
               className="w-full mt-4 flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary text-white font-semibold text-base shadow-lg shadow-primary/30 active:scale-[0.98] transition-transform"
             >
               <Trophy className="w-5 h-5" />
-              Dokončit trénink
+              {t('workout.finish')}
             </button>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { UserLevel } from '@/lib/trainingGoals';
 import { USER_LEVEL_OPTIONS } from '@/lib/onboardingTypes';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingLevelStepProps {
   value: UserLevel | null;
@@ -7,12 +8,14 @@ interface OnboardingLevelStepProps {
 }
 
 const OnboardingLevelStep = ({ value, onChange }: OnboardingLevelStepProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold">Jaká je tvoje tréninková úroveň?</h2>
+        <h2 className="text-2xl font-bold">{t('onboarding.level_title')}</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Pomůže nám nastavit správný objem tréninku
+          {t('onboarding.level_subtitle')}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3">
@@ -28,8 +31,8 @@ const OnboardingLevelStep = ({ value, onChange }: OnboardingLevelStepProps) => {
           >
             <span className="text-3xl">{level.emoji}</span>
             <div>
-              <span className="font-medium block">{level.label}</span>
-              <span className="text-sm text-muted-foreground">{level.description}</span>
+              <span className="font-medium block">{t(`onboarding.level_${level.id}`)}</span>
+              <span className="text-sm text-muted-foreground">{t(`onboarding.level_${level.id}_desc`)}</span>
             </div>
           </button>
         ))}

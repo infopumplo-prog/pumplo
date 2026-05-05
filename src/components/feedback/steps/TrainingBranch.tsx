@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -52,6 +53,7 @@ const missingTypes: { id: MissingExerciseType; label: string }[] = [
 ];
 
 export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] }: FeedbackStepProps) => {
+  const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
   const [step, setStep] = useState<'issue' | 'details'>('issue');
   
@@ -198,7 +200,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
               <Textarea
                 value={(responses.exercise_name as string) || ''}
                 onChange={(e) => updateResponses({ exercise_name: e.target.value })}
-                placeholder="Název cviku"
+                placeholder={t('feedback.training_exercise_name')}
                 className="mt-2"
               />
             )}
@@ -229,7 +231,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
             <Textarea
               value={(responses.exercise_detail as string) || ''}
               onChange={(e) => updateResponses({ exercise_detail: e.target.value })}
-              placeholder="Popiš to prosím (co přesně vadilo)"
+              placeholder={t('feedback.training_exercise_detail_placeholder')}
               className="mt-2"
             />
           </div>
@@ -243,7 +245,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
             <Textarea
               value={(responses.missing_equipment as string) || ''}
               onChange={(e) => updateResponses({ missing_equipment: e.target.value })}
-              placeholder="Napiš název stroje nebo vybavení"
+              placeholder={t('feedback.training_missing_equipment_placeholder')}
               className="mt-2"
             />
           </div>
@@ -322,7 +324,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
             <Textarea
               value={(responses.difficulty_detail as string) || ''}
               onChange={(e) => updateResponses({ difficulty_detail: e.target.value })}
-              placeholder="Tvoje návrhy"
+              placeholder={t('feedback.training_diff_change_placeholder')}
               className="mt-2"
             />
           </div>
@@ -356,7 +358,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
             <Textarea
               value={(responses.missing_detail as string) || ''}
               onChange={(e) => updateResponses({ missing_detail: e.target.value })}
-              placeholder="Co by měl trénink obsahovat"
+              placeholder={t('feedback.training_ideal_placeholder')}
               className="mt-2"
             />
           </div>
@@ -369,7 +371,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           <Textarea
             value={(responses.other_detail as string) || ''}
             onChange={(e) => updateResponses({ other_detail: e.target.value })}
-            placeholder="Co ti vadilo na tréninku?"
+            placeholder={t('feedback.training_other_placeholder')}
             className="mt-2"
             rows={4}
           />

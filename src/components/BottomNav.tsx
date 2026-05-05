@@ -2,23 +2,25 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, MapPin, BarChart3, User } from 'lucide-react';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
-
-const navItems = [
-  { path: '/', label: 'Domů', icon: Home },
-  { path: '/map', label: 'Mapa', icon: MapPin },
-  { path: '/statistics', label: 'Statistiky', icon: BarChart3 },
-  { path: '/profile', label: 'Profil', icon: User },
-];
+import { useTranslation } from 'react-i18next';
 
 const BottomNav = () => {
   const location = useLocation();
   const { unreadCount } = useUnreadMessageCount();
+  const { t } = useTranslation();
+
+  const navItems = [
+    { path: '/', label: t('nav.home'), icon: Home },
+    { path: '/map', label: t('nav.map'), icon: MapPin },
+    { path: '/statistics', label: t('nav.statistics'), icon: BarChart3 },
+    { path: '/profile', label: t('nav.profile'), icon: User },
+  ];
 
   // Hide bottom nav during active workout and chat
-  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training' || location.pathname.startsWith('/messages/chat/')) return null;
+  if (location.pathname.startsWith('/custom-workout/') || location.pathname.startsWith('/custom-plan/') || location.pathname === '/training' || location.pathname.startsWith('/messages/chat/')) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6" style={{ touchAction: 'none' }}>
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', touchAction: 'none' }}>
       <nav className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg max-w-md mx-auto">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {

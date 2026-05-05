@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, Save, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminLayout from './AdminLayout';
+import { useTranslation } from 'react-i18next';
 
 interface DayTemplate {
   id: string;
@@ -37,14 +38,13 @@ interface TrainingGoal {
 
 const SPLIT_TYPES = ['full_body', 'upper_lower', 'ppl'];
 
-const GOAL_STYLES: Record<string, { label: string; className: string }> = {
-  strength: { label: 'Síla', className: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700' },
-  muscle_gain: { label: 'Svaly', className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700' },
-  fat_loss: { label: 'Hubnutí', className: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700' },
-  general_fitness: { label: 'Kondice', className: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700' },
+const GOAL_STYLES: Record<string, { labelKey: string; className: string }> = {
+  strength: { labelKey: 'onboarding.goal_strength', className: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700' },
+  muscle_gain: { labelKey: 'onboarding.goal_muscle', className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700' },
+  fat_loss: { labelKey: 'onboarding.goal_fat_loss', className: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700' },
+  general_fitness: { labelKey: 'onboarding.goal_fitness', className: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700' },
 };
 
-// Local state uses strings to allow empty inputs
 interface LocalValues {
   [id: string]: {
     beginner_sets?: string;
@@ -56,6 +56,7 @@ interface LocalValues {
 }
 
 const DayTemplatesManagement = () => {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<DayTemplate[]>([]);
   const [roles, setRoles] = useState<TrainingRole[]>([]);
   const [goals, setGoals] = useState<TrainingGoal[]>([]);
@@ -134,9 +135,9 @@ const DayTemplatesManagement = () => {
       .eq('id', template.id);
 
     if (error) {
-      toast.error(`Chyba: ${error.message}`);
+      toast.error(t('admin.save_error_detail', { msg: error.message }));
     } else {
-      toast.success('Uloženo');
+      toast.success(t('admin.saved'));
       setTemplates(prev => prev.map(t => t.id === template.id ? { ...t, beginner_sets, intermediate_sets, advanced_sets, rep_min, rep_max } : t));
       setLocalValues(prev => { const next = { ...prev }; delete next[template.id]; return next; });
     }
@@ -146,10 +147,10 @@ const DayTemplatesManagement = () => {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('day_templates').delete().eq('id', id);
     if (error) {
-      toast.error(`Chyba: ${error.message}`);
+      toast.error(t('admin.save_error_detail', { msg: error.message }));
     } else {
       setTemplates(prev => prev.filter(t => t.id !== id));
-      toast.success('Slot odstraněn');
+      toast.success(t('admin.slot_removed'));
     }
   };
 
@@ -172,10 +173,10 @@ const DayTemplatesManagement = () => {
     }).select().single();
 
     if (error) {
-      toast.error(`Chyba: ${error.message}`);
+      toast.error(t('admin.save_error_detail', { msg: error.message }));
     } else if (data) {
       setTemplates(prev => [...prev, data]);
-      toast.success('Slot přidán');
+      toast.success(t('admin.slot_added'));
     }
   };
 
@@ -183,7 +184,7 @@ const DayTemplatesManagement = () => {
     setTemplates(prev => prev.map(t => t.id === id ? { ...t, role_id: value } : t));
   };
 
-  const getGoalStyle = (goalId: string) => GOAL_STYLES[goalId] || { label: goalId, className: 'bg-muted text-muted-foreground' };
+  const getGoalStyle = (goalId: string) => GOAL_STYLES[goalId] || { labelKey: goalId, className: 'bg-muted text-muted-foreground' };
 
   if (isLoading) {
     return (
@@ -198,9 +199,9 @@ const DayTemplatesManagement = () => {
   return (
     <AdminLayout>
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Šablony tréninků</h2>
+        <h2 className="text-2xl font-bold text-foreground">{t('admin.templates_title')}</h2>
         <p className="text-sm text-muted-foreground">
-          Správa day_templates — jaké role jsou v kterém dni, kolik sérií a opakování.
+          {t('admin.templates_desc')}
         </p>
 
         {SPLIT_TYPES.map(splitType => {
@@ -218,7 +219,7 @@ const DayTemplatesManagement = () => {
                 {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 <h3 className="text-lg font-semibold text-foreground">{splitType}</h3>
                 <span className="text-sm text-muted-foreground ml-auto">
-                  {Object.keys(days).length} dnů, {Object.values(days).flat().length} slotů
+                  {t('admin.days_count', { n: Object.keys(days).length, slots: Object.values(days).flat().length })}
                 </span>
               </button>
 
@@ -227,7 +228,6 @@ const DayTemplatesManagement = () => {
                 const isDayExpanded = expandedGroups.has(dayKey);
                 const firstSlot = slots[0];
 
-                // Group slots by slot_order
                 const byOrder: Record<number, DayTemplate[]> = {};
                 slots.forEach(s => {
                   if (!byOrder[s.slot_order]) byOrder[s.slot_order] = [];
@@ -243,9 +243,9 @@ const DayTemplatesManagement = () => {
                     >
                       {isDayExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                       <span className="font-medium text-foreground">
-                        Den {dayLetter}: {firstSlot?.day_name}
+                        {t('admin.day_prefix', { letter: dayLetter, name: firstSlot?.day_name })}
                       </span>
-                      <span className="text-xs text-muted-foreground">({slots.length} slotů)</span>
+                      <span className="text-xs text-muted-foreground">{t('admin.slots_count', { n: slots.length })}</span>
                     </button>
 
                     {isDayExpanded && (
@@ -268,7 +268,7 @@ const DayTemplatesManagement = () => {
                                       </span>
 
                                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 min-w-[52px] text-center justify-center ${goalStyle.className}`}>
-                                        {goalStyle.label}
+                                        {t(goalStyle.labelKey)}
                                       </Badge>
 
                                       <Select
@@ -359,7 +359,7 @@ const DayTemplatesManagement = () => {
                           onClick={() => handleAddSlot(splitType, dayLetter, firstSlot.goal_id, firstSlot.day_name)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          Přidat slot
+                          {t('admin.add_slot')}
                         </Button>
                       </div>
                     )}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PausedWorkoutState } from '@/hooks/usePausedWorkout';
 import { formatDistanceToNow } from 'date-fns';
 import { cs } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface PausedWorkoutCardProps {
   pausedWorkout: PausedWorkoutState;
@@ -12,9 +13,10 @@ interface PausedWorkoutCardProps {
 }
 
 export const PausedWorkoutCard = ({ pausedWorkout, onResume, onDiscard }: PausedWorkoutCardProps) => {
-  const pausedTimeAgo = formatDistanceToNow(new Date(pausedWorkout.pausedAt), { 
-    addSuffix: true, 
-    locale: cs 
+  const { t } = useTranslation();
+  const pausedTimeAgo = formatDistanceToNow(new Date(pausedWorkout.pausedAt), {
+    addSuffix: true,
+    locale: cs
   });
   
   const completedExercises = Object.keys(pausedWorkout.completedSets).length;
@@ -36,10 +38,10 @@ export const PausedWorkoutCard = ({ pausedWorkout, onResume, onDiscard }: Paused
               <Dumbbell className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground">Rozpracovaný trénink</h3>
+              <h3 className="font-bold text-foreground">{t('workout.in_progress')}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                Pozastaveno {pausedTimeAgo}
+                {t('workout.paused_since', { time: pausedTimeAgo })}
               </p>
             </div>
           </div>
@@ -57,7 +59,7 @@ export const PausedWorkoutCard = ({ pausedWorkout, onResume, onDiscard }: Paused
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-1">
             <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{completedExercises}/{totalExercises} cviků</span>
+            <span className="font-medium">{t('workout.exercises_progress', { done: completedExercises, total: totalExercises })}</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <motion.div
@@ -73,7 +75,7 @@ export const PausedWorkoutCard = ({ pausedWorkout, onResume, onDiscard }: Paused
           className="w-full gap-2 bg-amber-500 hover:bg-amber-600 text-white"
         >
           <Play className="w-4 h-4" />
-          Pokračovat v tréninku
+          {t('workout.continue_workout')}
         </Button>
       </div>
     </motion.div>

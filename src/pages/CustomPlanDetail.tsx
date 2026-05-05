@@ -1,13 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { GymLocationGate } from '@/components/workout/GymLocationGate';
+import { GymSelector } from '@/components/workout/GymSelector';
+import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
 import { cn } from '@/lib/utils';
@@ -259,9 +264,12 @@ interface SortableExerciseProps {
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onShowDetail: (exerciseId: string) => void;
+  isIncompatible?: boolean;
+  alternatives?: AlternativeExercise[];
+  onSwapExercise?: (oldExerciseId: string, newExercise: AlternativeExercise) => void;
 }
 
-const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
 
@@ -283,7 +291,8 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
       style={style}
       className={cn(
         "py-2 border-b border-border/50 last:border-0 bg-card",
-        isDragging && "opacity-50 shadow-lg rounded-xl z-50"
+        isDragging && "opacity-50 shadow-lg rounded-xl z-50",
+        isIncompatible && "bg-destructive/5 border-l-2 border-l-destructive"
       )}
     >
       <div className="flex items-center gap-2">
@@ -300,8 +309,12 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
           {/* Clickable exercise name -> opens detail */}
           <button
             onClick={() => onShowDetail(exercise.exercise_id)}
-            className="text-sm font-medium truncate text-left hover:text-[#5BC8F5] transition-colors block w-full"
+            className={cn(
+              "text-sm font-medium truncate text-left transition-colors block w-full",
+              isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
+            )}
           >
+            {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
             {exercise.exercise_name || 'Neznámý cvik'}
           </button>
           <div className="flex items-center gap-3 mt-1">
@@ -403,6 +416,28 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
           })}
         </div>
       )}
+
+      {/* Incompatible alternatives */}
+      {isIncompatible && alternatives && alternatives.length > 0 && (
+        <div className="ml-7 mt-2 mb-1">
+          <p className="text-xs text-destructive font-medium mb-1.5">Dostupné náhrady v této posilovně:</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {alternatives.map(alt => (
+              <button
+                key={alt.id}
+                onClick={() => onSwapExercise?.(exercise.exercise_id, alt)}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+              >
+                <ArrowRightLeft className="w-3 h-3 shrink-0" />
+                <span className="max-w-[120px] truncate">{alt.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {isIncompatible && (!alternatives || alternatives.length === 0) && (
+        <p className="ml-7 mt-1 mb-1 text-xs text-muted-foreground">Žádná náhrada v této posilovně není k dispozici.</p>
+      )}
     </div>
   );
 };
@@ -411,7 +446,9 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
 const CustomPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { toast } = useToast();
+  const { profile } = useUserProfile();
   const {
     plan, isLoading, addDay, removeDay, renameDay,
     addExercise, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
@@ -431,6 +468,102 @@ const CustomPlanDetail = () => {
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
   const [drawerBottom, setDrawerBottom] = useState('0px');
+  const [showGymSelector, setShowGymSelector] = useState(false);
+  const [showLocationGate, setShowLocationGate] = useState(false);
+  const [locationGymLat, setLocationGymLat] = useState<number | null>(null);
+  const [locationGymLng, setLocationGymLng] = useState<number | null>(null);
+  const [locationGymName, setLocationGymName] = useState('');
+  const [selectedWorkoutGymId, setSelectedWorkoutGymId] = useState<string | null>(null);
+  const [incompatibleExercises, setIncompatibleExercises] = useState<IncompatibleExercise[]>([]);
+  const [isCheckingEquipment, setIsCheckingEquipment] = useState(false);
+  const [pendingWorkoutPath, setPendingWorkoutPath] = useState<string | null>(null);
+
+  // Called when user selects a gym in the GymSelector
+  const handleGymSelected = async (gymId: string) => {
+    if (!id) return;
+    setShowGymSelector(false);
+    setIsCheckingEquipment(true);
+
+    try {
+      // Fetch gym coordinates + name
+      const { data: gymData } = await supabase
+        .from('gyms')
+        .select('name, latitude, longitude')
+        .eq('id', gymId)
+        .single();
+
+      // Run equipment check
+      const incompatible = await checkCustomPlanEquipment(id, gymId);
+      setIncompatibleExercises(incompatible);
+
+      if (incompatible.length > 0) {
+        // Stay on this page — red highlights will appear
+        setSelectedWorkoutGymId(gymId);
+        setLocationGymName(gymData?.name || 'Posilovna');
+        return;
+      }
+
+      // All OK — proceed to location gate or start
+      setSelectedWorkoutGymId(gymId);
+      if (gymData?.latitude != null && gymData?.longitude != null) {
+        setLocationGymName(gymData.name || 'Posilovna');
+        setLocationGymLat(gymData.latitude);
+        setLocationGymLng(gymData.longitude);
+        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setShowLocationGate(true);
+      } else {
+        navigate(`/custom-workout/${id}`);
+      }
+    } finally {
+      setIsCheckingEquipment(false);
+    }
+  };
+
+  // Called after all incompatible exercises are fixed and user retries
+  const handleRetryAfterFix = async () => {
+    if (!id || !selectedWorkoutGymId) return;
+    setIsCheckingEquipment(true);
+    try {
+      const incompatible = await checkCustomPlanEquipment(id, selectedWorkoutGymId);
+      setIncompatibleExercises(incompatible);
+      if (incompatible.length > 0) return;
+
+      const { data: gymData } = await supabase
+        .from('gyms')
+        .select('latitude, longitude')
+        .eq('id', selectedWorkoutGymId)
+        .single();
+
+      if (gymData?.latitude != null && gymData?.longitude != null) {
+        setLocationGymLat(gymData.latitude);
+        setLocationGymLng(gymData.longitude);
+        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setShowLocationGate(true);
+      } else {
+        navigate(`/custom-workout/${id}`);
+      }
+    } finally {
+      setIsCheckingEquipment(false);
+    }
+  };
+
+  // Swap incompatible exercise for an alternative
+  const handleSwapExercise = async (oldExerciseId: string, alt: AlternativeExercise) => {
+    if (!plan || !id) return;
+    // Find all custom_plan_exercises entries with this exercise_id across all days
+    for (const day of plan.days) {
+      for (const ex of day.exercises) {
+        if (ex.exercise_id === oldExerciseId) {
+          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name });
+        }
+      }
+    }
+    // Re-run equipment check
+    if (selectedWorkoutGymId) {
+      const incompatible = await checkCustomPlanEquipment(id, selectedWorkoutGymId);
+      setIncompatibleExercises(incompatible);
+    }
+  };
 
   useEffect(() => {
     if (!exerciseDrawerOpen) return;
@@ -666,7 +799,7 @@ const CustomPlanDetail = () => {
   if (isLoading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background safe-top pb-24">
+        <div className="min-h-screen bg-background safe-top pb-32">
           <div className="px-6 pt-8 space-y-4">
             <div className="h-10 w-48 bg-muted animate-pulse rounded-xl" />
             <div className="h-32 bg-muted animate-pulse rounded-2xl" />
@@ -691,6 +824,7 @@ const CustomPlanDetail = () => {
   }
 
   return (
+    <>
     <PageTransition>
       <div className="min-h-screen bg-background safe-top pb-32">
         {/* Header */}
@@ -711,7 +845,7 @@ const CustomPlanDetail = () => {
                 onKeyDown={(e) => e.key === 'Enter' && handlePlanNameSave()}
                 autoFocus
                 className="text-2xl font-bold bg-transparent outline-none border-b-2 border-primary flex-1 min-w-0"
-                placeholder="Název mého tréninku"
+                placeholder={t('custom_plan.name_placeholder')}
               />
             ) : (
               <button
@@ -780,18 +914,24 @@ const CustomPlanDetail = () => {
                     onDragEnd={handleDragEnd(day.id)}
                   >
                     <SortableContext items={day.exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                      {day.exercises.map((exercise) => (
-                        <SortableExerciseItem
-                          key={exercise.id}
-                          exercise={exercise}
-                          isExpanded={expandedExerciseId === exercise.id}
-                          onToggleExpand={() => setExpandedExerciseId(prev => prev === exercise.id ? null : exercise.id)}
-                          onUpdate={updateExercise}
-                          onRemove={removeExercise}
-                          onDuplicate={duplicateExercise}
-                          onShowDetail={handleShowExerciseDetail}
-                        />
-                      ))}
+                      {day.exercises.map((exercise) => {
+                        const incompatInfo = incompatibleExercises.find(i => i.exercise_id === exercise.exercise_id);
+                        return (
+                          <SortableExerciseItem
+                            key={exercise.id}
+                            exercise={exercise}
+                            isExpanded={expandedExerciseId === exercise.id}
+                            onToggleExpand={() => setExpandedExerciseId(prev => prev === exercise.id ? null : exercise.id)}
+                            onUpdate={updateExercise}
+                            onRemove={removeExercise}
+                            onDuplicate={duplicateExercise}
+                            onShowDetail={handleShowExerciseDetail}
+                            isIncompatible={!!incompatInfo}
+                            alternatives={incompatInfo?.alternatives}
+                            onSwapExercise={handleSwapExercise}
+                          />
+                        );
+                      })}
                     </SortableContext>
                   </DndContext>
                 )}
@@ -817,78 +957,7 @@ const CustomPlanDetail = () => {
           </Button>
         </div>
 
-        {/* Fixed bottom: Start Workout Button */}
-        {hasExercises && (
-          <div className="fixed bottom-20 left-0 right-0 px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent">
-            {pausedCustomWorkout && pausedCustomWorkout.planId === id ? (
-              <Button
-                onClick={() => navigate(`/custom-workout/${id}?resume=true`)}
-                className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-amber-500 hover:bg-amber-500/90 text-white shadow-lg shadow-amber-500/25"
-              >
-                <Play className="w-5 h-5" />
-                Pokračovat v tréninku
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
-                    setShowConflictDialog(true);
-                  } else {
-                    navigate(`/custom-workout/${id}`);
-                  }
-                }}
-                className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg shadow-[#1A2744]/25"
-              >
-                <Play className="w-5 h-5" />
-                Spustit trénink
-              </Button>
-            )}
-          </div>
-        )}
 
-        {/* Conflict dialog: paused workout for another plan */}
-        {showConflictDialog && pausedCustomWorkout && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setShowConflictDialog(false)}>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
-              onClick={e => e.stopPropagation()}
-            >
-              <h2 className="text-lg font-bold text-center mb-1">Pozastavený trénink</h2>
-              <p className="text-muted-foreground text-sm text-center mb-5">
-                Máš pozastavený trénink v plánu „{pausedCustomWorkout.planName}". Co chceš udělat?
-              </p>
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setShowConflictDialog(false);
-                    navigate(`/custom-workout/${pausedCustomWorkout.planId}?resume=true`);
-                  }}
-                  className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-500/90 transition-colors"
-                >
-                  Pokračovat v pozastaveném
-                </button>
-                <button
-                  onClick={() => {
-                    clearPausedCustomWorkout();
-                    setShowConflictDialog(false);
-                    navigate(`/custom-workout/${id}`);
-                  }}
-                  className="w-full py-3.5 rounded-xl bg-red-500/90 text-white font-semibold hover:bg-red-500 transition-colors"
-                >
-                  Ukončit a spustit nový
-                </button>
-                <button
-                  onClick={() => setShowConflictDialog(false)}
-                  className="w-full py-3.5 rounded-xl text-muted-foreground font-medium hover:text-foreground transition-colors"
-                >
-                  Zrušit
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
 
         {/* Exercise Search Drawer */}
         <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
@@ -916,14 +985,10 @@ const CustomPlanDetail = () => {
                         <video
                           key={detailExercise.video_path}
                           src={detailExercise.video_path}
-                          controls
-                          playsInline
-                          autoPlay
-                          loop
-                          muted
-                          preload="auto"
+                          playsInline autoPlay loop muted preload="auto"
                           className="w-full h-full object-contain"
-                          style={{ borderRadius: '12px' }}
+                          style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
+                          onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
                           onError={() => setVideoError(true)}
                         />
                       )}
@@ -983,7 +1048,7 @@ const CustomPlanDetail = () => {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="text"
-                        placeholder="Název stroje..."
+                        placeholder={t('custom_plan.machine_placeholder')}
                         value={machineSearch}
                         onChange={(e) => setMachineSearch(e.target.value)}
                         className="w-full bg-muted rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
@@ -1204,14 +1269,10 @@ const CustomPlanDetail = () => {
                       <video
                         key={viewExerciseData.video_path}
                         src={viewExerciseData.video_path}
-                        controls
-                        playsInline
-                        autoPlay
-                        loop
-                        muted
-                        preload="auto"
+                        playsInline autoPlay loop muted preload="auto"
                         className="w-full h-full object-contain"
-                        style={{ borderRadius: '12px' }}
+                        style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
+                        onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
                         onError={() => setViewVideoError(true)}
                       />
                     )}
@@ -1257,7 +1318,117 @@ const CustomPlanDetail = () => {
           </DrawerContent>
         </Drawer>
       </div>
+
     </PageTransition>
+
+      {/* Equipment incompatibility banner */}
+      {incompatibleExercises.length > 0 && (
+        <div className="fixed left-0 right-0 px-4 z-[52]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-sm text-destructive font-medium">
+                {incompatibleExercises.length} {incompatibleExercises.length === 1 ? 'cvik' : incompatibleExercises.length < 5 ? 'cviky' : 'cviků'} nejdou v <span className="font-bold">{locationGymName}</span>
+              </p>
+            </div>
+            <button
+              onClick={handleRetryAfterFix}
+              disabled={isCheckingEquipment}
+              className="text-xs font-semibold text-primary shrink-0"
+            >
+              {isCheckingEquipment ? '...' : 'Zkontrolovat'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Start Workout Button */}
+      {hasExercises && !showGymSelector && !showLocationGate && (
+        <div className="fixed left-0 right-0 px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent z-[51]" style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          {pausedCustomWorkout && pausedCustomWorkout.planId === id ? (
+            <Button
+              onClick={() => navigate(`/custom-workout/${id}?resume=true`)}
+              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-amber-500 hover:bg-amber-500/90 text-white shadow-lg shadow-amber-500/25"
+            >
+              <Play className="w-5 h-5" />
+              Pokračovat v tréninku
+            </Button>
+          ) : (
+            <Button
+              onClick={() => {
+                if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
+                  setShowConflictDialog(true);
+                } else {
+                  setShowGymSelector(true);
+                }
+              }}
+              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg shadow-[#1A2744]/25"
+            >
+              <Play className="w-5 h-5" />
+              Spustit trénink
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Conflict dialog: paused workout for another plan */}
+      {showConflictDialog && pausedCustomWorkout && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setShowConflictDialog(false)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-center mb-1">Pozastavený trénink</h2>
+            <p className="text-muted-foreground text-sm text-center mb-5">
+              Máš pozastavený trénink v plánu „{pausedCustomWorkout.planName}". Co chceš udělat?
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => { setShowConflictDialog(false); navigate(`/custom-workout/${pausedCustomWorkout.planId}?resume=true`); }}
+                className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-500/90 transition-colors"
+              >
+                Pokračovat v pozastaveném
+              </button>
+              <button
+                onClick={() => { clearPausedCustomWorkout(); setShowConflictDialog(false); setShowGymSelector(true); }}
+                className="w-full py-3.5 rounded-xl bg-red-500/90 text-white font-semibold hover:bg-red-500 transition-colors"
+              >
+                Ukončit a spustit nový
+              </button>
+              <button
+                onClick={() => setShowConflictDialog(false)}
+                className="w-full py-3.5 rounded-xl text-muted-foreground font-medium hover:text-foreground transition-colors"
+              >
+                Zrušit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showGymSelector && (
+        <GymSelector
+          onSelect={handleGymSelected}
+          onCancel={() => setShowGymSelector(false)}
+          selectedGymId={selectedWorkoutGymId || profile?.selected_gym_id}
+        />
+      )}
+
+      {showLocationGate && locationGymLat !== null && locationGymLng !== null && (
+        <GymLocationGate
+          gymLat={locationGymLat}
+          gymLng={locationGymLng}
+          gymName={locationGymName}
+          onConfirmed={() => {
+            setShowLocationGate(false);
+            if (pendingWorkoutPath) navigate(pendingWorkoutPath);
+          }}
+          onCancel={() => setShowLocationGate(false)}
+        />
+      )}
+    </>
   );
 };
 

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,7 @@ const repeatedOptions: { id: RepeatedStatus; label: string }[] = [
 ];
 
 export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
+  const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
 
   const updateResponses = (updates: Record<string, unknown>) => {
@@ -105,7 +107,7 @@ export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps)
         <Textarea
           value={(responses.bug_extra as string) || ''}
           onChange={(e) => updateResponses({ bug_extra: e.target.value })}
-          placeholder="Cokoliv dalšího, co by nám pomohlo"
+          placeholder={t('feedback.bug_extra_placeholder')}
           className="mt-2"
         />
       </div>

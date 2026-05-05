@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, X, Plus, Link2, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ const MachineExercisesList = ({
   isLoading,
   onUpdateSecondary,
 }: MachineExercisesListProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -107,7 +109,7 @@ const MachineExercisesList = ({
                     size="icon"
                     className="h-6 w-6 shrink-0"
                     onClick={() => navigate(`/admin/exercises?edit=${exercise.id}`)}
-                    title="Otevřít cvik"
+                    title={t('admin.open_exercise')}
                   >
                     <ExternalLink className="w-3 h-3" />
                   </Button>
@@ -153,7 +155,7 @@ const MachineExercisesList = ({
                     onValueChange={(value) => handleSetSecondary(exercise.id, value)}
                   >
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Vybrat sekundární vybavení..." />
+                      <SelectValue placeholder={t('admin.select_secondary')} />
                     </SelectTrigger>
                     <SelectContent>
                       {accessoryMachines

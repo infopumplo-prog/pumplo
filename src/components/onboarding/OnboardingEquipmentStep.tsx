@@ -1,4 +1,5 @@
 import { EQUIPMENT_OPTIONS } from '@/lib/onboardingTypes';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingEquipmentStepProps {
   value: string | null;
@@ -6,12 +7,14 @@ interface OnboardingEquipmentStepProps {
 }
 
 const OnboardingEquipmentStep = ({ value, onChange }: OnboardingEquipmentStepProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold">Preference vybavení</h2>
+        <h2 className="text-2xl font-bold">{t('onboarding.equipment_title')}</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Jaký typ cvičení preferuješ?
+          {t('onboarding.equipment_subtitle')}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3">
@@ -25,10 +28,8 @@ const OnboardingEquipmentStep = ({ value, onChange }: OnboardingEquipmentStepPro
                 : 'border-border bg-card hover:border-primary/50'
             }`}
           >
-            <span className="font-medium block">{eq.label}</span>
-            {'description' in eq && eq.description && (
-              <span className="text-sm text-muted-foreground">{eq.description}</span>
-            )}
+            <span className="font-medium block">{t(`onboarding.equipment_${eq.id}`)}</span>
+            <span className="text-sm text-muted-foreground">{t(`onboarding.equipment_${eq.id}_desc`)}</span>
           </button>
         ))}
       </div>

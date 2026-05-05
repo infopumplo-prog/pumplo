@@ -15,11 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
-import { 
-  Dumbbell, 
-  Bug, 
-  Lightbulb, 
-  HelpCircle, 
+import {
+  Dumbbell,
+  Bug,
+  Lightbulb,
+  HelpCircle,
   MessageSquare,
   Filter,
   ChevronDown,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 type FeedbackType = 'training_exercises' | 'bug_error' | 'missing_feature' | 'confusion' | 'other';
 type FeedbackStatus = 'new' | 'in_progress' | 'fixed' | 'wont_fix';
@@ -48,22 +49,8 @@ interface UserFeedback {
   created_at: string;
 }
 
-const typeConfig: Record<FeedbackType, { label: string; icon: React.ElementType; color: string }> = {
-  training_exercises: { label: 'Trénink', icon: Dumbbell, color: 'bg-blue-500/10 text-blue-500' },
-  bug_error: { label: 'Bug', icon: Bug, color: 'bg-red-500/10 text-red-500' },
-  missing_feature: { label: 'Feature', icon: Lightbulb, color: 'bg-yellow-500/10 text-yellow-500' },
-  confusion: { label: 'Zmatení', icon: HelpCircle, color: 'bg-purple-500/10 text-purple-500' },
-  other: { label: 'Jiné', icon: MessageSquare, color: 'bg-muted text-muted-foreground' },
-};
-
-const statusConfig: Record<FeedbackStatus, { label: string; color: string }> = {
-  new: { label: 'Nový', color: 'bg-blue-500' },
-  in_progress: { label: 'Řeší se', color: 'bg-yellow-500' },
-  fixed: { label: 'Vyřešeno', color: 'bg-green-500' },
-  wont_fix: { label: 'Neřeší se', color: 'bg-muted-foreground' },
-};
-
 export default function UserFeedbackList() {
+  const { t } = useTranslation();
   const [feedback, setFeedback] = useState<UserFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<FeedbackType | 'all'>('all');
@@ -71,6 +58,21 @@ export default function UserFeedbackList() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const typeConfig: Record<FeedbackType, { label: string; icon: React.ElementType; color: string }> = {
+    training_exercises: { label: t('admin.type_training'), icon: Dumbbell, color: 'bg-blue-500/10 text-blue-500' },
+    bug_error: { label: t('admin.type_bug'), icon: Bug, color: 'bg-red-500/10 text-red-500' },
+    missing_feature: { label: t('admin.type_feature'), icon: Lightbulb, color: 'bg-yellow-500/10 text-yellow-500' },
+    confusion: { label: t('admin.type_confusion'), icon: HelpCircle, color: 'bg-purple-500/10 text-purple-500' },
+    other: { label: t('admin.type_other'), icon: MessageSquare, color: 'bg-muted text-muted-foreground' },
+  };
+
+  const statusConfig: Record<FeedbackStatus, { label: string; color: string }> = {
+    new: { label: t('admin.status_new'), color: 'bg-blue-500' },
+    in_progress: { label: t('admin.status_in_progress'), color: 'bg-yellow-500' },
+    fixed: { label: t('admin.status_fixed'), color: 'bg-green-500' },
+    wont_fix: { label: t('admin.status_wont_fix'), color: 'bg-muted-foreground' },
+  };
 
   useEffect(() => {
     fetchFeedback();
@@ -98,10 +100,10 @@ export default function UserFeedbackList() {
       .eq('id', id);
 
     if (error) {
-      toast.error('Chyba při aktualizaci');
+      toast.error(t('admin.status_update_error'));
     } else {
       setFeedback(prev => prev.map(f => f.id === id ? { ...f, status } : f));
-      toast.success('Status aktualizován');
+      toast.success(t('admin.status_updated'));
     }
   };
 
@@ -114,10 +116,10 @@ export default function UserFeedbackList() {
 
     setSavingId(null);
     if (error) {
-      toast.error('Chyba při ukládání');
+      toast.error(t('admin.notes_save_error'));
     } else {
       setFeedback(prev => prev.map(f => f.id === id ? { ...f, admin_notes: editingNotes[id] } : f));
-      toast.success('Poznámka uložena');
+      toast.success(t('admin.notes_saved'));
     }
   };
 
@@ -141,19 +143,19 @@ export default function UserFeedbackList() {
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="text-xs text-muted-foreground">Celkem</div>
+              <div className="text-xs text-muted-foreground">{t('admin.total')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold text-primary">{stats.new}</div>
-              <div className="text-xs text-muted-foreground">Nových</div>
+              <div className="text-xs text-muted-foreground">{t('admin.new')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold text-destructive">{stats.bugs}</div>
-              <div className="text-xs text-muted-foreground">Bugů</div>
+              <div className="text-xs text-muted-foreground">{t('admin.bugs')}</div>
             </CardContent>
           </Card>
         </div>
@@ -162,16 +164,16 @@ export default function UserFeedbackList() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Filter className="w-4 h-4" /> Filtry
+              <Filter className="w-4 h-4" /> {t('admin.filters')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex gap-2">
             <Select value={filterType} onValueChange={(v) => setFilterType(v as FeedbackType | 'all')}>
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Typ" />
+                <SelectValue placeholder={t('admin.all_types')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Všechny typy</SelectItem>
+                <SelectItem value="all">{t('admin.all_types')}</SelectItem>
                 {Object.entries(typeConfig).map(([key, { label }]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -180,10 +182,10 @@ export default function UserFeedbackList() {
 
             <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as FeedbackStatus | 'all')}>
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('admin.all_statuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Všechny statusy</SelectItem>
+                <SelectItem value="all">{t('admin.all_statuses')}</SelectItem>
                 {Object.entries(statusConfig).map(([key, { label }]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -206,7 +208,7 @@ export default function UserFeedbackList() {
           ) : filteredFeedback.length === 0 ? (
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
-                Žádný feedback nenalezen
+                {t('admin.no_feedback_found')}
               </CardContent>
             </Card>
           ) : (
@@ -238,52 +240,40 @@ export default function UserFeedbackList() {
                       </Badge>
                     </div>
 
-                    {/* Message */}
                     {item.message && (
-                      <p className="text-sm bg-muted/50 p-3 rounded-lg">
-                        {item.message}
-                      </p>
+                      <p className="text-sm bg-muted/50 p-3 rounded-lg">{item.message}</p>
                     )}
 
-                    {/* Context badges */}
                     <div className="flex flex-wrap gap-1">
                       {item.current_route && (
-                        <Badge variant="secondary" className="text-xs">
-                          {item.current_route}
-                        </Badge>
+                        <Badge variant="secondary" className="text-xs">{item.current_route}</Badge>
                       )}
                       {item.can_contact && (
-                        <Badge variant="secondary" className="text-xs">
-                          📧 {item.contact_email}
-                        </Badge>
+                        <Badge variant="secondary" className="text-xs">📧 {item.contact_email}</Badge>
                       )}
                     </div>
 
-                    {/* Expand toggle */}
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : item.id)}
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      {isExpanded ? 'Skrýt detaily' : 'Zobrazit detaily'}
+                      {isExpanded ? t('admin.hide_details') : t('admin.show_details')}
                     </button>
 
-                    {/* Expanded content */}
                     {isExpanded && (
                       <div className="space-y-3 pt-2 border-t">
-                        {/* Responses JSON */}
                         {Object.keys(item.responses).length > 0 && (
                           <div>
-                            <div className="text-xs font-medium mb-1">Odpovědi:</div>
+                            <div className="text-xs font-medium mb-1">{t('admin.responses_label')}</div>
                             <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-40">
                               {JSON.stringify(item.responses, null, 2)}
                             </pre>
                           </div>
                         )}
 
-                        {/* Status update */}
                         <div>
-                          <div className="text-xs font-medium mb-1">Změnit status:</div>
+                          <div className="text-xs font-medium mb-1">{t('admin.change_status')}</div>
                           <div className="flex gap-1 flex-wrap">
                             {(Object.keys(statusConfig) as FeedbackStatus[]).map((status) => (
                               <Button
@@ -299,13 +289,12 @@ export default function UserFeedbackList() {
                           </div>
                         </div>
 
-                        {/* Admin notes */}
                         <div>
-                          <div className="text-xs font-medium mb-1">Admin poznámky:</div>
+                          <div className="text-xs font-medium mb-1">{t('admin.admin_notes')}</div>
                           <Textarea
                             value={editingNotes[item.id] ?? item.admin_notes ?? ''}
                             onChange={(e) => setEditingNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
-                            placeholder="Interní poznámky..."
+                            placeholder={t('admin.notes_placeholder')}
                             className="text-sm"
                             rows={2}
                           />
@@ -316,7 +305,7 @@ export default function UserFeedbackList() {
                             disabled={savingId === item.id}
                           >
                             <Save className="w-3 h-3" />
-                            Uložit
+                            {t('admin.save_notes_btn')}
                           </Button>
                         </div>
                       </div>

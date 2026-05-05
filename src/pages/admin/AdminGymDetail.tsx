@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -99,6 +100,7 @@ const DAYS = [
 ];
 
 const AdminGymDetail = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -767,7 +769,7 @@ const AdminGymDetail = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Hľadať stroj..."
+                      placeholder={t('admin.search_machine_placeholder')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9"
@@ -815,7 +817,7 @@ const AdminGymDetail = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Maximálna váha (kg)</Label>
-                      <Input type="number" placeholder="Nepovinné" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
+                      <Input type="number" placeholder={t('admin.optional')} value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
                     </div>
                     <Button className="w-full" onClick={handleAddMachine} disabled={isSubmitting}>
                       {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Pridávanie...</> : 'Pridať stroj'}
@@ -847,7 +849,7 @@ const AdminGymDetail = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Maximálna váha (kg)</Label>
-                    <Input type="number" placeholder="Nepovinné" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
+                    <Input type="number" placeholder={t('admin.optional')} value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
                   </div>
                   <Button className="w-full" onClick={handleEditMachine} disabled={isSubmitting}>
                     {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Ukladanie...</> : 'Uložiť zmeny'}

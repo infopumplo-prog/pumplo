@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,7 @@ const priorityOptions: { id: FeaturePriority; label: string; description: string
 ];
 
 export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
+  const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
 
   const updateResponses = (updates: Record<string, unknown>) => {
@@ -43,7 +45,7 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
         <Textarea
           value={(responses.feature_request as string) || ''}
           onChange={(e) => updateResponses({ feature_request: e.target.value })}
-          placeholder="Popiš, co bys chtěl/a mít v aplikaci"
+          placeholder={t('feedback.feature_placeholder')}
           className="mt-2"
           rows={3}
         />
@@ -54,7 +56,7 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
         <Textarea
           value={(responses.feature_ideal as string) || ''}
           onChange={(e) => updateResponses({ feature_ideal: e.target.value })}
-          placeholder="Popiš svou ideální představu"
+          placeholder={t('feedback.feature_ideal_placeholder')}
           className="mt-2"
           rows={2}
         />

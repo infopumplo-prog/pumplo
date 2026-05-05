@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Dumbbell, Clock, Flame, TrendingUp, Calendar } from 'lucide-react';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistoryDetails';
@@ -14,6 +15,7 @@ import { format, subDays, startOfWeek, eachDayOfInterval, isSameDay } from 'date
 import { cs } from 'date-fns/locale';
 
 const WorkoutHistory = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { stats, isLoading } = useWorkoutStats();
   const { sessions, exerciseStats, isLoading: historyLoading } = useWorkoutHistory();
@@ -45,7 +47,7 @@ const WorkoutHistory = () => {
     });
     
     return {
-      week: `Týden ${4 - i}`,
+      week: t('history.week', { n: 4 - i }),
       workouts: weekSessions.length,
       totalWeight: weekSessions.reduce((acc, s) => acc + (s.total_weight_kg || 0), 0),
       totalDuration: Math.round(weekSessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0) / 60),
@@ -53,11 +55,11 @@ const WorkoutHistory = () => {
   }).reverse();
 
   const chartConfig = {
-    duration: { label: 'Čas (min)', color: 'hsl(var(--primary))' },
-    weight: { label: 'Váha (kg)', color: 'hsl(var(--chart-2))' },
-    sets: { label: 'Série', color: 'hsl(var(--chart-3))' },
-    workouts: { label: 'Tréninky', color: 'hsl(var(--primary))' },
-    totalWeight: { label: 'Celková váha', color: 'hsl(var(--chart-2))' },
+    duration: { label: t('history.chart_time'), color: 'hsl(var(--primary))' },
+    weight: { label: t('history.chart_weight'), color: 'hsl(var(--chart-2))' },
+    sets: { label: t('history.chart_sets'), color: 'hsl(var(--chart-3))' },
+    workouts: { label: t('history.chart_workouts'), color: 'hsl(var(--primary))' },
+    totalWeight: { label: t('history.chart_total_weight'), color: 'hsl(var(--chart-2))' },
   };
 
   const containerVariants = {
@@ -95,7 +97,7 @@ const WorkoutHistory = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              Historie tréninků
+              {t('history.title')}
             </motion.h1>
           </div>
         </div>
@@ -112,28 +114,28 @@ const WorkoutHistory = () => {
               <CardContent className="p-4 text-center">
                 <Dumbbell className="w-6 h-6 text-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">{stats.allTime.totalWorkouts}</p>
-                <p className="text-xs text-muted-foreground">Celkem tréninků</p>
+                <p className="text-xs text-muted-foreground">{t('history.total_workouts')}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border-chart-2/20">
               <CardContent className="p-4 text-center">
                 <Clock className="w-6 h-6 text-chart-2 mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">{Math.round(stats.allTime.totalDuration / 60)}h</p>
-                <p className="text-xs text-muted-foreground">Hodin cvičení</p>
+                <p className="text-xs text-muted-foreground">{t('history.hours_trained')}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-chart-3/10 to-chart-3/5 border-chart-3/20">
               <CardContent className="p-4 text-center">
                 <TrendingUp className="w-6 h-6 text-chart-3 mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">{Math.round(stats.allTime.totalWeight).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">kg zvednuto</p>
+                <p className="text-xs text-muted-foreground">{t('history.kg_lifted')}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-chart-4/10 to-chart-4/5 border-chart-4/20">
               <CardContent className="p-4 text-center">
                 <Flame className="w-6 h-6 text-chart-4 mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">{stats.allTime.totalSets}</p>
-                <p className="text-xs text-muted-foreground">Celkem sérií</p>
+                <p className="text-xs text-muted-foreground">{t('history.total_sets')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -142,9 +144,9 @@ const WorkoutHistory = () => {
           <motion.div variants={itemVariants}>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="overview">Přehled</TabsTrigger>
-                <TabsTrigger value="exercises">Cviky</TabsTrigger>
-                <TabsTrigger value="sessions">Tréninky</TabsTrigger>
+                <TabsTrigger value="overview">{t('history.tab_overview')}</TabsTrigger>
+                <TabsTrigger value="exercises">{t('history.tab_exercises')}</TabsTrigger>
+                <TabsTrigger value="sessions">{t('history.tab_sessions')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
@@ -153,7 +155,7 @@ const WorkoutHistory = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      Posledních 7 dní
+                      {t('history.last_7_days')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -173,7 +175,7 @@ const WorkoutHistory = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       <TrendingUp className="w-4 h-4" />
-                      Trend váhy (kg)
+                      {t('history.weight_trend')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -197,7 +199,7 @@ const WorkoutHistory = () => {
                 {/* Monthly Progress */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium">Měsíční progres</CardTitle>
+                    <CardTitle className="text-base font-medium">{t('history.monthly_progress')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ChartContainer config={chartConfig} className="h-[180px] w-full">
@@ -222,7 +224,7 @@ const WorkoutHistory = () => {
                 {exerciseStats.length === 0 ? (
                   <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
-                      Zatím nemáte žádné zaznamenané cviky
+                      {t('history.no_exercises')}
                     </CardContent>
                   </Card>
                 ) : (
@@ -242,15 +244,15 @@ const WorkoutHistory = () => {
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div className="text-center bg-muted/50 rounded-lg p-2">
                               <p className="font-semibold text-foreground">{exercise.maxWeight}</p>
-                              <p className="text-xs text-muted-foreground">Max kg</p>
+                              <p className="text-xs text-muted-foreground">{t('history.max_kg')}</p>
                             </div>
                             <div className="text-center bg-muted/50 rounded-lg p-2">
                               <p className="font-semibold text-foreground">{exercise.avgWeight.toFixed(1)}</p>
-                              <p className="text-xs text-muted-foreground">Prům. kg</p>
+                              <p className="text-xs text-muted-foreground">{t('history.avg_kg')}</p>
                             </div>
                             <div className="text-center bg-muted/50 rounded-lg p-2">
                               <p className="font-semibold text-foreground">{exercise.totalReps}</p>
-                              <p className="text-xs text-muted-foreground">Opakování</p>
+                              <p className="text-xs text-muted-foreground">{t('history.reps')}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -264,7 +266,7 @@ const WorkoutHistory = () => {
                 {sessions.length === 0 ? (
                   <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
-                      Zatím nemáte žádné dokončené tréninky
+                      {t('history.no_sessions')}
                     </CardContent>
                   </Card>
                 ) : (

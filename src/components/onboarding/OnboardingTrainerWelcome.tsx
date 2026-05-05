@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import davidPhoto from '@/assets/david-benisek.png';
 
 interface OnboardingTrainerWelcomeProps {
@@ -8,6 +9,8 @@ interface OnboardingTrainerWelcomeProps {
 }
 
 const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) => {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -29,7 +32,7 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
       </div>
 
       <h3 className="text-xl font-bold">David Beníšek</h3>
-      <p className="text-sm text-primary font-medium mt-0.5 mb-6">Hlavní trenér & spoluzakladatel</p>
+      <p className="text-sm text-primary font-medium mt-0.5 mb-6">{t('onboarding.trainer_welcome_role')}</p>
 
       <div className="bg-muted/60 rounded-2xl p-5 text-left mb-8 border border-border/40 w-full">
         <p className="text-sm leading-relaxed text-foreground/90">
@@ -45,7 +48,7 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
         onClick={onStart}
         className="w-full h-12 text-base font-semibold rounded-xl gap-2"
       >
-        Pojďme na to
+        {t('onboarding.trainer_welcome_start')}
         <ChevronRight className="w-5 h-5" />
       </Button>
     </motion.div>

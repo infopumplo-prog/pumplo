@@ -3,6 +3,7 @@ import { Plus, X, Loader2, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GymPhoto, useGymPhotos } from '@/hooks/useGymPhotos';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const MAX_PHOTOS = 7;
 
@@ -12,6 +13,7 @@ interface GymPhotosManagerProps {
 }
 
 const GymPhotosManager = ({ gymId, className }: GymPhotosManagerProps) => {
+  const { t } = useTranslation();
   const { photos, isLoading, addPhoto, removePhoto, canAddMore } = useGymPhotos(gymId);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -48,7 +50,7 @@ const GymPhotosManager = ({ gymId, className }: GymPhotosManagerProps) => {
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Galerie fotek</span>
+        <span className="text-sm font-medium">{t('business.photo_gallery')}</span>
         <span className="text-xs text-muted-foreground">
           {photos.length}/{MAX_PHOTOS}
         </span>
@@ -69,7 +71,7 @@ const GymPhotosManager = ({ gymId, className }: GymPhotosManagerProps) => {
               onClick={() => handleRemovePhoto(photo.id)}
               disabled={deletingId === photo.id}
               className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/90"
-              aria-label="Smazat fotku"
+              aria-label={t('business.delete_photo')}
             >
               {deletingId === photo.id ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -100,7 +102,7 @@ const GymPhotosManager = ({ gymId, className }: GymPhotosManagerProps) => {
               ) : (
                 <>
                   <Plus className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground mt-1">Přidat</span>
+                  <span className="text-xs text-muted-foreground mt-1">{t('business.add_photo')}</span>
                 </>
               )}
             </button>
@@ -111,7 +113,7 @@ const GymPhotosManager = ({ gymId, className }: GymPhotosManagerProps) => {
       {photos.length === 0 && (
         <div className="text-center py-4 text-sm text-muted-foreground">
           <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p>Nahrajte až {MAX_PHOTOS} fotek vaší posilovny</p>
+          <p>{t('business.upload_photos', { n: MAX_PHOTOS })}</p>
         </div>
       )}
     </div>

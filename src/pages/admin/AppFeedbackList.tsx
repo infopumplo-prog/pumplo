@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from './AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Star, MessageSquare, Calendar, ThumbsUp, AlertCircle, Lightbulb } from 'lucide-react';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface AppFeedback {
   id: string;
@@ -20,6 +21,7 @@ interface AppFeedback {
 }
 
 export default function AppFeedbackList() {
+  const { t } = useTranslation();
   const [feedback, setFeedback] = useState<AppFeedback[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +31,7 @@ export default function AppFeedbackList() {
 
   const fetchFeedback = async () => {
     setLoading(true);
-    
+
     const { data, error } = await supabase
       .from('app_feedback')
       .select('*')
@@ -41,7 +43,7 @@ export default function AppFeedbackList() {
     } else {
       setFeedback(data || []);
     }
-    
+
     setLoading(false);
   };
 
@@ -63,7 +65,7 @@ export default function AppFeedbackList() {
   };
 
   const averageRating = feedback.length > 0
-    ? feedback.filter(f => f.experience_rating).reduce((acc, f) => acc + (f.experience_rating || 0), 0) / 
+    ? feedback.filter(f => f.experience_rating).reduce((acc, f) => acc + (f.experience_rating || 0), 0) /
       feedback.filter(f => f.experience_rating).length
     : 0;
 
@@ -74,10 +76,10 @@ export default function AppFeedbackList() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-primary" />
-            Zpětná vazba aplikace
+            {t('admin.app_feedback_title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Celková zpětná vazba od uživatelů k aplikaci
+            {t('admin.app_feedback_desc')}
           </p>
         </div>
 
@@ -87,7 +89,7 @@ export default function AppFeedbackList() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-3xl font-bold">{feedback.length}</div>
-                <div className="text-sm text-muted-foreground">Celkem odpovědí</div>
+                <div className="text-sm text-muted-foreground">{t('admin.total_responses')}</div>
               </div>
             </CardContent>
           </Card>
@@ -98,7 +100,7 @@ export default function AppFeedbackList() {
                   <span className="text-3xl font-bold">{averageRating.toFixed(1)}</span>
                   <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
                 </div>
-                <div className="text-sm text-muted-foreground">Průměrné hodnocení</div>
+                <div className="text-sm text-muted-foreground">{t('admin.avg_rating')}</div>
               </div>
             </CardContent>
           </Card>
@@ -115,7 +117,7 @@ export default function AppFeedbackList() {
           <Card>
             <CardContent className="p-12 text-center text-muted-foreground">
               <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Žádná zpětná vazba k zobrazení</p>
+              <p>{t('admin.no_feedback')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -138,37 +140,37 @@ export default function AppFeedbackList() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                         <ThumbsUp className="w-3.5 h-3.5" />
-                        Spokojenost
+                        {t('admin.satisfaction_label')}
                       </div>
                       <p className="text-sm">{item.satisfaction}</p>
                     </div>
                   )}
-                  
+
                   {item.favorite_feature && (
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                         <Star className="w-3.5 h-3.5" />
-                        Oblíbená funkce
+                        {t('admin.favorite_feature_label')}
                       </div>
                       <p className="text-sm">{item.favorite_feature}</p>
                     </div>
                   )}
-                  
+
                   {item.improvements && (
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                         <Lightbulb className="w-3.5 h-3.5" />
-                        Návrhy na zlepšení
+                        {t('admin.improvements_label')}
                       </div>
                       <p className="text-sm">{item.improvements}</p>
                     </div>
                   )}
-                  
+
                   {item.issues && (
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-sm font-medium text-destructive">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        Problémy
+                        {t('admin.problems_label')}
                       </div>
                       <p className="text-sm">{item.issues}</p>
                     </div>

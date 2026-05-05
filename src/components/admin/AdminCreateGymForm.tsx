@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -54,6 +55,7 @@ interface AdminCreateGymFormProps {
 }
 
 const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [businessUsers, setBusinessUsers] = useState<BusinessUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -208,7 +210,7 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
         <Textarea
           id="description"
           {...register('description')}
-          placeholder="Popíšte posilovňu..."
+          placeholder={t('admin.create_gym_desc_placeholder')}
           rows={3}
         />
       </div>
@@ -219,7 +221,7 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
         <Input
           id="address"
           {...register('address')}
-          placeholder="Napr. Hlavná 123, Bratislava"
+          placeholder={t('admin.create_gym_address_placeholder')}
         />
       </div>
 

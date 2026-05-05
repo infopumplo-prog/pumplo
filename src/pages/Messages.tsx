@@ -7,24 +7,26 @@ import { useConversations } from '@/hooks/useConversations';
 import { MessageDetailDrawer } from '@/components/messages/MessageDetailDrawer';
 import PageTransition from '@/components/PageTransition';
 import { cn } from '@/lib/utils';
-
-function formatRelativeDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  if (diffHours < 1) return 'Právě teď';
-  if (diffHours < 24) return `Před ${diffHours}h`;
-  if (diffDays === 1) return 'Včera';
-  if (diffDays < 7) return `Před ${diffDays} dny`;
-  if (diffDays < 30) return `Před ${Math.floor(diffDays / 7)} týd.`;
-  return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' });
-}
+import { useTranslation } from 'react-i18next';
 
 const Messages = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const formatRelativeDate = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+    if (diffHours < 1) return t('messages.just_now');
+    if (diffHours < 24) return t('messages.hours_ago', { n: diffHours });
+    if (diffDays === 1) return t('messages.yesterday');
+    if (diffDays < 7) return t('messages.days_ago', { n: diffDays });
+    if (diffDays < 30) return t('messages.weeks_ago', { n: Math.floor(diffDays / 7) });
+    return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' });
+  };
   const { messages, isLoading: gymLoading, markAsRead, unreadCount: gymUnread } = useGymMessages();
   const { conversations, isLoading: convLoading, unreadDMCount } = useConversations();
   const [selectedMessage, setSelectedMessage] = useState<typeof messages[0] | null>(null);
@@ -48,7 +50,7 @@ const Messages = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-24">
+      <div className="min-h-screen bg-background safe-top pb-nav">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="flex items-center gap-3 px-4 py-3">
@@ -58,7 +60,7 @@ const Messages = () => {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-bold">Zprávy</h1>
+            <h1 className="text-lg font-bold">{t('messages.title')}</h1>
           </div>
 
           {/* Tabs */}
@@ -73,7 +75,7 @@ const Messages = () => {
               )}
             >
               <Mail className="w-3.5 h-3.5" />
-              Od posilovny
+              {t('messages.tab_gym')}
               {gymUnread > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">{gymUnread}</span>
               )}
@@ -88,7 +90,7 @@ const Messages = () => {
               )}
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              Konverzace
+              {t('messages.tab_conversations')}
               {unreadDMCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">{unreadDMCount}</span>
               )}
@@ -109,8 +111,8 @@ const Messages = () => {
                   <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
                     <Inbox className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <p className="text-lg font-semibold text-foreground mb-1">Žádné zprávy</p>
-                  <p className="text-sm text-muted-foreground">Zprávy od vaší posilovny se zobrazí zde</p>
+                  <p className="text-lg font-semibold text-foreground mb-1">{t('messages.no_messages')}</p>
+                  <p className="text-sm text-muted-foreground">{t('messages.no_messages_desc')}</p>
                 </div>
               ) : (
                 <motion.div className="space-y-2" variants={containerVariants} initial="hidden" animate="visible">
@@ -139,7 +141,7 @@ const Messages = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs font-medium text-muted-foreground">{msg.gymName || 'Posilovna'}</span>
+                            <span className="text-xs font-medium text-muted-foreground">{msg.gymName || t('messages.gym_fallback')}</span>
                             <span className="text-xs text-muted-foreground">·</span>
                             <span className="text-xs text-muted-foreground shrink-0">{formatRelativeDate(msg.created_at)}</span>
                           </div>
@@ -150,11 +152,11 @@ const Messages = () => {
                           <div className="flex items-center gap-1 mt-2">
                             {msg.target_type === 'all' ? (
                               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                <Users className="w-2.5 h-2.5" /> Všem
+                                <Users className="w-2.5 h-2.5" /> {t('messages.to_all')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                                <User className="w-2.5 h-2.5" /> Pro tebe
+                                <User className="w-2.5 h-2.5" /> {t('messages.for_you')}
                               </span>
                             )}
                           </div>
@@ -179,9 +181,9 @@ const Messages = () => {
                   <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
                     <MessageCircle className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <p className="text-lg font-semibold text-foreground mb-1">Žádné konverzace</p>
+                  <p className="text-lg font-semibold text-foreground mb-1">{t('messages.no_conversations')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Napište trenérovi z jeho profilu a konverzace se zobrazí zde
+                    {t('messages.no_conversations_desc')}
                   </p>
                 </div>
               ) : (
@@ -197,7 +199,9 @@ const Messages = () => {
                     >
                       <div className="flex items-center gap-3">
                         {conv.trainerPhotoUrl ? (
-                          <img src={conv.trainerPhotoUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                          conv.trainer_id
+                            ? <img src={conv.trainerPhotoUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                            : <img src={conv.trainerPhotoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white border border-border shrink-0 p-1" />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             <User className="w-6 h-6 text-primary" />
@@ -205,13 +209,13 @@ const Messages = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-0.5">
-                            <h3 className="text-sm font-semibold truncate">{conv.trainerName || 'Trenér'}</h3>
+                            <h3 className="text-sm font-semibold truncate">{conv.trainerName || t('messages.trainer_fallback')}</h3>
                             <span className="text-xs text-muted-foreground shrink-0 ml-2">
                               {formatRelativeDate(conv.last_message_at)}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            {conv.lastMessagePreview || 'Žádné zprávy'}
+                            {conv.lastMessagePreview || t('messages.no_preview')}
                           </p>
                         </div>
                         {(conv.unreadCount || 0) > 0 && (

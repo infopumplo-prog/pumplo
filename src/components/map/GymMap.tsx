@@ -201,8 +201,6 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
       maxZoom: 19,
     }).addTo(map);
 
-    // Add zoom control to top-left so it doesn't overlap center button
-    L.control.zoom({ position: 'topleft' }).addTo(map);
 
     // Set view to show all of Czechia centered
     map.setView(defaultCenter, 7);

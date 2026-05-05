@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import TrainerDetailDrawer from './TrainerDetailDrawer';
+import { useTranslation } from 'react-i18next';
 
 export interface Trainer {
   id: string;
@@ -25,6 +26,7 @@ interface GymTrainersTabProps {
 }
 
 const GymTrainersTab = ({ gymId }: GymTrainersTabProps) => {
+  const { t } = useTranslation();
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +77,7 @@ const GymTrainersTab = ({ gymId }: GymTrainersTabProps) => {
   if (trainers.length === 0) {
     return (
       <div className="text-sm text-muted-foreground py-4 text-center">
-        Žádní trenéři nejsou uvedeni
+        {t('business.no_trainers')}
       </div>
     );
   }
@@ -104,7 +106,7 @@ const GymTrainersTab = ({ gymId }: GymTrainersTabProps) => {
               <span className="font-medium text-sm">{trainer.name}</span>
             </div>
             <div className="flex items-center gap-1 text-primary text-sm">
-              <span>Detail</span>
+              <span>{t('business.trainer_detail')}</span>
               <ChevronRight className="w-4 h-4" />
             </div>
           </button>

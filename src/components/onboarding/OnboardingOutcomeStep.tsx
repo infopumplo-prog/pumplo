@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, Target, Zap } from 'lucide-react';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency, SPLIT_INFO, MVP_GOALS } from '@/lib/trainingGoals';
 import { DAYS } from '@/lib/onboardingTypes';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingOutcomeStepProps {
   goal: TrainingGoalId;
@@ -10,12 +11,15 @@ interface OnboardingOutcomeStepProps {
 }
 
 const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeStepProps) => {
+  const { t } = useTranslation();
   const split = getSplitFromFrequency(trainingDays.length, level);
   const splitInfo = SPLIT_INFO[split];
   const goalInfo = MVP_GOALS.find(g => g.id === goal);
-  const dayLabels = DAYS.filter(d => trainingDays.includes(d.id)).map(d => d.label.slice(0, 2));
+  const dayLabels = DAYS.filter(d => trainingDays.includes(d.id)).map(d => t(`onboarding.days_${d.id}`));
 
-  const levelLabel = level === 'beginner' ? 'Začátečník' : level === 'intermediate' ? 'Pokročilý' : 'Expert';
+  const levelKey = level === 'beginner' ? 'onboarding.level_beginner'
+    : level === 'intermediate' ? 'onboarding.level_intermediate'
+    : 'onboarding.level_expert';
 
   return (
     <motion.div
@@ -33,9 +37,9 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
         <CheckCircle className="w-8 h-8 text-primary" />
       </motion.div>
 
-      <h2 className="text-2xl font-bold mb-1">Tvůj plán je připraven</h2>
+      <h2 className="text-2xl font-bold mb-1">{t('onboarding.outcome_title')}</h2>
       <p className="text-sm text-muted-foreground mb-7">
-        Na základě tvých odpovědí jsme sestavili program přímo pro tebe
+        {t('onboarding.outcome_subtitle')}
       </p>
 
       <div className="w-full space-y-3 mb-6">
@@ -50,7 +54,7 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
             <Zap className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Typ tréninku</p>
+            <p className="text-xs text-muted-foreground">{t('onboarding.training_type')}</p>
             <p className="font-semibold text-sm">{splitInfo.labelCz}</p>
             <p className="text-xs text-muted-foreground">dny {splitInfo.days.join(' / ')}</p>
           </div>
@@ -67,9 +71,9 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
             <Target className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Cíl</p>
+            <p className="text-xs text-muted-foreground">{t('onboarding.goal_label')}</p>
             <p className="font-semibold text-sm">{goalInfo?.label} {goalInfo?.emoji}</p>
-            <p className="text-xs text-muted-foreground">{levelLabel}</p>
+            <p className="text-xs text-muted-foreground">{t(levelKey)}</p>
           </div>
         </motion.div>
 
@@ -84,15 +88,15 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
             <Calendar className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Frekvence</p>
-            <p className="font-semibold text-sm">{trainingDays.length}× týdně</p>
+            <p className="text-xs text-muted-foreground">{t('onboarding.frequency')}</p>
+            <p className="font-semibold text-sm">{t('onboarding.times_per_week', { n: trainingDays.length })}</p>
             <p className="text-xs text-muted-foreground">{dayLabels.join(', ')}</p>
           </div>
         </motion.div>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Vytvoř si účet a plán ti odemkneme ↓
+        {t('onboarding.create_account_unlock')}
       </p>
     </motion.div>
   );

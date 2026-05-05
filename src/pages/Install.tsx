@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/PageTransition';
+import { useTranslation } from 'react-i18next';
 
 const Install = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios');
 
   const containerVariants = {
@@ -43,7 +45,7 @@ const Install = () => {
             <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-semibold">Instalace Pumplo</h1>
+            <h1 className="text-lg font-semibold">{t('install.title')}</h1>
           </div>
         </div>
 
@@ -58,22 +60,22 @@ const Install = () => {
             <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Smartphone className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Nainstaluj si Pumplo</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('install.hero_title')}</h2>
             <p className="text-muted-foreground">
-              Přidej Pumplo na svou domovskou obrazovku pro rychlý přístup k tréninkům
+              {t('install.hero_desc')}
             </p>
           </motion.div>
 
           {/* Benefits */}
           <motion.div variants={itemVariants}>
             <Card className="p-4">
-              <h3 className="font-semibold mb-3">Výhody instalace</h3>
+              <h3 className="font-semibold mb-3">{t('install.benefits_title')}</h3>
               <ul className="space-y-2">
                 {[
-                  'Rychlý přístup z domovské obrazovky',
-                  'Funguje offline – tréninky a historie',
-                  'Nativní vzhled bez adresního řádku',
-                  'Automatické aktualizace',
+                  t('install.benefit_1'),
+                  t('install.benefit_2'),
+                  t('install.benefit_3'),
+                  t('install.benefit_4'),
                 ].map((benefit, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-chart-2 shrink-0" />
@@ -100,9 +102,9 @@ const Install = () => {
                       1
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Otevři Safari</h4>
+                      <h4 className="font-semibold mb-1">{t('install.ios_step1_title')}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Ujisti se, že používáš prohlížeč Safari. Instalace z jiných prohlížečů není na iOS možná.
+                        {t('install.ios_step1_desc')}
                       </p>
                     </div>
                   </div>
@@ -115,9 +117,9 @@ const Install = () => {
                       2
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Klikni na "Sdílet"</h4>
+                      <h4 className="font-semibold mb-1">{t('install.ios_step2_title')}</h4>
                       <p className="text-sm text-muted-foreground mb-2">
-                        V dolní liště prohlížeče najdi ikonu sdílení (čtverec se šipkou nahoru).
+                        {t('install.ios_step2_desc')}
                       </p>
                       <div className="bg-muted rounded-lg p-3 flex justify-center">
                         <Share className="w-8 h-8 text-primary" />
@@ -133,13 +135,13 @@ const Install = () => {
                       3
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">"Přidat na plochu"</h4>
+                      <h4 className="font-semibold mb-1">{t('install.ios_step3_title')}</h4>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Posuň se níž v menu a najdi možnost "Přidat na plochu".
+                        {t('install.ios_step3_desc')}
                       </p>
                       <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
                         <Plus className="w-6 h-6 text-primary" />
-                        <span className="text-sm font-medium">Přidat na plochu</span>
+                        <span className="text-sm font-medium">{t('install.ios_step3_cta')}</span>
                       </div>
                     </div>
                   </div>
@@ -152,9 +154,9 @@ const Install = () => {
                       4
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Potvrď instalaci</h4>
+                      <h4 className="font-semibold mb-1">{t('install.ios_step4_title')}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Klikni "Přidat" v pravém horním rohu. Pumplo se objeví na tvé ploše!
+                        {t('install.ios_step4_desc')}
                       </p>
                     </div>
                   </div>
@@ -169,9 +171,9 @@ const Install = () => {
                       1
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Otevři Chrome</h4>
+                      <h4 className="font-semibold mb-1">{t('install.android_step1_title')}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Pro nejlepší zážitek použij prohlížeč Google Chrome.
+                        {t('install.android_step1_desc')}
                       </p>
                     </div>
                   </div>
@@ -184,9 +186,9 @@ const Install = () => {
                       2
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Klikni na menu (⋮)</h4>
+                      <h4 className="font-semibold mb-1">{t('install.android_step2_title')}</h4>
                       <p className="text-sm text-muted-foreground mb-2">
-                        V pravém horním rohu prohlížeče najdi ikonu tří teček.
+                        {t('install.android_step2_desc')}
                       </p>
                       <div className="bg-muted rounded-lg p-3 flex justify-center">
                         <MoreVertical className="w-8 h-8 text-primary" />
@@ -202,13 +204,13 @@ const Install = () => {
                       3
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">"Nainstalovat aplikaci"</h4>
+                      <h4 className="font-semibold mb-1">{t('install.android_step3_title')}</h4>
                       <p className="text-sm text-muted-foreground mb-2">
-                        V menu najdi možnost "Nainstalovat aplikaci" nebo "Přidat na plochu".
+                        {t('install.android_step3_desc')}
                       </p>
                       <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
                         <Download className="w-6 h-6 text-primary" />
-                        <span className="text-sm font-medium">Nainstalovat aplikaci</span>
+                        <span className="text-sm font-medium">{t('install.android_step3_cta')}</span>
                       </div>
                     </div>
                   </div>
@@ -221,9 +223,9 @@ const Install = () => {
                       4
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Potvrď instalaci</h4>
+                      <h4 className="font-semibold mb-1">{t('install.android_step4_title')}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Klikni "Instalovat" v dialogovém okně. Pumplo se objeví na tvé ploše!
+                        {t('install.android_step4_desc')}
                       </p>
                     </div>
                   </div>
@@ -234,7 +236,7 @@ const Install = () => {
 
           {/* Footer note */}
           <motion.p variants={itemVariants} className="text-center text-xs text-muted-foreground">
-            Už máš Pumplo nainstalovanou? Otevři ji z domovské obrazovky!
+            {t('install.footer')}
           </motion.p>
         </motion.div>
       </div>

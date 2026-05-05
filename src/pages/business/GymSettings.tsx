@@ -21,8 +21,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const GymSettings = () => {
+  const { t } = useTranslation();
   const { gym, gyms, isLoading, refetch, togglePublish } = useGym();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -37,7 +39,7 @@ const GymSettings = () => {
 
   const handleDeleteGym = async () => {
     if (!gym) return;
-    
+
     setIsDeleting(true);
     const { error } = await supabase
       .from('gyms')
@@ -45,7 +47,7 @@ const GymSettings = () => {
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodařilo se odstranit posilovnu');
+      toast.error(t('business.delete_dialog_title', { name: gym.name }));
       setIsDeleting(false);
     } else {
       toast.success('Posilovna byla odstraněna');
@@ -71,29 +73,28 @@ const GymSettings = () => {
           <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800 dark:text-amber-200">
-              Nemáte vytvořený profil posilovny
+              {t('business.no_gym_profile')}
             </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Pro přístup k nastavení posilovny musíte mít vytvořený profil.
+              {t('business.settings_no_gym')}
             </AlertDescription>
           </Alert>
           <Button asChild className="w-full">
-            <Link to="/business">Vytvořit profil</Link>
+            <Link to="/business">{t('business.settings_create_profile')}</Link>
           </Button>
 
-          {/* Účet sekce - vždy dostupná */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Účet</CardTitle>
+              <CardTitle className="text-base">{t('business.settings_account')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full border-destructive text-destructive hover:bg-destructive/10"
                 onClick={logout}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Odhlásit se
+                {t('business.settings_logout')}
               </Button>
             </CardContent>
           </Card>
@@ -109,22 +110,22 @@ const GymSettings = () => {
         {gyms.length > 1 && (
           <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
             <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Nastavení pro:</span>
+            <span className="text-sm text-muted-foreground">{t('business.settings_for')}</span>
             <Badge variant="secondary">{gym.name}</Badge>
             <Link to="/business" className="ml-auto text-xs text-primary hover:underline">
-              Změnit
+              {t('business.settings_change')}
             </Link>
           </div>
         )}
 
-        <h2 className="text-lg font-semibold">Nastavení</h2>
+        <h2 className="text-lg font-semibold">{t('business.settings_title')}</h2>
 
         {/* Visibility Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Viditelnost</CardTitle>
+            <CardTitle className="text-base">{t('business.visibility')}</CardTitle>
             <CardDescription>
-              Ovládejte, zda je posilovna viditelná na mapě pro uživatele.
+              {t('business.visibility_desc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -136,12 +137,12 @@ const GymSettings = () => {
                   ) : gym.is_published ? (
                     <>
                       <EyeOff className="w-4 h-4" />
-                      Skrýt z mapy
+                      {t('business.hide_from_map')}
                     </>
                   ) : (
                     <>
                       <Eye className="w-4 h-4" />
-                      Zobrazit na mapě
+                      {t('business.show_on_map')}
                     </>
                   )}
                 </Button>
@@ -149,19 +150,20 @@ const GymSettings = () => {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    {gym.is_published ? 'Skrýt posilovnu z mapy?' : 'Zobrazit posilovnu na mapě?'}
+                    {gym.is_published
+                      ? t('business.hide_dialog_title', { name: gym.name })
+                      : t('business.show_dialog_title', { name: gym.name })}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {gym.is_published 
-                      ? `Posilovna "${gym.name}" nebude viditelná pro uživatele. Nebudou ji moci najít ani vybrat pro trénink.`
-                      : `Posilovna "${gym.name}" bude viditelná pro všechny uživatele na mapě.`
-                    }
+                    {gym.is_published
+                      ? t('business.hide_dialog_desc')
+                      : t('business.show_dialog_desc')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Zrušit</AlertDialogCancel>
+                  <AlertDialogCancel>{t('business.cancel')}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleToggleVisibility}>
-                    {gym.is_published ? 'Skrýt' : 'Zobrazit'}
+                    {gym.is_published ? t('business.hide_btn') : t('business.show_btn')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -172,41 +174,36 @@ const GymSettings = () => {
         {/* Danger Zone - Delete */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-muted-foreground">Nebezpečná zóna</CardTitle>
+            <CardTitle className="text-base text-muted-foreground">{t('business.danger_zone')}</CardTitle>
             <CardDescription>
-              Tyto akce jsou nevratné. Buďte opatrní.
+              {t('business.danger_zone_desc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Smazat posilovnu
+                  {t('business.delete_gym')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-destructive">
-                    Trvale smazat posilovnu?
+                    {t('business.delete_dialog_title', { name: gym.name })}
                   </AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-2">
-                      <p>
-                        <strong>Tato akce je NEVRATNÁ.</strong>
-                      </p>
-                      <p>
-                        Posilovna "{gym.name}" bude trvale odstraněna spolu se všemi přiřazenými stroji.
-                      </p>
+                      <p>{t('business.delete_dialog_desc')}</p>
                     </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Zrušit</AlertDialogCancel>
-                  <AlertDialogAction 
+                  <AlertDialogCancel>{t('business.cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
                     onClick={handleDeleteGym}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -214,10 +211,10 @@ const GymSettings = () => {
                     {isDeleting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Odstraňuji...
+                        {t('business.deleting')}
                       </>
                     ) : (
-                      'Trvale smazat'
+                      t('business.delete_confirm')
                     )}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -229,16 +226,16 @@ const GymSettings = () => {
         {/* Account Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Účet</CardTitle>
+            <CardTitle className="text-base">{t('business.settings_account')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full border-destructive text-destructive hover:bg-destructive/10"
               onClick={logout}
             >
               <LogOut className="w-4 h-4 mr-2" />
-              Odhlásit se
+              {t('business.settings_logout')}
             </Button>
           </CardContent>
         </Card>

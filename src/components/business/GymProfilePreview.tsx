@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MapPin, Play, ArrowLeft, ChevronDown, Globe, Mail, Phone, Heart, Check, CheckCircle2 } from 'lucide-react';
 import { Gym, OpeningHours, GymMachine } from '@/hooks/useGym';
- import { GymPricing } from '@/contexts/GymContext';
+import { GymPricing } from '@/contexts/GymContext';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { useGymMachines } from '@/hooks/useGymMachines';
 import { useGymPhotos } from '@/hooks/useGymPhotos';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import GymPhotoGallery from './GymPhotoGallery';
 import GymPhotoViewer from './GymPhotoViewer';
 import GymDetailTabs from './GymDetailTabs';
+import { useTranslation } from 'react-i18next';
 
 // Accept both Gym (with owner_id) and PublicGym (without owner_id)
 type GymData = Gym | PublicGym;
@@ -41,10 +42,11 @@ const GymProfilePreview = ({
   onToggleFavorite,
   onBack
 }: GymProfilePreviewProps) => {
+  const { t } = useTranslation();
   const hours = gym.opening_hours as OpeningHours;
   const { machines, isLoading: machinesLoading } = useGymMachines(gym.id);
   const { photos } = useGymPhotos(gym.id ?? undefined);
-  
+
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -74,7 +76,7 @@ const GymProfilePreview = ({
       <div className={cn("relative", isDrawer ? "h-56" : "h-40")}>
         {/* Back button for drawer */}
         {isDrawer && onBack && (
-          <button 
+          <button
             onClick={onBack}
             className="absolute top-4 left-4 z-10 p-2 rounded-full bg-background/80 hover:bg-background shadow-sm"
           >
@@ -82,16 +84,15 @@ const GymProfilePreview = ({
           </button>
         )}
 
-        <GymPhotoGallery 
-          photos={photos} 
+        <GymPhotoGallery
+          photos={photos}
           fallbackCoverUrl={gym.cover_photo_url}
           className="h-full"
           clickable={true}
           onPhotoClick={handlePhotoClick}
         />
-        {/* Gradient overlay - only bottom part for logo readability */}
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/80 to-transparent pointer-events-none" />
-        
+
         {/* Logo */}
         <div className="absolute bottom-0 left-4 translate-y-1/2">
           {gym.logo_url ? (
@@ -108,12 +109,12 @@ const GymProfilePreview = ({
             </div>
           )}
         </div>
-        
+
         {/* Status Badge */}
         {showBadge && (
           <div className="absolute top-3 right-3">
             <Badge variant={gym.is_published ? 'default' : 'secondary'}>
-              {gym.is_published ? 'Veřejná' : 'Soukromá'}
+              {gym.is_published ? t('business.public') : t('business.private')}
             </Badge>
           </div>
         )}
@@ -128,7 +129,7 @@ const GymProfilePreview = ({
             {gym.is_verified && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500">
                 <CheckCircle2 className="w-3 h-3" />
-                Ověřená
+                {t('business.verified')}
               </span>
             )}
           </div>
@@ -157,7 +158,7 @@ const GymProfilePreview = ({
                 onClick={() => setDescExpanded(!descExpanded)}
                 className="flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
               >
-                {descExpanded ? 'Méně' : 'Více'}
+                {descExpanded ? t('business.less') : t('business.more')}
                 <ChevronDown className={cn("w-3 h-3 transition-transform", descExpanded && "rotate-180")} />
               </button>
             )}
@@ -236,15 +237,15 @@ const GymProfilePreview = ({
                 {isSelectingGym ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Vybírám...
+                    {t('business.selecting')}
                   </>
                 ) : isGymOpen ? (
                   <>
                     <Check className="w-5 h-5" />
-                    Vybrat posilovnu
+                    {t('business.select_gym')}
                   </>
                 ) : (
-                  'Posilovna je zavřená'
+                  t('business.gym_closed')
                 )}
               </Button>
             ) : onStartTraining ? (
@@ -257,10 +258,10 @@ const GymProfilePreview = ({
                 {isGymOpen ? (
                   <>
                     <Play className="w-5 h-5" />
-                    Zahájit trénink
+                    {t('business.start_workout')}
                   </>
                 ) : (
-                  'Posilovna je zavřená'
+                  t('business.gym_closed')
                 )}
               </Button>
             ) : null}

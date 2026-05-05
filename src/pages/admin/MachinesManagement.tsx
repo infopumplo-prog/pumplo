@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +67,7 @@ const getCategoryVariant = (value: string): 'default' | 'secondary' | 'outline' 
 };
 
 const MachinesManagement = () => {
+  const { t } = useTranslation();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -329,7 +331,7 @@ const MachinesManagement = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Hľadať stroj..."
+              placeholder={t('admin.search_machine_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"

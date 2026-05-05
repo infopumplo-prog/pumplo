@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
@@ -37,7 +42,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Handle OAuth deep link callback on native (Google iOS web flow)
+    let appUrlListener: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('appUrlOpen', async ({ url }) => {
+        if (url.includes('login-callback')) {
+          // Implicit flow: tokens in URL hash (#access_token=...&refresh_token=...)
+          const fragment = url.split('#')[1] ?? url.split('?')[1] ?? '';
+          const params = new URLSearchParams(fragment);
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          }
+          await Browser.close();
+        }
+      }).then(handle => {
+        appUrlListener = () => handle.remove();
+      });
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      appUrlListener?.();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -86,16 +114,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginWithProvider = async (provider: 'google' | 'apple'): Promise<{ success: boolean; error?: string }> => {
+    const isNative = Capacitor.isNativePlatform();
+
+    if (isNative && provider === 'google') {
+      if (Capacitor.getPlatform() === 'ios') {
+        // iOS: web OAuth via browser (native plugin has no SPM support)
+        try {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: 'com.pumplo.app://login-callback',
+              skipBrowserRedirect: true,
+              queryParams: { prompt: 'select_account' },
+            },
+          });
+          if (error) return { success: false, error: error.message };
+          if (data?.url) await Browser.open({ url: data.url });
+          return { success: true };
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Google přihlášení selhalo';
+          return { success: false, error: message };
+        }
+      } else {
+        // Android: browser OAuth (same as iOS)
+        try {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: 'com.pumplo.app://login-callback',
+              skipBrowserRedirect: true,
+              queryParams: { prompt: 'select_account' },
+            },
+          });
+          if (error) return { success: false, error: error.message };
+          if (data?.url) await Browser.open({ url: data.url });
+          return { success: true };
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Google přihlášení selhalo';
+          return { success: false, error: message };
+        }
+      }
+    }
+
+    if (isNative && provider === 'apple') {
+      try {
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.pumplo.app',
+          redirectURI: '',
+          scopes: 'email name',
+          state: '',
+          nonce: '',
+        });
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: result.response.identityToken,
+        });
+        if (error) return { success: false, error: error.message };
+        return { success: true };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Apple přihlášení selhalo';
+        return { success: false, error: message };
+      }
+    }
+
+    // Web fallback
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/`,
       },
     });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 

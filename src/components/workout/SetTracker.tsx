@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Circle, Weight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { CheckCircle2, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ export const SetTracker = ({
   onCompleteSet,
   showWeightInput = true
 }: SetTrackerProps) => {
+  const { t } = useTranslation();
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>(`${repMax}`);
 
@@ -37,7 +39,6 @@ export const SetTracker = ({
     const weightNum = weight ? parseFloat(weight) : undefined;
     const repsNum = reps ? parseInt(reps) : repMax;
     onCompleteSet(currentSet, weightNum, repsNum);
-    // Reset for next set
     setReps(`${repMax}`);
   };
 
@@ -49,7 +50,7 @@ export const SetTracker = ({
           <motion.div
             key={i}
             initial={{ scale: 0.8 }}
-            animate={{ 
+            animate={{
               scale: i === currentSet ? 1.2 : 1,
               opacity: setsData[i]?.completed ? 1 : 0.5
             }}
@@ -74,10 +75,10 @@ export const SetTracker = ({
       {/* Current set info */}
       <div className="text-center">
         <p className="text-lg font-semibold">
-          Série {currentSet + 1} z {totalSets}
+          {t('workout.set_x_of_y', { current: currentSet + 1, total: totalSets })}
         </p>
         <p className="text-xl font-bold text-foreground">
-          {repMin}-{repMax} opakování
+          {t('workout.reps_range', { min: repMin, max: repMax })}
         </p>
       </div>
 
@@ -87,11 +88,11 @@ export const SetTracker = ({
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground flex items-center gap-1">
               <Weight className="w-3 h-3" />
-              Váha (kg)
+              {t('workout.weight_kg')}
             </label>
             <Input
               type="number"
-              placeholder="např. 60"
+              placeholder={t('workout.weight_placeholder')}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               className="text-center text-lg font-semibold h-12"
@@ -99,7 +100,7 @@ export const SetTracker = ({
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">
-              Opakování
+              {t('workout.reps')}
             </label>
             <Input
               type="number"
@@ -119,16 +120,16 @@ export const SetTracker = ({
           onClick={handleCompleteSet}
         >
           <CheckCircle2 className="w-6 h-6" />
-          Dokončit sérii
+          {t('workout.complete_set')}
         </Button>
       )}
 
       {/* Previous sets summary */}
       {setsData.some(s => s.completed && s.weight) && (
         <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Předchozí série:</p>
+          <p className="text-xs text-muted-foreground mb-2">{t('workout.prev_sets')}</p>
           <div className="flex flex-wrap gap-2">
-            {setsData.map((set, i) => 
+            {setsData.map((set, i) =>
               set.completed && set.weight ? (
                 <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
                   {set.weight}kg × {set.reps || repMax}

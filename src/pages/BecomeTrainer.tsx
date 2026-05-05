@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
+import { useTranslation } from 'react-i18next';
 
 interface Gym {
   id: string;
@@ -37,6 +38,7 @@ const BecomeTrainer = () => {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detect invite link
@@ -56,7 +58,7 @@ const BecomeTrainer = () => {
   const [instagram, setInstagram] = useState('');
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [pricing, setPricing] = useState<PricingItem[]>([
-    { name: 'Individuální trénink (60 min)', price: null },
+    { name: '', price: null },
   ]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Step 2: Gym
@@ -128,7 +130,7 @@ const BecomeTrainer = () => {
     if (!user || !selectedGymId || !photoUrl) return;
     setIsSubmitting(true);
     try {
-      const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Trenér';
+      const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Trainer';
       const specsArray = specializations.split(',').map(s => s.trim()).filter(Boolean);
 
       // Invite = auto-approve, no invite = pending request
@@ -169,13 +171,13 @@ const BecomeTrainer = () => {
       }
 
       toast({
-        title: isAutoApproved ? 'Přidáni k posilovně!' : 'Žádost odeslána',
-        description: isAutoApproved ? `Nyní jste trenérem v ${inviteGymName}.` : 'Vyčkejte na schválení majitelem posilovny.',
+        title: isAutoApproved ? t('trainer.approved_title') : t('trainer.request_sent'),
+        description: isAutoApproved ? t('trainer.approved_desc', { gymName: inviteGymName }) : t('trainer.request_pending'),
       });
       navigate('/profile');
     } catch (error: unknown) {
       console.error('Trainer registration error:', error);
-      toast({ title: 'Chyba', description: (error as Error).message || 'Nepodařilo se odeslat žádost.', variant: 'destructive' });
+      toast({ title: t('trainer.error'), description: (error as Error).message || t('trainer.request_failed'), variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -208,10 +210,10 @@ const BecomeTrainer = () => {
             </button>
             <div className="flex-1">
               <h1 className="text-xl font-bold">
-                {hasInvite && inviteGymName ? `Přidat se k ${inviteGymName}` : 'Stát se trenérem'}
+                {hasInvite && inviteGymName ? t('trainer.join_gym', { gymName: inviteGymName }) : t('trainer.become_title')}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Krok {hasInvite ? (step === 1 ? 1 : 2) : step} ze {hasInvite ? 2 : 3}
+                {t('trainer.step_of', { current: hasInvite ? (step === 1 ? 1 : 2) : step, total: hasInvite ? 2 : 3 })}
               </p>
             </div>
           </div>
@@ -222,13 +224,13 @@ const BecomeTrainer = () => {
           </div>
         </div>
 
-        <motion.div className="px-4 py-6 space-y-5 pb-32" variants={containerVariants} initial="hidden" animate="visible" key={step}>
+        <motion.div className="px-4 py-6 space-y-5 pb-nav" variants={containerVariants} initial="hidden" animate="visible" key={step}>
           {/* STEP 1: Profile */}
           {step === 1 && (
             <>
               {/* Photo */}
               <motion.div variants={itemVariants}>
-                <Label className="mb-2 block">Profilová fotka *</Label>
+                <Label className="mb-2 block">{t('trainer.photo_label')}</Label>
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     {photoUrl ? (
@@ -245,58 +247,58 @@ const BecomeTrainer = () => {
                     )}
                   </div>
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
-                    {photoUrl ? 'Změnit fotku' : 'Nahrát fotku'}
+                    {photoUrl ? t('trainer.change_photo') : t('trainer.upload_photo')}
                   </Button>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handlePhotoUpload(file);
                   }} />
                 </div>
-                {!photoUrl && <p className="text-xs text-destructive mt-1">Profilová fotka je povinná</p>}
+                {!photoUrl && <p className="text-xs text-destructive mt-1">{t('trainer.photo_required')}</p>}
               </motion.div>
 
               {/* Bio */}
               <motion.div variants={itemVariants}>
-                <Label htmlFor="bio">O vás *</Label>
-                <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Popište své zkušenosti, přístup k trénování..." rows={4} className="mt-1" />
+                <Label htmlFor="bio">{t('trainer.bio_label')}</Label>
+                <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder={t('trainer.bio_placeholder')} rows={4} className="mt-1" />
               </motion.div>
 
               {/* Specializations */}
               <motion.div variants={itemVariants}>
-                <Label htmlFor="specs">Specializace *</Label>
-                <Input id="specs" value={specializations} onChange={(e) => setSpecializations(e.target.value)} placeholder="Silový trénink, Hubnutí, Rehabilitace..." className="mt-1" />
-                <p className="text-xs text-muted-foreground mt-1">Oddělte čárkou</p>
+                <Label htmlFor="specs">{t('trainer.specializations_label')}</Label>
+                <Input id="specs" value={specializations} onChange={(e) => setSpecializations(e.target.value)} placeholder={t('trainer.specializations_placeholder')} className="mt-1" />
+                <p className="text-xs text-muted-foreground mt-1">{t('trainer.specializations_hint')}</p>
               </motion.div>
 
               {/* Contact */}
               <motion.div variants={itemVariants} className="space-y-3">
-                <Label>Kontakt</Label>
+                <Label>{t('trainer.contact_label')}</Label>
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon" />
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('trainer.phone_placeholder')} />
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('trainer.email_placeholder')} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground text-sm shrink-0 w-4 text-center">@</span>
-                  <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram" />
+                  <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder={t('trainer.instagram_placeholder')} />
                 </div>
               </motion.div>
 
               {/* Certifications */}
               <motion.div variants={itemVariants}>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Certifikace</Label>
+                  <Label>{t('trainer.certifications_label')}</Label>
                   <button onClick={() => setCertifications([...certifications, { name: '', description: '', date: '' }])} className="text-xs text-primary font-medium flex items-center gap-1">
-                    <Plus className="w-3 h-3" /> Přidat
+                    <Plus className="w-3 h-3" /> {t('trainer.cert_add')}
                   </button>
                 </div>
                 {certifications.map((cert, i) => (
                   <div key={i} className="flex gap-2 mb-2">
-                    <Input value={cert.name} onChange={(e) => { const c = [...certifications]; c[i] = { ...c[i], name: e.target.value }; setCertifications(c); }} placeholder="Název certifikace" className="flex-1" />
-                    <Input value={cert.date} onChange={(e) => { const c = [...certifications]; c[i] = { ...c[i], date: e.target.value }; setCertifications(c); }} placeholder="Rok" className="w-20" />
+                    <Input value={cert.name} onChange={(e) => { const c = [...certifications]; c[i] = { ...c[i], name: e.target.value }; setCertifications(c); }} placeholder={t('trainer.cert_name_placeholder')} className="flex-1" />
+                    <Input value={cert.date} onChange={(e) => { const c = [...certifications]; c[i] = { ...c[i], date: e.target.value }; setCertifications(c); }} placeholder={t('trainer.cert_year_placeholder')} className="w-20" />
                     <button onClick={() => setCertifications(certifications.filter((_, j) => j !== i))} className="p-2 text-destructive"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
@@ -305,15 +307,15 @@ const BecomeTrainer = () => {
               {/* Pricing */}
               <motion.div variants={itemVariants}>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Ceník</Label>
+                  <Label>{t('trainer.pricing_label')}</Label>
                   <button onClick={() => setPricing([...pricing, { name: '', price: null }])} className="text-xs text-primary font-medium flex items-center gap-1">
-                    <Plus className="w-3 h-3" /> Přidat
+                    <Plus className="w-3 h-3" /> {t('trainer.pricing_add')}
                   </button>
                 </div>
                 {pricing.map((item, i) => (
                   <div key={i} className="flex gap-2 mb-2">
-                    <Input value={item.name} onChange={(e) => { const p = [...pricing]; p[i] = { ...p[i], name: e.target.value }; setPricing(p); }} placeholder="Služba" className="flex-1" />
-                    <Input type="number" value={item.price ?? ''} onChange={(e) => { const p = [...pricing]; p[i] = { ...p[i], price: e.target.value ? parseInt(e.target.value) : null }; setPricing(p); }} placeholder="Kč" className="w-24" />
+                    <Input value={item.name} onChange={(e) => { const p = [...pricing]; p[i] = { ...p[i], name: e.target.value }; setPricing(p); }} placeholder={t('trainer.pricing_service_placeholder')} className="flex-1" />
+                    <Input type="number" value={item.price ?? ''} onChange={(e) => { const p = [...pricing]; p[i] = { ...p[i], price: e.target.value ? parseInt(e.target.value) : null }; setPricing(p); }} placeholder={t('trainer.currency_placeholder')} className="w-24" />
                     <button onClick={() => setPricing(pricing.filter((_, j) => j !== i))} className="p-2 text-destructive"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
@@ -321,7 +323,7 @@ const BecomeTrainer = () => {
 
               <motion.div variants={itemVariants}>
                 <Button onClick={goNextStep} disabled={!canProceedStep1} className="w-full" size="lg">
-                  Pokračovat <ChevronRight className="w-5 h-5 ml-1" />
+                  {t('trainer.continue')} <ChevronRight className="w-5 h-5 ml-1" />
                 </Button>
               </motion.div>
             </>
@@ -335,7 +337,7 @@ const BecomeTrainer = () => {
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-primary" />
                   </div>
-                  <h2 className="text-lg font-semibold">Vyberte posilovnu</h2>
+                  <h2 className="text-lg font-semibold">{t('trainer.select_gym_title')}</h2>
                 </div>
               </motion.div>
 
@@ -369,8 +371,8 @@ const BecomeTrainer = () => {
               )}
 
               <motion.div variants={itemVariants} className="flex gap-3">
-                <Button onClick={() => setStep(1)} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> Zpět</Button>
-                <Button onClick={() => setStep(3)} disabled={!canProceedStep2} className="flex-1" size="lg">Pokračovat <ChevronRight className="w-5 h-5 ml-1" /></Button>
+                <Button onClick={() => setStep(1)} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> {t('trainer.back')}</Button>
+                <Button onClick={() => setStep(3)} disabled={!canProceedStep2} className="flex-1" size="lg">{t('trainer.continue')} <ChevronRight className="w-5 h-5 ml-1" /></Button>
               </motion.div>
             </>
           )}
@@ -383,15 +385,15 @@ const BecomeTrainer = () => {
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                     <MessageSquare className="w-5 h-5 text-primary" />
                   </div>
-                  <h2 className="text-lg font-semibold">Zpráva pro majitele</h2>
+                  <h2 className="text-lg font-semibold">{t('trainer.message_title')}</h2>
                 </div>
-                <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Proč chcete trénovat v této posilovně?" rows={3} />
+                <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t('trainer.message_placeholder')} rows={3} />
               </motion.div>
 
               {/* Summary */}
               <motion.div variants={itemVariants}>
                 <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Shrnutí</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">{t('trainer.summary_title')}</h3>
                   <div className="flex items-center gap-3">
                     {photoUrl && <img src={photoUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />}
                     <div>
@@ -411,21 +413,21 @@ const BecomeTrainer = () => {
                       {pricing.filter(p => p.name && p.price).map((p, i) => (
                         <div key={i} className="flex justify-between">
                           <span className="text-muted-foreground">{p.name}</span>
-                          <span className="font-medium">{p.price} Kč</span>
+                          <span className="font-medium">{p.price} {t('trainer.currency_placeholder')}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   <div className="text-sm text-muted-foreground">
-                    Posilovna: <span className="text-foreground font-medium">{gyms.find(g => g.id === selectedGymId)?.name}</span>
+                    {t('trainer.gym_label')} <span className="text-foreground font-medium">{gyms.find(g => g.id === selectedGymId)?.name}</span>
                   </div>
                 </div>
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex gap-3">
-                <Button onClick={goPrevStep} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> Zpět</Button>
+                <Button onClick={goPrevStep} variant="outline" size="lg" className="flex-1"><ChevronLeft className="w-5 h-5 mr-1" /> {t('trainer.back')}</Button>
                 <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1" size="lg">
-                  {isSubmitting ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />Odesílám...</> : <><Check className="w-5 h-5 mr-1" />Odeslat žádost</>}
+                  {isSubmitting ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{t('trainer.sending')}</> : <><Check className="w-5 h-5 mr-1" />{t('trainer.send_request')}</>}
                 </Button>
               </motion.div>
             </>

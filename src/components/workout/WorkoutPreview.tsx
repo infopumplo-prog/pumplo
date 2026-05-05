@@ -11,13 +11,14 @@ import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
-const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
-  main: { label: 'Hlavní', color: 'bg-primary/15 text-primary border-primary/30' },
-  secondary: { label: 'Pomocný', color: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
-  isolation: { label: 'Izolace', color: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
-  core_or_compensatory: { label: 'Core', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
-  conditioning: { label: 'Kardio', color: 'bg-green-500/15 text-green-600 border-green-500/30' },
+const SLOT_CATEGORY_COLORS: Record<string, string> = {
+  main: 'bg-primary/15 text-primary border-primary/30',
+  secondary: 'bg-blue-500/15 text-blue-600 border-blue-500/30',
+  isolation: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
+  core_or_compensatory: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+  conditioning: 'bg-green-500/15 text-green-600 border-green-500/30',
 };
 
 interface ExerciseDetail {
@@ -56,7 +57,16 @@ export const WorkoutPreview = ({
   onExercisesChange,
   isLoading = false
 }: WorkoutPreviewProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
+    main: { label: t('slot.main'), color: SLOT_CATEGORY_COLORS.main },
+    secondary: { label: t('slot.secondary'), color: SLOT_CATEGORY_COLORS.secondary },
+    isolation: { label: t('slot.isolation'), color: SLOT_CATEGORY_COLORS.isolation },
+    core_or_compensatory: { label: t('slot.core'), color: SLOT_CATEGORY_COLORS.core_or_compensatory },
+    conditioning: { label: t('slot.conditioning'), color: SLOT_CATEGORY_COLORS.conditioning },
+  };
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [swappingIndex, setSwappingIndex] = useState<number | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<WorkoutExercise | null>(null);
@@ -109,7 +119,7 @@ export const WorkoutPreview = ({
 
       const { data: candidates, error } = await query;
       if (error || !candidates?.length) {
-        toast.error('Žádná náhrada nenalezena');
+        toast.error(t('workout.no_replacement'));
         return;
       }
 
@@ -120,7 +130,7 @@ export const WorkoutPreview = ({
       });
 
       if (valid.length === 0) {
-        toast.error('Žádná náhrada nenalezena');
+        toast.error(t('workout.no_replacement'));
         return;
       }
 
@@ -162,10 +172,10 @@ export const WorkoutPreview = ({
       };
       onExercisesChange?.(updated);
 
-      toast.success(`Vyměněno za: ${pick.name} (z ${valid.length} možností)`);
+      toast.success(t('workout.swap_success', { name: pick.name }));
     } catch (err) {
       console.error('[PreviewSwap] Error:', err);
-      toast.error('Chyba při výměně cviku');
+      toast.error(t('workout.swap_error'));
     } finally {
       setSwappingIndex(null);
     }
@@ -203,7 +213,7 @@ export const WorkoutPreview = ({
         <Button variant="ghost" size="icon" onClick={handleCloseClick}>
           <X className="w-5 h-5" />
         </Button>
-        <h2 className="font-bold text-lg">Dnešní trénink</h2>
+        <h2 className="font-bold text-lg">{t('workout.today_workout')}</h2>
         <Badge variant="secondary" className="gap-1">
           <Clock className="w-3 h-3" />
           ~{estimatedDuration} min
@@ -219,7 +229,7 @@ export const WorkoutPreview = ({
           <div className="min-w-0">
             <h3 className="font-bold text-lg truncate">{dayName}</h3>
             <p className="text-sm text-muted-foreground">
-              {exercises.length} cviků připraveno
+              {t('workout.exercises_ready', { count: exercises.length })}
             </p>
           </div>
         </div>
@@ -255,7 +265,7 @@ export const WorkoutPreview = ({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {ex.sets} sérií × {ex.repMin}-{ex.repMax} opak.
+                  {t('workout.sets_x_reps', { sets: ex.sets, min: ex.repMin, max: ex.repMax })}
                   {ex.machineName && ` · ${ex.machineName}`}
                 </p>
               </div>
@@ -282,7 +292,7 @@ export const WorkoutPreview = ({
       <div className="flex-none p-4 pb-28 border-t border-border bg-background">
         <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
           <Flame className="w-4 h-4 shrink-0 text-orange-500" />
-          <span>Začneme rozcvičkou pro přípravu svalů</span>
+          <span>{t('workout.warmup_note')}</span>
         </div>
         <Button 
           size="lg" 
@@ -298,12 +308,12 @@ export const WorkoutPreview = ({
               >
                 <Flame className="w-5 h-5" />
               </motion.div>
-              Připravuji rozcvičku...
+              {t('workout.preparing_warmup')}
             </>
           ) : (
             <>
               <Play className="w-5 h-5" />
-              Začít rozcvičku
+              {t('workout.start_warmup')}
             </>
           )}
         </Button>
@@ -322,7 +332,7 @@ export const WorkoutPreview = ({
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{selectedExercise?.exerciseName || 'Cvik'}</DrawerTitle>
+            <DrawerTitle>{selectedExercise?.exerciseName || t('workout.exercise_label')}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
             {exerciseDetail?.video_path ? (
@@ -330,14 +340,16 @@ export const WorkoutPreview = ({
                 <video
                   key={exerciseDetail.video_path}
                   src={exerciseDetail.video_path}
-                  controls playsInline autoPlay loop muted preload="auto"
+                  playsInline autoPlay loop muted preload="auto"
                   className="w-full h-full object-contain"
+                  style={{ opacity: 0, transition: 'opacity 0.3s' }}
+                  onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
                 />
               </div>
             ) : (
               <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
                 <p className="text-sm text-muted-foreground">
-                  {exerciseDetail === null ? 'Načítám...' : 'Bez videa'}
+                  {exerciseDetail === null ? t('workout.loading') : t('workout.no_video')}
                 </p>
               </div>
             )}
@@ -345,7 +357,7 @@ export const WorkoutPreview = ({
             {selectedExercise && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  {selectedExercise.sets} sérií × {selectedExercise.repMin}-{selectedExercise.repMax} opak.
+                  {t('workout.sets_x_reps', { sets: selectedExercise.sets, min: selectedExercise.repMin, max: selectedExercise.repMax })}
                   {selectedExercise.machineName && ` · ${selectedExercise.machineName}`}
                 </p>
 
@@ -357,7 +369,7 @@ export const WorkoutPreview = ({
 
                 {exerciseDetail?.primary_muscles && exerciseDetail.primary_muscles.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {exerciseDetail.primary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -368,7 +380,7 @@ export const WorkoutPreview = ({
 
                 {exerciseDetail?.secondary_muscles && exerciseDetail.secondary_muscles.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {exerciseDetail.secondary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>

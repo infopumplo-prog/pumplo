@@ -15,18 +15,10 @@ import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
-
-const getRoleLabel = (role: string | null): string => {
-  switch (role) {
-    case 'admin': return 'Administrátor';
-    case 'business': return 'Business';
-    case 'trainer': return 'Trenér';
-    case 'user': return 'Uživatel';
-    default: return 'Uživatel';
-  }
-};
+import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { profile, isLoading, updateProfile, refetch } = useUserProfile();
@@ -36,6 +28,16 @@ const Profile = () => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getRoleLabel = (r: string | null): string => {
+    switch (r) {
+      case 'admin': return t('profile.role_admin');
+      case 'business': return t('profile.role_business');
+      case 'trainer': return t('profile.role_trainer');
+      case 'user': return t('profile.role_user');
+      default: return t('profile.role_user');
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,17 +74,17 @@ const Profile = () => {
   }
 
   const trainerMenuItem = role === 'trainer'
-    ? { icon: GraduationCap, label: 'Můj trenérský profil', onClick: () => navigate('/trainer-profile') }
-    : { icon: GraduationCap, label: 'Stát se trenérem', onClick: () => navigate('/become-trainer') };
+    ? { icon: GraduationCap, label: t('profile.my_trainer_profile'), onClick: () => navigate('/trainer-profile') }
+    : { icon: GraduationCap, label: t('profile.become_trainer'), onClick: () => navigate('/become-trainer') };
 
   const menuItems = [
-    { icon: Mail, label: 'Zprávy', onClick: () => navigate('/messages'), badge: unreadCount },
-    { icon: Calendar, label: 'Můj plán', onClick: () => navigate('/profile/plan') },
-    { icon: BarChart3, label: 'Historie tréninků', onClick: () => navigate('/profile/history') },
+    { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount },
+    { icon: Calendar, label: t('profile.my_plan'), onClick: () => navigate('/profile/plan') },
+    { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history') },
     trainerMenuItem,
-    { icon: ClipboardList, label: 'Upravit dotazník', onClick: () => setOnboardingOpen(true) },
-    { icon: Settings, label: 'Nastavení', onClick: () => navigate('/settings') },
-    { icon: MessageSquare, label: 'Zpětná vazba', onClick: () => setFeedbackOpen(true) },
+    { icon: ClipboardList, label: t('profile.edit_questionnaire'), onClick: () => setOnboardingOpen(true) },
+    { icon: Settings, label: t('profile.settings'), onClick: () => navigate('/settings') },
+    { icon: MessageSquare, label: t('profile.feedback'), onClick: () => setFeedbackOpen(true) },
   ];
 
   const containerVariants = {
@@ -118,7 +120,7 @@ const Profile = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          Můj profil
+          {t('profile.my_profile')}
         </motion.h1>
       </div>
 
@@ -167,9 +169,9 @@ const Profile = () => {
             </button>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-foreground truncate">
-                {profile?.first_name && profile?.last_name 
-                  ? `${profile.first_name} ${profile.last_name}` 
-                  : user?.user_metadata?.name || 'Uživatel'}
+                {profile?.first_name && profile?.last_name
+                  ? `${profile.first_name} ${profile.last_name}`
+                  : user?.user_metadata?.name || t('profile.user')}
               </h2>
               <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
               <Badge variant="secondary" className="mt-2 text-xs">
@@ -209,7 +211,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Logout */}
-        <motion.div variants={itemVariants} className="pb-24">
+        <motion.div variants={itemVariants} className="pb-nav">
           <Button
             variant="outline"
             size="lg"
@@ -217,14 +219,14 @@ const Profile = () => {
             onClick={logout}
           >
             <LogOut className="w-5 h-5" />
-            <span>Odhlásit se</span>
+            <span>{t('profile.sign_out')}</span>
           </Button>
         </motion.div>
       </motion.div>
 
       {/* Onboarding Drawer */}
       <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
-      
+
       {/* Feedback Dialog */}
       <AppFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>

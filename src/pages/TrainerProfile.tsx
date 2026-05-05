@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
+import { useTranslation } from 'react-i18next';
 
 interface TrainerRecord {
   id: string;
@@ -31,14 +32,7 @@ interface PricingItem {
   price: number;
 }
 
-const getStatusLabel = (status: string | null): string => {
-  switch (status) {
-    case 'approved': return 'Schváleno';
-    case 'pending': return 'Čeká na schválení';
-    case 'rejected': return 'Zamítnuto';
-    default: return 'Neznámý';
-  }
-};
+// Status labels are now rendered via t() in the component
 
 const getStatusVariant = (status: string | null): 'default' | 'secondary' | 'destructive' => {
   switch (status) {
@@ -53,6 +47,16 @@ const TrainerProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  const getStatusLabel = (status: string | null): string => {
+    switch (status) {
+      case 'approved': return t('trainer_profile.status_approved');
+      case 'pending': return t('trainer_profile.status_pending');
+      case 'rejected': return t('trainer_profile.status_rejected');
+      default: return t('trainer_profile.status_unknown');
+    }
+  };
 
   const [trainerRecords, setTrainerRecords] = useState<TrainerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,7 +103,7 @@ const TrainerProfile = () => {
       if (gymsData) {
         const gymMap = new Map(gymsData.map(g => [g.id, g.name]));
         records.forEach(r => {
-          r.gym_name = gymMap.get(r.gym_id) || 'Neznámá posilovna';
+          r.gym_name = gymMap.get(r.gym_id) || t('trainer_profile.gym_fallback');
         });
       }
     }
@@ -170,14 +174,14 @@ const TrainerProfile = () => {
       }
 
       toast({
-        title: 'Uloženo',
-        description: 'Trenérský profil byl úspěšně aktualizován.',
+        title: t('trainer_profile.saved'),
+        description: t('trainer_profile.save_desc'),
       });
     } catch (error: unknown) {
       console.error('Save error:', error);
       toast({
-        title: 'Chyba',
-        description: (error as Error).message || 'Nepodařilo se uložit změny.',
+        title: t('trainer_profile.error'),
+        description: (error as Error).message || t('trainer_profile.save_failed'),
         variant: 'destructive',
       });
     } finally {
@@ -220,12 +224,12 @@ const TrainerProfile = () => {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold">Trenérský profil</h1>
+            <h1 className="text-xl font-bold">{t('trainer_profile.title')}</h1>
           </div>
         </div>
 
         <motion.div
-          className="px-4 py-6 space-y-6 pb-32"
+          className="px-4 py-6 space-y-6 pb-nav"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -236,12 +240,12 @@ const TrainerProfile = () => {
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-primary" />
               </div>
-              <h2 className="text-lg font-semibold">Posilovny</h2>
+              <h2 className="text-lg font-semibold">{t('trainer_profile.gyms_title')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">
               {trainerRecords.length === 0 ? (
                 <div className="p-4 text-sm text-muted-foreground text-center">
-                  Zatím nemáte přiřazené žádné posilovny
+                  {t('trainer_profile.no_gyms')}
                 </div>
               ) : (
                 trainerRecords.map((record, index) => (
@@ -264,15 +268,15 @@ const TrainerProfile = () => {
                       </Badge>
                       <button
                         onClick={async () => {
-                          if (!confirm(`Opravdu chcete odejít z ${record.gym_name}?`)) return;
+                          if (!confirm(t('trainer_profile.leave_confirm', { gymName: record.gym_name }))) return;
                           await supabase.from('gym_trainers' as any).delete().eq('id', record.id);
                           await supabase.from('trainer_gym_requests' as any).delete().eq('user_id', user!.id).eq('gym_id', record.gym_id);
                           setTrainerRecords(prev => prev.filter(r => r.id !== record.id));
-                          toast({ title: 'Odešli jste z posilovny', description: record.gym_name });
+                          toast({ title: t('trainer_profile.left_gym'), description: record.gym_name });
                         }}
                         className="text-xs text-destructive hover:underline"
                       >
-                        Odejít
+                        {t('trainer_profile.leave')}
                       </button>
                     </div>
                   </div>
@@ -285,24 +289,24 @@ const TrainerProfile = () => {
           <motion.div variants={itemVariants}>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio">{t('trainer_profile.bio_label')}</Label>
                 <Textarea
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Popište své zkušenosti a přístup..."
+                  placeholder={t('trainer_profile.bio_placeholder')}
                   rows={4}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="specializations">Specializace</Label>
+                <Label htmlFor="specializations">{t('trainer_profile.specializations_label')}</Label>
                 <Input
                   id="specializations"
                   value={specializations}
                   onChange={(e) => setSpecializations(e.target.value)}
-                  placeholder="např. Silový trénink, Hubnutí, Rehabilitace"
+                  placeholder={t('trainer_profile.specializations_placeholder')}
                 />
-                <p className="text-xs text-muted-foreground">Oddělte čárkou</p>
+                <p className="text-xs text-muted-foreground">{t('trainer_profile.specializations_hint')}</p>
               </div>
             </div>
           </motion.div>
@@ -313,7 +317,7 @@ const TrainerProfile = () => {
               <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-green-500" />
               </div>
-              <h2 className="text-lg font-semibold">Ceník</h2>
+              <h2 className="text-lg font-semibold">{t('trainer_profile.pricing_title')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               {pricing.map((item, index) => (
@@ -321,7 +325,7 @@ const TrainerProfile = () => {
                   <Input
                     value={item.name}
                     onChange={(e) => updatePricingItem(index, 'name', e.target.value)}
-                    placeholder="Název služby"
+                    placeholder={t('trainer_profile.service_placeholder')}
                     className="flex-1"
                   />
                   <div className="relative w-28">
@@ -329,7 +333,7 @@ const TrainerProfile = () => {
                       type="number"
                       value={item.price || ''}
                       onChange={(e) => updatePricingItem(index, 'price', e.target.value)}
-                      placeholder="Cena"
+                      placeholder={t('trainer_profile.price_placeholder')}
                       className="pr-10"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

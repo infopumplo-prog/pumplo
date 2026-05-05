@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ interface UserData {
 const ITEMS_PER_PAGE = 100;
 
 const UsersManagement = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -360,7 +362,7 @@ const UsersManagement = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Hľadať podľa mena alebo emailu..."
+            placeholder={t('admin.search_user')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -403,7 +405,7 @@ const UsersManagement = () => {
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={(e) => handleEditUser(user, e)}
-                      title="Upraviť"
+                      title={t('admin.edit_btn')}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -412,7 +414,7 @@ const UsersManagement = () => {
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={(e) => handleChangeEmail(user, e)}
-                      title="Zmeniť email"
+                      title={t('admin.change_email_title')}
                     >
                       <Mail className="w-4 h-4" />
                     </Button>
@@ -430,7 +432,7 @@ const UsersManagement = () => {
                       size="icon"
                       className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                       onClick={(e) => handleDeleteUser(user, e)}
-                      title="Odstrániť"
+                      title={t('admin.delete_btn')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
