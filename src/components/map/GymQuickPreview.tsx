@@ -92,7 +92,7 @@ const GymQuickPreview = ({
                 "text-sm font-medium",
                 closingSoon ? "text-amber-600" : isOpen ? "text-green-600" : "text-destructive"
               )}>
-                {status.text}
+                {t(status.i18n.key, status.i18n.params)}
               </span>
               <div className={cn(
                 "w-2 h-2 rounded-full shrink-0",

@@ -168,25 +168,25 @@ export const countActiveFilters = (f: GymFilters) =>
 
 // Keys must match EXACTLY what pumplo-admin stores in DB (case-sensitive)
 const SERVICES = [
-  { key: 'Solárium', label: 'Solárium' },
-  { key: 'Sauna', label: 'Sauna' },
-  { key: 'Wellness', label: 'Wellness' },
-  { key: 'Bazén', label: 'Bazén' },
-  { key: 'Vířivka', label: 'Vířivka' },
-  { key: 'Masáže', label: 'Masáže' },
-  { key: 'Skupinové lekce', label: 'Skupinové lekce' },
-  { key: 'Kruhové tréninky', label: 'Kruhové tréninky' },
-  { key: 'Funkční trénink', label: 'Funkční trénink' },
-  { key: 'CrossFit', label: 'CrossFit' },
-  { key: 'Box / MMA', label: 'Box / MMA' },
-  { key: 'Jóga / Pilates', label: 'Jóga / Pilates' },
-  { key: 'Spinning', label: 'Spinning' },
-  { key: 'Bar / Kavárna', label: 'Bar / Kavárna' },
-  { key: 'Personal training', label: 'Personal training' },
-  { key: 'Tenis / Squash', label: 'Tenis / Squash' },
-  { key: 'Sprchy', label: 'Sprchy' },
-  { key: 'Šatny se zámkem', label: 'Šatny se zámkem' },
-  { key: '24/7 přístup', label: '24/7 přístup' },
+  { key: 'Solárium', i18nKey: 'map.service_solarium' },
+  { key: 'Sauna', i18nKey: 'map.service_sauna' },
+  { key: 'Wellness', i18nKey: 'map.service_wellness' },
+  { key: 'Bazén', i18nKey: 'map.service_pool' },
+  { key: 'Vířivka', i18nKey: 'map.service_hot_tub' },
+  { key: 'Masáže', i18nKey: 'map.service_massage' },
+  { key: 'Skupinové lekce', i18nKey: 'map.service_group_classes' },
+  { key: 'Kruhové tréninky', i18nKey: 'map.service_circuit_training' },
+  { key: 'Funkční trénink', i18nKey: 'map.service_functional_training' },
+  { key: 'CrossFit', i18nKey: 'map.service_crossfit' },
+  { key: 'Box / MMA', i18nKey: 'map.service_box_mma' },
+  { key: 'Jóga / Pilates', i18nKey: 'map.service_yoga_pilates' },
+  { key: 'Spinning', i18nKey: 'map.service_spinning' },
+  { key: 'Bar / Kavárna', i18nKey: 'map.service_bar_cafe' },
+  { key: 'Personal training', i18nKey: 'map.service_personal_training' },
+  { key: 'Tenis / Squash', i18nKey: 'map.service_tennis_squash' },
+  { key: 'Sprchy', i18nKey: 'map.service_showers' },
+  { key: 'Šatny se zámkem', i18nKey: 'map.service_lockers' },
+  { key: '24/7 přístup', i18nKey: 'map.service_24_7' },
 ];
 
 const CARDS = [
@@ -229,8 +229,8 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </div>
 );
 
-const RangeSlider = ({ label, value, max, step, unit, noLimitLabel = 'Bez omezení', onChange }: {
-  label: string; value: number | null; max: number; step: number; unit: string; noLimitLabel?: string; onChange: (v: number | null) => void;
+const RangeSlider = ({ label, value, max, step, unit, noLimitLabel, onChange }: {
+  label: string; value: number | null; max: number; step: number; unit: string; noLimitLabel: string; onChange: (v: number | null) => void;
 }) => {
   const display = value ?? max;
   return (
@@ -328,10 +328,10 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           <DistanceSlider value={filters.distanceLimit} onChange={v => set({ distanceLimit: v })} hasGps={hasGps} labelDistance={t('map.filter_distance')} labelNoLimit={t('map.filter_no_limit')} />
 
           {/* Jednorázový vstup */}
-          <RangeSlider label={t('map.filter_single_entry')} value={filters.singlePriceLimit} max={maxSinglePrice} step={10} unit="Kč" onChange={v => set({ singlePriceLimit: v })} />
+          <RangeSlider label={t('map.filter_single_entry')} value={filters.singlePriceLimit} max={maxSinglePrice} step={10} unit="Kč" noLimitLabel={t('map.filter_no_limit')} onChange={v => set({ singlePriceLimit: v })} />
 
           {/* Permanentka */}
-          <RangeSlider label={t('map.filter_membership')} value={filters.membershipPriceLimit} max={maxMembershipPrice} step={50} unit="Kč/měs." onChange={v => set({ membershipPriceLimit: v })} />
+          <RangeSlider label={t('map.filter_membership')} value={filters.membershipPriceLimit} max={maxMembershipPrice} step={50} unit={t('map.filter_price_unit_month')} noLimitLabel={t('map.filter_no_limit')} onChange={v => set({ membershipPriceLimit: v })} />
 
           {/* Stroje — vyhledávání */}
           <Section title={t('map.filter_machines')}>
@@ -372,7 +372,7 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
           {/* Služby */}
           <Section title={t('map.filter_services')}>
             <div className="flex flex-wrap gap-2">
-              {SERVICES.map(s => <Chip key={s.key} active={filters.services.includes(s.key)} onClick={() => toggleService(s.key)}>{s.label}</Chip>)}
+              {SERVICES.map(s => <Chip key={s.key} active={filters.services.includes(s.key)} onClick={() => toggleService(s.key)}>{t(s.i18nKey)}</Chip>)}
             </div>
           </Section>
         </div>

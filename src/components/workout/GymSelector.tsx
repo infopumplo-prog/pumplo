@@ -133,7 +133,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                           : "text-green-600"
                         : "text-destructive"
                     )}>
-                      {status.text}
+                      {t(status.i18n.key, status.i18n.params)}
                     </p>
                   </div>
 

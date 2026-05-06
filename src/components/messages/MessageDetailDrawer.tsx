@@ -6,6 +6,7 @@ import { Mail, Users, User, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useTranslation } from 'react-i18next';
 
 interface MessageDetailDrawerProps {
   open: boolean;
@@ -24,28 +25,29 @@ interface MessageDetailDrawerProps {
   onMarkAsRead: (messageId: string) => void;
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Dnes';
-  if (diffDays === 1) return 'Včera';
-  if (diffDays < 7) return `Před ${diffDays} dny`;
-  return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 export const MessageDetailDrawer = ({
   open,
   onOpenChange,
   message,
   onMarkAsRead,
 }: MessageDetailDrawerProps) => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [replying, setReplying] = useState(false);
+
+  const formatDate = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return t('messages.today');
+    if (diffDays === 1) return t('messages.yesterday');
+    if (diffDays < 7) return t('messages.days_ago', { n: diffDays });
+    return d.toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
 
   // Mark as read when drawer opens
   useEffect(() => {
@@ -128,9 +130,9 @@ export const MessageDetailDrawer = ({
             )}
             <Badge variant="secondary" className="text-xs">
               {message.target_type === 'all' ? (
-                <><Users className="w-3 h-3 mr-1" /> Všem</>
+                <><Users className="w-3 h-3 mr-1" /> {t('messages.to_all')}</>
               ) : (
-                <><User className="w-3 h-3 mr-1" /> Pro tebe</>
+                <><User className="w-3 h-3 mr-1" /> {t('messages.for_you')}</>
               )}
             </Badge>
           </div>
@@ -149,7 +151,7 @@ export const MessageDetailDrawer = ({
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <MessageCircle className="w-4 h-4" />
-            {replying ? 'Otevírám...' : 'Odpovědět'}
+            {replying ? t('messages.replying') : t('messages.reply')}
           </button>
         </div>
       </DrawerContent>

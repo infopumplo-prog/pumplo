@@ -3,6 +3,7 @@ import { PublicGym } from '@/hooks/usePublishedGyms';
 import { MapPin, Navigation, Heart, AlertTriangle, Star } from 'lucide-react';
 import { isGymCurrentlyOpen, getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface GymListItemProps {
   gym: PublicGym;
@@ -12,6 +13,7 @@ interface GymListItemProps {
 }
 
 const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) => {
+  const { t } = useTranslation();
   const hours = gym.opening_hours as OpeningHours;
   const isOpen = isGymCurrentlyOpen(hours);
   const status = getTodayOpeningStatus(hours);
@@ -78,7 +80,7 @@ const GymListItem = ({ gym, distance, onClick, isFavorite }: GymListItemProps) =
           "text-xs mt-0.5 font-medium",
           status.closingSoon ? "text-amber-600" : isOpen ? "text-green-600" : "text-destructive"
         )}>
-          {status.text}
+          {t(status.i18n.key, status.i18n.params)}
         </p>
       </div>
       

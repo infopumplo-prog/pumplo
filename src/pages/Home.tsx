@@ -417,7 +417,15 @@ const Home = () => {
                           const isCurrentDay = nextDay.dayOfWeek === today;
                           const isCompletedToday = isCurrentDay && completedTodayDayLetter === nextDay.dayLetter;
                           const dayTemplate = plan.allDays?.find(d => d.dayLetter === nextDay.dayLetter);
-                          const dayTypeName = dayTemplate?.dayName || '';
+                          const dayNameMap: Record<string, string> = {
+                            'Horní tělo': t('workout.day_upper_body'),
+                            'Dolní tělo': t('workout.day_lower_body'),
+                            'Celotělový': t('workout.day_full_body'),
+                            'Push': 'Push',
+                            'Pull': 'Pull',
+                            'Nožní den': t('workout.day_leg_day'),
+                          };
+                          const dayTypeName = dayNameMap[dayTemplate?.dayName || ''] ?? (dayTemplate?.dayName || '');
 
                           if (isCompletedToday) {
                             const durationMin = todayWorkoutSession ? Math.round((todayWorkoutSession.duration_seconds || 0) / 60) : 0;

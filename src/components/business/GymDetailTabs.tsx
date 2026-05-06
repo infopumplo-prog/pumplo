@@ -103,7 +103,7 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, servi
                 )}>
                   {isOpen ? t('business.open') : t('business.closed')}
                 </span>
-                <span className="text-muted-foreground text-sm">• {status.text}</span>
+                <span className="text-muted-foreground text-sm">• {t(status.i18n.key, status.i18n.params)}</span>
               </div>
             </div>
             <ChevronDown className={cn(

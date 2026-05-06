@@ -60,36 +60,50 @@ export const isClosingSoon = (openingHours: OpeningHours, thresholdMinutes: numb
   return minutesLeft !== null && minutesLeft <= thresholdMinutes;
 };
 
-export const getTodayOpeningStatus = (openingHours: OpeningHours): { isOpen: boolean; text: string; closingSoon?: boolean } => {
+export type OpeningStatusKey =
+  | { key: 'map.gym_closed_today'; params?: undefined }
+  | { key: 'map.gym_open_until'; params: { time: string } }
+  | { key: 'map.gym_closes_soon'; params: { min: number } }
+  | { key: 'map.gym_opens_at'; params: { time: string } };
+
+export interface GymOpeningStatus {
+  isOpen: boolean;
+  i18n: OpeningStatusKey;
+  closingSoon?: boolean;
+  /** @deprecated use i18n + t() at call site */
+  text?: string;
+}
+
+export const getTodayOpeningStatus = (openingHours: OpeningHours): GymOpeningStatus => {
   const now = new Date();
   const dayKey = DAYS_MAP[now.getDay()];
   const dayHours = openingHours[dayKey];
 
   if (!dayHours || dayHours.closed) {
-    return { isOpen: false, text: 'Dnes zavřeno' };
+    return { isOpen: false, i18n: { key: 'map.gym_closed_today' } };
   }
 
   const isOpen = isGymCurrentlyOpen(openingHours);
   const minutesLeft = getMinutesUntilClose(openingHours);
-  
+
   if (isOpen && minutesLeft !== null) {
     if (minutesLeft <= 60) {
-      return { 
-        isOpen: true, 
-        text: `Zavírá za ${minutesLeft} min`, 
-        closingSoon: true 
+      return {
+        isOpen: true,
+        i18n: { key: 'map.gym_closes_soon', params: { min: minutesLeft } },
+        closingSoon: true,
       };
     }
     const displayClose = dayHours.close === '00:00' ? '24:00' : dayHours.close;
-    return { isOpen: true, text: `Otevřeno do ${displayClose}` };
+    return { isOpen: true, i18n: { key: 'map.gym_open_until', params: { time: displayClose } } };
   } else {
     const currentTime = now.getHours() * 60 + now.getMinutes();
     const [openHour, openMin] = dayHours.open.split(':').map(Number);
     const openTime = openHour * 60 + openMin;
-    
+
     if (currentTime < openTime) {
-      return { isOpen: false, text: `Otevře v ${dayHours.open}` };
+      return { isOpen: false, i18n: { key: 'map.gym_opens_at', params: { time: dayHours.open } } };
     }
-    return { isOpen: false, text: 'Dnes zavřeno' };
+    return { isOpen: false, i18n: { key: 'map.gym_closed_today' } };
   }
 };
