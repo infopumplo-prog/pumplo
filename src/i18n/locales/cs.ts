@@ -2082,6 +2082,12 @@ const cs = {
   'terms.s11_body': 'Tyto podmínky se řídí právním řádem České republiky. Veškeré spory budou řešeny příslušnými soudy ČR.',
   'terms.s12_title': '12. Kontakt',
   'terms.s12_body': 'Dotazy k těmto podmínkám zasílejte na',
+  'map.pricing_not_available': 'Ceník není k dispozici',
+  'map.pricing_single_entry': 'Jednorázový vstup',
+  'map.pricing_memberships': 'Permanentky',
+  'map.pricing_entry_passes': 'Vstupové permanentky',
+  'map.pricing_solarium': 'Solárium',
+  'map.pricing_other': 'Ostatní',
 };
 
 export default cs;

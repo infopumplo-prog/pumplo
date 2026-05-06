@@ -1,4 +1,5 @@
 import { CreditCard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { GymPricing, PricingItem } from '@/contexts/GymContext';
 
 interface GymPricingDisplayProps {
@@ -76,12 +77,14 @@ const renderSection = (title: string, groups: string[], items: PricingItem[]) =>
 };
 
 const GymPricingDisplay = ({ pricing }: GymPricingDisplayProps) => {
+  const { t } = useTranslation();
+
   if (!pricing || (pricing.single_entries.length === 0 && pricing.memberships.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <CreditCard className="w-12 h-12 text-muted-foreground/50 mb-3" />
         <p className="text-muted-foreground text-sm">
-          Ceník není k dispozici
+          {t('map.pricing_not_available')}
         </p>
       </div>
     );
@@ -92,12 +95,12 @@ const GymPricingDisplay = ({ pricing }: GymPricingDisplayProps) => {
   const membershipSections = groupByColumns(pricing.memberships);
 
   // Build named sections matching PDF structure
-  const SECTION_NAMES_SINGLE = ['Jednorázový vstup'];
+  const SECTION_NAMES_SINGLE = [t('map.pricing_single_entry')];
   const SECTION_NAMES_MEMBERSHIP = [
-    'Permanentky',
-    'Vstupové permanentky',
-    'Solárium',
-    'Ostatní',
+    t('map.pricing_memberships'),
+    t('map.pricing_entry_passes'),
+    t('map.pricing_solarium'),
+    t('map.pricing_other'),
   ];
 
   return (

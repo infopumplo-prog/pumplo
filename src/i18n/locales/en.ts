@@ -2090,6 +2090,12 @@ const en = {
   'terms.s11_body': 'These terms are governed by the laws of the Czech Republic. All disputes will be resolved by the competent courts of the Czech Republic.',
   'terms.s12_title': '12. Contact',
   'terms.s12_body': 'Questions regarding these terms should be sent to',
+  'map.pricing_not_available': 'Pricing not available',
+  'map.pricing_single_entry': 'Single entry',
+  'map.pricing_memberships': 'Memberships',
+  'map.pricing_entry_passes': 'Entry passes',
+  'map.pricing_solarium': 'Solarium',
+  'map.pricing_other': 'Other',
 };
 
 export default en;
