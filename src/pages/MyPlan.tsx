@@ -13,7 +13,7 @@ import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
-import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
+import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS, SPLIT_INFO } from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -42,7 +42,8 @@ const weekTypeStyles: Record<WeekType, { bg: string; border: string; text: strin
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const MyPlan = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const navigate = useNavigate();
 
   const weekTypeLabels: Record<WeekType, string> = {
@@ -391,7 +392,7 @@ const MyPlan = () => {
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
                   <div className="flex items-center gap-2">
                     <Dumbbell className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">{SPLIT_TYPE_LABELS[plan.splitType] || plan.splitType}</span>
+                    <span className="text-sm">{(isEn ? SPLIT_INFO[plan.splitType]?.label : SPLIT_INFO[plan.splitType]?.labelCz) || plan.splitType}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
