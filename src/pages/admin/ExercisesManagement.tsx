@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, TFunction } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,16 +54,16 @@ interface Machine {
   name: string;
 }
 
-const CATEGORIES = [
-  { value: 'chest', label: 'Hrudník' },
-  { value: 'back', label: 'Chrbát' },
-  { value: 'shoulders', label: 'Ramená' },
-  { value: 'arms', label: 'Ruky' },
-  { value: 'legs', label: 'Nohy' },
-  { value: 'core', label: 'Core' },
-  { value: 'cardio', label: 'Kardio' },
-  { value: 'full_body', label: 'Celé telo' },
-  { value: 'abdominals', label: 'Brušné svaly' },
+const getCategories = (t: TFunction) => [
+  { value: 'chest', label: t('category.chest') },
+  { value: 'back', label: t('category.back') },
+  { value: 'shoulders', label: t('category.shoulders') },
+  { value: 'arms', label: t('category.arms') },
+  { value: 'legs', label: t('category.legs') },
+  { value: 'core', label: t('category.core') },
+  { value: 'cardio', label: t('category.cardio') },
+  { value: 'full_body', label: t('category.full_body') },
+  { value: 'abdominals', label: t('category.abdominals') },
 ];
 
 // Valid muscles whitelist (31 muscles) - English identifiers
@@ -78,32 +78,36 @@ const MUSCLE_GROUPS = [
   'rhomboid_major', 'rhomboid_minor'
 ];
 
-const EQUIPMENT_TYPES = [
-  { value: 'bodyweight', label: 'Vlastná váha' },
-  { value: 'barbell', label: 'Činka' },
-  { value: 'dumbbell', label: 'Jednoručky' },
-  { value: 'kettlebell', label: 'Kettlebell' },
-  { value: 'machine', label: 'Stroj' },
-  { value: 'cable', label: 'Kladka' },
-  { value: 'plate_loaded', label: 'Kotúče' },
-  { value: 'other', label: 'Iné' },
+const getEquipmentTypes = (t: TFunction) => [
+  { value: 'bodyweight', label: t('equipment.bodyweight') },
+  { value: 'barbell', label: t('equipment.barbell') },
+  { value: 'dumbbell', label: t('equipment.dumbbell') },
+  { value: 'kettlebell', label: t('equipment.kettlebell') },
+  { value: 'machine', label: t('equipment.machine') },
+  { value: 'cable', label: t('equipment.cable') },
+  { value: 'plate_loaded', label: t('equipment.plate_loaded') },
+  { value: 'other', label: t('equipment.other') },
 ];
 
-const ALLOWED_PHASES = [
-  { value: 'main', label: 'Hlavný tréning' },
-  { value: 'warmup', label: 'Rozcvička' },
+const getAllowedPhases = (t: TFunction) => [
+  { value: 'main', label: t('phase.main') },
+  { value: 'warmup', label: t('phase.warmup') },
 ];
 
-const BENCH_CONFIGS = [
-  { value: 'flat', label: 'Flat (rovná)' },
-  { value: 'incline', label: 'Incline (šikmá nahoru)' },
-  { value: 'decline', label: 'Decline (šikmá dolů)' },
+const getBenchConfigs = (t: TFunction) => [
+  { value: 'flat', label: t('bench.flat') },
+  { value: 'incline', label: t('bench.incline') },
+  { value: 'decline', label: t('bench.decline') },
 ];
 
 const ITEMS_PER_PAGE = 100;
 
 const ExercisesManagement = () => {
   const { t } = useTranslation();
+  const CATEGORIES = getCategories(t);
+  const EQUIPMENT_TYPES = getEquipmentTypes(t);
+  const ALLOWED_PHASES = getAllowedPhases(t);
+  const BENCH_CONFIGS = getBenchConfigs(t);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -259,7 +263,7 @@ const ExercisesManagement = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error('Názov je povinný');
+      toast.error(t('admin.exercise_name_required'));
       return;
     }
 
@@ -290,18 +294,18 @@ const ExercisesManagement = () => {
         .eq('id', editingExercise.id);
 
       if (error) {
-        toast.error('Chyba pri ukladaní');
+        toast.error(t('admin.exercise_save_error'));
         return;
       }
-      toast.success('Cvik aktualizovaný');
+      toast.success(t('admin.exercise_saved'));
     } else {
       const { error } = await supabase.from('exercises').insert(exerciseData);
 
       if (error) {
-        toast.error('Chyba pri vytváraní');
+        toast.error(t('admin.exercise_add_error'));
         return;
       }
-      toast.success('Cvik pridaný');
+      toast.success(t('admin.exercise_added'));
     }
 
     setDrawerOpen(false);
@@ -313,11 +317,11 @@ const ExercisesManagement = () => {
     const { error } = await supabase.from('exercises').delete().eq('id', id);
 
     if (error) {
-      toast.error('Chyba pri mazaní');
+      toast.error(t('admin.exercise_delete_error'));
       return;
     }
 
-    toast.success('Cvik vymazaný');
+    toast.success(t('admin.exercise_deleted'));
     fetchData();
   };
 
@@ -339,14 +343,14 @@ const ExercisesManagement = () => {
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from('exercise-videos').upload(fileName, file);
     if (error) {
-      toast.error('Chyba při nahrávání videa');
+      toast.error(t('admin.video_upload_error'));
       setIsUploading(false);
       return;
     }
     const { data } = supabase.storage.from('exercise-videos').getPublicUrl(fileName);
     setForm(prev => ({ ...prev, video_path: data.publicUrl }));
     setIsUploading(false);
-    toast.success('Video nahráno');
+    toast.success(t('admin.video_uploaded'));
   };
 
   const getCategoryLabel = (value: string) => {
@@ -358,10 +362,10 @@ const ExercisesManagement = () => {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Cviky</h2>
+          <h2 className="text-xl font-bold">{t('admin.exercises_title')}</h2>
           <Button onClick={openAddDrawer} size="sm">
             <Plus className="w-4 h-4 mr-1" />
-            Pridať
+            {t('admin.add')}
           </Button>
         </div>
 
@@ -381,7 +385,7 @@ const ExercisesManagement = () => {
               <SelectValue placeholder={t('admin.category_label')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Všetky kategórie</SelectItem>
+              <SelectItem value="all">{t('admin.all_categories')}</SelectItem>
               {CATEGORIES.map((cat) => (
                 <SelectItem key={cat.value} value={cat.value}>
                   {cat.label}
@@ -413,7 +417,7 @@ const ExercisesManagement = () => {
                         {getCategoryLabel(exercise.category)}
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
-                        Úroveň {exercise.difficulty}
+                        {t('admin.level_badge', { n: exercise.difficulty })}
                       </span>
                       {exercise.equipment_type && exercise.equipment_type !== 'bodyweight' && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-accent/10 text-accent-foreground">
@@ -422,7 +426,7 @@ const ExercisesManagement = () => {
                       )}
                       {exercise.allowed_phase === 'warmup' && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground">
-                          Rozcvička
+                          {t('phase.warmup')}
                         </span>
                       )}
                     </div>
@@ -458,30 +462,30 @@ const ExercisesManagement = () => {
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
               <DrawerTitle>
-                {editingExercise ? 'Upraviť cvik' : 'Pridať cvik'}
+                {editingExercise ? t('admin.edit_exercise_title') : t('admin.add_exercise_title')}
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4 overflow-y-auto max-h-[60vh]">
               <div>
-                <Label>Názov</Label>
+                <Label>{t('admin.exercise_name_label')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
-              
+
               <div>
-                <Label>Popis</Label>
+                <Label>{t('admin.description_label')}</Label>
                 <Textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Popis cviku..."
+                  placeholder={t('admin.description_placeholder')}
                   rows={2}
                 />
               </div>
 
               <div>
-                <Label>Nastavení stroje / pozice</Label>
+                <Label>{t('admin.setup_label')}</Label>
                 <Textarea
                   value={form.setup_instructions}
                   onChange={(e) => setForm({ ...form, setup_instructions: e.target.value })}
@@ -491,28 +495,28 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Časté chyby</Label>
+                <Label>{t('admin.common_mistakes_label')}</Label>
                 <Textarea
                   value={form.common_mistakes}
                   onChange={(e) => setForm({ ...form, common_mistakes: e.target.value })}
-                  placeholder={t('admin.exercise_caution_placeholder')}
+                  placeholder={t('admin.common_mistakes_placeholder')}
                   rows={2}
                 />
               </div>
 
               <div>
-                <Label>Tipy</Label>
+                <Label>{t('admin.tips_label')}</Label>
                 <Textarea
                   value={form.tips}
                   onChange={(e) => setForm({ ...form, tips: e.target.value })}
-                  placeholder={t('admin.exercise_tips_placeholder')}
+                  placeholder={t('admin.tips_placeholder')}
                   rows={2}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Kategória</Label>
+                  <Label>{t('admin.category_label')}</Label>
                   <Select
                     value={form.category}
                     onValueChange={(value) => setForm({ ...form, category: value })}
@@ -530,7 +534,7 @@ const ExercisesManagement = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label>Obtiažnosť (1-10)</Label>
+                  <Label>{t('admin.difficulty_label')}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -542,13 +546,13 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Typ vybavenia</Label>
+                <Label>{t('admin.equipment_type_label')}</Label>
                 <Select
                   value={form.equipment_type}
                   onValueChange={(value) => setForm({ ...form, equipment_type: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Vyber typ" />
+                    <SelectValue placeholder={t('admin.select_equipment')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EQUIPMENT_TYPES.map((eq) => (
@@ -561,7 +565,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Fáza tréningu</Label>
+                <Label>{t('admin.training_phase_label')}</Label>
                 <Select
                   value={form.allowed_phase}
                   onValueChange={(value) => setForm({ ...form, allowed_phase: value })}
@@ -580,7 +584,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Primární vybavení (machine_id)</Label>
+                <Label>{t('admin.primary_equipment_label')}</Label>
                 <Select
                   value={form.machine_id || '__none__'}
                   onValueChange={(value) => setForm({ ...form, machine_id: value === '__none__' ? '' : value })}
@@ -589,7 +593,7 @@ const ExercisesManagement = () => {
                     <SelectValue placeholder={t('admin.select_equipment')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Žádné</SelectItem>
+                    <SelectItem value="__none__">{t('admin.no_equipment')}</SelectItem>
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}
@@ -600,7 +604,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Sekundární vybavení (secondary_machine_id)</Label>
+                <Label>{t('admin.secondary_equipment_label')}</Label>
                 <Select
                   value={form.secondary_machine_id || '__none__'}
                   onValueChange={(value) => setForm({ ...form, secondary_machine_id: value === '__none__' ? '' : value })}
@@ -609,7 +613,7 @@ const ExercisesManagement = () => {
                     <SelectValue placeholder={t('admin.select_secondary')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Žádné</SelectItem>
+                    <SelectItem value="__none__">{t('admin.no_equipment')}</SelectItem>
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}
@@ -620,7 +624,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Požadovaná konfigurace lavice</Label>
+                <Label>{t('admin.bench_config_label')}</Label>
                 <Select
                   value={form.required_bench_config || '__none__'}
                   onValueChange={(value) => setForm({ ...form, required_bench_config: value === '__none__' ? '' : value })}
@@ -629,7 +633,7 @@ const ExercisesManagement = () => {
                     <SelectValue placeholder={t('admin.no_bench')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Nevyžaduje</SelectItem>
+                    <SelectItem value="__none__">{t('admin.no_bench')}</SelectItem>
                     {BENCH_CONFIGS.map((config) => (
                       <SelectItem key={config.value} value={config.value}>
                         {config.label}
@@ -640,7 +644,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <Label>Cvik s váhami</Label>
+                <Label>{t('admin.exercise_with_weights')}</Label>
                 <Switch
                   checked={form.exercise_with_weights}
                   onCheckedChange={(checked) => setForm({ ...form, exercise_with_weights: checked })}
@@ -648,7 +652,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Primárne svaly</Label>
+                <Label>{t('admin.primary_muscles_label')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {MUSCLE_GROUPS.map((muscle) => (
                     <button
@@ -668,7 +672,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Sekundárne svaly</Label>
+                <Label>{t('admin.secondary_muscles_label')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {MUSCLE_GROUPS.map((muscle) => (
                     <button
@@ -688,7 +692,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Video cviku</Label>
+                <Label>{t('admin.video_label')}</Label>
                 {form.video_path && (
                   <div className="mt-1 mb-2 rounded-lg overflow-hidden bg-black aspect-video">
                     <video src={form.video_path} className="w-full h-full object-contain" controls />
@@ -698,7 +702,7 @@ const ExercisesManagement = () => {
                   <label className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-2 px-3 py-2 border border-input rounded-md hover:bg-muted/50 text-sm text-muted-foreground">
                       {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
-                      {isUploading ? 'Nahrávám...' : form.video_path ? 'Změnit video' : 'Nahrát video'}
+                      {isUploading ? t('admin.uploading_video') : form.video_path ? t('admin.change_video') : t('admin.upload_video')}
                     </div>
                     <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} disabled={isUploading} />
                   </label>
@@ -711,7 +715,7 @@ const ExercisesManagement = () => {
               </div>
 
               <div>
-                <Label>Primárna rola</Label>
+                <Label>{t('admin.primary_role_label')}</Label>
                 <Input
                   value={form.primary_role}
                   onChange={(e) => setForm({ ...form, primary_role: e.target.value })}
@@ -721,10 +725,10 @@ const ExercisesManagement = () => {
             </div>
             <DrawerFooter>
               <Button onClick={handleSave} className="w-full">
-                {editingExercise ? 'Uložiť zmeny' : 'Pridať cvik'}
+                {editingExercise ? t('admin.save_exercise_btn') : t('admin.add_exercise_btn')}
               </Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
+                <Button variant="outline">{t('admin.cancel')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
