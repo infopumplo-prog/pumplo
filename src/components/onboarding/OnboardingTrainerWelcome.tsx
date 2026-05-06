@@ -36,11 +36,11 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
 
       <div className="bg-muted/60 rounded-2xl p-5 text-left mb-8 border border-border/40 w-full">
         <p className="text-sm leading-relaxed text-foreground/90">
-          "Za 12 let jsem natrénoval desítky klientů od nuly až po první závody. A vím, že největší problém není motivace —{' '}
-          <span className="font-semibold text-foreground">je to plán, který nesedí.</span>
+          "{t('onboarding.trainer_welcome_quote1')}{' '}
+          <span className="font-semibold text-foreground">{t('onboarding.trainer_welcome_emphasis')}</span>
         </p>
         <p className="text-sm leading-relaxed text-foreground/90 mt-3">
-          Zodpověz mi pár otázek. Sestavíme ti ho přesně na míru."
+          {t('onboarding.trainer_welcome_quote2')}"
         </p>
       </div>
 

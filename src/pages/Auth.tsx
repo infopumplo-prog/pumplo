@@ -111,6 +111,8 @@ const Auth = () => {
       const result = await login(email, password);
       if (!result.success) {
         setError(result.error || t('auth.login_failed'));
+      } else {
+        navigate('/');
       }
     } catch {
       setError(t('auth.something_wrong'));
@@ -274,6 +276,10 @@ const Auth = () => {
     if (onboardingStep === 7) {
       setShowOutcomeStep(true);
       setOnboardingStep(6);
+      return;
+    }
+    if (onboardingStep === 0) {
+      setShowTrainerWelcome(true);
       return;
     }
     if (onboardingStep > 0) {
@@ -498,10 +504,10 @@ const Auth = () => {
           <button
             key={lang}
             onClick={() => changeLanguage(lang)}
-            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-2xl transition-colors ${
               i18n.language === lang
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'opacity-100 scale-110'
+                : 'opacity-40 hover:opacity-70'
             }`}
           >
             {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
@@ -811,7 +817,6 @@ const Auth = () => {
                       <Button
                         variant="outline"
                         onClick={handlePrevStep}
-                        disabled={onboardingStep === 0}
                         className="flex-1"
                       >
                         <ChevronLeft className="w-4 h-4 mr-1" />

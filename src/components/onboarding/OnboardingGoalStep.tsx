@@ -60,8 +60,8 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
               >
                 <span className="text-2xl">{goal.emoji}</span>
                 <div className="flex-1">
-                  <span className="font-medium block">{goal.label}</span>
-                  <span className="text-sm text-muted-foreground">{goal.description}</span>
+                  <span className="font-medium block">{t(`onboarding.goal_${goal.id}_label`)}</span>
+                  <span className="text-sm text-muted-foreground">{t(`onboarding.goal_${goal.id}_desc`)}</span>
                 </div>
                 {isSelected ? (
                   <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -83,18 +83,18 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
                   >
                     <div ref={expandedRef} className="mx-2 mt-1 p-4 rounded-xl bg-muted/50 border border-border/50">
                       <p className="text-sm font-medium text-foreground mb-3">
-                        {goal.detail.summary}
+                        {t(`onboarding.goal_${goal.id}_detail_summary`)}
                       </p>
                       <ul className="space-y-1.5 mb-3">
-                        {goal.detail.bullets.map((bullet, i) => (
+                        {goal.detail.bullets.map((_bullet, i) => (
                           <li key={i} className="text-xs text-muted-foreground flex gap-2">
                             <span className="text-primary mt-0.5 shrink-0">•</span>
-                            <span>{bullet}</span>
+                            <span>{t(`onboarding.goal_${goal.id}_detail_bullet_${i}`)}</span>
                           </li>
                         ))}
                       </ul>
                       <p className="text-xs text-muted-foreground italic mb-4">
-                        {goal.detail.whoIsItFor}
+                        {t(`onboarding.goal_${goal.id}_detail_whoIsItFor`)}
                       </p>
                       <button
                         onClick={() => handleConfirm(goal.id)}
