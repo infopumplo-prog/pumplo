@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -45,16 +46,18 @@ const DuplicateMachinesDrawer = ({
   onSelectPrimary,
   onMerge,
 }: DuplicateMachinesDrawerProps) => {
+  const { t } = useTranslation();
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader>
           <DrawerTitle className="flex items-center gap-2">
             <GitMerge className="w-5 h-5" />
-            Duplicitní stroje ({duplicateGroups.length} skupin)
+            {t('admin.duplicates_title', { n: duplicateGroups.length })}
           </DrawerTitle>
         </DrawerHeader>
-        
+
         <ScrollArea className="flex-1 px-4 pb-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -63,23 +66,23 @@ const DuplicateMachinesDrawer = ({
           ) : duplicateGroups.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Žádné duplicity nebyly nalezeny</p>
+              <p>{t('admin.no_duplicates')}</p>
             </div>
           ) : (
             <div className="space-y-6">
               {duplicateGroups.map((group) => (
-                <div 
-                  key={group.name} 
+                <div
+                  key={group.name}
                   className="border rounded-lg p-4 bg-card"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Package className="w-4 h-4 text-primary" />
                     <span className="font-medium">{group.name}</span>
                     <Badge variant="secondary" className="text-xs">
-                      {group.items.length} záznamy
+                      {t('admin.records_count', { n: group.items.length })}
                     </Badge>
                   </div>
-                  
+
                   <RadioGroup
                     value={selectedPrimary[group.name] || ''}
                     onValueChange={(value) => onSelectPrimary(group.name, value)}
@@ -89,14 +92,14 @@ const DuplicateMachinesDrawer = ({
                       <div
                         key={machine.id}
                         className={`flex items-center gap-3 p-3 rounded-md border transition-colors ${
-                          selectedPrimary[group.name] === machine.id 
-                            ? 'border-primary bg-primary/5' 
+                          selectedPrimary[group.name] === machine.id
+                            ? 'border-primary bg-primary/5'
                             : 'border-border'
                         }`}
                       >
                         <RadioGroupItem value={machine.id} id={machine.id} />
-                        <Label 
-                          htmlFor={machine.id} 
+                        <Label
+                          htmlFor={machine.id}
                           className="flex-1 cursor-pointer"
                         >
                           <div className="flex items-center justify-between">
@@ -108,14 +111,14 @@ const DuplicateMachinesDrawer = ({
                             </span>
                           </div>
                           <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                            <span>Cviky: {machine.exerciseCount}</span>
-                            <span>Posilovny: {machine.gymCount}</span>
+                            <span>{t('admin.exercises_count_label', { n: machine.exerciseCount })}</span>
+                            <span>{t('admin.gyms_count_label', { n: machine.gymCount })}</span>
                           </div>
                         </Label>
                       </div>
                     ))}
                   </RadioGroup>
-                  
+
                   <Button
                     onClick={() => onMerge(group.name)}
                     disabled={isMerging || !selectedPrimary[group.name]}
@@ -127,18 +130,18 @@ const DuplicateMachinesDrawer = ({
                     ) : (
                       <GitMerge className="w-4 h-4 mr-2" />
                     )}
-                    Sloučit do vybraného
+                    {t('admin.merge_btn')}
                   </Button>
                 </div>
               ))}
             </div>
           )}
         </ScrollArea>
-        
+
         <div className="p-4 border-t">
           <DrawerClose asChild>
             <Button variant="outline" className="w-full">
-              Zavřít
+              {t('admin.close_drawer')}
             </Button>
           </DrawerClose>
         </div>

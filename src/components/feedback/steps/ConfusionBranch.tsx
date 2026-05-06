@@ -6,25 +6,25 @@ import { cn } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import type { FeedbackStepProps, ConfusionType, HelpType } from '../types';
 
-const confusionTypes: { id: ConfusionType; label: string }[] = [
-  { id: 'why_this_workout', label: 'Proč mám tento trénink' },
-  { id: 'why_these_exercises', label: 'Proč tyto cviky' },
-  { id: 'how_to_do_workout', label: 'Jak trénink správně odcvičit' },
-  { id: 'how_plan_split_works', label: 'Jak funguje plán / split' },
-  { id: 'other_confusion', label: 'Něco jiného' },
-];
-
-const helpTypes: { id: HelpType; label: string }[] = [
-  { id: 'explanation', label: 'Vysvětlení textem' },
-  { id: 'video', label: 'Video' },
-  { id: 'tooltip', label: 'Tooltip / nápověda' },
-  { id: 'example', label: 'Ukázka/příklad' },
-  { id: 'other_help', label: 'Něco jiného' },
-];
-
 export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
   const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
+
+  const confusionTypes: { id: ConfusionType; label: string }[] = [
+    { id: 'why_this_workout', label: t('feedback.confusion_why_workout') },
+    { id: 'why_these_exercises', label: t('feedback.confusion_why_exercises') },
+    { id: 'how_to_do_workout', label: t('feedback.confusion_how_to') },
+    { id: 'how_plan_split_works', label: t('feedback.confusion_how_plan') },
+    { id: 'other_confusion', label: t('feedback.confusion_other') },
+  ];
+
+  const helpTypes: { id: HelpType; label: string }[] = [
+    { id: 'explanation', label: t('feedback.confusion_explanation') },
+    { id: 'video', label: t('feedback.confusion_video') },
+    { id: 'tooltip', label: t('feedback.confusion_tooltip') },
+    { id: 'example', label: t('feedback.confusion_example') },
+    { id: 'other_help', label: t('feedback.confusion_other_help') },
+  ];
 
   const updateResponses = (updates: Record<string, unknown>) => {
     onUpdate({ responses: { ...responses, ...updates } });
@@ -33,7 +33,7 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
   const toggleHelpType = (type: HelpType) => {
     const current = (responses.help_types as string[]) || [];
     const updated = current.includes(type)
-      ? current.filter(t => t !== type)
+      ? current.filter(ht => ht !== type)
       : [...current, type];
     updateResponses({ help_types: updated });
   };
@@ -45,10 +45,10 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
   const handleNext = () => {
     const confusionLabel = confusionTypes.find(c => c.id === responses.confusion_type)?.label;
     const helpLabels = ((responses.help_types as string[]) || [])
-      .map(t => helpTypes.find(h => h.id === t)?.label)
+      .map(ht => helpTypes.find(h => h.id === ht)?.label)
       .filter(Boolean)
       .join(', ');
-    
+
     let message = `Nerozuměl/a jsem: ${confusionLabel}`;
     if (helpLabels) {
       message += ` | Pomohlo by: ${helpLabels}`;
@@ -56,7 +56,7 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
     if (responses.confusion_detail) {
       message += ` | Detail: ${responses.confusion_detail}`;
     }
-    
+
     onUpdate({ message });
     onNext();
   };
@@ -67,11 +67,11 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
         <button onClick={onBack} className="p-1 hover:bg-muted rounded">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h3 className="text-lg font-semibold">Co bylo matoucí?</h3>
+        <h3 className="text-lg font-semibold">{t('feedback.confusion_title')}</h3>
       </div>
 
       <div>
-        <Label>Čemu jsi nerozuměl/a? *</Label>
+        <Label>{t('feedback.confusion_what')}</Label>
         <div className="space-y-2 mt-2">
           {confusionTypes.map((type) => (
             <button
@@ -91,7 +91,7 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
       </div>
 
       <div>
-        <Label>Co by ti pomohlo? (více možností)</Label>
+        <Label>{t('feedback.confusion_what_helped')}</Label>
         <div className="grid grid-cols-2 gap-2 mt-2">
           {helpTypes.map((type) => (
             <button
@@ -111,7 +111,7 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
       </div>
 
       <div>
-        <Label>Popiš co přesně bylo matoucí (volitelné)</Label>
+        <Label>{t('feedback.confusion_detail')}</Label>
         <Textarea
           value={(responses.confusion_detail as string) || ''}
           onChange={(e) => updateResponses({ confusion_detail: e.target.value })}
@@ -120,12 +120,12 @@ export const ConfusionBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStep
         />
       </div>
 
-      <Button 
-        onClick={handleNext} 
+      <Button
+        onClick={handleNext}
         disabled={!canContinue()}
         className="w-full"
       >
-        Pokračovat
+        {t('feedback.type_continue')}
       </Button>
     </div>
   );

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -12,51 +12,51 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
-import type { 
-  FeedbackStepProps, 
-  TrainingIssueType, 
+import type {
+  FeedbackStepProps,
+  TrainingIssueType,
   ExerciseIssueReason,
   DifficultyType,
   DifficultyFactor,
-  MissingExerciseType 
+  MissingExerciseType
 } from '../types';
-
-const issueTypes: { id: TrainingIssueType; label: string }[] = [
-  { id: 'exercise_doesnt_make_sense', label: 'Cvik mi nedával smysl' },
-  { id: 'missing_equipment', label: 'Nemám v posilce tento stroj / vybavení' },
-  { id: 'too_easy_hard', label: 'Trénink byl moc lehký / těžký' },
-  { id: 'missing_exercise_type', label: 'Chyběl mi nějaký typ cviku' },
-  { id: 'other_training', label: 'Něco jiného' },
-];
-
-const exerciseReasons: { id: ExerciseIssueReason; label: string }[] = [
-  { id: 'i_cant_do_it', label: 'Neumím ho' },
-  { id: 'pain_discomfort', label: 'Bolí mě při něm něco' },
-  { id: 'doesnt_fit_workout', label: 'Nehodí se do tréninku' },
-  { id: 'other_reason', label: 'Jiný důvod' },
-];
-
-const difficultyFactors: { id: DifficultyFactor; label: string }[] = [
-  { id: 'reps', label: 'Počet opakování' },
-  { id: 'weight', label: 'Váha' },
-  { id: 'volume', label: 'Celkový objem' },
-  { id: 'exercise_selection', label: 'Výběr cviků' },
-];
-
-const missingTypes: { id: MissingExerciseType; label: string }[] = [
-  { id: 'more_strength', label: 'Víc silových cviků' },
-  { id: 'more_cardio', label: 'Víc kondice' },
-  { id: 'more_core', label: 'Víc core' },
-  { id: 'more_mobility', label: 'Víc mobility/warmup' },
-  { id: 'more_variety', label: 'Větší variabilita' },
-  { id: 'other_type', label: 'Jiné' },
-];
 
 export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] }: FeedbackStepProps) => {
   const { t } = useTranslation();
   const responses = (data.responses || {}) as Record<string, unknown>;
   const [step, setStep] = useState<'issue' | 'details'>('issue');
-  
+
+  const issueTypes: { id: TrainingIssueType; label: string }[] = [
+    { id: 'exercise_doesnt_make_sense', label: t('feedback.training_issue_doesnt_make_sense') },
+    { id: 'missing_equipment', label: t('feedback.training_issue_missing_equipment') },
+    { id: 'too_easy_hard', label: t('feedback.training_issue_too_easy_hard') },
+    { id: 'missing_exercise_type', label: t('feedback.training_issue_missing_type') },
+    { id: 'other_training', label: t('feedback.training_issue_other') },
+  ];
+
+  const exerciseReasons: { id: ExerciseIssueReason; label: string }[] = [
+    { id: 'i_cant_do_it', label: t('feedback.training_reason_cant') },
+    { id: 'pain_discomfort', label: t('feedback.training_reason_pain') },
+    { id: 'doesnt_fit_workout', label: t('feedback.training_reason_doesnt_fit') },
+    { id: 'other_reason', label: t('feedback.training_reason_other') },
+  ];
+
+  const difficultyFactors: { id: DifficultyFactor; label: string }[] = [
+    { id: 'reps', label: t('feedback.training_diff_reps') },
+    { id: 'weight', label: t('feedback.training_diff_weight') },
+    { id: 'volume', label: t('feedback.training_diff_volume') },
+    { id: 'exercise_selection', label: t('feedback.training_diff_selection') },
+  ];
+
+  const missingTypes: { id: MissingExerciseType; label: string }[] = [
+    { id: 'more_strength', label: t('feedback.training_more_strength') },
+    { id: 'more_cardio', label: t('feedback.training_more_cardio') },
+    { id: 'more_core', label: t('feedback.training_more_core') },
+    { id: 'more_mobility', label: t('feedback.training_more_mobility') },
+    { id: 'more_variety', label: t('feedback.training_more_variety') },
+    { id: 'other_type', label: t('feedback.training_other_type') },
+  ];
+
   const selectedIssue = responses.training_issue as TrainingIssueType | undefined;
 
   const updateResponses = (updates: Record<string, unknown>) => {
@@ -69,7 +69,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
 
   const canContinue = () => {
     if (step === 'issue') return !!selectedIssue;
-    
+
     switch (selectedIssue) {
       case 'exercise_doesnt_make_sense':
         return !!responses.exercise_name && !!responses.exercise_reason;
@@ -100,11 +100,11 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           message = `Chybějící vybavení: ${responses.missing_equipment}`;
           break;
         case 'too_easy_hard':
-          message = `Trénink byl ${responses.difficulty_type === 'too_easy' ? 'moc lehký' : 'moc těžký'}`;
+          message = `Trénink byl ${responses.difficulty_type === 'too_easy' ? t('feedback.training_too_easy') : t('feedback.training_too_hard')}`;
           break;
         case 'missing_exercise_type':
-          message = `Chybějící typy: ${(responses.missing_types as string[] || []).map(t => 
-            missingTypes.find(mt => mt.id === t)?.label
+          message = `Chybějící typy: ${(responses.missing_types as string[] || []).map(mt =>
+            missingTypes.find(m => m.id === mt)?.label
           ).join(', ')}`;
           break;
         case 'other_training':
@@ -127,7 +127,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
   const toggleMissingType = (type: MissingExerciseType) => {
     const current = (responses.missing_types as string[]) || [];
     const updated = current.includes(type)
-      ? current.filter(t => t !== type)
+      ? current.filter(mt => mt !== type)
       : [...current, type];
     updateResponses({ missing_types: updated });
   };
@@ -147,7 +147,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h3 className="text-lg font-semibold">
-          {step === 'issue' ? 'Co přesně ti na tréninku nesedělo?' : 'Upřesni problém'}
+          {step === 'issue' ? t('feedback.training_title_issue') : t('feedback.training_title_detail')}
         </h3>
       </div>
 
@@ -178,7 +178,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
       {step === 'details' && selectedIssue === 'exercise_doesnt_make_sense' && (
         <div className="space-y-4">
           <div>
-            <Label>Který cvik?</Label>
+            <Label>{t('feedback.training_which_exercise')}</Label>
             {exercises.length > 0 ? (
               <Select
                 value={responses.exercise_id as string}
@@ -188,7 +188,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
                 }}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Vyber cvik" />
+                  <SelectValue placeholder={t('feedback.training_select_exercise')} />
                 </SelectTrigger>
                 <SelectContent>
                   {exercises.map((ex) => (
@@ -207,7 +207,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           </div>
 
           <div>
-            <Label>Proč?</Label>
+            <Label>{t('feedback.training_why')}</Label>
             <div className="space-y-2 mt-2">
               {exerciseReasons.map((reason) => (
                 <button
@@ -227,7 +227,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           </div>
 
           <div>
-            <Label>Detail (volitelné)</Label>
+            <Label>{t('feedback.training_exercise_detail')}</Label>
             <Textarea
               value={(responses.exercise_detail as string) || ''}
               onChange={(e) => updateResponses({ exercise_detail: e.target.value })}
@@ -241,7 +241,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
       {step === 'details' && selectedIssue === 'missing_equipment' && (
         <div className="space-y-4">
           <div>
-            <Label>Jaké vybavení/stroj ti chybělo?</Label>
+            <Label>{t('feedback.training_missing_equipment_label')}</Label>
             <Textarea
               value={(responses.missing_equipment as string) || ''}
               onChange={(e) => updateResponses({ missing_equipment: e.target.value })}
@@ -252,7 +252,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
 
           {exercises.length > 0 && (
             <div>
-              <Label>Který cvik to způsobil? (volitelné)</Label>
+              <Label>{t('feedback.training_caused_by_exercise')}</Label>
               <Select
                 value={responses.exercise_id as string}
                 onValueChange={(value) => {
@@ -261,7 +261,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
                 }}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Vyber cvik" />
+                  <SelectValue placeholder={t('feedback.training_select_exercise')} />
                 </SelectTrigger>
                 <SelectContent>
                   {exercises.map((ex) => (
@@ -277,11 +277,11 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
       {step === 'details' && selectedIssue === 'too_easy_hard' && (
         <div className="space-y-4">
           <div>
-            <Label>Bylo to spíš:</Label>
+            <Label>{t('feedback.training_difficulty_was')}</Label>
             <div className="flex gap-2 mt-2">
               {[
-                { id: 'too_easy' as DifficultyType, label: 'Moc lehký' },
-                { id: 'too_hard' as DifficultyType, label: 'Moc těžký' },
+                { id: 'too_easy' as DifficultyType, label: t('feedback.training_too_easy') },
+                { id: 'too_hard' as DifficultyType, label: t('feedback.training_too_hard') },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -300,7 +300,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           </div>
 
           <div>
-            <Label>Byl problém spíš v: (více možností)</Label>
+            <Label>{t('feedback.training_problem_in')}</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
               {difficultyFactors.map((factor) => (
                 <button
@@ -320,7 +320,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           </div>
 
           <div>
-            <Label>Co bys změnil/a? (volitelné)</Label>
+            <Label>{t('feedback.training_diff_change')}</Label>
             <Textarea
               value={(responses.difficulty_detail as string) || ''}
               onChange={(e) => updateResponses({ difficulty_detail: e.target.value })}
@@ -334,7 +334,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
       {step === 'details' && selectedIssue === 'missing_exercise_type' && (
         <div className="space-y-4">
           <div>
-            <Label>Co ti chybělo? (více možností)</Label>
+            <Label>{t('feedback.training_missing_what')}</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
               {missingTypes.map((type) => (
                 <button
@@ -354,7 +354,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
           </div>
 
           <div>
-            <Label>Popiš ideální variantu (volitelné)</Label>
+            <Label>{t('feedback.training_ideal_variant')}</Label>
             <Textarea
               value={(responses.missing_detail as string) || ''}
               onChange={(e) => updateResponses({ missing_detail: e.target.value })}
@@ -367,7 +367,7 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
 
       {step === 'details' && selectedIssue === 'other_training' && (
         <div>
-          <Label>Popiš problém</Label>
+          <Label>{t('feedback.training_other_describe')}</Label>
           <Textarea
             value={(responses.other_detail as string) || ''}
             onChange={(e) => updateResponses({ other_detail: e.target.value })}
@@ -378,12 +378,12 @@ export const TrainingBranch = ({ data, onUpdate, onNext, onBack, exercises = [] 
         </div>
       )}
 
-      <Button 
-        onClick={handleNext} 
+      <Button
+        onClick={handleNext}
         disabled={!canContinue()}
         className="w-full"
       >
-        Pokračovat
+        {t('feedback.type_continue')}
       </Button>
     </div>
   );

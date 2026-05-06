@@ -48,7 +48,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
     setIsSubmitting(false);
 
     if (error) {
-      toast.error('Chyba při odesílání');
+      toast.error(t('feedback.submit_error'));
     } else {
       setSubmitted(true);
       setTimeout(() => {
@@ -70,8 +70,8 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
         <DialogContent>
           <div className="text-center py-8">
             <CheckCircle2 className="w-16 h-16 text-chart-2 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Děkujeme!</h2>
-            <p className="text-muted-foreground">Tvoje zpětná vazba nám velmi pomáhá.</p>
+            <h2 className="text-xl font-bold mb-2">{t('feedback.thanks_title')}</h2>
+            <p className="text-muted-foreground">{t('feedback.thanks_desc')}</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -82,16 +82,16 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Zpětná vazba</DialogTitle>
+          <DialogTitle>{t('feedback.dialog_title')}</DialogTitle>
           <DialogDescription>
-            Pomoz nám zlepšit aplikaci - tvůj názor je pro nás důležitý!
+            {t('feedback.dialog_desc')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Star rating */}
           <div>
-            <Label>Jak hodnotíš celkovou zkušenost?</Label>
+            <Label>{t('feedback.rating_label')}</Label>
             <div className="flex gap-2 mt-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -115,7 +115,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
 
           {/* Open questions */}
           <div>
-            <Label htmlFor="satisfaction">Co se ti na aplikaci líbí?</Label>
+            <Label htmlFor="satisfaction">{t('feedback.satisfaction_label')}</Label>
             <Textarea
               id="satisfaction"
               value={satisfaction}
@@ -126,7 +126,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
           </div>
 
           <div>
-            <Label htmlFor="improvements">Co bychom mohli zlepšit?</Label>
+            <Label htmlFor="improvements">{t('feedback.improvements_label')}</Label>
             <Textarea
               id="improvements"
               value={improvements}
@@ -137,7 +137,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
           </div>
 
           <div>
-            <Label htmlFor="favoriteFeature">Jaká funkce ti nejvíc pomáhá?</Label>
+            <Label htmlFor="favoriteFeature">{t('feedback.favorite_label')}</Label>
             <Textarea
               id="favoriteFeature"
               value={favoriteFeature}
@@ -148,7 +148,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
           </div>
 
           <div>
-            <Label htmlFor="issues">Narazil jsi na nějaké problémy?</Label>
+            <Label htmlFor="issues">{t('feedback.issues_label')}</Label>
             <Textarea
               id="issues"
               value={issues}
@@ -161,7 +161,7 @@ export const AppFeedbackDialog = ({ open, onOpenChange }: AppFeedbackDialogProps
 
         <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full gap-2">
           <Send className="w-4 h-4" />
-          {isSubmitting ? 'Odesílám...' : 'Odeslat zpětnou vazbu'}
+          {isSubmitting ? t('feedback.submitting') : t('feedback.submit')}
         </Button>
       </DialogContent>
     </Dialog>
