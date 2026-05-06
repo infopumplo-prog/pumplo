@@ -55,6 +55,7 @@ export interface GymMachine {
   machine?: {
     id: string;
     name: string;
+    name_en?: string | null;
     description: string | null;
     image_url: string | null;
     requires_bench_config?: boolean;
@@ -163,7 +164,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       .from('gym_machines')
       .select(`
         *,
-        machine:machines(id, name, description, image_url, requires_bench_config)
+        machine:machines(id, name, name_en, description, image_url, requires_bench_config)
       `)
       .eq('gym_id', selectedGym.id);
 

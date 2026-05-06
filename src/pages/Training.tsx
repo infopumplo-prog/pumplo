@@ -66,7 +66,8 @@ interface HistoryExercise {
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const Training = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const navigate = useNavigate();
 
   const DAY_NAMES_CZ: Record<string, string> = {
@@ -965,7 +966,7 @@ const Training = () => {
     // 3. Fetch exercises for the given phase with body_region
     const { data: exercisesData } = await supabase
       .from('exercises')
-      .select('id, name, primary_muscles, video_path, body_region, description, setup_instructions, common_mistakes, tips')
+      .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
       .eq('allowed_phase', phase);
 
     if (!exercisesData || exercisesData.length === 0) return [];
@@ -1247,6 +1248,7 @@ const Training = () => {
           roleId: randomRole,
           exerciseId: selected.id,
           exerciseName: selected.name,
+          exerciseNameEn: selected.name_en || null,
           equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
           sets: profile.user_level === 'advanced' ? 4 : 3,
@@ -1310,6 +1312,7 @@ const Training = () => {
           roleId: randomRole,
           exerciseId: selected.id,
           exerciseName: selected.name,
+          exerciseNameEn: selected.name_en || null,
           equipment: [], // deprecated, kept for interface compatibility
           machineName: null,
           sets: profile.user_level === 'advanced' ? 4 : 3,
@@ -2050,7 +2053,7 @@ const Training = () => {
                               <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 flex-none">
                                 {idx + 1}
                               </span>
-                              <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+                              <span className="flex-1 min-w-0 truncate">{(isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName}</span>
                               <span className="text-muted-foreground text-xs shrink-0 flex-none">{ex.sets}×{ex.repMin}-{ex.repMax}</span>
                             </div>
                           ))}
@@ -2170,7 +2173,7 @@ const Training = () => {
                         <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0 flex-none">
                           {idx + 1}
                         </span>
-                        <span className="flex-1 min-w-0 truncate">{ex.exerciseName}</span>
+                        <span className="flex-1 min-w-0 truncate">{(isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName}</span>
                         <span className="text-xs text-muted-foreground shrink-0 flex-none">{ex.sets}×</span>
                       </div>
                     ))}

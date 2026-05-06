@@ -192,8 +192,10 @@ export interface WorkoutExercise {
   roleId: string; // Can be any role from DB
   exerciseId: string | null;
   exerciseName?: string;
+  exerciseNameEn?: string | null;
   equipment?: string[];
   machineName?: string | null;
+  machineNameEn?: string | null;
   difficulty?: number;
   sets: number;
   repMin: number;

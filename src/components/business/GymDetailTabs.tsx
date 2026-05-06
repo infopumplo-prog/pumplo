@@ -47,7 +47,8 @@ interface GymDetailTabsProps {
 }
 
 const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, services }: GymDetailTabsProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const [hoursOpen, setHoursOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [machineSearch, setMachineSearch] = useState('');
@@ -66,7 +67,7 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, servi
           key={gm.id}
           className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/30 text-sm"
         >
-          <span className="font-medium">{gm.machine?.name}</span>
+          <span className="font-medium">{(isEn && gm.machine?.name_en) ? gm.machine.name_en : gm.machine?.name}</span>
           <div className="flex items-center gap-2 text-muted-foreground text-xs">
             {gm.quantity > 1 && <span>{gm.quantity}×</span>}
             {gm.max_weight_kg && <span>max {gm.max_weight_kg}kg</span>}

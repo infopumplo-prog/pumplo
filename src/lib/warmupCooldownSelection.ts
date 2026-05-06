@@ -18,11 +18,14 @@ export const getTrainingFocus = (splitType: string, dayLetter: string): 'upper' 
 interface DbExercise {
   id: string;
   name: string;
+  name_en?: string | null;
   video_path: string | null;
   primary_muscles: string[] | null;
   body_region: string | null;
   description?: string | null;
+  description_en?: string | null;
   setup_instructions?: string | null;
+  setup_instructions_en?: string | null;
   common_mistakes?: string | null;
   tips?: string | null;
 }
@@ -30,11 +33,14 @@ interface DbExercise {
 const toWarmupExercise = (ex: DbExercise): WarmupExercise => ({
   id: ex.id,
   name: ex.name,
+  nameEn: ex.name_en ?? null,
   duration: 30,
   videoPath: ex.video_path,
   primaryMuscles: ex.primary_muscles ?? [],
   description: ex.description,
+  descriptionEn: ex.description_en ?? null,
   setupInstructions: ex.setup_instructions,
+  setupInstructionsEn: ex.setup_instructions_en ?? null,
   commonMistakes: ex.common_mistakes,
   tips: ex.tips,
 });

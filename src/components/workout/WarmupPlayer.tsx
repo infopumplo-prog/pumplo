@@ -21,11 +21,14 @@ import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudi
 export interface WarmupExercise {
   id: string;
   name: string;
+  nameEn?: string | null;
   duration: number;
   videoPath: string | null;
   primaryMuscles?: string[];
   description?: string | null;
+  descriptionEn?: string | null;
   setupInstructions?: string | null;
+  setupInstructionsEn?: string | null;
   commonMistakes?: string | null;
   tips?: string | null;
 }
@@ -40,7 +43,8 @@ interface WarmupPlayerProps {
 }
 
 export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd, initialIndex = 0 }: WarmupPlayerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -265,7 +269,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
           >
             <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[65vw]">
-              <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
+              <p className="text-white font-bold text-base leading-tight truncate">{(isEn && currentExercise.nameEn) ? currentExercise.nameEn : currentExercise.name}</p>
               <p className="text-white/70 text-sm mt-0.5">{t('workout.warmup_label')}</p>
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
@@ -356,7 +360,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{currentExercise.name}</DrawerTitle>
+            <DrawerTitle>{(isEn && currentExercise.nameEn) ? currentExercise.nameEn : currentExercise.name}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto space-y-4">
             {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
@@ -369,16 +373,16 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                 </div>
               </div>
             )}
-            {currentExercise.description && (
+            {(currentExercise.description || currentExercise.descriptionEn) && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.description')}</p>
-                <p className="text-sm leading-relaxed">{currentExercise.description}</p>
+                <p className="text-sm leading-relaxed">{(isEn && currentExercise.descriptionEn) ? currentExercise.descriptionEn : currentExercise.description}</p>
               </div>
             )}
-            {currentExercise.setupInstructions && (
+            {(currentExercise.setupInstructions || currentExercise.setupInstructionsEn) && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.setup')}</p>
-                <p className="text-sm leading-relaxed">{currentExercise.setupInstructions}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line">{(isEn && currentExercise.setupInstructionsEn) ? currentExercise.setupInstructionsEn : currentExercise.setupInstructions}</p>
               </div>
             )}
             {currentExercise.commonMistakes && (

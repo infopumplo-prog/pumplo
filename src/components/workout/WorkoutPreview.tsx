@@ -57,7 +57,8 @@ export const WorkoutPreview = ({
   onExercisesChange,
   isLoading = false
 }: WorkoutPreviewProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const navigate = useNavigate();
 
   const SLOT_CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
@@ -266,7 +267,7 @@ export const WorkoutPreview = ({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {t('workout.sets_x_reps', { sets: ex.sets, min: ex.repMin, max: ex.repMax })}
-                  {ex.machineName && ` · ${ex.machineName}`}
+                  {ex.machineName && ` · ${(isEn && ex.machineNameEn) ? ex.machineNameEn : ex.machineName}`}
                 </p>
               </div>
 
@@ -358,7 +359,7 @@ export const WorkoutPreview = ({
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   {t('workout.sets_x_reps', { sets: selectedExercise.sets, min: selectedExercise.repMin, max: selectedExercise.repMax })}
-                  {selectedExercise.machineName && ` · ${selectedExercise.machineName}`}
+                  {selectedExercise.machineName && ` · ${(isEn && selectedExercise.machineNameEn) ? selectedExercise.machineNameEn : selectedExercise.machineName}`}
                 </p>
 
                 {selectedExercise.slotCategory && SLOT_CATEGORY_LABELS[selectedExercise.slotCategory] && (

@@ -78,7 +78,8 @@ export const CompactWorkoutView = ({
   onCurrentSetWeightChange,
   onCurrentSetRepsChange,
 }: CompactWorkoutViewProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
 
   const slotCategoryLabels: Record<string, { label: string; color: string }> = {
     main: { label: t('slot.main'), color: 'bg-primary/15 text-primary border-primary/30' },
@@ -341,7 +342,7 @@ export const CompactWorkoutView = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className={`font-medium text-sm truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>
-                        {ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
+                        {(isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId)}
                       </p>
                       {ex.slotCategory && slotCategoryLabels[ex.slotCategory] && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${slotCategoryLabels[ex.slotCategory].color}`}>
@@ -352,7 +353,7 @@ export const CompactWorkoutView = ({
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-muted-foreground">
                         {completedSets}/{ex.sets} sérií
-                        {ex.machineName && ` · ${ex.machineName}`}
+                        {ex.machineName && ` · ${(isEn && ex.machineNameEn) ? ex.machineNameEn : ex.machineName}`}
                       </p>
                       {/* Mini set dots */}
                       <div className="flex gap-0.5">

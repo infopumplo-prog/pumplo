@@ -25,7 +25,8 @@ interface CooldownPlayerProps {
 }
 
 export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex = 0 }: CooldownPlayerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [timeRemaining, setTimeRemaining] = useState(exercises[initialIndex]?.duration || 30);
@@ -217,7 +218,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
           >
             <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 max-w-[65vw]">
-              <p className="text-white font-bold text-base leading-tight truncate">{currentExercise.name}</p>
+              <p className="text-white font-bold text-base leading-tight truncate">{(isEn && currentExercise.nameEn) ? currentExercise.nameEn : currentExercise.name}</p>
               <p className="text-white/70 text-sm mt-0.5">{t('workout.cooldown_label')}</p>
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
@@ -298,7 +299,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{currentExercise.name}</DrawerTitle>
+            <DrawerTitle>{(isEn && currentExercise.nameEn) ? currentExercise.nameEn : currentExercise.name}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto space-y-4">
             {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
@@ -311,16 +312,16 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
                 </div>
               </div>
             )}
-            {currentExercise.description && (
+            {(currentExercise.description || currentExercise.descriptionEn) && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.description')}</p>
-                <p className="text-sm leading-relaxed">{currentExercise.description}</p>
+                <p className="text-sm leading-relaxed">{(isEn && currentExercise.descriptionEn) ? currentExercise.descriptionEn : currentExercise.description}</p>
               </div>
             )}
-            {currentExercise.setupInstructions && (
+            {(currentExercise.setupInstructions || currentExercise.setupInstructionsEn) && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">{t('workout.setup')}</p>
-                <p className="text-sm leading-relaxed">{currentExercise.setupInstructions}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line">{(isEn && currentExercise.setupInstructionsEn) ? currentExercise.setupInstructionsEn : currentExercise.setupInstructions}</p>
               </div>
             )}
             {currentExercise.commonMistakes && (

@@ -303,6 +303,7 @@ export type Database = {
           common_mistakes: string | null
           created_at: string
           description: string | null
+          description_en: string | null
           difficulty: number
           equipment_type: string | null
           exercise_with_weights: boolean | null
@@ -310,15 +311,18 @@ export type Database = {
           is_compound: boolean | null
           machine_id: string | null
           name: string
+          name_en: string | null
           primary_muscles: string[]
           primary_role: string | null
           required_bench_config: string | null
           secondary_machine_id: string | null
           secondary_muscles: string[]
           setup_instructions: string | null
+          setup_instructions_en: string | null
           slot_type: string | null
           stability_rating: number | null
           tips: string | null
+          tips_en: string | null
           unit_type: string
           updated_at: string
           video_path: string | null
@@ -331,6 +335,7 @@ export type Database = {
           common_mistakes?: string | null
           created_at?: string
           description?: string | null
+          description_en?: string | null
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
@@ -338,15 +343,18 @@ export type Database = {
           is_compound?: boolean | null
           machine_id?: string | null
           name: string
+          name_en?: string | null
           primary_muscles?: string[]
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
           setup_instructions?: string | null
+          setup_instructions_en?: string | null
           slot_type?: string | null
           stability_rating?: number | null
           tips?: string | null
+          tips_en?: string | null
           unit_type?: string
           updated_at?: string
           video_path?: string | null
@@ -359,6 +367,7 @@ export type Database = {
           common_mistakes?: string | null
           created_at?: string
           description?: string | null
+          description_en?: string | null
           difficulty?: number
           equipment_type?: string | null
           exercise_with_weights?: boolean | null
@@ -366,15 +375,18 @@ export type Database = {
           is_compound?: boolean | null
           machine_id?: string | null
           name?: string
+          name_en?: string | null
           primary_muscles?: string[]
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
           setup_instructions?: string | null
+          setup_instructions_en?: string | null
           slot_type?: string | null
           stability_rating?: number | null
           tips?: string | null
+          tips_en?: string | null
           unit_type?: string
           updated_at?: string
           video_path?: string | null

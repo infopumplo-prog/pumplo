@@ -124,7 +124,7 @@ export const useWorkoutPlan = () => {
         .from('user_workout_exercises')
         .select(`
           *,
-          exercises (id, name, video_path, machine_id, machines!exercises_machine_id_fkey (name))
+          exercises (id, name, name_en, video_path, machine_id, machines!exercises_machine_id_fkey (name, name_en))
         `)
         .eq('plan_id', planData.id)
         .order('day_letter')
@@ -174,8 +174,10 @@ export const useWorkoutPlan = () => {
         roleId: ex.role_id,
         exerciseId: ex.exercise_id,
         exerciseName: (ex.exercises as Record<string, unknown> | null)?.name as string | null || null,
+        exerciseNameEn: (ex.exercises as Record<string, unknown> | null)?.name_en as string | null || null,
         equipment: (ex.exercises as Record<string, unknown> | null)?.equipment as string[] || [],
         machineName: ((ex.exercises as Record<string, unknown> | null)?.machines as Record<string, unknown> | null)?.name as string | null || null,
+        machineNameEn: ((ex.exercises as Record<string, unknown> | null)?.machines as Record<string, unknown> | null)?.name_en as string | null || null,
         sets: ex.sets,
         repMin: ex.rep_min || 8,
         repMax: ex.rep_max || 12,
