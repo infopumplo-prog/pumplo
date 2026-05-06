@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
@@ -15,6 +16,7 @@ interface StartWorkoutButtonProps {
 
 export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutButtonProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [showGymSelector, setShowGymSelector] = useState(false);
   const [showLocationGate, setShowLocationGate] = useState(false);
@@ -79,7 +81,7 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
           className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"
         >
           <Play className="w-5 h-5" />
-          Začít trénink
+          {t('home.start_workout')}
         </Button>
       </motion.div>
     </>

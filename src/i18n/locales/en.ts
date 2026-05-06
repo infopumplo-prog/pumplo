@@ -2011,6 +2011,8 @@ const en = {
   'onboarding.trainer_welcome_quote1': "In 12 years I've trained dozens of clients from scratch to their first competitions. And I know the biggest problem isn't motivation —",
   'onboarding.trainer_welcome_emphasis': "it's a plan that doesn't fit.",
   'onboarding.trainer_welcome_quote2': "Answer a few questions. We'll build yours exactly to your needs.",
+  'onboarding.level_advanced': 'Expert',
+  'onboarding.level_advanced_desc': 'More than 3 years of intensive training',
   'onboarding.split_full_body': 'Full Body A/B',
   'onboarding.split_upper_lower': 'Upper / Lower A/B',
   'onboarding.split_ppl': 'Push / Pull / Legs A/B/C',

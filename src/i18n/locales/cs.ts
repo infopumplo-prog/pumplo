@@ -2003,6 +2003,8 @@ const cs = {
   'onboarding.trainer_welcome_quote1': 'Za 12 let jsem natrénoval desítky klientů od nuly až po první závody. A vím, že největší problém není motivace —',
   'onboarding.trainer_welcome_emphasis': 'je to plán, který nesedí.',
   'onboarding.trainer_welcome_quote2': 'Zodpověz mi pár otázek. Sestavíme ti ho přesně na míru.',
+  'onboarding.level_advanced': 'Expert',
+  'onboarding.level_advanced_desc': 'Více než 3 roky intenzivního tréninku',
   'onboarding.split_full_body': 'Full Body A/B',
   'onboarding.split_upper_lower': 'Horní / Dolní tělo A/B',
   'onboarding.split_ppl': 'Push / Pull / Legs A/B/C',
