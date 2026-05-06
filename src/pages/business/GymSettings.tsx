@@ -50,7 +50,7 @@ const GymSettings = () => {
       toast.error(t('business.delete_dialog_title', { name: gym.name }));
       setIsDeleting(false);
     } else {
-      toast.success('Posilovna byla odstraněna');
+      toast.success(t('business.gym_deleted'));
       await refetch();
       navigate('/business');
     }

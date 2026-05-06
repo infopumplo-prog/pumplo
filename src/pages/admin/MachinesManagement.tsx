@@ -46,16 +46,11 @@ interface Machine {
 
 const ITEMS_PER_PAGE = 100;
 
-const EQUIPMENT_CATEGORIES = [
-  { value: 'machine', label: 'Stroj', icon: Cog },
-  { value: 'free_weight', label: 'Volná váha', icon: Dumbbell },
-  { value: 'accessory', label: 'Příslušenství', icon: Box },
-] as const;
-
-const getCategoryLabel = (value: string) => {
-  const cat = EQUIPMENT_CATEGORIES.find(c => c.value === value);
-  return cat?.label || value;
-};
+const getEquipmentCategories = (t: (key: string) => string) => [
+  { value: 'machine', label: t('equipment_cat.machine'), icon: Cog },
+  { value: 'free_weight', label: t('equipment_cat.free_weight'), icon: Dumbbell },
+  { value: 'accessory', label: t('equipment_cat.accessory'), icon: Box },
+];
 
 const getCategoryVariant = (value: string): 'default' | 'secondary' | 'outline' => {
   switch (value) {
@@ -68,6 +63,11 @@ const getCategoryVariant = (value: string): 'default' | 'secondary' | 'outline' 
 
 const MachinesManagement = () => {
   const { t } = useTranslation();
+  const EQUIPMENT_CATEGORIES = getEquipmentCategories(t);
+  const getCategoryLabel = (value: string) => {
+    const cat = EQUIPMENT_CATEGORIES.find(c => c.value === value);
+    return cat?.label || value;
+  };
   const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -174,7 +174,7 @@ const MachinesManagement = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error('Názov je povinný');
+      toast.error(t('admin.machine_name_required'));
       return;
     }
 
@@ -190,10 +190,10 @@ const MachinesManagement = () => {
         .eq('id', editingMachine.id);
 
       if (error) {
-        toast.error('Chyba při ukladaní');
+        toast.error(t('admin.machine_save_error'));
         return;
       }
-      toast.success('Stroj aktualizovaný');
+      toast.success(t('admin.machine_updated_ok'));
     } else {
       const { error } = await supabase.from('machines').insert({
         name: form.name,
@@ -203,10 +203,10 @@ const MachinesManagement = () => {
       });
 
       if (error) {
-        toast.error('Chyba při vytváraní');
+        toast.error(t('admin.machine_add_error'));
         return;
       }
-      toast.success('Stroj přidaný');
+      toast.success(t('admin.machine_added_ok'));
     }
 
     setDrawerOpen(false);
@@ -218,11 +218,11 @@ const MachinesManagement = () => {
     const { error } = await supabase.from('machines').delete().eq('id', id);
 
     if (error) {
-      toast.error('Chyba při mazaní');
+      toast.error(t('admin.machine_delete_error'));
       return;
     }
 
-    toast.success('Stroj vymazaný');
+    toast.success(t('admin.machine_deleted_ok'));
     fetchMachines();
   };
 
@@ -271,7 +271,7 @@ const MachinesManagement = () => {
     });
 
     if (updates.length === 0) {
-      toast.info('Všechny kategorie jsou již správné');
+      toast.info(t('admin.categories_correct'));
       return;
     }
 
@@ -285,7 +285,7 @@ const MachinesManagement = () => {
       if (!error) successCount++;
     }
 
-    toast.success(`Opraveno ${successCount} z ${updates.length} strojů`);
+    toast.success(t('admin.categories_fixed', { n: successCount, total: updates.length }));
     fetchMachines();
   };
 
@@ -294,7 +294,7 @@ const MachinesManagement = () => {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Stroje</h2>
+          <h2 className="text-xl font-bold">{t('admin.machines_title')}</h2>
           <div className="flex gap-2">
             <Button onClick={handleFixCategories} size="sm" variant="outline">
               <Wand2 className="w-4 h-4 mr-1" />
@@ -302,11 +302,11 @@ const MachinesManagement = () => {
             </Button>
             <Button onClick={openDuplicatesDrawer} size="sm" variant="outline">
               <GitMerge className="w-4 h-4 mr-1" />
-              Duplicity
+              {t('admin.duplicates_btn')}
             </Button>
             <Button onClick={openAddDrawer} size="sm">
               <Plus className="w-4 h-4 mr-1" />
-              Pridať
+              {t('admin.add_btn')}
             </Button>
           </div>
         </div>
@@ -339,10 +339,10 @@ const MachinesManagement = () => {
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Kategorie" />
+              <SelectValue placeholder={t('admin.category_placeholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Všechny</SelectItem>
+              <SelectItem value="all">{t('admin.all_categories_label')}</SelectItem>
               {EQUIPMENT_CATEGORIES.map(cat => (
                 <SelectItem key={cat.value} value={cat.value}>
                   {cat.label}
@@ -370,7 +370,7 @@ const MachinesManagement = () => {
                       </Badge>
                       {machine.is_cardio && (
                         <Badge variant="outline" className="text-xs">
-                          Kardio
+                          {t('admin.cardio_badge')}
                         </Badge>
                       )}
                     </div>
@@ -411,12 +411,12 @@ const MachinesManagement = () => {
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
               <DrawerTitle>
-                {editingMachine ? 'Upravit stroj' : 'Přidat stroj'}
+                {editingMachine ? t('admin.edit_machine_title') : t('admin.add_machine_title2')}
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4 overflow-y-auto">
               <div>
-                <Label>Název</Label>
+                <Label>{t('admin.machine_name_label')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -424,7 +424,7 @@ const MachinesManagement = () => {
               </div>
               
               <div>
-                <Label>Kategorie vybavení</Label>
+                <Label>{t('admin.equipment_category_label')}</Label>
                 <Select
                   value={form.equipment_category}
                   onValueChange={(value) => setForm({ ...form, equipment_category: value })}
@@ -443,7 +443,7 @@ const MachinesManagement = () => {
               </div>
 
               <div className="flex items-center justify-between py-2">
-                <Label htmlFor="is-cardio">Kardio vybavení</Label>
+<Label htmlFor="is-cardio">{t('admin.cardio_equipment_label')}</Label>
                 <Switch
                   id="is-cardio"
                   checked={form.is_cardio}
@@ -452,7 +452,7 @@ const MachinesManagement = () => {
               </div>
 
               <div>
-                <Label>Popis</Label>
+                <Label>{t('admin.description_label')}</Label>
                 <Textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -485,10 +485,10 @@ const MachinesManagement = () => {
             </div>
             <DrawerFooter>
               <Button onClick={handleSave} className="w-full">
-                {editingMachine ? 'Uložit změny' : 'Přidat stroj'}
+                {editingMachine ? t('admin.save_machine_btn') : t('admin.add_machine_btn2')}
               </Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušit</Button>
+<Button variant="outline">{t('admin.cancel')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>

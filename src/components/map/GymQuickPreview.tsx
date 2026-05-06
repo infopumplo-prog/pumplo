@@ -4,6 +4,7 @@ import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
 import { isGymCurrentlyOpen, getTodayOpeningStatus, isClosingSoon } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface GymQuickPreviewProps {
   gym: PublicGym;
@@ -20,6 +21,7 @@ const GymQuickPreview = ({
   onNavigateClick,
   onClose
 }: GymQuickPreviewProps) => {
+  const { t } = useTranslation();
   const hours = gym.opening_hours as OpeningHours;
   const isOpen = isGymCurrentlyOpen(hours);
   const status = getTodayOpeningStatus(hours);
@@ -67,7 +69,7 @@ const GymQuickPreview = ({
               {gym.is_verified && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
-                  Ověřená
+                  {t('business.verified')}
                 </span>
               )}
             </div>
@@ -75,7 +77,7 @@ const GymQuickPreview = ({
             {/* Address + Distance on same line */}
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
               <MapPin className="w-3 h-3 shrink-0" />
-              <span className="truncate">{gym.address || 'Adresa neuvedena'}</span>
+              <span className="truncate">{gym.address || t('map.address_unknown')}</span>
               {distance !== undefined && (
                 <span className="shrink-0 text-primary font-medium ml-1">
                   • {formatDistance(distance)}
@@ -109,15 +111,15 @@ const GymQuickPreview = ({
           onClick={onDetailClick}
         >
           <Info className="w-4 h-4" />
-          Detail
+          {t('map.detail')}
         </Button>
-        <Button 
-          size="lg" 
+        <Button
+          size="lg"
           className="flex-1 gap-2"
           onClick={onNavigateClick}
         >
           <Navigation className="w-4 h-4" />
-          Navigace
+          {t('map.navigate')}
         </Button>
       </div>
     </div>

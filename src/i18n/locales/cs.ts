@@ -473,6 +473,48 @@ const cs = {
   'custom_plan.video_unavailable': 'Video nedostupné',
   'custom_plan.loading': 'Načítám...',
   'custom_plan.day_prefix': 'Den {{n}}',
+  'custom_plan.detail_exercise': 'Detail cviku',
+  'custom_plan.slot_accessory': 'Doplňkový',
+  'custom_plan.exercise_word_one': 'cvik',
+  'custom_plan.exercise_word_few': 'cviky',
+  'custom_plan.exercise_word_many': 'cviků',
+  'custom_plan.incompatible_suffix': 'nejdou v',
+  'custom_plan.muscle_back': 'Záda',
+  'custom_plan.muscle_chest': 'Prsa',
+  'custom_plan.muscle_legs': 'Nohy',
+  'custom_plan.muscle_glutes': 'Zadek / Hýždě',
+  'custom_plan.muscle_shoulders': 'Ramena',
+  'custom_plan.muscle_biceps': 'Biceps',
+  'custom_plan.muscle_triceps': 'Triceps',
+  'custom_plan.muscle_core': 'Břicho / Core',
+  'custom_plan.muscle_calves': 'Lýtka',
+  'custom_plan.muscle_arms': 'Paže / Ruce',
+  'custom_plan.muscle_fullbody': 'Celé tělo',
+  'custom_plan.role_group_upper': 'Horní tělo',
+  'custom_plan.role_group_lower': 'Dolní tělo',
+  'custom_plan.role_group_core': 'Core',
+  'custom_plan.role_group_cardio': 'Kardio',
+  'custom_plan.role_horizontal_push': 'Tlak na prsa',
+  'custom_plan.role_horizontal_pull': 'Tah zad',
+  'custom_plan.role_vertical_push': 'Tlak nad hlavu',
+  'custom_plan.role_vertical_pull': 'Stahování',
+  'custom_plan.role_elbow_flexion': 'Biceps',
+  'custom_plan.role_elbow_extension': 'Triceps',
+  'custom_plan.role_shoulder_abduction': 'Abdukce ramena',
+  'custom_plan.role_shoulder_adduction': 'Addukce ramena',
+  'custom_plan.role_rear_delt_isolation': 'Zadní ramena',
+  'custom_plan.role_upper_back_isolation': 'Horní záda',
+  'custom_plan.role_squat': 'Dřepy',
+  'custom_plan.role_hinge': 'Mrtvý tah',
+  'custom_plan.role_lunge': 'Výpady',
+  'custom_plan.role_step': 'Krok',
+  'custom_plan.role_jump': 'Skok',
+  'custom_plan.role_full_body_pull': 'Celotělový tah',
+  'custom_plan.role_anti_extension': 'Anti-extenze',
+  'custom_plan.role_rotation': 'Rotace trupu',
+  'custom_plan.role_cyclical_cardio': 'Běh / Kardio',
+  'custom_plan.role_cyclical_pull': 'Veslování',
+  'custom_plan.role_cyclical_push': 'Air bike / Kolo',
 
   // MyPlan extra
   'myplan.week_type_normal': 'Normální',
@@ -616,6 +658,7 @@ const cs = {
   'equipment.free_weight': 'Volné závaží',
   'equipment.plate_loaded': 'Kotouče',
   'equipment.other': 'Jiné',
+  'equipment.accessory': 'Příslušenství',
 
   // Training page
   'training.title': 'Trénink',
@@ -1498,6 +1541,11 @@ const cs = {
   'admin.machine_setup_placeholder': 'Jak nastavit stroj, sedačku, opěrku...',
   'admin.exercise_caution_placeholder': 'Na co si dát pozor...',
   'admin.exercise_tips_placeholder': 'Tipy pro správné provedení...',
+  'admin.phase_main': 'Hlavní trénink',
+  'admin.no_name': 'Bez jména',
+  'admin.cardio_badge': 'Kardio',
+  'admin.users_total': '{{n}} celkem',
+  'admin.add_btn': 'Přidat',
 
   // trainer BecomeTrainer remaining
   'trainer.currency_placeholder': 'Kč',
@@ -1662,6 +1710,10 @@ const cs = {
   'business.trainer_services': 'Služby',
   'business.pricing_section_single': 'Jednorázové vstupy',
   'business.pricing_section_membership': 'Permanentky / Členství',
+  'business.bench_config_flat': 'Flat (rovná)',
+  'business.bench_config_incline': 'Incline (šikmá nahoru)',
+  'business.bench_config_decline': 'Decline (šikmá dolů)',
+  'business.gym_deleted': 'Posilovna byla odstraněna',
 
   // map page
   'map.locked_title': 'Mapa je uzamčená',
@@ -1734,6 +1786,53 @@ const cs = {
   'home.start_workout': 'Začít trénink',
   'home.gym_fallback': 'Posilovna',
   'home.plan_name_placeholder': 'Název plánu...',
+
+  // Equipment types (ExercisesManagement select options)
+  'equipment_type.bodyweight': 'Vlastní váha',
+  'equipment_type.barbell': 'Činka',
+  'equipment_type.dumbbell': 'Jednoručky',
+  'equipment_type.kettlebell': 'Kettlebell',
+  'equipment_type.machine': 'Stroj',
+  'equipment_type.cable': 'Kladka',
+  'equipment_type.plate_loaded': 'Kotouče',
+  'equipment_type.other': 'Jiné',
+
+  // Training phases (ExercisesManagement select options)
+  'phase.main': 'Hlavní trénink',
+  'phase.warmup': 'Rozcvička',
+
+  // Bench configurations (ExercisesManagement select options)
+  'bench.flat': 'Flat (rovná)',
+  'bench.incline': 'Incline (šikmá nahoru)',
+  'bench.decline': 'Decline (šikmá dolů)',
+
+  // Equipment categories (MachinesManagement)
+  'equipment_cat.machine': 'Stroj',
+  'equipment_cat.free_weight': 'Volná váha',
+  'equipment_cat.accessory': 'Příslušenství',
+
+  // Days of week for AdminGymDetail opening hours
+  'admin.day_monday': 'Pondělí',
+  'admin.day_tuesday': 'Úterý',
+  'admin.day_wednesday': 'Středa',
+  'admin.day_thursday': 'Čtvrtek',
+  'admin.day_friday': 'Pátek',
+  'admin.day_saturday': 'Sobota',
+  'admin.day_sunday': 'Neděle',
+
+  // Admin shared labels
+  'admin.no_name': 'Bez jména',
+  'admin.add_btn': 'Přidat',
+  'admin.close_btn': 'Zavřít',
+  'admin.save_btn': 'Uložit',
+  'admin.creating_label': 'Vytváření...',
+  'admin.resetting_label': 'Resetování...',
+  'admin.saving_label': 'Ukládám...',
+  'admin.adding_label': 'Přidávání...',
+  'admin.saving_machine_label': 'Ukládání...',
+  'admin.cardio_badge': 'Kardio',
+  'admin.all_categories_label': 'Všechny kategorie',
+  'admin.category_placeholder': 'Kategorie',
 };
 
 export default cs;

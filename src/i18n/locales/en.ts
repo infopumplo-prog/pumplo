@@ -473,6 +473,48 @@ const en = {
   'custom_plan.video_unavailable': 'Video unavailable',
   'custom_plan.loading': 'Loading...',
   'custom_plan.day_prefix': 'Day {{n}}',
+  'custom_plan.detail_exercise': 'Exercise detail',
+  'custom_plan.slot_accessory': 'Accessory',
+  'custom_plan.exercise_word_one': 'exercise',
+  'custom_plan.exercise_word_few': 'exercises',
+  'custom_plan.exercise_word_many': 'exercises',
+  'custom_plan.incompatible_suffix': 'not available at',
+  'custom_plan.muscle_back': 'Back',
+  'custom_plan.muscle_chest': 'Chest',
+  'custom_plan.muscle_legs': 'Legs',
+  'custom_plan.muscle_glutes': 'Glutes',
+  'custom_plan.muscle_shoulders': 'Shoulders',
+  'custom_plan.muscle_biceps': 'Biceps',
+  'custom_plan.muscle_triceps': 'Triceps',
+  'custom_plan.muscle_core': 'Core / Abs',
+  'custom_plan.muscle_calves': 'Calves',
+  'custom_plan.muscle_arms': 'Arms',
+  'custom_plan.muscle_fullbody': 'Full body',
+  'custom_plan.role_group_upper': 'Upper body',
+  'custom_plan.role_group_lower': 'Lower body',
+  'custom_plan.role_group_core': 'Core',
+  'custom_plan.role_group_cardio': 'Cardio',
+  'custom_plan.role_horizontal_push': 'Chest press',
+  'custom_plan.role_horizontal_pull': 'Back row',
+  'custom_plan.role_vertical_push': 'Overhead press',
+  'custom_plan.role_vertical_pull': 'Pulldown',
+  'custom_plan.role_elbow_flexion': 'Biceps curl',
+  'custom_plan.role_elbow_extension': 'Triceps',
+  'custom_plan.role_shoulder_abduction': 'Shoulder abduction',
+  'custom_plan.role_shoulder_adduction': 'Shoulder adduction',
+  'custom_plan.role_rear_delt_isolation': 'Rear delts',
+  'custom_plan.role_upper_back_isolation': 'Upper back',
+  'custom_plan.role_squat': 'Squat',
+  'custom_plan.role_hinge': 'Deadlift / Hinge',
+  'custom_plan.role_lunge': 'Lunge',
+  'custom_plan.role_step': 'Step',
+  'custom_plan.role_jump': 'Jump',
+  'custom_plan.role_full_body_pull': 'Full body pull',
+  'custom_plan.role_anti_extension': 'Anti-extension',
+  'custom_plan.role_rotation': 'Core rotation',
+  'custom_plan.role_cyclical_cardio': 'Run / Cardio',
+  'custom_plan.role_cyclical_pull': 'Rowing',
+  'custom_plan.role_cyclical_push': 'Air bike / Cycling',
 
   // MyPlan extra
   'myplan.week_type_normal': 'Normal',
@@ -616,6 +658,7 @@ const en = {
   'equipment.free_weight': 'Free weight',
   'equipment.plate_loaded': 'Plate loaded',
   'equipment.other': 'Other',
+  'equipment.accessory': 'Accessory',
 
   // Training page
   'training.title': 'Training',
@@ -1506,6 +1549,11 @@ const en = {
   'admin.machine_setup_placeholder': 'How to set up the machine, seat, backrest...',
   'admin.exercise_caution_placeholder': 'What to watch out for...',
   'admin.exercise_tips_placeholder': 'Tips for proper execution...',
+  'admin.phase_main': 'Main workout',
+  'admin.no_name': 'No name',
+  'admin.cardio_badge': 'Cardio',
+  'admin.users_total': '{{n}} total',
+  'admin.add_btn': 'Add',
 
   // trainer BecomeTrainer remaining
   'trainer.currency_placeholder': 'CZK',
@@ -1670,6 +1718,10 @@ const en = {
   'business.trainer_services': 'Services',
   'business.pricing_section_single': 'Single entries',
   'business.pricing_section_membership': 'Memberships',
+  'business.bench_config_flat': 'Flat',
+  'business.bench_config_incline': 'Incline',
+  'business.bench_config_decline': 'Decline',
+  'business.gym_deleted': 'Gym deleted',
 
   // map page
   'map.locked_title': 'Map is locked',
@@ -1742,6 +1794,53 @@ const en = {
   'home.start_workout': 'Start workout',
   'home.gym_fallback': 'Gym',
   'home.plan_name_placeholder': 'Plan name...',
+
+  // Equipment types (ExercisesManagement select options)
+  'equipment_type.bodyweight': 'Bodyweight',
+  'equipment_type.barbell': 'Barbell',
+  'equipment_type.dumbbell': 'Dumbbell',
+  'equipment_type.kettlebell': 'Kettlebell',
+  'equipment_type.machine': 'Machine',
+  'equipment_type.cable': 'Cable',
+  'equipment_type.plate_loaded': 'Plate loaded',
+  'equipment_type.other': 'Other',
+
+  // Training phases (ExercisesManagement select options)
+  'phase.main': 'Main workout',
+  'phase.warmup': 'Warm-up',
+
+  // Bench configurations (ExercisesManagement select options)
+  'bench.flat': 'Flat',
+  'bench.incline': 'Incline',
+  'bench.decline': 'Decline',
+
+  // Equipment categories (MachinesManagement)
+  'equipment_cat.machine': 'Machine',
+  'equipment_cat.free_weight': 'Free weight',
+  'equipment_cat.accessory': 'Accessory',
+
+  // Days of week for AdminGymDetail opening hours
+  'admin.day_monday': 'Monday',
+  'admin.day_tuesday': 'Tuesday',
+  'admin.day_wednesday': 'Wednesday',
+  'admin.day_thursday': 'Thursday',
+  'admin.day_friday': 'Friday',
+  'admin.day_saturday': 'Saturday',
+  'admin.day_sunday': 'Sunday',
+
+  // Admin shared labels
+  'admin.no_name': 'No name',
+  'admin.add_btn': 'Add',
+  'admin.close_btn': 'Close',
+  'admin.save_btn': 'Save',
+  'admin.creating_label': 'Creating...',
+  'admin.resetting_label': 'Resetting...',
+  'admin.saving_label': 'Saving...',
+  'admin.adding_label': 'Adding...',
+  'admin.saving_machine_label': 'Saving...',
+  'admin.cardio_badge': 'Cardio',
+  'admin.all_categories_label': 'All categories',
+  'admin.category_placeholder': 'Category',
 };
 
 export default en;

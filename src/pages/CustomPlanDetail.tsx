@@ -101,92 +101,90 @@ const filterMachinesByQuery = (machines: string[], query: string): string[] => {
 };
 
 // Muscle filters - matching actual Czech primary_muscles values from DB
-const MUSCLE_FILTERS = [
-  { key: 'back', label: 'Záda', match: ['záda', 'back', 'laty', 'latisi', 'latysi', 'lopatky', 'trapéz', 'trapez', 'traps', 'pilovitý', 'pilovity', 'rhomboid', 'wide_back', 'střed zad', 'stred zad'] },
-  { key: 'chest', label: 'Prsa', match: ['prsa', 'prsní', 'chest', 'horní prsa', 'horni prsa'] },
-  { key: 'legs', label: 'Nohy', match: ['nohy', 'nožní', 'kvadriceps', 'quadriceps', 'quads', 'dolní konč', 'dolni konc', 'lýtka', 'lytka', 'calves', 'hamstring', 'front_thigh', 'back_thigh'] },
-  { key: 'glutes', label: 'Zadek / Hýždě', match: ['zadek', 'glute', 'hýždě', 'hyzde'] },
-  { key: 'shoulders', label: 'Ramena', match: ['ramena', 'shoulders', 'front_shoulders', 'side_shoulders', 'deltoid'] },
-  { key: 'biceps', label: 'Biceps', match: ['biceps'] },
-  { key: 'triceps', label: 'Triceps', match: ['triceps'] },
-  { key: 'core', label: 'Břicho / Core', match: ['břišní', 'brisni', 'břicho', 'bricho', 'střed těla', 'stred tela', 'core', 'abs', 'bedra'] },
-  { key: 'calves', label: 'Lýtka', match: ['lýtka', 'lytka', 'calves', 'calf'] },
-  { key: 'arms', label: 'Paže / Ruce', match: ['paže', 'paze', 'ruce'] },
-  { key: 'fullbody', label: 'Celé tělo', match: ['fullbody', 'fulbody', 'full body'] },
-] as const;
+const getMuscleFilters = (t: (key: string) => string) => [
+  { key: 'back', label: t('custom_plan.muscle_back'), match: ['záda', 'back', 'laty', 'latisi', 'latysi', 'lopatky', 'trapéz', 'trapez', 'traps', 'pilovitý', 'pilovity', 'rhomboid', 'wide_back', 'střed zad', 'stred zad'] },
+  { key: 'chest', label: t('custom_plan.muscle_chest'), match: ['prsa', 'prsní', 'chest', 'horní prsa', 'horni prsa'] },
+  { key: 'legs', label: t('custom_plan.muscle_legs'), match: ['nohy', 'nožní', 'kvadriceps', 'quadriceps', 'quads', 'dolní konč', 'dolni konc', 'lýtka', 'lytka', 'calves', 'hamstring', 'front_thigh', 'back_thigh'] },
+  { key: 'glutes', label: t('custom_plan.muscle_glutes'), match: ['zadek', 'glute', 'hýždě', 'hyzde'] },
+  { key: 'shoulders', label: t('custom_plan.muscle_shoulders'), match: ['ramena', 'shoulders', 'front_shoulders', 'side_shoulders', 'deltoid'] },
+  { key: 'biceps', label: t('custom_plan.muscle_biceps'), match: ['biceps'] },
+  { key: 'triceps', label: t('custom_plan.muscle_triceps'), match: ['triceps'] },
+  { key: 'core', label: t('custom_plan.muscle_core'), match: ['břišní', 'brisni', 'břicho', 'bricho', 'střed těla', 'stred tela', 'core', 'abs', 'bedra'] },
+  { key: 'calves', label: t('custom_plan.muscle_calves'), match: ['lýtka', 'lytka', 'calves', 'calf'] },
+  { key: 'arms', label: t('custom_plan.muscle_arms'), match: ['paže', 'paze', 'ruce'] },
+  { key: 'fullbody', label: t('custom_plan.muscle_fullbody'), match: ['fullbody', 'fulbody', 'full body'] },
+];
 
 // Equipment: actual DB values are machine, free_weight, bodyweight, kettlebell, other
-const EQUIPMENT_FILTERS = [
-  { key: 'machine', label: 'Stroj' },
-  { key: 'free_weight', label: 'Volné závaží' },
-  { key: 'kettlebell', label: 'Kettlebell' },
-  { key: 'bodyweight', label: 'Vlastní váha' },
-] as const;
+const getEquipmentFilters = (t: (key: string) => string) => [
+  { key: 'machine', label: t('equipment.machine') },
+  { key: 'free_weight', label: t('equipment.free_weight') },
+  { key: 'kettlebell', label: t('equipment.kettlebell') },
+  { key: 'bodyweight', label: t('equipment.bodyweight') },
+];
 
 // Slot type: actual DB values are main, secondary, accessory, core
-const SLOT_TYPE_FILTERS = [
-  { key: 'main', label: 'Hlavní' },
-  { key: 'secondary', label: 'Pomocný' },
-  { key: 'accessory', label: 'Doplňkový' },
-  { key: 'core', label: 'Core' },
-] as const;
+const getSlotTypeFilters = (t: (key: string) => string) => [
+  { key: 'main', label: t('slot.main') },
+  { key: 'secondary', label: t('slot.secondary') },
+  { key: 'accessory', label: t('custom_plan.slot_accessory') },
+  { key: 'core', label: t('slot.core') },
+];
 
 // Role filters grouped - keys match actual primary_role values in DB
-const ROLE_FILTER_GROUPS = [
+const getRoleFilterGroups = (t: (key: string) => string) => [
   {
-    label: 'Horní tělo',
+    label: t('custom_plan.role_group_upper'),
     roles: [
-      { key: 'horizontal_push', label: 'Tlak na prsa' },
-      { key: 'horizontal_pull', label: 'Tah zad' },
-      { key: 'vertical_push', label: 'Tlak nad hlavu' },
-      { key: 'vertical_pull', label: 'Stahování' },
-      { key: 'elbow_flexion', label: 'Biceps' },
-      { key: 'elbow_extension', label: 'Triceps' },
-      { key: 'shoulder_abduction', label: 'Abdukce ramena' },
-      { key: 'shoulder_adduction', label: 'Addukce ramena' },
-      { key: 'rear_delt_isolation', label: 'Zadní ramena' },
-      { key: 'upper_back_isolation', label: 'Horní záda' },
+      { key: 'horizontal_push', label: t('custom_plan.role_horizontal_push') },
+      { key: 'horizontal_pull', label: t('custom_plan.role_horizontal_pull') },
+      { key: 'vertical_push', label: t('custom_plan.role_vertical_push') },
+      { key: 'vertical_pull', label: t('custom_plan.role_vertical_pull') },
+      { key: 'elbow_flexion', label: t('custom_plan.role_elbow_flexion') },
+      { key: 'elbow_extension', label: t('custom_plan.role_elbow_extension') },
+      { key: 'shoulder_abduction', label: t('custom_plan.role_shoulder_abduction') },
+      { key: 'shoulder_adduction', label: t('custom_plan.role_shoulder_adduction') },
+      { key: 'rear_delt_isolation', label: t('custom_plan.role_rear_delt_isolation') },
+      { key: 'upper_back_isolation', label: t('custom_plan.role_upper_back_isolation') },
     ],
   },
   {
-    label: 'Dolní tělo',
+    label: t('custom_plan.role_group_lower'),
     roles: [
-      { key: 'squat', label: 'Dřepy' },
-      { key: 'hinge', label: 'Mrtvý tah' },
-      { key: 'lunge', label: 'Výpady' },
-      { key: 'step', label: 'Krok' },
-      { key: 'jump', label: 'Skok' },
-      { key: 'full_body_pull', label: 'Celotělový tah' },
+      { key: 'squat', label: t('custom_plan.role_squat') },
+      { key: 'hinge', label: t('custom_plan.role_hinge') },
+      { key: 'lunge', label: t('custom_plan.role_lunge') },
+      { key: 'step', label: t('custom_plan.role_step') },
+      { key: 'jump', label: t('custom_plan.role_jump') },
+      { key: 'full_body_pull', label: t('custom_plan.role_full_body_pull') },
     ],
   },
   {
-    label: 'Core',
+    label: t('custom_plan.role_group_core'),
     roles: [
-      { key: 'anti_extension', label: 'Anti-extenze' },
-      { key: 'rotation', label: 'Rotace trupu' },
+      { key: 'anti_extension', label: t('custom_plan.role_anti_extension') },
+      { key: 'rotation', label: t('custom_plan.role_rotation') },
     ],
   },
   {
-    label: 'Kardio',
+    label: t('custom_plan.role_group_cardio'),
     roles: [
-      { key: 'cyclical_cardio', label: 'Běh / Kardio' },
-      { key: 'cyclical_pull', label: 'Veslování' },
-      { key: 'cyclical_push', label: 'Air bike / Kolo' },
+      { key: 'cyclical_cardio', label: t('custom_plan.role_cyclical_cardio') },
+      { key: 'cyclical_pull', label: t('custom_plan.role_cyclical_pull') },
+      { key: 'cyclical_push', label: t('custom_plan.role_cyclical_push') },
     ],
   },
-] as const;
+];
 
-const categoryLabels: Record<string, string> = {
-  chest: 'Hrudník', back: 'Záda', shoulders: 'Ramena', arms: 'Paže',
-  legs: 'Nohy', core: 'Střed těla', cardio: 'Kardio',
-  full_body: 'Celé tělo', abdominals: 'Břicho',
-};
+const getCategoryLabel = (key: string, t: (k: string) => string): string =>
+  ({ chest: t('category.chest'), back: t('category.back'), shoulders: t('category.shoulders'), arms: t('category.arms'),
+     legs: t('category.legs'), core: t('category.core'), cardio: t('category.cardio'),
+     full_body: t('category.full_body'), abdominals: t('category.abdominals') }[key] ?? key);
 
-const equipmentLabels: Record<string, string> = {
-  bodyweight: 'Vlastní váha', barbell: 'Činka', dumbbell: 'Jednoručky',
-  kettlebell: 'Kettlebell', machine: 'Stroj', cable: 'Kladka',
-  plate_loaded: 'Kotouče', other: 'Jiné',
-};
+const getEquipmentLabel = (key: string, t: (k: string) => string): string =>
+  ({ bodyweight: t('equipment.bodyweight'), barbell: t('equipment.barbell'), dumbbell: t('equipment.dumbbell'),
+     kettlebell: t('equipment.kettlebell'), machine: t('equipment.machine'), cable: t('equipment.cable'),
+     plate_loaded: t('equipment.plate_loaded'), other: t('equipment.other') }[key] ?? key);
 
 // --- Per-set row input (local state, saves on blur) ---
 const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeightChange, onRestChange }: {
@@ -194,9 +192,10 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
   isCardio: boolean;
   onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onRestChange: (v: number) => void;
 }) => {
+  const { t } = useTranslation();
   const [r, setR] = useState(String(reps));
   const [w, setW] = useState(weight != null ? String(weight) : '');
-  const [t, setT] = useState(String(rest));
+  const [restVal, setRestVal] = useState(String(rest));
   const [cardioMin, setCardioMin] = useState(String(Math.floor(reps / 60)));
   const [cardioSec, setCardioSec] = useState(String(reps % 60));
 
@@ -231,7 +230,7 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
       ) : (
         <>
           <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">Opak:</label>
+            <label className="text-xs text-muted-foreground">{t('custom_plan.opak_label')}</label>
             <input type="number" value={r} onChange={(e) => setR(e.target.value)}
               onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
               className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
@@ -245,9 +244,9 @@ const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeig
         </>
       )}
       <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">Pauza</label>
-        <input type="number" value={t} onChange={(e) => setT(e.target.value)}
-          onBlur={() => { const v = Math.max(10, parseInt(t) || 120); setT(String(v)); onRestChange(v); }}
+        <label className="text-xs text-muted-foreground">{t('custom_plan.pause_label')}</label>
+        <input type="number" value={restVal} onChange={(e) => setRestVal(e.target.value)}
+          onBlur={() => { const v = Math.max(10, parseInt(restVal) || 120); setRestVal(String(v)); onRestChange(v); }}
           className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={10} step={5} />
         <span className="text-[10px] text-muted-foreground">s</span>
       </div>
@@ -271,6 +270,7 @@ interface SortableExerciseProps {
 
 const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
+  const { t } = useTranslation();
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
 
   const style = {
@@ -315,7 +315,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
             )}
           >
             {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
-            {exercise.exercise_name || 'Neznámý cvik'}
+            {exercise.exercise_name || t('custom_plan.exercise_unknown')}
           </button>
           <div className="flex items-center gap-3 mt-1">
             <button
@@ -324,7 +324,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
                 "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
               )}
             >
-              <span>{exercise.sets} sérií</span>
+              <span>{t('custom_plan.sets_count', { n: exercise.sets })}</span>
               <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
             </button>
             {!isExpanded && (
@@ -332,7 +332,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
                 <span className="text-xs text-muted-foreground">{formatDuration(exercise.reps)}</span>
               ) : (
                 <>
-                  <span className="text-xs text-muted-foreground">{exercise.reps} opak.</span>
+                  <span className="text-xs text-muted-foreground">{exercise.reps} {t('custom_plan.reps_label')}</span>
                   <span className="text-xs text-muted-foreground">{exercise.weight_kg != null ? `${exercise.weight_kg} kg` : '–'}</span>
                 </>
               )
@@ -360,7 +360,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
         <div className="ml-7 mt-2 space-y-1.5">
           {/* Sets count control */}
           <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-muted-foreground">Počet sérií:</label>
+            <label className="text-xs text-muted-foreground">{t('custom_plan.sets_label')}</label>
             <input
               type="number"
               value={setsInput}
@@ -420,7 +420,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
       {/* Incompatible alternatives */}
       {isIncompatible && alternatives && alternatives.length > 0 && (
         <div className="ml-7 mt-2 mb-1">
-          <p className="text-xs text-destructive font-medium mb-1.5">Dostupné náhrady v této posilovně:</p>
+          <p className="text-xs text-destructive font-medium mb-1.5">{t('custom_plan.incompatible_alternatives')}</p>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {alternatives.map(alt => (
               <button
@@ -436,7 +436,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
         </div>
       )}
       {isIncompatible && (!alternatives || alternatives.length === 0) && (
-        <p className="ml-7 mt-1 mb-1 text-xs text-muted-foreground">Žádná náhrada v této posilovně není k dispozici.</p>
+        <p className="ml-7 mt-1 mb-1 text-xs text-muted-foreground">{t('custom_plan.no_alternatives')}</p>
       )}
     </div>
   );
@@ -478,6 +478,12 @@ const CustomPlanDetail = () => {
   const [isCheckingEquipment, setIsCheckingEquipment] = useState(false);
   const [pendingWorkoutPath, setPendingWorkoutPath] = useState<string | null>(null);
 
+  // Derived filter lists (require t from hook, so created inside component)
+  const MUSCLE_FILTERS = getMuscleFilters(t);
+  const EQUIPMENT_FILTERS = getEquipmentFilters(t);
+  const SLOT_TYPE_FILTERS = getSlotTypeFilters(t);
+  const ROLE_FILTER_GROUPS = getRoleFilterGroups(t);
+
   // Called when user selects a gym in the GymSelector
   const handleGymSelected = async (gymId: string) => {
     if (!id) return;
@@ -499,14 +505,14 @@ const CustomPlanDetail = () => {
       if (incompatible.length > 0) {
         // Stay on this page — red highlights will appear
         setSelectedWorkoutGymId(gymId);
-        setLocationGymName(gymData?.name || 'Posilovna');
+        setLocationGymName(gymData?.name || t('custom_plan.gym_fallback'));
         return;
       }
 
       // All OK — proceed to location gate or start
       setSelectedWorkoutGymId(gymId);
       if (gymData?.latitude != null && gymData?.longitude != null) {
-        setLocationGymName(gymData.name || 'Posilovna');
+        setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
         setPendingWorkoutPath(`/custom-workout/${id}`);
@@ -643,7 +649,7 @@ const CustomPlanDetail = () => {
       results = results.filter(e => {
         const allMuscleText = (e.primary_muscles || []).join(' ').toLowerCase();
         for (const muscleKey of muscles) {
-          const filterDef = MUSCLE_FILTERS.find(f => f.key === muscleKey);
+          const filterDef = getMuscleFilters(t).find(f => f.key === muscleKey);
           if (!filterDef) continue;
           if (filterDef.match.some(m => allMuscleText.includes(m.toLowerCase()))) return true;
         }
@@ -674,7 +680,7 @@ const CustomPlanDetail = () => {
     }
 
     setFilteredExercises(results);
-  }, [allExercises]);
+  }, [allExercises, t]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -742,11 +748,11 @@ const CustomPlanDetail = () => {
           await navigator.share({ title: plan.name, url });
         } else {
           await navigator.clipboard.writeText(url);
-          toast({ title: 'Odkaz zkopírován!', description: url });
+          toast({ title: t('custom_plan.link_copied'), description: url });
         }
       } catch {
         await navigator.clipboard.writeText(url);
-        toast({ title: 'Odkaz zkopírován!', description: url });
+        toast({ title: t('custom_plan.link_copied'), description: url });
       }
     }
     setIsSharing(false);
@@ -815,8 +821,8 @@ const CustomPlanDetail = () => {
       <PageTransition>
         <div className="min-h-screen bg-background safe-top flex items-center justify-center">
           <div className="text-center">
-            <p className="text-muted-foreground mb-4">Plán nenalezen</p>
-            <Button onClick={() => navigate('/')} variant="outline">Zpět</Button>
+            <p className="text-muted-foreground mb-4">{t('custom_plan.plan_not_found')}</p>
+            <Button onClick={() => navigate('/')} variant="outline">{t('custom_plan.back')}</Button>
           </div>
         </div>
       </PageTransition>
@@ -859,7 +865,7 @@ const CustomPlanDetail = () => {
               onClick={handleShare}
               disabled={isSharing}
               className={`p-2 rounded-xl transition-colors shrink-0 ${plan.is_public ? 'text-primary bg-primary/10' : 'hover:bg-muted text-muted-foreground'}`}
-              title={plan.is_public ? 'Sdíleno — zkopírovat odkaz' : 'Sdílet trénink'}
+              title={plan.is_public ? t('custom_plan.share_copy_link') : t('custom_plan.share_workout')}
             >
               {plan.is_public ? <Link className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
             </button>
@@ -889,10 +895,10 @@ const CustomPlanDetail = () => {
                   />
                 ) : (
                   <button
-                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || `Den ${day.day_number}`); }}
+                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
                     className="text-sm font-semibold hover:text-primary transition-colors"
                   >
-                    {day.name || `Den ${day.day_number}`}
+                    {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
                   </button>
                 )}
                 <button
@@ -906,7 +912,7 @@ const CustomPlanDetail = () => {
               {/* Exercises with drag & drop */}
               <div className="px-4 py-2">
                 {day.exercises.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-3 text-center">Žádné cviky</p>
+                  <p className="text-sm text-muted-foreground py-3 text-center">{t('custom_plan.no_exercises')}</p>
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -941,7 +947,7 @@ const CustomPlanDetail = () => {
                   className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 text-sm text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  Přidat cvik
+                  {t('custom_plan.add_exercise')}
                 </button>
               </div>
             </motion.div>
@@ -953,7 +959,7 @@ const CustomPlanDetail = () => {
             className="w-full gap-2 rounded-2xl h-12 border-dashed border-2"
           >
             <Plus className="w-5 h-5" />
-            Přidat den
+            {t('custom_plan.add_day')}
           </Button>
         </div>
 
@@ -963,7 +969,7 @@ const CustomPlanDetail = () => {
         <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
           <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }}>
             <DrawerHeader className="shrink-0 pb-2">
-              <DrawerTitle>Vybrat cvik</DrawerTitle>
+              <DrawerTitle>{t('custom_plan.select_exercise')}</DrawerTitle>
             </DrawerHeader>
 
             {detailExercise ? (
@@ -974,13 +980,13 @@ const CustomPlanDetail = () => {
                     className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    Zpět na seznam
+                    {t('custom_plan.back_to_list')}
                   </button>
 
                   {detailExercise.video_path ? (
                     <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                       {videoError ? (
-                        <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video se načítá...</div>
+                        <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_loading')}</div>
                       ) : (
                         <video
                           key={detailExercise.video_path}
@@ -995,19 +1001,19 @@ const CustomPlanDetail = () => {
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">Bez videa</p>
+                      <p className="text-sm text-muted-foreground">{t('custom_plan.no_video')}</p>
                     </div>
                   )}
 
                   <h3 className="text-xl font-bold mb-1">{detailExercise.name}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    {categoryLabels[detailExercise.category] || detailExercise.category}
-                    {detailExercise.equipment_type && ` · ${equipmentLabels[detailExercise.equipment_type] || detailExercise.equipment_type}`}
+                    {getCategoryLabel(detailExercise.category, t)}
+                    {detailExercise.equipment_type && ` · ${getEquipmentLabel(detailExercise.equipment_type, t)}`}
                   </p>
 
                   {detailExercise.primary_muscles?.length > 0 && (
                     <div className="mb-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.primary_muscles')}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {detailExercise.primary_muscles.map((m) => (
                           <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -1017,7 +1023,7 @@ const CustomPlanDetail = () => {
                   )}
                   {detailExercise.secondary_muscles?.length > 0 && (
                     <div className="mb-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.secondary_muscles')}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {detailExercise.secondary_muscles.map((m) => (
                           <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
@@ -1033,7 +1039,7 @@ const CustomPlanDetail = () => {
                     className="w-full h-12 rounded-xl gap-2 text-base font-semibold bg-[#5BC8F5] hover:bg-[#3AAED8] text-white"
                   >
                     <Plus className="w-5 h-5" />
-                    Přidat do tréninku
+                    {t('custom_plan.add_to_workout')}
                   </Button>
                 </div>
               </div>
@@ -1043,7 +1049,7 @@ const CustomPlanDetail = () => {
                 <div className="flex-1 overflow-y-auto px-4 pb-6">
                   {/* Machine search */}
                   <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Hledat stroj</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.machine_search')}</p>
                     <div className="relative mb-2">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
@@ -1061,7 +1067,7 @@ const CustomPlanDetail = () => {
                     </div>
                     {machineSearch.trim().length > 0 && (() => {
                       const list = filterMachinesByQuery(uniqueMachineNames, machineSearch);
-                      if (list.length === 0) return <p className="text-xs text-muted-foreground mt-1">Žádný stroj nenalezen</p>;
+                      if (list.length === 0) return <p className="text-xs text-muted-foreground mt-1">{t('custom_plan.no_machine')}</p>;
                       return (
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {list.map((machine) => (
@@ -1085,7 +1091,7 @@ const CustomPlanDetail = () => {
 
                   {/* Equipment type */}
                   <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Typ vybavení</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.equipment_type')}</p>
                     <div className="flex flex-wrap gap-2">
                       {EQUIPMENT_FILTERS.map((f) => (
                         <button
@@ -1107,7 +1113,7 @@ const CustomPlanDetail = () => {
 
                   {/* Muscles */}
                   <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Svalové skupiny</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.muscle_groups')}</p>
                     <div className="flex flex-wrap gap-2">
                       {MUSCLE_FILTERS.map((f) => (
                         <button
@@ -1129,7 +1135,7 @@ const CustomPlanDetail = () => {
 
                   {/* Slot type (designation) */}
                   <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Označení</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.slot_type')}</p>
                     <div className="flex flex-wrap gap-2">
                       {SLOT_TYPE_FILTERS.map((f) => (
                         <button
@@ -1151,7 +1157,7 @@ const CustomPlanDetail = () => {
 
                   {/* Primary role */}
                   <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Role cviku</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.exercise_role')}</p>
                     {ROLE_FILTER_GROUPS.map((group) => (
                       <div key={group.label} className="mb-3">
                         <p className="text-xs text-muted-foreground mb-1.5">{group.label}</p>
@@ -1185,14 +1191,14 @@ const CustomPlanDetail = () => {
                       onClick={() => { clearAllFilters(); applyFilters(searchQuery, new Set(), new Set(), new Set(), new Set(), ''); setFilterPanelOpen(false); }}
                       className="h-12 rounded-xl px-6"
                     >
-                      Vymazat
+                      {t('custom_plan.clear_filters')}
                     </Button>
                   )}
                   <Button
                     onClick={applyAndCloseFilters}
                     className="flex-1 h-12 rounded-xl gap-2 text-base font-semibold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white"
                   >
-                    Zobrazit výsledky
+                    {t('custom_plan.show_results')}
                   </Button>
                 </div>
               </div>
@@ -1203,7 +1209,7 @@ const CustomPlanDetail = () => {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                      type="text" placeholder="Hledat cvik..." value={searchQuery}
+                      type="text" placeholder={t('custom_plan.search_exercise')} value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
                       className="w-full bg-muted rounded-xl pl-10 pr-10 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                     />
@@ -1228,15 +1234,15 @@ const CustomPlanDetail = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto -mx-4 px-4 pb-6 overscroll-contain">
-                  {loadingExercises && <div className="text-center py-8 text-sm text-muted-foreground">Načítám cviky...</div>}
-                  {!loadingExercises && filteredExercises.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">Žádné výsledky</div>}
+                  {loadingExercises && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.loading_exercises')}</div>}
+                  {!loadingExercises && filteredExercises.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.no_results')}</div>}
                   <div className="space-y-0.5">
                     {filteredExercises.map((exercise) => (
                       <div key={exercise.id} className="flex items-center rounded-xl hover:bg-muted transition-colors">
                         <button onClick={() => handleAddExercise(exercise)} className="flex-1 text-left px-4 py-3 min-w-0">
                           <p className="text-sm font-medium truncate">{exercise.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {categoryLabels[exercise.category] || exercise.category}
+                            {getCategoryLabel(exercise.category, t)}
                             {exercise.primary_muscles?.length > 0 && ` · ${exercise.primary_muscles.join(', ')}`}
                           </p>
                         </button>
@@ -1256,7 +1262,7 @@ const CustomPlanDetail = () => {
         <Drawer open={viewExerciseDrawerOpen} onOpenChange={(open) => { setViewExerciseDrawerOpen(open); if (!open) { setViewExerciseData(null); setViewVideoError(false); } }}>
           <DrawerContent className="flex flex-col" style={{ height: '85dvh', maxHeight: '85dvh' }}>
             <DrawerHeader className="shrink-0 pb-2">
-              <DrawerTitle>{viewExerciseData?.name || 'Detail cviku'}</DrawerTitle>
+              <DrawerTitle>{viewExerciseData?.name || t('custom_plan.exercise_detail')}</DrawerTitle>
             </DrawerHeader>
 
             {viewExerciseData ? (
@@ -1264,7 +1270,7 @@ const CustomPlanDetail = () => {
                 {viewExerciseData.video_path ? (
                   <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                     {viewVideoError ? (
-                      <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video nedostupné</div>
+                      <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_unavailable')}</div>
                     ) : (
                       <video
                         key={viewExerciseData.video_path}
@@ -1279,19 +1285,19 @@ const CustomPlanDetail = () => {
                   </div>
                 ) : (
                   <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Bez videa</p>
+                    <p className="text-sm text-muted-foreground">{t('custom_plan.no_video')}</p>
                   </div>
                 )}
 
                 <p className="text-sm text-muted-foreground mb-4">
-                  {categoryLabels[viewExerciseData.category] || viewExerciseData.category}
-                  {viewExerciseData.equipment_type && ` · ${equipmentLabels[viewExerciseData.equipment_type] || viewExerciseData.equipment_type}`}
+                  {getCategoryLabel(viewExerciseData.category, t)}
+                  {viewExerciseData.equipment_type && ` · ${getEquipmentLabel(viewExerciseData.equipment_type, t)}`}
                   {viewExerciseData.machine_name && ` · ${viewExerciseData.machine_name}`}
                 </p>
 
                 {viewExerciseData.primary_muscles?.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {viewExerciseData.primary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -1301,7 +1307,7 @@ const CustomPlanDetail = () => {
                 )}
                 {viewExerciseData.secondary_muscles?.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.secondary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {viewExerciseData.secondary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
@@ -1312,7 +1318,7 @@ const CustomPlanDetail = () => {
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Načítám...</p>
+                <p className="text-sm text-muted-foreground">{t('custom_plan.loading')}</p>
               </div>
             )}
           </DrawerContent>
@@ -1328,7 +1334,7 @@ const CustomPlanDetail = () => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-sm text-destructive font-medium">
-                {incompatibleExercises.length} {incompatibleExercises.length === 1 ? 'cvik' : incompatibleExercises.length < 5 ? 'cviky' : 'cviků'} nejdou v <span className="font-bold">{locationGymName}</span>
+                {t('custom_plan.incompatible_count', { count: incompatibleExercises.length, gym: locationGymName })}
               </p>
             </div>
             <button
@@ -1336,7 +1342,7 @@ const CustomPlanDetail = () => {
               disabled={isCheckingEquipment}
               className="text-xs font-semibold text-primary shrink-0"
             >
-              {isCheckingEquipment ? '...' : 'Zkontrolovat'}
+              {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
             </button>
           </div>
         </div>
@@ -1351,7 +1357,7 @@ const CustomPlanDetail = () => {
               className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-amber-500 hover:bg-amber-500/90 text-white shadow-lg shadow-amber-500/25"
             >
               <Play className="w-5 h-5" />
-              Pokračovat v tréninku
+              {t('custom_plan.continue_workout')}
             </Button>
           ) : (
             <Button
@@ -1365,7 +1371,7 @@ const CustomPlanDetail = () => {
               className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg shadow-[#1A2744]/25"
             >
               <Play className="w-5 h-5" />
-              Spustit trénink
+              {t('custom_plan.start_workout')}
             </Button>
           )}
         </div>
@@ -1380,28 +1386,28 @@ const CustomPlanDetail = () => {
             className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-center mb-1">Pozastavený trénink</h2>
+            <h2 className="text-lg font-bold text-center mb-1">{t('custom_plan.paused_workout_title')}</h2>
             <p className="text-muted-foreground text-sm text-center mb-5">
-              Máš pozastavený trénink v plánu „{pausedCustomWorkout.planName}". Co chceš udělat?
+              {t('custom_plan.paused_workout_desc', { name: pausedCustomWorkout.planName })}
             </p>
             <div className="space-y-3">
               <button
                 onClick={() => { setShowConflictDialog(false); navigate(`/custom-workout/${pausedCustomWorkout.planId}?resume=true`); }}
                 className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-500/90 transition-colors"
               >
-                Pokračovat v pozastaveném
+                {t('custom_plan.continue_paused')}
               </button>
               <button
                 onClick={() => { clearPausedCustomWorkout(); setShowConflictDialog(false); setShowGymSelector(true); }}
                 className="w-full py-3.5 rounded-xl bg-red-500/90 text-white font-semibold hover:bg-red-500 transition-colors"
               >
-                Ukončit a spustit nový
+                {t('custom_plan.end_and_start_new')}
               </button>
               <button
                 onClick={() => setShowConflictDialog(false)}
                 className="w-full py-3.5 rounded-xl text-muted-foreground font-medium hover:text-foreground transition-colors"
               >
-                Zrušit
+                {t('custom_plan.cancel')}
               </button>
             </div>
           </motion.div>

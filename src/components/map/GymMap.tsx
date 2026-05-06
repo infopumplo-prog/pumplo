@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { OpeningHours } from '@/hooks/useGym';
@@ -150,6 +151,7 @@ const createUserIcon = () => {
 };
 
 const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }: GymMapProps) => {
+  const { t } = useTranslation();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -278,7 +280,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
         userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], {
           icon: createUserIcon(),
         }).addTo(mapRef.current);
-        userMarkerRef.current.bindTooltip('Vaše poloha', { direction: 'top' });
+        userMarkerRef.current.bindTooltip(t('map.my_location'), { direction: 'top' });
       }
       
       // Auto-center on user location on first load
