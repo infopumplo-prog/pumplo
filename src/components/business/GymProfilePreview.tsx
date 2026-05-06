@@ -42,7 +42,8 @@ const GymProfilePreview = ({
   onToggleFavorite,
   onBack
 }: GymProfilePreviewProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const hours = gym.opening_hours as OpeningHours;
   const { machines, isLoading: machinesLoading } = useGymMachines(gym.id);
   const { photos } = useGymPhotos(gym.id ?? undefined);
@@ -151,7 +152,7 @@ const GymProfilePreview = ({
                 !descExpanded && "line-clamp-3"
               )}
             >
-              {gym.description}
+              {(isEn && gym.description_en) ? gym.description_en : gym.description}
             </p>
             {descOverflows && (
               <button

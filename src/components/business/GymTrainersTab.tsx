@@ -10,9 +10,11 @@ export interface Trainer {
   name: string;
   photo: string;
   bio: string;
+  bio_en?: string | null;
   specializations: string[];
-  certifications: { name: string; description: string; date: string }[];
-  pricing: { name: string; price: number }[];
+  specializations_en?: string[] | null;
+  certifications: { name: string; name_en?: string; description: string; description_en?: string; date: string }[];
+  pricing: { name: string; name_en?: string; price: number }[];
   contact: {
     phone?: string;
     email?: string;
@@ -52,7 +54,9 @@ const GymTrainersTab = ({ gymId }: GymTrainersTabProps) => {
           name: t.name,
           photo: t.photo_url || '',
           bio: t.bio || '',
+          bio_en: (t as any).bio_en || null,
           specializations: t.specializations || [],
+          specializations_en: (t as any).specializations_en || null,
           certifications: (t.certifications as any[]) || [],
           pricing: (t.pricing as any[]) || [],
           contact: (t.contact as any) || {},

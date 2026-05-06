@@ -32,6 +32,7 @@ export interface Gym {
   owner_id: string;
   name: string;
   description: string | null;
+  description_en?: string | null;
   latitude: number;
   longitude: number;
   address: string | null;

@@ -15,7 +15,8 @@ interface TrainerDetailDrawerProps {
 }
 
 const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const navigate = useNavigate();
   const { getOrCreateConversation } = useConversations();
   const { profile } = useUserProfile();
@@ -66,7 +67,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
 
           {/* Content */}
           <div className="px-4 pb-8">
-            <p className="text-sm text-muted-foreground mb-4">{trainer.bio}</p>
+            <p className="text-sm text-muted-foreground mb-4">{(isEn && trainer.bio_en) ? trainer.bio_en : trainer.bio}</p>
 
             {/* Message button */}
             <button
@@ -113,7 +114,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                   <div>
                     <h4 className="text-sm font-semibold mb-2">{t('business.trainer_specialization')}</h4>
                     <ul className="space-y-2">
-                      {trainer.specializations.map((spec, i) => (
+                      {(isEn && trainer.specializations_en?.length ? trainer.specializations_en : trainer.specializations).map((spec, i) => (
                         <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-primary mt-0.5">&#9632;</span>
                           <span>{spec}</span>
@@ -130,8 +131,8 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                     <div className="space-y-3">
                       {trainer.certifications.map((cert, i) => (
                         <div key={i} className="border-b border-border/50 pb-3 last:border-0">
-                          <p className="text-sm font-medium text-primary">{cert.name}</p>
-                          <p className="text-sm text-muted-foreground">{cert.description}</p>
+                          <p className="text-sm font-medium text-primary">{(isEn && cert.name_en) ? cert.name_en : cert.name}</p>
+                          <p className="text-sm text-muted-foreground">{(isEn && cert.description_en) ? cert.description_en : cert.description}</p>
                           <p className="text-xs text-muted-foreground">{cert.date}</p>
                         </div>
                       ))}
@@ -151,7 +152,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                           key={i}
                           className="flex items-center justify-between py-3 border-b border-border/50 last:border-0"
                         >
-                          <span className="text-sm">{item.name}</span>
+                          <span className="text-sm">{(isEn && item.name_en) ? item.name_en : item.name}</span>
                           <span className="text-sm font-medium whitespace-nowrap">
                             {item.price.toLocaleString('cs-CZ')} Kč
                           </span>
