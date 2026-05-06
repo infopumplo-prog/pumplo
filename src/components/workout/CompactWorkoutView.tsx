@@ -375,7 +375,7 @@ export const CompactWorkoutView = ({
                         }}
                         className="text-[10px] text-primary mt-0.5 font-medium"
                       >
-                        {expandedExercise === idx ? 'Skrýt detail' : `Zobrazit ${completedSets} ${completedSets === 1 ? 'sérii' : 'série'}`}
+                        {expandedExercise === idx ? t('workout.hide_detail') : (completedSets === 1 ? t('workout.show_sets_singular', { n: completedSets }) : t('workout.show_sets_plural', { n: completedSets }))}
                       </button>
                     )}
                   </div>
@@ -400,9 +400,9 @@ export const CompactWorkoutView = ({
                       <thead>
                         <tr className="text-muted-foreground text-[10px]">
                           <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                          <th className="text-center font-medium py-1">Váha</th>
-                          <th className="text-center font-medium py-1">Opak.</th>
-                          {showTimer && <th className="text-center font-medium py-1">Čas</th>}
+                          <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
+                          <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
+                          {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -507,9 +507,9 @@ export const CompactWorkoutView = ({
                         <thead>
                           <tr className="text-muted-foreground text-[10px]">
                             <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                            <th className="text-center font-medium py-1">Váha</th>
-                            <th className="text-center font-medium py-1">Opak.</th>
-                            {showTimer && <th className="text-center font-medium py-1">Čas</th>}
+                            <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
+                            <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
+                            {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -539,7 +539,7 @@ export const CompactWorkoutView = ({
                           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium ${isSwapping ? 'opacity-50' : ''}`}
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${isSwapping ? 'animate-spin' : ''}`} />
-                          Vyměnit
+                          {t('workout.swap')}
                         </button>
                       )}
                       <button
@@ -563,16 +563,16 @@ export const CompactWorkoutView = ({
                       }}
                       className="text-sm text-green-600 font-medium text-center py-2 w-full"
                     >
-                      {expandedExercise === idx ? 'Skrýt detail' : '✓ Všechny série hotové'}
+                      {expandedExercise === idx ? t('workout.hide_detail') : t('workout.all_sets_done')}
                     </button>
                     {expandedExercise === idx && sets.some(s => s.completed) && (
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-muted-foreground text-[10px]">
                             <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                            <th className="text-center font-medium py-1">Váha</th>
-                            <th className="text-center font-medium py-1">Opak.</th>
-                            {showTimer && <th className="text-center font-medium py-1">Čas</th>}
+                            <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
+                            <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
+                            {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
                           </tr>
                         </thead>
                         <tbody>

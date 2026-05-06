@@ -1476,8 +1476,8 @@ const CustomWorkoutPlayer = () => {
               className="bg-neutral-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm"
               onClick={e => e.stopPropagation()}
             >
-              <h2 className="text-white text-lg font-bold text-center mb-1">Ukončit trénink?</h2>
-              <p className="text-white/50 text-sm text-center mb-6">Co chceš udělat s tréninkem?</p>
+              <h2 className="text-white text-lg font-bold text-center mb-1">{t('workout.exit_title')}</h2>
+              <p className="text-white/50 text-sm text-center mb-6">{t('workout.exit_desc')}</p>
               <div className="space-y-3">
                 <button
                   onClick={() => {
@@ -1530,7 +1530,7 @@ const CustomWorkoutPlayer = () => {
       <Drawer open={infoDrawerOpen} onOpenChange={setInfoDrawerOpen}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{exerciseDetail?.name || 'Detail cviku'}</DrawerTitle>
+            <DrawerTitle>{exerciseDetail?.name || t('workout.exercise_detail_title')}</DrawerTitle>
           </DrawerHeader>
           {exerciseDetail && (
             <div className="px-4 pb-6 overflow-y-auto">
@@ -1557,8 +1557,8 @@ const CustomWorkoutPlayer = () => {
               )}
 
               <p className="text-sm text-muted-foreground mb-4">
-                {categoryLabels[exerciseDetail.category] || exerciseDetail.category}
-                {exerciseDetail.equipment_type && ` · ${equipmentLabels[exerciseDetail.equipment_type] || exerciseDetail.equipment_type}`}
+                {getCategoryLabel(t, exerciseDetail.category)}
+                {exerciseDetail.equipment_type && ` · ${getEquipmentLabel(t, exerciseDetail.equipment_type)}`}
                 {exerciseDetail.machine_name && ` · ${exerciseDetail.machine_name}`}
               </p>
 
@@ -1575,7 +1575,7 @@ const CustomWorkoutPlayer = () => {
 
               {exerciseDetail.primary_muscles.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {exerciseDetail.primary_muscles.map((m) => (
                       <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -1585,7 +1585,7 @@ const CustomWorkoutPlayer = () => {
               )}
               {exerciseDetail.secondary_muscles.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {exerciseDetail.secondary_muscles.map((m) => (
                       <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>

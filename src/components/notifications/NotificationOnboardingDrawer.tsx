@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Bell, BellRing, Clock, Flame, MapPin, X } from 'lucide-react';
+import { Bell, BellRing, Clock, Flame, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -22,6 +23,7 @@ const NotificationOnboardingDrawer = ({
   onAccept,
   onDecline
 }: NotificationOnboardingDrawerProps) => {
+  const { t } = useTranslation();
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleAccept = async () => {
@@ -39,19 +41,19 @@ const NotificationOnboardingDrawer = ({
   const features = [
     {
       icon: Clock,
-      title: 'Ranní připomínka',
-      description: 'Připomeneme ti trénink ve tvůj preferovaný čas'
+      title: t('notifications.morning_title'),
+      description: t('notifications.morning_desc'),
     },
     {
       icon: Flame,
-      title: 'Streak ochrana',
-      description: 'Upozorníme tě, když hrozí ztráta série'
+      title: t('notifications.streak_title'),
+      description: t('notifications.streak_desc'),
     },
     {
       icon: MapPin,
-      title: 'Zavírá brzy',
-      description: 'Oznámíme ti, když posilovna brzy zavírá'
-    }
+      title: t('notifications.closing_title'),
+      description: t('notifications.closing_desc'),
+    },
   ];
 
   return (
@@ -61,9 +63,9 @@ const NotificationOnboardingDrawer = ({
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <BellRing className="w-8 h-8 text-primary" />
           </div>
-          <DrawerTitle className="text-2xl">Zůstaň v rytmu!</DrawerTitle>
+          <DrawerTitle className="text-2xl">{t('notifications.drawer_title')}</DrawerTitle>
           <p className="text-muted-foreground mt-2">
-            Povol oznámení a my ti připomeneme každý trénink
+            {t('notifications.drawer_desc')}
           </p>
         </DrawerHeader>
 
@@ -96,12 +98,12 @@ const NotificationOnboardingDrawer = ({
             {isRequesting ? (
               <>
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                Povoluji...
+                {t('notifications.allowing')}
               </>
             ) : (
               <>
                 <Bell className="w-5 h-5 mr-2" />
-                Povolit oznámení
+                {t('notifications.allow_btn')}
               </>
             )}
           </Button>
@@ -110,7 +112,7 @@ const NotificationOnboardingDrawer = ({
             variant="ghost"
             className="w-full h-12 text-base text-muted-foreground"
           >
-            Teď ne
+            {t('notifications.not_now')}
           </Button>
         </div>
       </DrawerContent>

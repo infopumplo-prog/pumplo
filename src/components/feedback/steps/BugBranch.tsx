@@ -6,19 +6,22 @@ import { cn } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import type { FeedbackStepProps, BugLocation, RepeatedStatus } from '../types';
 
-const bugLocations: { id: BugLocation; label: string }[] = [
-  { id: 'generating_workout', label: 'Generování tréninku' },
-  { id: 'switching_days', label: 'Přepínání dnů' },
-  { id: 'opening_exercise', label: 'Kliknutí na cvik' },
-  { id: 'marking_done', label: 'Označení tréninku jako hotový' },
-  { id: 'other_place', label: 'Jinde' },
-];
+const BUG_LOCATION_KEYS: Record<BugLocation, string> = {
+  generating_workout: 'feedback.bug_loc_generating',
+  switching_days: 'feedback.bug_loc_switching',
+  opening_exercise: 'feedback.bug_loc_opening',
+  marking_done: 'feedback.bug_loc_marking',
+  other_place: 'feedback.bug_loc_other',
+};
 
-const repeatedOptions: { id: RepeatedStatus; label: string }[] = [
-  { id: 'yes', label: 'Ano' },
-  { id: 'no', label: 'Ne' },
-  { id: 'not_sure', label: 'Nevím' },
-];
+const REPEATED_OPTION_KEYS: Record<RepeatedStatus, string> = {
+  yes: 'feedback.bug_repeated_yes',
+  no: 'feedback.bug_repeated_no',
+  not_sure: 'feedback.bug_repeated_unsure',
+};
+
+const BUG_LOCATIONS: BugLocation[] = ['generating_workout', 'switching_days', 'opening_exercise', 'marking_done', 'other_place'];
+const REPEATED_OPTIONS: RepeatedStatus[] = ['yes', 'no', 'not_sure'];
 
 export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
   const { t } = useTranslation();
@@ -33,9 +36,9 @@ export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps)
   };
 
   const handleNext = () => {
-    const location = bugLocations.find(l => l.id === responses.bug_location)?.label;
+    const location = t(BUG_LOCATION_KEYS[responses.bug_location as BugLocation]);
     const message = `Bug v "${location}": ${responses.bug_description}`;
-    onUpdate({ 
+    onUpdate({
       message,
       last_action: responses.bug_location as string,
     });
@@ -48,62 +51,62 @@ export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps)
         <button onClick={onBack} className="p-1 hover:bg-muted rounded">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h3 className="text-lg font-semibold">Nahlásit bug</h3>
+        <h3 className="text-lg font-semibold">{t('feedback.bug_title')}</h3>
       </div>
 
       <div>
-        <Label>Co přesně se pokazilo? *</Label>
+        <Label>{t('feedback.bug_what')}</Label>
         <Textarea
           value={(responses.bug_description as string) || ''}
           onChange={(e) => updateResponses({ bug_description: e.target.value })}
-          placeholder="Na co jsi kliknul/a a co se stalo?"
+          placeholder={t('feedback.bug_what_placeholder')}
           className="mt-2"
           rows={3}
         />
       </div>
 
       <div>
-        <Label>Kde se to stalo? *</Label>
+        <Label>{t('feedback.bug_where')}</Label>
         <div className="space-y-2 mt-2">
-          {bugLocations.map((location) => (
+          {BUG_LOCATIONS.map((id) => (
             <button
-              key={location.id}
-              onClick={() => updateResponses({ bug_location: location.id })}
+              key={id}
+              onClick={() => updateResponses({ bug_location: id })}
               className={cn(
                 'w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left text-sm',
-                responses.bug_location === location.id
+                responses.bug_location === id
                   ? 'border-primary bg-primary/10'
                   : 'border-border hover:border-primary/50'
               )}
             >
-              {location.label}
+              {t(BUG_LOCATION_KEYS[id])}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <Label>Stalo se to opakovaně?</Label>
+        <Label>{t('feedback.bug_repeated')}</Label>
         <div className="flex gap-2 mt-2">
-          {repeatedOptions.map((opt) => (
+          {REPEATED_OPTIONS.map((id) => (
             <button
-              key={opt.id}
-              onClick={() => updateResponses({ bug_repeated: opt.id })}
+              key={id}
+              onClick={() => updateResponses({ bug_repeated: id })}
               className={cn(
                 'flex-1 p-3 rounded-lg border transition-all text-sm font-medium',
-                responses.bug_repeated === opt.id
+                responses.bug_repeated === id
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-border hover:border-primary/50'
               )}
             >
-              {opt.label}
+              {t(REPEATED_OPTION_KEYS[id])}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <Label>Další detaily (volitelné)</Label>
+        <Label>{t('feedback.bug_extra')}</Label>
         <Textarea
           value={(responses.bug_extra as string) || ''}
           onChange={(e) => updateResponses({ bug_extra: e.target.value })}
@@ -112,12 +115,12 @@ export const BugBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps)
         />
       </div>
 
-      <Button 
-        onClick={handleNext} 
+      <Button
+        onClick={handleNext}
         disabled={!canContinue()}
         className="w-full"
       >
-        Pokračovat
+        {t('feedback.type_continue')}
       </Button>
     </div>
   );

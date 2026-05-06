@@ -83,7 +83,7 @@ const UsersManagement = () => {
 
     if (response.error) {
       console.error('Error fetching users:', response.error);
-      toast.error('Nepodarilo sa načítať užívateľov');
+      toast.error(t('admin.load_users_error'));
       setIsLoading(false);
       return;
     }
@@ -457,7 +457,7 @@ const UsersManagement = () => {
         <Drawer open={drawerMode === 'view'} onOpenChange={closeDrawer}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Detail používateľa</DrawerTitle>
+              <DrawerTitle>{t('admin.user_detail_title')}</DrawerTitle>
             </DrawerHeader>
             {selectedUser && (
               <div className="px-4 pb-4 space-y-4">
@@ -467,34 +467,34 @@ const UsersManagement = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground text-xs">Meno</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.first_name_label')}</Label>
                     <p className="font-medium">{selectedUser.first_name || '-'}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Priezvisko</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.last_name_label')}</Label>
                     <p className="font-medium">{selectedUser.last_name || '-'}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Vek</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.age_label')}</Label>
                     <p className="font-medium">{selectedUser.age || '-'}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Pohlavie</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.gender_label')}</Label>
                     <p className="font-medium">{selectedUser.gender || '-'}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Rola</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.role_label')}</Label>
                     <p className="font-medium">{selectedUser.role}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Registrácia</Label>
+                    <Label className="text-muted-foreground text-xs">{t('admin.registration_label')}</Label>
                     <p className="font-medium">
-                      {new Date(selectedUser.created_at).toLocaleDateString('sk-SK')}
+                      {new Date(selectedUser.created_at).toLocaleDateString('cs-CZ')}
                     </p>
                   </div>
                   {selectedUser.role === 'business' && (
                     <div>
-                      <Label className="text-muted-foreground text-xs">Licencia posilovní</Label>
+                      <Label className="text-muted-foreground text-xs">{t('admin.gym_licenses_detail_label')}</Label>
                       <p className="font-medium">{selectedUser.gym_license_count || 0}</p>
                     </div>
                   )}

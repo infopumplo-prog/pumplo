@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import type { FeedbackStepProps, FeaturePriority } from '../types';
 
-const priorityOptions: { id: FeaturePriority; label: string; description: string }[] = [
-  { id: 'nice_to_have', label: 'Bylo by fajn', description: 'Není to urgentní' },
-  { id: 'important', label: 'Důležité', description: 'Dost mi to chybí' },
-  { id: 'must_have', label: 'Nutnost', description: 'Bez toho to nejde' },
-];
+const PRIORITY_KEYS: Record<FeaturePriority, { label: string; description: string }> = {
+  nice_to_have: { label: 'feedback.feature_nice', description: 'feedback.feature_nice_desc' },
+  important:    { label: 'feedback.feature_important', description: 'feedback.feature_important_desc' },
+  must_have:    { label: 'feedback.feature_must', description: 'feedback.feature_must_desc' },
+};
+
+const PRIORITY_IDS: FeaturePriority[] = ['nice_to_have', 'important', 'must_have'];
 
 export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepProps) => {
   const { t } = useTranslation();
@@ -25,8 +27,9 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
   };
 
   const handleNext = () => {
-    const priority = priorityOptions.find(p => p.id === responses.feature_priority)?.label || '';
-    const message = `${responses.feature_request}${priority ? ` [${priority}]` : ''}`;
+    const priorityId = responses.feature_priority as FeaturePriority | undefined;
+    const priorityLabel = priorityId ? t(PRIORITY_KEYS[priorityId].label) : '';
+    const message = `${responses.feature_request}${priorityLabel ? ` [${priorityLabel}]` : ''}`;
     onUpdate({ message });
     onNext();
   };
@@ -37,11 +40,11 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
         <button onClick={onBack} className="p-1 hover:bg-muted rounded">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h3 className="text-lg font-semibold">Chybějící funkce</h3>
+        <h3 className="text-lg font-semibold">{t('feedback.feature_title')}</h3>
       </div>
 
       <div>
-        <Label>Co ti v Pumplu chybí? *</Label>
+        <Label>{t('feedback.feature_what')}</Label>
         <Textarea
           value={(responses.feature_request as string) || ''}
           onChange={(e) => updateResponses({ feature_request: e.target.value })}
@@ -52,7 +55,7 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
       </div>
 
       <div>
-        <Label>Jak bys to chtěl/a mít ideálně? (volitelné)</Label>
+        <Label>{t('feedback.feature_ideal')}</Label>
         <Textarea
           value={(responses.feature_ideal as string) || ''}
           onChange={(e) => updateResponses({ feature_ideal: e.target.value })}
@@ -63,37 +66,37 @@ export const FeatureBranch = ({ data, onUpdate, onNext, onBack }: FeedbackStepPr
       </div>
 
       <div>
-        <Label>Jak moc je to důležité?</Label>
+        <Label>{t('feedback.feature_importance')}</Label>
         <div className="space-y-2 mt-2">
-          {priorityOptions.map((priority) => (
+          {PRIORITY_IDS.map((id) => (
             <button
-              key={priority.id}
-              onClick={() => updateResponses({ feature_priority: priority.id })}
+              key={id}
+              onClick={() => updateResponses({ feature_priority: id })}
               className={cn(
                 'w-full flex flex-col items-start p-3 rounded-lg border transition-all text-left',
-                responses.feature_priority === priority.id
+                responses.feature_priority === id
                   ? 'border-primary bg-primary/10'
                   : 'border-border hover:border-primary/50'
               )}
             >
               <span className={cn(
                 'font-medium text-sm',
-                responses.feature_priority === priority.id ? 'text-primary' : ''
+                responses.feature_priority === id ? 'text-primary' : ''
               )}>
-                {priority.label}
+                {t(PRIORITY_KEYS[id].label)}
               </span>
-              <span className="text-xs text-muted-foreground">{priority.description}</span>
+              <span className="text-xs text-muted-foreground">{t(PRIORITY_KEYS[id].description)}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <Button 
-        onClick={handleNext} 
+      <Button
+        onClick={handleNext}
         disabled={!canContinue()}
         className="w-full"
       >
-        Pokračovat
+        {t('feedback.type_continue')}
       </Button>
     </div>
   );

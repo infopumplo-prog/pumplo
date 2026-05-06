@@ -252,22 +252,22 @@ const RangeSlider = ({ label, value, max, step, unit, noLimitLabel = 'Bez omezen
   );
 };
 
-const DistanceSlider = ({ value, onChange, hasGps }: { value: number | null; onChange: (v: number | null) => void; hasGps: boolean }) => {
+const DistanceSlider = ({ value, onChange, hasGps, labelDistance, labelNoLimit }: { value: number | null; onChange: (v: number | null) => void; hasGps: boolean; labelDistance: string; labelNoLimit: string }) => {
   if (!hasGps) return null;
   const idx = value === null ? DIST_STEPS.length : Math.max(0, DIST_STEPS.indexOf(value));
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vzdálenost od tebe</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{labelDistance}</p>
         <span className={`text-sm font-semibold ${value === null ? 'text-muted-foreground' : 'text-primary'}`}>
-          {value === null ? 'Bez omezení' : `do ${distLabel(value)}`}
+          {value === null ? labelNoLimit : `do ${distLabel(value)}`}
         </span>
       </div>
       <input type="range" min={0} max={DIST_STEPS.length} step={1} value={idx}
         onChange={e => { const i = parseInt(e.target.value); onChange(i >= DIST_STEPS.length ? null : DIST_STEPS[i]); }}
         className="w-full accent-primary cursor-pointer" />
       <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
-        <span>50 m</span><span>Bez omezení</span>
+        <span>50 m</span><span>{labelNoLimit}</span>
       </div>
     </div>
   );
@@ -299,33 +299,33 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="flex items-center justify-between pb-0">
-          <DrawerTitle>Filtrovat posilovny</DrawerTitle>
+          <DrawerTitle>{t('map.filter_title')}</DrawerTitle>
           {active > 0 && (
             <button onClick={() => onChange(DEFAULT_FILTERS)} className="text-sm text-primary font-medium">
-              Vymazat vše ({active})
+              {t('map.filter_clear_all')} ({active})
             </button>
           )}
         </DrawerHeader>
 
         <div className="px-4 pb-4 pt-4 space-y-5 overflow-y-auto">
           {/* Dostupnost */}
-          <Section title="Dostupnost">
+          <Section title={t('map.filter_availability')}>
             <div className="flex gap-2 flex-wrap">
-              <Toggle active={filters.openNow} onClick={() => set({ openNow: !filters.openNow })}>Otevřeno teď</Toggle>
-              <Toggle active={filters.privateOnly} onClick={() => set({ privateOnly: !filters.privateOnly })}>Soukromý gym</Toggle>
-              <Toggle active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>✓ Ověřená</Toggle>
+              <Toggle active={filters.openNow} onClick={() => set({ openNow: !filters.openNow })}>{t('map.filter_open_now')}</Toggle>
+              <Toggle active={filters.privateOnly} onClick={() => set({ privateOnly: !filters.privateOnly })}>{t('map.filter_private_gym')}</Toggle>
+              <Toggle active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>{t('map.filter_verified')}</Toggle>
             </div>
           </Section>
 
           {/* Parkování */}
           <Section title={t('map.filter_parking')}>
             <div className="flex gap-2">
-              <Toggle active={filters.parking} onClick={() => set({ parking: !filters.parking })}>🅿 S parkováním</Toggle>
+              <Toggle active={filters.parking} onClick={() => set({ parking: !filters.parking })}>{t('map.filter_with_parking')}</Toggle>
             </div>
           </Section>
 
           {/* Vzdálenost */}
-          <DistanceSlider value={filters.distanceLimit} onChange={v => set({ distanceLimit: v })} hasGps={hasGps} />
+          <DistanceSlider value={filters.distanceLimit} onChange={v => set({ distanceLimit: v })} hasGps={hasGps} labelDistance={t('map.filter_distance')} labelNoLimit={t('map.filter_no_limit')} />
 
           {/* Jednorázový vstup */}
           <RangeSlider label={t('map.filter_single_entry')} value={filters.singlePriceLimit} max={maxSinglePrice} step={10} unit="Kč" onChange={v => set({ singlePriceLimit: v })} />
@@ -379,7 +379,7 @@ export const GymFiltersDrawer = ({ open, onOpenChange, filters, onChange, hasGps
 
         <div className="px-4 pb-8">
           <Button className="w-full" onClick={() => onOpenChange(false)}>
-            Použít filtry{active > 0 ? ` (${active})` : ''}
+            {active > 0 ? t('map.filter_apply_with_count', { n: active }) : t('map.filter_apply')}
           </Button>
         </div>
       </DrawerContent>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,9 +17,10 @@ interface ThankYouStepProps {
 }
 
 export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const context = useFeedbackContext();
-  
+
   const [canContact, setCanContact] = useState(false);
   const [contactEmail, setContactEmail] = useState(user?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,14 +36,14 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
       feedback_type: data.feedback_type,
       message: data.message,
       responses: data.responses || {},
-      
+
       // Context
       app_version: context.app_version,
       platform: context.platform,
       locale: context.locale,
       timezone: context.timezone,
       current_route: context.current_route,
-      
+
       // Workout context
       plan_id: data.plan_id || context.plan_id,
       week_index: data.week_index || context.week_index,
@@ -50,13 +52,13 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
       workout_id: data.workout_id,
       exercise_id: data.exercise_id,
       gym_id: data.gym_id || context.gym_id,
-      
+
       // Bug context
       last_action: data.last_action,
       error_code: data.error_code,
       error_message: data.error_message,
       screenshot_url: data.screenshot_url,
-      
+
       // Contact
       can_contact: canContact,
       contact_email: canContact ? contactEmail : null,
@@ -70,10 +72,10 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
 
     if (error) {
       console.error('Feedback submission error:', error);
-      toast.error('Chyba při odesílání');
+      toast.error(t('feedback.submit_error'));
     } else {
       setSubmitted(true);
-      toast.success('Odesláno. Díky!');
+      toast.success(t('feedback.sent'));
       setTimeout(onClose, 1500);
     }
   };
@@ -82,8 +84,8 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
     return (
       <div className="text-center py-8">
         <CheckCircle2 className="w-16 h-16 text-chart-2 mx-auto mb-4" />
-        <h2 className="text-xl font-bold mb-2">Díky za feedback! 🙌</h2>
-        <p className="text-muted-foreground">Tvůj podnět jsme přijali.</p>
+        <h2 className="text-xl font-bold mb-2">{t('feedback.submitted_title')}</h2>
+        <p className="text-muted-foreground">{t('feedback.submitted_desc')}</p>
       </div>
     );
   }
@@ -91,11 +93,11 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-lg font-semibold mb-2">Díky za feedback 🙌</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('feedback.thankyou_title')}</h3>
         <p className="text-sm text-muted-foreground">
-          Všechny podněty čteme a používáme k vylepšení Pumpla.
+          {t('feedback.thankyou_desc')}
           {data.feedback_type === 'bug_error' && (
-            <><br />Pokud jde o chybu, podíváme se na ni co nejdříve.</>
+            <><br />{t('feedback.thankyou_bug_note')}</>
           )}
         </p>
       </div>
@@ -108,27 +110,27 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
             onCheckedChange={(checked) => setCanContact(checked === true)}
           />
           <Label htmlFor="contact" className="text-sm cursor-pointer leading-relaxed">
-            Můžeme tě kontaktovat, pokud budeme potřebovat upřesnění?
+            {t('feedback.contact_permission')}
           </Label>
         </div>
 
         {canContact && (
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('feedback.email_label')}</Label>
             <Input
               id="email"
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="tvuj@email.cz"
+              placeholder={t('feedback.email_placeholder')}
               className="mt-1"
             />
           </div>
         )}
       </div>
 
-      <Button 
-        onClick={handleSubmit} 
+      <Button
+        onClick={handleSubmit}
         disabled={isSubmitting}
         className="w-full gap-2"
       >
@@ -137,7 +139,7 @@ export const ThankYouStep = ({ data, onClose }: ThankYouStepProps) => {
         ) : (
           <Send className="w-4 h-4" />
         )}
-        {isSubmitting ? 'Odesílám...' : 'Odeslat'}
+        {isSubmitting ? t('feedback.submitting') : t('feedback.submit_btn')}
       </Button>
     </div>
   );

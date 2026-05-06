@@ -664,7 +664,7 @@ const AdminGymDetail = () => {
                 <Separator className="my-4" />
 
                 <div className="space-y-3">
-                  <Label>Ceník</Label>
+                  <Label>{t('admin.pricing')}</Label>
                   <GymPricingEditor 
                     pricing={pricing} 
                     onChange={setPricing} 
