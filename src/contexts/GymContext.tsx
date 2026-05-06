@@ -10,12 +10,15 @@ export interface OpeningHours {
 
  export interface PriceVariant {
    group: string;
+   group_en?: string;
    price: number | null;
  }
- 
+
  export interface PricingItem {
    name: string;
+   name_en?: string;
    description?: string;
+   description_en?: string;
    prices: PriceVariant[];
  }
  

@@ -11,7 +11,6 @@ const formatPrice = (price: number | null) => {
   return `${price.toLocaleString('cs-CZ')} Kč`;
 };
 
-// Group items by their price group structure (same columns = same section)
 const groupByColumns = (items: PricingItem[]) => {
   const sections: { groups: string[]; items: PricingItem[] }[] = [];
 
@@ -31,7 +30,7 @@ const groupByColumns = (items: PricingItem[]) => {
   return sections;
 };
 
-const renderSection = (title: string, groups: string[], items: PricingItem[]) => {
+const renderSection = (title: string, groups: string[], items: PricingItem[], isEn: boolean) => {
   const showHeader = groups.length > 1 || (groups.length === 1 && groups[0] !== 'Cena');
 
   return (
@@ -45,9 +44,9 @@ const renderSection = (title: string, groups: string[], items: PricingItem[]) =>
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 pr-2 font-medium text-muted-foreground" />
-                {groups.map(group => (
-                  <th key={group} className="text-right py-2 pl-2 font-medium text-muted-foreground whitespace-nowrap text-xs">
-                    {group}
+                {items[0]?.prices.map((pv, i) => (
+                  <th key={i} className="text-right py-2 pl-2 font-medium text-muted-foreground whitespace-nowrap text-xs">
+                    {(isEn && pv.group_en) ? pv.group_en : pv.group}
                   </th>
                 ))}
               </tr>
@@ -57,9 +56,11 @@ const renderSection = (title: string, groups: string[], items: PricingItem[]) =>
             {items.map((item, index) => (
               <tr key={index} className="border-b border-border/50 last:border-0">
                 <td className="py-2.5 pr-2">
-                  <div className="font-medium">{item.name}</div>
-                  {item.description && (
-                    <div className="text-xs text-muted-foreground">{item.description}</div>
+                  <div className="font-medium">{(isEn && item.name_en) ? item.name_en : item.name}</div>
+                  {(isEn ? (item.description_en || item.description) : item.description) && (
+                    <div className="text-xs text-muted-foreground">
+                      {isEn ? (item.description_en || item.description) : item.description}
+                    </div>
                   )}
                 </td>
                 {item.prices.map((pv, pi) => (
@@ -77,7 +78,8 @@ const renderSection = (title: string, groups: string[], items: PricingItem[]) =>
 };
 
 const GymPricingDisplay = ({ pricing }: GymPricingDisplayProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
 
   if (!pricing || (pricing.single_entries.length === 0 && pricing.memberships.length === 0)) {
     return (
@@ -90,11 +92,9 @@ const GymPricingDisplay = ({ pricing }: GymPricingDisplayProps) => {
     );
   }
 
-  // Split memberships into logical sections based on column structure
   const singleSections = groupByColumns(pricing.single_entries);
   const membershipSections = groupByColumns(pricing.memberships);
 
-  // Build named sections matching PDF structure
   const SECTION_NAMES_SINGLE = [t('map.pricing_single_entry')];
   const SECTION_NAMES_MEMBERSHIP = [
     t('map.pricing_memberships'),
@@ -107,16 +107,18 @@ const GymPricingDisplay = ({ pricing }: GymPricingDisplayProps) => {
     <div className="space-y-6">
       {singleSections.map((section, i) =>
         renderSection(
-          SECTION_NAMES_SINGLE[i] || 'Vstupy',
+          SECTION_NAMES_SINGLE[i] || (isEn ? 'Entries' : 'Vstupy'),
           section.groups,
-          section.items
+          section.items,
+          isEn
         )
       )}
       {membershipSections.map((section, i) =>
         renderSection(
-          SECTION_NAMES_MEMBERSHIP[i] || `Služby`,
+          SECTION_NAMES_MEMBERSHIP[i] || (isEn ? 'Services' : 'Služby'),
           section.groups,
-          section.items
+          section.items,
+          isEn
         )
       )}
     </div>
