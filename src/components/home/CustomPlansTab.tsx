@@ -31,7 +31,7 @@ const CustomPlansTab = () => {
 
   const handleDelete = async (e: React.MouseEvent, planId: string) => {
     e.stopPropagation();
-    if (confirm('Opravdu chceš smazat tento plán?')) {
+    if (confirm(t('custom_plan.delete_confirm'))) {
       await deletePlan(planId);
     }
   };
@@ -71,7 +71,7 @@ const CustomPlansTab = () => {
               disabled={!newPlanName.trim() || creating}
               className="flex-1 rounded-xl"
             >
-              {creating ? 'Vytvářím...' : 'Vytvořit'}
+              {creating ? t('business.creating') : t('custom_plan.create_btn')}
             </Button>
             <Button
               size="sm"
@@ -79,7 +79,7 @@ const CustomPlansTab = () => {
               onClick={() => { setShowNewPlan(false); setNewPlanName(''); }}
               className="rounded-xl"
             >
-              Zrušit
+              {t('custom_plan.cancel_btn')}
             </Button>
           </div>
         </motion.div>
@@ -90,7 +90,7 @@ const CustomPlansTab = () => {
           className="w-full gap-2 rounded-2xl h-12 border-dashed border-2"
         >
           <Plus className="w-5 h-5" />
-          Nový plán
+          {t('custom_plan.new_plan')}
         </Button>
       )}
 
@@ -121,7 +121,7 @@ const CustomPlansTab = () => {
               onClick={clearPausedWorkout}
               className="px-4 py-2.5 rounded-xl bg-white/20 text-white font-medium text-sm hover:bg-white/30 transition-colors"
             >
-              Zrušit
+              {t('custom_plan.cancel_btn')}
             </button>
           </div>
         </motion.div>
@@ -137,9 +137,9 @@ const CustomPlansTab = () => {
           <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Dumbbell className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-foreground mb-1">Žádné vlastní plány</h3>
+          <h3 className="font-semibold text-foreground mb-1">{t('home.no_custom_plans')}</h3>
           <p className="text-sm text-muted-foreground">
-            Vytvoř si vlastní tréninkový plán
+            {t('home.no_custom_plans_desc')}
           </p>
         </motion.div>
       ) : (

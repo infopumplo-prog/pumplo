@@ -1,11 +1,13 @@
 import { AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 interface OnboardingWarningProps {
   onClick: () => void;
 }
 
 const OnboardingWarning = ({ onClick }: OnboardingWarningProps) => {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -20,8 +22,8 @@ const OnboardingWarning = ({ onClick }: OnboardingWarningProps) => {
           <AlertTriangle className="w-5 h-5 text-warning" />
         </div>
         <div className="text-left flex-1">
-          <p className="font-medium text-sm text-foreground">Dokonči svůj profil</p>
-          <p className="text-xs text-muted-foreground">Klikni pro vyplnění dotazníku</p>
+          <p className="font-medium text-sm text-foreground">{t('onboarding.complete_profile')}</p>
+          <p className="text-xs text-muted-foreground">{t('onboarding.click_to_fill')}</p>
         </div>
       </button>
     </motion.div>

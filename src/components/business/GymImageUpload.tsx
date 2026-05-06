@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Camera, ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface GymImageUploadProps {
   type: 'cover' | 'logo';
@@ -14,6 +15,7 @@ interface GymImageUploadProps {
 }
 
 const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymImageUploadProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,13 +26,13 @@ const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymIm
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Prosím vyberte obrázek');
+      toast.error(t('business.image_type_error'));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Obrázek je příliš velký (max 5MB)');
+      toast.error(t('business.image_size_error'));
       return;
     }
 
@@ -44,7 +46,7 @@ const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymIm
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      toast.error('Nepodařilo se nahrát obrázek');
+      toast.error(t('business.image_upload_error'));
       setIsUploading(false);
       return;
     }
@@ -55,7 +57,7 @@ const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymIm
 
     onUploadComplete(publicUrl);
     setIsUploading(false);
-    toast.success('Obrázek byl nahrán');
+    toast.success(t('business.image_uploaded'));
   };
 
   const handleClick = () => {
@@ -86,7 +88,7 @@ const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymIm
             <Camera className="w-6 h-6 text-muted-foreground" />
           )}
         </button>
-        <span className="text-xs text-muted-foreground mt-1 block text-center">Logo</span>
+        <span className="text-xs text-muted-foreground mt-1 block text-center">{t('business.logo_label')}</span>
       </div>
     );
   }
@@ -113,7 +115,7 @@ const GymImageUpload = ({ type, currentUrl, onUploadComplete, className }: GymIm
         ) : (
           <>
             <ImageIcon className="w-6 h-6 text-muted-foreground mb-2" />
-            <span className="text-sm text-muted-foreground">Přidat titulní fotku</span>
+            <span className="text-sm text-muted-foreground">{t('business.add_cover_photo')}</span>
           </>
         )}
       </button>

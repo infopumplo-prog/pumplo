@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import i18n from '@/i18n';
 
 interface Props {
   children: ReactNode;
@@ -46,22 +47,22 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="w-16 h-16 mx-auto bg-destructive/10 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-8 h-8 text-destructive" />
             </div>
-            <h1 className="text-xl font-bold">Něco se pokazilo</h1>
+            <h1 className="text-xl font-bold">{i18n.t('misc.error_title')}</h1>
             <p className="text-muted-foreground text-sm">
-              Došlo k neočekávané chybě. Zkuste obnovit stránku nebo se vrátit na hlavní stránku.
+              {i18n.t('misc.error_desc')}
             </p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
               <Button onClick={this.handleRetry} variant="outline" className="gap-2">
                 <RefreshCw className="w-4 h-4" />
-                Zkusit znovu
+                {i18n.t('misc.retry')}
               </Button>
               <Button onClick={this.handleGoHome}>
-                Hlavní stránka
+                {i18n.t('misc.home')}
               </Button>
             </div>
             {this.state.error && (
               <details className="text-left mt-4 p-3 bg-muted rounded-lg text-xs">
-                <summary className="cursor-pointer font-medium">Detaily chyby</summary>
+                <summary className="cursor-pointer font-medium">{i18n.t('misc.error_details')}</summary>
                 <pre className="mt-2 overflow-auto whitespace-pre-wrap text-destructive">
                   {this.state.error.message}
                   {'\n'}

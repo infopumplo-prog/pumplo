@@ -70,17 +70,30 @@ interface SuggestedAlternative {
   forExercise: string;
 }
 
-const categoryLabels: Record<string, string> = {
-  chest: 'Hrudník', back: 'Záda', shoulders: 'Ramena', arms: 'Paže',
-  legs: 'Nohy', core: 'Střed těla', cardio: 'Kardio',
-  full_body: 'Celé tělo', abdominals: 'Břicho', strength: 'Síla',
-};
+const getCategoryLabel = (t: ReturnType<typeof useTranslation>['t'], key: string): string => ({
+  chest: t('workout.category_chest'),
+  back: t('workout.category_back'),
+  shoulders: t('workout.category_shoulders'),
+  arms: t('workout.category_arms'),
+  legs: t('workout.category_legs'),
+  core: t('workout.category_core'),
+  cardio: t('workout.category_cardio'),
+  full_body: t('workout.category_full_body'),
+  abdominals: t('workout.category_abdominals'),
+  strength: t('workout.category_strength'),
+}[key] ?? key);
 
-const equipmentLabels: Record<string, string> = {
-  bodyweight: 'Vlastní váha', barbell: 'Činka', dumbbell: 'Jednoručky',
-  kettlebell: 'Kettlebell', machine: 'Stroj', cable: 'Kladka',
-  free_weight: 'Volné závaží', plate_loaded: 'Kotouče', other: 'Jiné',
-};
+const getEquipmentLabel = (t: ReturnType<typeof useTranslation>['t'], key: string): string => ({
+  bodyweight: t('workout.equip_bodyweight'),
+  barbell: t('workout.equip_barbell'),
+  dumbbell: t('workout.equip_dumbbell'),
+  kettlebell: t('workout.equip_kettlebell'),
+  machine: t('workout.equip_machine'),
+  cable: t('workout.equip_cable'),
+  free_weight: t('workout.equip_free_weight'),
+  plate_loaded: t('workout.equip_plate_loaded'),
+  other: t('workout.equip_other'),
+}[key] ?? key);
 
 type PlayerState = 'select_gym' | 'select_day' | 'equipment_warning' | 'exercise' | 'rest' | 'completed';
 
@@ -275,7 +288,7 @@ const CustomWorkoutPlayer = () => {
         unavailable.push({
           exercise_name: ex.exercise_name,
           exercise_id: ex.exercise_id,
-          reason: 'Stroj není v posilovně',
+          reason: t('workout.machine_not_in_gym'),
         });
 
         // Find alternative exercise with same primary_role that uses gym's equipment
@@ -637,7 +650,7 @@ const CustomWorkoutPlayer = () => {
   const getNextInfo = () => {
     if (!currentExercise) return '';
     if (currentSet < currentExercise.sets) {
-      return `${currentExercise.exercise_name} · Série ${currentSet + 1}`;
+      return `${currentExercise.exercise_name} · ${t('workout.series_next', { number: currentSet + 1 })}`;
     }
     if (currentExerciseIndex < exercises.length - 1) {
       return exercises[currentExerciseIndex + 1].exercise_name;
@@ -744,8 +757,8 @@ const CustomWorkoutPlayer = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Plán nenalezen</p>
-          <Button onClick={() => navigate('/')} variant="outline">Zpět</Button>
+          <p className="text-muted-foreground mb-4">{t('workout.plan_not_found')}</p>
+          <Button onClick={() => navigate('/')} variant="outline">{t('workout.back')}</Button>
         </div>
       </div>
     );
@@ -783,12 +796,12 @@ const CustomWorkoutPlayer = () => {
                 onClick={() => setPlayerState('select_gym')}
                 className="ml-auto text-xs text-primary font-medium"
               >
-                Změnit
+                {t('workout.change_gym')}
               </button>
             </div>
           )}
 
-          <p className="text-muted-foreground mb-6">Vyber den, který chceš trénovat:</p>
+          <p className="text-muted-foreground mb-6">{t('workout.select_day')}</p>
           <div className="space-y-3">
             {plan.days.filter(d => d.exercises.length > 0).map((day) => (
               <button
@@ -800,8 +813,8 @@ const CustomWorkoutPlayer = () => {
                   <Play className="w-5 h-5 text-[#5BC8F5]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{day.name || `Den ${day.day_number}`}</p>
-                  <p className="text-sm text-muted-foreground">{day.exercises.length} cviků</p>
+                  <p className="font-semibold truncate">{day.name || t('workout.day_label', { number: day.day_number })}</p>
+                  <p className="text-sm text-muted-foreground">{t('workout.exercises_count', { count: day.exercises.length })}</p>
                 </div>
               </button>
             ))}
@@ -820,7 +833,7 @@ const CustomWorkoutPlayer = () => {
             <button onClick={() => setPlayerState('select_day')} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold">Upozornění na vybavení</h1>
+            <h1 className="text-xl font-bold">{t('workout.equipment_warning_title')}</h1>
           </div>
 
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-6">
@@ -828,11 +841,9 @@ const CustomWorkoutPlayer = () => {
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">
-                  Některé cviky nejsou dostupné
+                  {t('workout.exercises_unavailable')}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  V posilovně <strong>{gymName}</strong> chybí vybavení pro tyto cviky:
-                </p>
+                <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('workout.missing_equipment', { name: gymName }) }} />
               </div>
             </div>
           </div>
@@ -851,7 +862,7 @@ const CustomWorkoutPlayer = () => {
                     <div className="mt-2 ml-6 flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5 text-green-500" />
                       <p className="text-xs text-green-600 dark:text-green-400">
-                        Doporučení: <strong>{alt.exerciseName}</strong>
+                        {t('workout.recommendation')} <strong>{alt.exerciseName}</strong>
                       </p>
                     </div>
                   )}
@@ -861,7 +872,7 @@ const CustomWorkoutPlayer = () => {
           </div>
 
           <p className="text-sm text-muted-foreground mb-6">
-            Můžeš pokračovat i s těmito cviky, nebo se vrátit a upravit svůj plán.
+            {t('workout.continue_anyway_desc')}
           </p>
 
           <div className="space-y-3">
@@ -869,14 +880,14 @@ const CustomWorkoutPlayer = () => {
               className="w-full"
               onClick={() => setPlayerState('exercise')}
             >
-              Pokračovat přesto
+              {t('workout.continue_anyway')}
             </Button>
             <Button
               variant="outline"
               className="w-full"
               onClick={() => navigate(`/custom-plan/${id}`)}
             >
-              Upravit plán
+              {t('workout.edit_plan')}
             </Button>
           </div>
         </div>
@@ -928,7 +939,7 @@ const CustomWorkoutPlayer = () => {
         >
           <X className="w-5 h-5" />
         </button>
-        <p className="text-muted-foreground text-sm font-medium mb-4">Odpočinek</p>
+        <p className="text-muted-foreground text-sm font-medium mb-4">{t('workout.rest_label')}</p>
 
         <div className="relative w-48 h-48 mb-6">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
@@ -951,7 +962,7 @@ const CustomWorkoutPlayer = () => {
         </div>
 
         <p className="text-sm text-muted-foreground mb-6">
-          Další: {getNextInfo()}
+          {t('workout.next_label')} {getNextInfo()}
         </p>
 
         <button
@@ -959,7 +970,7 @@ const CustomWorkoutPlayer = () => {
           className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border text-muted-foreground"
         >
           <SkipForward className="w-4 h-4" />
-          Přeskočit pauzu
+          {t('workout.skip_rest')}
         </button>
 
         {/* Exit dialog */}
@@ -967,11 +978,11 @@ const CustomWorkoutPlayer = () => {
           {showExitDialog && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
               <div className="bg-background rounded-2xl p-6 max-w-sm w-full">
-                <h3 className="text-lg font-bold mb-2">Ukončit trénink?</h3>
-                <p className="text-sm text-muted-foreground mb-4">Tvůj postup bude ztracen.</p>
+                <h3 className="text-lg font-bold mb-2">{t('workout.exit_title')}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t('workout.exit_desc_simple')}</p>
                 <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={() => setShowExitDialog(false)}>Zpět</Button>
-                  <Button variant="destructive" className="flex-1" onClick={() => navigate(-1)}>Ukončit</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setShowExitDialog(false)}>{t('workout.back')}</Button>
+                  <Button variant="destructive" className="flex-1" onClick={() => navigate(-1)}>{t('workout.end_workout')}</Button>
                 </div>
               </div>
             </motion.div>
@@ -1107,8 +1118,8 @@ const CustomWorkoutPlayer = () => {
                 className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm"
                 onClick={e => e.stopPropagation()}
               >
-                <h2 className="text-lg font-bold text-center mb-1">Ukončit trénink?</h2>
-                <p className="text-muted-foreground text-sm text-center mb-6">Co chceš udělat s tréninkem?</p>
+                <h2 className="text-lg font-bold text-center mb-1">{t('workout.exit_title')}</h2>
+                <p className="text-muted-foreground text-sm text-center mb-6">{t('workout.exit_desc')}</p>
                 <div className="space-y-3">
                   <button
                     onClick={() => {
@@ -1119,7 +1130,7 @@ const CustomWorkoutPlayer = () => {
                           planId: id,
                           planName: plan.name,
                           dayId: selectedDayId,
-                          dayName: day?.name || `Den ${day?.day_number || 1}`,
+                          dayName: day?.name || t('workout.day_fallback', { number: day?.day_number || 1 }),
                           currentExerciseIndex,
                           currentSet,
                           totalSetsCompleted,
@@ -1132,7 +1143,7 @@ const CustomWorkoutPlayer = () => {
                     }}
                     className="w-full py-3.5 rounded-xl bg-muted text-foreground font-semibold hover:bg-muted/80 transition-colors"
                   >
-                    Pozastavit trénink
+                    {t('workout.pause_workout')}
                   </button>
                   <button
                     onClick={() => {
@@ -1142,13 +1153,13 @@ const CustomWorkoutPlayer = () => {
                     }}
                     className="w-full py-3.5 rounded-xl bg-red-500/90 text-white font-semibold hover:bg-red-500 transition-colors"
                   >
-                    Ukončit trénink
+                    {t('workout.end_workout')}
                   </button>
                   <button
                     onClick={() => setShowExitDialog(false)}
                     className="w-full py-3.5 rounded-xl text-muted-foreground font-medium hover:text-foreground transition-colors"
                   >
-                    Pokračovat
+                    {t('workout.continue')}
                   </button>
                 </div>
               </motion.div>
@@ -1160,14 +1171,14 @@ const CustomWorkoutPlayer = () => {
         <Drawer open={infoDrawerOpen} onOpenChange={setInfoDrawerOpen}>
           <DrawerContent className="max-h-[85vh]">
             <DrawerHeader>
-              <DrawerTitle>{exerciseDetail?.name || 'Detail cviku'}</DrawerTitle>
+              <DrawerTitle>{exerciseDetail?.name || t('workout.exercise_detail_title')}</DrawerTitle>
             </DrawerHeader>
             {exerciseDetail && (
               <div className="px-4 pb-6 overflow-y-auto">
                 {exerciseDetail.video_path ? (
                   <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                     {infoVideoError ? (
-                      <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video nedostupné</div>
+                      <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                     ) : (
                       <video
                         key={exerciseDetail.video_path}
@@ -1182,17 +1193,17 @@ const CustomWorkoutPlayer = () => {
                   </div>
                 ) : (
                   <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Bez videa</p>
+                    <p className="text-sm text-muted-foreground">{t('workout.no_video')}</p>
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground mb-4">
-                  {categoryLabels[exerciseDetail.category] || exerciseDetail.category}
-                  {exerciseDetail.equipment_type && ` · ${equipmentLabels[exerciseDetail.equipment_type] || exerciseDetail.equipment_type}`}
+                  {getCategoryLabel(t, exerciseDetail.category)}
+                  {exerciseDetail.equipment_type && ` · ${getEquipmentLabel(t, exerciseDetail.equipment_type)}`}
                   {exerciseDetail.machine_name && ` · ${exerciseDetail.machine_name}`}
                 </p>
                 {exerciseDetail.primary_muscles.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Primární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {exerciseDetail.primary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
@@ -1202,7 +1213,7 @@ const CustomWorkoutPlayer = () => {
                 )}
                 {exerciseDetail.secondary_muscles.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Sekundární svaly</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {exerciseDetail.secondary_muscles.map((m) => (
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
@@ -1212,25 +1223,25 @@ const CustomWorkoutPlayer = () => {
                 )}
                 {exerciseDetail.description && (
                   <div className="mb-4 p-3 bg-muted/50 rounded-xl">
-                    <p className="text-xs font-semibold text-foreground mb-1">Popis & technika</p>
+                    <p className="text-xs font-semibold text-foreground mb-1">{t('workout.description_technique')}</p>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.description}</p>
                   </div>
                 )}
                 {exerciseDetail.setup_instructions && (
                   <div className="mb-3">
-                    <p className="text-xs font-semibold text-foreground mb-1">Nastavení</p>
+                    <p className="text-xs font-semibold text-foreground mb-1">{t('workout.setup')}</p>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.setup_instructions}</p>
                   </div>
                 )}
                 {exerciseDetail.common_mistakes && (
                   <div className="mb-3">
-                    <p className="text-xs font-semibold text-amber-600 mb-1">Časté chyby</p>
+                    <p className="text-xs font-semibold text-amber-600 mb-1">{t('workout.common_mistakes')}</p>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.common_mistakes}</p>
                   </div>
                 )}
                 {exerciseDetail.tips && (
                   <div className="mb-3">
-                    <p className="text-xs font-semibold text-green-600 mb-1">Tipy</p>
+                    <p className="text-xs font-semibold text-green-600 mb-1">{t('workout.tips')}</p>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDetail.tips}</p>
                   </div>
                 )}
@@ -1270,7 +1281,7 @@ const CustomWorkoutPlayer = () => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-neutral-900">
-                  <p className="text-white/30 text-sm">{videoError ? 'Video nedostupné' : 'Bez videa'}</p>
+                  <p className="text-white/30 text-sm">{videoError ? t('workout.video_unavailable') : t('workout.no_video')}</p>
                 </div>
               )}
 
@@ -1314,7 +1325,7 @@ const CustomWorkoutPlayer = () => {
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
                   <p className="text-white font-bold text-base leading-tight">{currentExercise.exercise_name}</p>
                   <p className="text-white/70 text-sm mt-0.5">
-                    Série {currentSet} / {currentExercise.sets}
+                    {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
                   </p>
                 </div>
                 <button
@@ -1331,11 +1342,11 @@ const CustomWorkoutPlayer = () => {
                 {isCurrentCardio ? (
                   <div className="flex flex-col items-center gap-4">
                     <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
-                      <p className="text-white/60 text-xs mb-1">Kardio · {Math.floor(currentExercise.reps / 60)}:{String(currentExercise.reps % 60).padStart(2, '0')} min</p>
+                      <p className="text-white/60 text-xs mb-1">{t('workout.category_cardio')} · {Math.floor(currentExercise.reps / 60)}:{String(currentExercise.reps % 60).padStart(2, '0')} min</p>
                       <p className={`text-5xl font-bold tabular-nums ${cardioSeconds <= 10 ? 'text-red-400' : 'text-white'}`}>
                         {formatTime(cardioSeconds)}
                       </p>
-                      {cardioPaused && <p className="text-white/50 text-xs mt-1">Pozastaveno</p>}
+                      {cardioPaused && <p className="text-white/50 text-xs mt-1">{t('workout.cardio_paused')}</p>}
                     </div>
                     <div className="flex items-center gap-4">
                       <button onClick={handleCardioPauseToggle} className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform">
@@ -1363,11 +1374,11 @@ const CustomWorkoutPlayer = () => {
                       <div className="flex-1">
                         <div className="flex gap-2">
                           <div className="flex-1">
-                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">Váha (kg)</label>
+                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.weight_label')}</label>
                             <input type="number" inputMode="decimal" placeholder={t('workout.weight_placeholder')} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30" />
                           </div>
                           <div className="flex-1">
-                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">Opakování</label>
+                            <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.reps_label')}</label>
                             <input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50" />
                           </div>
                         </div>
@@ -1407,7 +1418,7 @@ const CustomWorkoutPlayer = () => {
             >
               <X className="w-5 h-5" />
             </button>
-            <p className="text-neutral-400 text-sm font-medium mb-4">Odpočinek</p>
+            <p className="text-neutral-400 text-sm font-medium mb-4">{t('workout.rest_label')}</p>
 
             {/* Big timer */}
             <div className="relative w-48 h-48 mb-6">
@@ -1432,7 +1443,7 @@ const CustomWorkoutPlayer = () => {
 
             {/* Next info */}
             <p className="text-sm text-neutral-400 mb-8">
-              Další: {getNextInfo()}
+              {t('workout.next_label')} {getNextInfo()}
             </p>
 
 
@@ -1442,7 +1453,7 @@ const CustomWorkoutPlayer = () => {
               className="flex items-center gap-2 px-5 py-3 rounded-xl border border-neutral-200 text-neutral-500 hover:text-[#1A2744] hover:border-neutral-300 transition-colors"
             >
               <SkipForward className="w-4 h-4" />
-              Přeskočit pauzu
+              {t('workout.skip_rest')}
             </button>
           </motion.div>
         )}
@@ -1478,7 +1489,7 @@ const CustomWorkoutPlayer = () => {
                         planId: id,
                         planName: plan.name,
                         dayId: selectedDayId,
-                        dayName: day?.name || `Den ${day?.day_number || 1}`,
+                        dayName: day?.name || t('workout.day_fallback', { number: day?.day_number || 1 }),
                         currentExerciseIndex,
                         currentSet,
                         totalSetsCompleted,
@@ -1491,7 +1502,7 @@ const CustomWorkoutPlayer = () => {
                   }}
                   className="w-full py-3.5 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/15 transition-colors"
                 >
-                  Pozastavit trénink
+                  {t('workout.pause_workout')}
                 </button>
                 <button
                   onClick={() => {
@@ -1501,13 +1512,13 @@ const CustomWorkoutPlayer = () => {
                   }}
                   className="w-full py-3.5 rounded-xl bg-red-500/90 text-white font-semibold hover:bg-red-500 transition-colors"
                 >
-                  Ukončit trénink
+                  {t('workout.end_workout')}
                 </button>
                 <button
                   onClick={() => setShowExitDialog(false)}
                   className="w-full py-3.5 rounded-xl text-white/50 font-medium hover:text-white/70 transition-colors"
                 >
-                  Pokračovat
+                  {t('workout.continue')}
                 </button>
               </div>
             </motion.div>
@@ -1526,7 +1537,7 @@ const CustomWorkoutPlayer = () => {
               {exerciseDetail.video_path ? (
                 <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                   {infoVideoError ? (
-                    <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">Video nedostupné</div>
+                    <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                   ) : (
                     <video
                       key={exerciseDetail.video_path}
@@ -1541,7 +1552,7 @@ const CustomWorkoutPlayer = () => {
                 </div>
               ) : (
                 <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Bez videa</p>
+                  <p className="text-sm text-muted-foreground">{t('workout.no_video')}</p>
                 </div>
               )}
 
@@ -1559,7 +1570,7 @@ const CustomWorkoutPlayer = () => {
                 className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
                 <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
-                Zpětná vazba k tomuto cviku
+                {t('workout.feedback_btn')}
               </button>
 
               {exerciseDetail.primary_muscles.length > 0 && (

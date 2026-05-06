@@ -58,25 +58,7 @@ interface MissedHistoryEntry {
   users: MissedUser[];
 }
 
-const DAY_NAMES_CZ: Record<string, string> = {
-  monday: 'Pondělí',
-  tuesday: 'Úterý',
-  wednesday: 'Středa',
-  thursday: 'Čtvrtek',
-  friday: 'Pátek',
-  saturday: 'Sobota',
-  sunday: 'Neděle'
-};
-
-const DAY_SHORT_CZ: Record<string, string> = {
-  monday: 'Po',
-  tuesday: 'Út',
-  wednesday: 'St',
-  thursday: 'Čt',
-  friday: 'Pá',
-  saturday: 'So',
-  sunday: 'Ne'
-};
+const DAY_KEYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 const DAY_COLORS = [
   'hsl(var(--chart-1))',
@@ -87,6 +69,26 @@ const DAY_COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--accent))',
 ];
+
+const DAY_NAMES: Record<string, (t: ReturnType<typeof useTranslation>['t']) => string> = {
+  monday: (t) => t('admin.day_monday'),
+  tuesday: (t) => t('admin.day_tuesday'),
+  wednesday: (t) => t('admin.day_wednesday'),
+  thursday: (t) => t('admin.day_thursday'),
+  friday: (t) => t('admin.day_friday'),
+  saturday: (t) => t('admin.day_saturday'),
+  sunday: (t) => t('admin.day_sunday'),
+};
+
+const DAY_SHORT: Record<string, (t: ReturnType<typeof useTranslation>['t']) => string> = {
+  monday: (t) => t('business.day_short_mon'),
+  tuesday: (t) => t('business.day_short_tue'),
+  wednesday: (t) => t('business.day_short_wed'),
+  thursday: (t) => t('business.day_short_thu'),
+  friday: (t) => t('business.day_short_fri'),
+  saturday: (t) => t('business.day_short_sat'),
+  sunday: (t) => t('business.day_short_sun'),
+};
 
 const GymStats = () => {
   const { t } = useTranslation();
@@ -302,10 +304,9 @@ const GymStats = () => {
           dayCountMap[days[dayIndex]]++;
         });
 
-        const orderedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        const dayDistribution: DayDistributionData[] = orderedDays.map((day, index) => ({
+        const dayDistribution: DayDistributionData[] = DAY_KEYS_ORDER.map((day, index) => ({
           dayKey: day,
-          day: DAY_SHORT_CZ[day],
+          day: DAY_SHORT[day](t),
           workouts: dayCountMap[day],
           fill: DAY_COLORS[index]
         }));
@@ -507,7 +508,7 @@ const GymStats = () => {
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: day.fill }}
                       />
-                      <span className="text-sm">{DAY_NAMES_CZ[day.dayKey]}</span>
+                      <span className="text-sm">{DAY_NAMES[day.dayKey]?.(t)}</span>
                       <span className="text-sm font-semibold ml-auto">{day.workouts}</span>
                     </div>
                   ))}
@@ -520,7 +521,7 @@ const GymStats = () => {
                 <UserX className="w-5 h-5 text-destructive" />
                 <h3 className="font-semibold">{t('business.missed_today')}</h3>
                 <span className="ml-auto text-sm text-muted-foreground">
-                  {DAY_NAMES_CZ[todayWeekday]}
+                  {DAY_NAMES[todayWeekday]?.(t)}
                 </span>
               </div>
 
@@ -540,7 +541,7 @@ const GymStats = () => {
                           {user.firstName || t('business.unknown')} {user.lastName || ''}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {t('business.should_workout_day', { day: DAY_NAMES_CZ[user.expectedDay] })}
+                          {t('business.should_workout_day', { day: DAY_NAMES[user.expectedDay]?.(t) })}
                         </p>
                       </div>
                     </div>

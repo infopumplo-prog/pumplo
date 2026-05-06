@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 const OfflineIndicator = () => {
+  const { t } = useTranslation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showReconnected, setShowReconnected] = useState(false);
 
@@ -45,12 +47,12 @@ const OfflineIndicator = () => {
           {isOnline ? (
             <>
               <Wifi className="w-4 h-4" />
-              <span>Pripojenie obnovené</span>
+              <span>{t('misc.connection_restored')}</span>
             </>
           ) : (
             <>
               <WifiOff className="w-4 h-4" />
-              <span>Offline režim – dáta sa načítavajú z cache</span>
+              <span>{t('misc.offline_mode')}</span>
             </>
           )}
         </motion.div>

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 
 export interface OpeningHours {
   [day: string]: { open: string; close: string; closed: boolean };
@@ -124,7 +125,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
       console.error('Error fetching gyms:', error);
-      toast.error('Nepodařilo se načíst posilovny');
+      toast.error(i18n.t('gym.fetch_error'));
     } else {
        const processedGymList: Gym[] = (data || []).map(g => ({
          ...g,
@@ -185,10 +186,10 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
     address?: string;
     opening_hours: OpeningHours;
   }) => {
-    if (!user) return { success: false, error: 'Nie ste prihlásený' };
-    
+    if (!user) return { success: false, error: i18n.t('gym.not_logged_in') };
+
     if (!canCreateMoreGyms()) {
-      return { success: false, error: `Dosiahli ste limit ${licenseCount} posilovní. Kontaktujte podporu pre navýšenie licencie.` };
+      return { success: false, error: i18n.t('gym.license_limit', { count: licenseCount }) };
     }
 
     const { data, error } = await supabase
@@ -218,7 +219,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateGym = async (updates: Partial<Gym>) => {
-    if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
+    if (!selectedGym) return { success: false, error: i18n.t('gym.not_found') };
 
      // Build updates object, properly casting types for Supabase
      const dbUpdates: Record<string, unknown> = {};
@@ -274,7 +275,7 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addMachine = async (machineId: string, quantity: number, maxWeight?: number, benchConfigs?: string[]) => {
-    if (!selectedGym) return { success: false, error: 'Posilňovňa neexistuje' };
+    if (!selectedGym) return { success: false, error: i18n.t('gym.not_found') };
 
     const { error } = await supabase
       .from('gym_machines')
@@ -288,13 +289,13 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
       if (error.code === '23505') {
-        return { success: false, error: 'Tento stroj už máte pridaný' };
+        return { success: false, error: i18n.t('gym.machine_already_added') };
       }
       return { success: false, error: error.message };
     }
 
     await fetchGymMachines();
-    toast.success('Stroj bol pridaný');
+    toast.success(i18n.t('gym.machine_added'));
     return { success: true };
   };
 
@@ -310,12 +311,12 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       .eq('id', gymMachineId);
 
     if (error) {
-      toast.error('Nepodarilo sa aktualizovať stroj');
+      toast.error(i18n.t('gym.machine_update_error'));
       return { success: false };
     }
 
     await fetchGymMachines();
-    toast.success('Stroj bol aktualizovaný');
+    toast.success(i18n.t('gym.machine_updated'));
     return { success: true };
   };
 
@@ -326,12 +327,12 @@ export const GymProvider = ({ children }: { children: ReactNode }) => {
       .eq('id', gymMachineId);
 
     if (error) {
-      toast.error('Nepodarilo sa odstrániť stroj');
+      toast.error(i18n.t('gym.machine_remove_error'));
       return { success: false };
     }
 
     await fetchGymMachines();
-    toast.success('Stroj bol odstránený');
+    toast.success(i18n.t('gym.machine_removed'));
     return { success: true };
   };
 

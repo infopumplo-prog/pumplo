@@ -31,23 +31,15 @@ interface BusinessUser {
 }
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Názov musí mať aspoň 2 znaky'),
+  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
   description: z.string().optional(),
   address: z.string().optional(),
-  owner_id: z.string().min(1, 'Vyberte majiteľa'),
+  owner_id: z.string().min(1, 'Vyberte majitele'),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const DAYS = [
-  { key: 'monday', label: 'Pondelok' },
-  { key: 'tuesday', label: 'Utorok' },
-  { key: 'wednesday', label: 'Streda' },
-  { key: 'thursday', label: 'Štvrtok' },
-  { key: 'friday', label: 'Piatok' },
-  { key: 'saturday', label: 'Sobota' },
-  { key: 'sunday', label: 'Nedeľa' },
-];
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 interface AdminCreateGymFormProps {
   onSuccess?: () => void;
@@ -61,9 +53,9 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [openingHours, setOpeningHours] = useState<OpeningHours>(
-    DAYS.reduce((acc, day) => ({
+    DAY_KEYS.reduce((acc, key) => ({
       ...acc,
-      [day.key]: { open: '06:00', close: '22:00', closed: false },
+      [key]: { open: '06:00', close: '22:00', closed: false },
     }), {})
   );
 
@@ -122,7 +114,7 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
 
   const onSubmit = async (data: FormData) => {
     if (!location) {
-      toast.error('Vyberte prosím lokáciu na mape');
+      toast.error(t('admin.create_gym_no_location'));
       return;
     }
 
@@ -145,37 +137,37 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
     
     if (error) {
       console.error('Error creating gym:', error);
-      toast.error('Nepodarilo sa vytvoriť posilovňu');
+      toast.error(t('admin.create_gym_error'));
       return;
     }
 
-    toast.success('Posilovňa bola vytvorená');
+    toast.success(t('admin.create_gym_success'));
     onSuccess?.();
   };
 
   const getOwnerDisplayName = (user: BusinessUser) => {
     const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    return name || 'Bez mena';
+    return name || t('admin.no_name');
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Owner Selection */}
       <div className="space-y-2">
-        <Label>Majiteľ (business používateľ) *</Label>
+        <Label>{t('admin.create_gym_owner_label')}</Label>
         {isLoadingUsers ? (
           <div className="flex items-center gap-2 py-2">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Načítavam...</span>
+            <span className="text-sm text-muted-foreground">{t('admin.create_gym_loading_owners')}</span>
           </div>
         ) : businessUsers.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            Žiadni business používatelia. Najprv vytvorte používateľa s business rolou.
+            {t('admin.create_gym_no_owners')}
           </p>
         ) : (
           <Select onValueChange={(value) => setValue('owner_id', value)} value={selectedOwnerId}>
             <SelectTrigger>
-              <SelectValue placeholder="Vyberte majiteľa" />
+              <SelectValue placeholder={t('admin.create_gym_select_owner')} />
             </SelectTrigger>
             <SelectContent className="z-[200]">
               {businessUsers.map((user) => (
@@ -193,11 +185,11 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
 
       {/* Name */}
       <div className="space-y-2">
-        <Label htmlFor="name">Názov posilovne *</Label>
+        <Label htmlFor="name">{t('admin.create_gym_name_label')}</Label>
         <Input
           id="name"
           {...register('name')}
-          placeholder="Napr. FitZone Gym"
+          placeholder={t('admin.create_gym_name_placeholder')}
         />
         {errors.name && (
           <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -206,7 +198,7 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
 
       {/* Description */}
       <div className="space-y-2">
-        <Label htmlFor="description">Popis</Label>
+        <Label htmlFor="description">{t('admin.create_gym_desc_label')}</Label>
         <Textarea
           id="description"
           {...register('description')}
@@ -217,7 +209,7 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
 
       {/* Address */}
       <div className="space-y-2">
-        <Label htmlFor="address">Adresa</Label>
+        <Label htmlFor="address">{t('admin.create_gym_address_label')}</Label>
         <Input
           id="address"
           {...register('address')}
@@ -227,47 +219,47 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
 
       {/* Location */}
       <div className="space-y-2">
-        <Label>Lokácia na mape *</Label>
+        <Label>{t('admin.create_gym_location_label')}</Label>
         <LocationPicker
           onLocationChange={(lat, lng) => setLocation({ lat, lng })}
         />
         {location && (
           <p className="text-sm text-muted-foreground">
-            Vybraná pozícia: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+            {t('admin.create_gym_location_selected', { lat: location.lat.toFixed(5), lng: location.lng.toFixed(5) })}
           </p>
         )}
       </div>
 
       {/* Opening Hours */}
       <div className="space-y-3">
-        <Label>Otváracie hodiny</Label>
-        {DAYS.map(day => (
-          <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
+        <Label>{t('admin.create_gym_opening_hours')}</Label>
+        {DAY_KEYS.map(key => (
+          <div key={key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">{day.label}</span>
+              <span className="text-sm font-medium">{t(`admin.day_${key}`)}</span>
               <Switch
-                checked={!openingHours[day.key]?.closed}
-                onCheckedChange={(checked) => updateOpeningHours(day.key, 'closed', !checked)}
+                checked={!openingHours[key]?.closed}
+                onCheckedChange={(checked) => updateOpeningHours(key, 'closed', !checked)}
               />
             </div>
-            {!openingHours[day.key]?.closed ? (
+            {!openingHours[key]?.closed ? (
               <div className="flex items-center gap-2">
                 <Input
                   type="time"
-                  value={openingHours[day.key]?.open || '06:00'}
-                  onChange={(e) => updateOpeningHours(day.key, 'open', e.target.value)}
+                  value={openingHours[key]?.open || '06:00'}
+                  onChange={(e) => updateOpeningHours(key, 'open', e.target.value)}
                   className="flex-1"
                 />
                 <span className="text-muted-foreground">-</span>
                 <Input
                   type="time"
-                  value={openingHours[day.key]?.close || '22:00'}
-                  onChange={(e) => updateOpeningHours(day.key, 'close', e.target.value)}
+                  value={openingHours[key]?.close || '22:00'}
+                  onChange={(e) => updateOpeningHours(key, 'close', e.target.value)}
                   className="flex-1"
                 />
               </div>
             ) : (
-              <span className="text-sm text-muted-foreground">Zatvorené</span>
+              <span className="text-sm text-muted-foreground">{t('admin.closed')}</span>
             )}
           </div>
         ))}
@@ -283,15 +275,15 @@ const AdminCreateGymForm = ({ onSuccess, onCancel }: AdminCreateGymFormProps) =>
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Vytváram...
+              {t('admin.create_gym_submitting')}
             </>
           ) : (
-            'Vytvoriť posilovňu'
+            t('admin.create_gym_btn')
           )}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
-            Zrušiť
+            {t('admin.cancel')}
           </Button>
         )}
       </div>

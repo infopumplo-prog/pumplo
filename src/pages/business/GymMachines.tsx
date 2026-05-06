@@ -52,7 +52,6 @@ export const GYM_EQUIPMENT_BRANDS = [
   'Woodway',
   'Valor Fitness',
   'Gymmaster',
-  'Jiná značka',
 ];
 
 const GymMachines = () => {

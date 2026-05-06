@@ -1833,6 +1833,137 @@ const cs = {
   'admin.cardio_badge': 'Kardio',
   'admin.all_categories_label': 'Všechny kategorie',
   'admin.category_placeholder': 'Kategorie',
+
+  // CustomPlansTab
+  'custom_plan.delete_confirm': 'Opravdu chceš smazat tento plán?',
+  'custom_plan.create_btn': 'Vytvořit',
+  'custom_plan.new_plan': 'Nový plán',
+  'custom_plan.cancel_btn': 'Zrušit',
+  'home.no_custom_plans': 'Žádné vlastní plány',
+  'home.no_custom_plans_desc': 'Vytvoř si vlastní tréninkový plán',
+
+  // GymProfile
+  'business.instagram_label': 'Instagram',
+  'business.instagram_hint': 'Zobrazuje se na sdílené fotce z tréninku',
+
+  // GymContext
+  'gym.not_logged_in': 'Nejste přihlášeni',
+  'gym.license_limit': 'Dosáhli jste limitu {{count}} posiloven. Kontaktujte podporu pro navýšení licence.',
+  'gym.not_found': 'Posilovna neexistuje',
+  'gym.machine_already_added': 'Tento stroj již máte přidaný',
+  'gym.machine_added': 'Stroj byl přidán',
+  'gym.machine_update_error': 'Nepodařilo se aktualizovat stroj',
+  'gym.machine_updated': 'Stroj byl aktualizován',
+  'gym.machine_remove_error': 'Nepodařilo se odstranit stroj',
+  'gym.machine_removed': 'Stroj byl odstraněn',
+  'gym.fetch_error': 'Nepodařilo se načíst posilovny',
+
+  // Map page
+  'map.geo_not_supported': 'Geolokace není podporována',
+  'map.location_denied': 'Přístup k poloze zamítnut',
+  'map.location_denied_desc': 'Povol přístup k poloze v nastavení prohlížeče.',
+  'map.location_failed': 'Nepodařilo se získat polohu',
+  'map.location_failed_desc': 'Zkontroluj připojení nebo nastavení GPS.',
+  'map.gym_selected': 'Posilovna vybrána',
+  'map.gym_selected_desc': '{{name}} byla nastavena jako tvoje posilovna pro trénink.',
+  'map.select_gym_error': 'Chyba',
+  'map.select_gym_error_desc': 'Nepodařilo se vybrat posilovnu.',
+  'map.map_locked': 'Mapa je uzamčená',
+  'map.map_locked_desc': 'Pro přístup k mapě posiloven nejdříve vyplň dotazník',
+  'map.fill_questionnaire': 'Vyplnit dotazník',
+
+  // TrainerProfile page
+  'trainer_profile.add_pricing_item': 'Přidat položku',
+  'trainer_profile.currency': 'Kč',
+  'trainer_profile.contact_title': 'Kontakt',
+  'trainer_profile.phone_label': 'Telefon',
+  'trainer_profile.email_label': 'E-mail',
+  'trainer_profile.saving': 'Ukládám...',
+  'trainer_profile.save_changes': 'Uložit změny',
+
+  // GymDashboard business page
+  'business.no_license_desc': 'Pro vytvoření posilovny potřebujete aktivní licenci. Kontaktujte administrátora pro přidělení licence.',
+  'business.no_gym_desc': 'Vytvořte si profil své posilovny, abyste mohli spravovat stroje a zveřejnit ji na mapě.',
+  'business.license_count': 'Vaše licence: {{count}}',
+
+  // GymStats - short day names for charts
+  'business.day_short_mon': 'Po',
+  'business.day_short_tue': 'Út',
+  'business.day_short_wed': 'St',
+  'business.day_short_thu': 'Čt',
+  'business.day_short_fri': 'Pá',
+  'business.day_short_sat': 'So',
+  'business.day_short_sun': 'Ne',
+
+  // GymMachines
+  'business.brand_other': 'Jiná značka',
+
+  // CustomWorkoutPlayer - category labels
+  'workout.category_chest': 'Hrudník',
+  'workout.category_back': 'Záda',
+  'workout.category_shoulders': 'Ramena',
+  'workout.category_arms': 'Paže',
+  'workout.category_legs': 'Nohy',
+  'workout.category_core': 'Střed těla',
+  'workout.category_cardio': 'Kardio',
+  'workout.category_full_body': 'Celé tělo',
+  'workout.category_abdominals': 'Břicho',
+  'workout.category_strength': 'Síla',
+
+  // CustomWorkoutPlayer - equipment labels
+  'workout.equip_bodyweight': 'Vlastní váha',
+  'workout.equip_barbell': 'Činka',
+  'workout.equip_dumbbell': 'Jednoručky',
+  'workout.equip_kettlebell': 'Kettlebell',
+  'workout.equip_machine': 'Stroj',
+  'workout.equip_cable': 'Kladka',
+  'workout.equip_free_weight': 'Volné závaží',
+  'workout.equip_plate_loaded': 'Kotouče',
+  'workout.equip_other': 'Jiné',
+
+  // CustomWorkoutPlayer - exercise detail drawer
+  'workout.no_video': 'Bez videa',
+  'workout.video_unavailable': 'Video nedostupné',
+  'workout.primary_muscles': 'Primární svaly',
+  'workout.secondary_muscles': 'Sekundární svaly',
+  'workout.description_technique': 'Popis & technika',
+  'workout.setup': 'Nastavení',
+  'workout.common_mistakes': 'Časté chyby',
+  'workout.tips': 'Tipy',
+  'workout.feedback_btn': 'Zpětná vazba k tomuto cviku',
+  'workout.machine_not_in_gym': 'Stroj není v posilovně',
+
+  // CustomWorkoutPlayer - player screens
+  'workout.plan_not_found': 'Plán nenalezen',
+  'workout.back': 'Zpět',
+  'workout.change_gym': 'Změnit',
+  'workout.select_day': 'Vyber den, který chceš trénovat:',
+  'workout.day_label': 'Den {{number}}',
+  'workout.day_fallback': 'Den {{number}}',
+  'workout.exercises_count': '{{count}} cviků',
+  'workout.equipment_warning_title': 'Upozornění na vybavení',
+  'workout.exercises_unavailable': 'Některé cviky nejsou dostupné',
+  'workout.missing_equipment': 'V posilovně <strong>{{name}}</strong> chybí vybavení pro tyto cviky:',
+  'workout.recommendation': 'Doporučení:',
+  'workout.continue_anyway_desc': 'Můžeš pokračovat i s těmito cviky, nebo se vrátit a upravit svůj plán.',
+  'workout.continue_anyway': 'Pokračovat přesto',
+  'workout.edit_plan': 'Upravit plán',
+  'workout.rest_label': 'Odpočinek',
+  'workout.next_label': 'Další:',
+  'workout.skip_rest': 'Přeskočit pauzu',
+  'workout.exit_title': 'Ukončit trénink?',
+  'workout.exit_desc': 'Co chceš udělat s tréninkem?',
+  'workout.exit_desc_simple': 'Tvůj postup bude ztracen.',
+  'workout.pause_workout': 'Pozastavit trénink',
+  'workout.end_workout': 'Ukončit trénink',
+  'workout.continue': 'Pokračovat',
+  'workout.set_label': 'Série {{current}} / {{total}}',
+  'workout.series_next': 'Série {{number}}',
+  'workout.cardio_paused': 'Pozastaveno',
+  'workout.weight_label': 'Váha (kg)',
+  'workout.reps_label': 'Opakování',
+  'workout.exercise_detail_title': 'Detail cviku',
+  'workout.weight_placeholder': '0',
 };
 
 export default cs;

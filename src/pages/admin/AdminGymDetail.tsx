@@ -82,22 +82,14 @@ interface Machine {
 }
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Názov musí mať aspoň 2 znaky'),
+  name: z.string().min(2, 'Název musí mít alespoň 2 znaky'),
   description: z.string().optional(),
   address: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const DAYS = [
-  { key: 'monday', label: 'Pondelok' },
-  { key: 'tuesday', label: 'Utorok' },
-  { key: 'wednesday', label: 'Streda' },
-  { key: 'thursday', label: 'Štvrtok' },
-  { key: 'friday', label: 'Piatok' },
-  { key: 'saturday', label: 'Sobota' },
-  { key: 'sunday', label: 'Nedeľa' },
-];
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 const AdminGymDetail = () => {
   const { t } = useTranslation();
@@ -159,7 +151,7 @@ const AdminGymDetail = () => {
 
       if (gymError || !gymData) {
         console.error('Error fetching gym:', gymError);
-        toast.error('Posilovňa nenájdená');
+        toast.error(t('admin.gym_not_found_error'));
         navigate('/admin/gyms');
         return;
       }
@@ -190,7 +182,7 @@ const AdminGymDetail = () => {
         .single();
 
       if (profileData) {
-        setOwnerName(`${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Bez mena');
+        setOwnerName(`${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || t('admin.no_name'));
       }
 
       // Fetch machines
@@ -241,11 +233,11 @@ const AdminGymDetail = () => {
     setIsSubmitting(false);
     
     if (error) {
-      toast.error('Nepodarilo sa uložiť zmeny');
+      toast.error(t('admin.save_error'));
       return;
     }
 
-    toast.success('Posilovňa bola aktualizovaná');
+    toast.success(t('admin.gym_updated'));
     setGym(prev => prev ? { ...prev, ...data, latitude: location.lat, longitude: location.lng, opening_hours: openingHours, pricing: pricing } : null);
     setIsEditDrawerOpen(false);
   };
@@ -259,12 +251,12 @@ const AdminGymDetail = () => {
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa zmeniť stav');
+      toast.error(t('admin.toggle_error'));
       return;
     }
 
     setGym(prev => prev ? { ...prev, is_published: !prev.is_published } : null);
-    toast.success(gym.is_published ? 'Posilovňa je teraz súkromná' : 'Posilovňa bola zverejnená');
+    toast.success(gym.is_published ? t('admin.gym_now_private') : t('admin.gym_published'));
   };
 
   const handleDeleteGym = async () => {
@@ -277,12 +269,12 @@ const AdminGymDetail = () => {
       .eq('id', gym.id);
 
     if (error) {
-      toast.error('Nepodarilo sa zmazať posilovňu');
+      toast.error(t('admin.delete_gym_error'));
       setIsDeleting(false);
       return;
     }
 
-    toast.success('Posilovňa bola zmazaná');
+    toast.success(t('admin.gym_deleted'));
     navigate('/admin/gyms');
   };
 
@@ -291,12 +283,12 @@ const AdminGymDetail = () => {
     if (!gym) return;
     
     if (!file.type.startsWith('image/')) {
-      toast.error('Vyberte prosím obrázok');
+      toast.error(t('admin.image_type_error'));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Obrázok je príliš veľký (max 5MB)');
+      toast.error(t('admin.image_size_error'));
       return;
     }
 
@@ -310,7 +302,7 @@ const AdminGymDetail = () => {
       .upload(fileName, file, { upsert: true });
 
     if (uploadError) {
-      toast.error('Nepodarilo sa nahrať obrázok');
+      toast.error(t('admin.image_upload_error'));
       if (type === 'cover') { setIsUploadingCover(false); } else { setIsUploadingLogo(false); }
       return;
     }
@@ -330,7 +322,7 @@ const AdminGymDetail = () => {
       setIsUploadingLogo(false);
     }
     
-    toast.success('Obrázok bol nahraný');
+    toast.success(t('admin.image_uploaded'));
   };
 
   // Machine handlers
@@ -356,9 +348,9 @@ const AdminGymDetail = () => {
     
     if (error) {
       if (error.code === '23505') {
-        toast.error('Tento stroj už máte pridaný');
+        toast.error(t('admin.machine_exists_error'));
       } else {
-        toast.error('Nepodarilo sa pridať stroj');
+        toast.error(t('admin.add_machine_error'));
       }
       return;
     }
@@ -374,7 +366,7 @@ const AdminGymDetail = () => {
     setSelectedMachine(null);
     setQuantity(1);
     setMaxWeight('');
-    toast.success('Stroj bol pridaný');
+    toast.success(t('admin.machine_added'));
   };
 
   const handleEditMachine = async () => {
@@ -392,7 +384,7 @@ const AdminGymDetail = () => {
     setIsSubmitting(false);
     
     if (error) {
-      toast.error('Nepodarilo sa upraviť stroj');
+      toast.error(t('admin.edit_machine_error'));
       return;
     }
 
@@ -405,7 +397,7 @@ const AdminGymDetail = () => {
     setGymMachines(machinesData as GymMachine[] || []);
     setIsEditMachineDrawerOpen(false);
     setSelectedGymMachine(null);
-    toast.success('Stroj bol aktualizovaný');
+    toast.success(t('admin.machine_updated'));
   };
 
   const handleDeleteMachine = async () => {
@@ -414,7 +406,7 @@ const AdminGymDetail = () => {
     await supabase.from('gym_machines').delete().eq('id', deleteMachineId);
     setGymMachines(prev => prev.filter(m => m.id !== deleteMachineId));
     setDeleteMachineId(null);
-    toast.success('Stroj bol odstránený');
+    toast.success(t('admin.machine_removed'));
   };
 
   const openEditMachineDrawer = (gm: GymMachine) => {
@@ -446,11 +438,11 @@ const AdminGymDetail = () => {
           </Button>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{gym.name}</h2>
-            <p className="text-sm text-muted-foreground">Majiteľ: {ownerName}</p>
+            <p className="text-sm text-muted-foreground">{t('admin.gym_owner')} {ownerName}</p>
           </div>
           <Badge variant={gym.is_published ? 'default' : 'secondary'}>
             {gym.is_published ? <Globe className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
-            {gym.is_published ? 'Verejná' : 'Súkromná'}
+            {gym.is_published ? t('admin.gym_public') : t('admin.gym_private')}
           </Badge>
         </div>
 
@@ -483,7 +475,7 @@ const AdminGymDetail = () => {
             className="flex-1"
             onClick={togglePublish}
           >
-            {gym.is_published ? 'Skryť z mapy' : 'Zverejniť na mape'}
+            {gym.is_published ? t('admin.gym_hide') : t('admin.gym_publish')}
           </Button>
           <Button variant="outline" size="icon" onClick={() => setIsPhotoDrawerOpen(true)}>
             <Image className="w-4 h-4" />
@@ -508,18 +500,18 @@ const AdminGymDetail = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Otváracie hodiny
+                {t('admin.opening_hours')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1.5 text-sm">
-                {DAYS.map(day => (
-                  <div key={day.key} className="flex justify-between py-1">
-                    <span className="font-medium">{day.label}</span>
+                {DAY_KEYS.map(key => (
+                  <div key={key} className="flex justify-between py-1">
+                    <span className="font-medium">{t(`admin.day_${key}`)}</span>
                     <span className="text-muted-foreground">
-                      {gym.opening_hours[day.key]?.closed 
-                        ? 'Zatvorené' 
-                        : `${gym.opening_hours[day.key]?.open || '-'} - ${gym.opening_hours[day.key]?.close || '-'}`
+                      {gym.opening_hours[key]?.closed
+                        ? t('admin.closed')
+                        : `${gym.opening_hours[key]?.open || '-'} - ${gym.opening_hours[key]?.close || '-'}`
                       }
                     </span>
                   </div>
@@ -534,7 +526,7 @@ const AdminGymDetail = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
-              Ceník
+              {t('admin.pricing')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -548,18 +540,18 @@ const AdminGymDetail = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Dumbbell className="w-4 h-4" />
-                Stroje ({gymMachines.length})
+                {t('admin.machines_count', { n: gymMachines.length })}
               </CardTitle>
               <Button size="sm" onClick={() => setIsAddMachineDrawerOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" />
-                Pridať
+                {t('admin.add')}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {gymMachines.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Žiadne stroje
+                {t('admin.no_machines')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -592,12 +584,12 @@ const AdminGymDetail = () => {
         {/* Danger Zone */}
         <Card className="border-destructive/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-destructive">Nebezpečná zóna</CardTitle>
+            <CardTitle className="text-base text-destructive">{t('admin.danger_zone')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Button variant="destructive" className="w-full" onClick={() => setDeleteGymDialog(true)}>
               <Trash2 className="w-4 h-4 mr-2" />
-              Zmazať posilovňu
+              {t('admin.delete_gym')}
             </Button>
           </CardContent>
         </Card>
@@ -606,28 +598,28 @@ const AdminGymDetail = () => {
         <Drawer open={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
           <DrawerContent className="max-h-[90vh]">
             <DrawerHeader>
-              <DrawerTitle>Upraviť posilovňu</DrawerTitle>
+              <DrawerTitle>{t('admin.edit_gym_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 overflow-y-auto max-h-[75vh]">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Názov posilovne</Label>
+                    <Label htmlFor="name">{t('admin.gym_name_label')}</Label>
                     <Input id="name" {...register('name')} />
                     {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Popis</Label>
+                    <Label htmlFor="description">{t('admin.description_label')}</Label>
                     <Textarea id="description" {...register('description')} rows={3} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Adresa</Label>
+                    <Label htmlFor="address">{t('admin.address_label')}</Label>
                     <Input id="address" {...register('address')} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Lokácia na mape</Label>
+                  <Label>{t('admin.map_location_label')}</Label>
                   <LocationPicker
                     latitude={location.lat}
                     longitude={location.lng}
@@ -636,34 +628,34 @@ const AdminGymDetail = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label>Otváracie hodiny</Label>
-                  {DAYS.map(day => (
-                    <div key={day.key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
+                  <Label>{t('admin.opening_hours')}</Label>
+                  {DAY_KEYS.map(key => (
+                    <div key={key} className="flex flex-col gap-2 py-2 border-b border-border last:border-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{day.label}</span>
+                        <span className="text-sm font-medium">{t(`admin.day_${key}`)}</span>
                         <Switch
-                          checked={!openingHours[day.key]?.closed}
-                          onCheckedChange={(checked) => updateOpeningHoursField(day.key, 'closed', !checked)}
+                          checked={!openingHours[key]?.closed}
+                          onCheckedChange={(checked) => updateOpeningHoursField(key, 'closed', !checked)}
                         />
                       </div>
-                      {!openingHours[day.key]?.closed ? (
+                      {!openingHours[key]?.closed ? (
                         <div className="flex items-center gap-2">
                           <Input
                             type="time"
-                            value={openingHours[day.key]?.open || '06:00'}
-                            onChange={(e) => updateOpeningHoursField(day.key, 'open', e.target.value)}
+                            value={openingHours[key]?.open || '06:00'}
+                            onChange={(e) => updateOpeningHoursField(key, 'open', e.target.value)}
                             className="flex-1"
                           />
                           <span className="text-muted-foreground">-</span>
                           <Input
                             type="time"
-                            value={openingHours[day.key]?.close || '22:00'}
-                            onChange={(e) => updateOpeningHoursField(day.key, 'close', e.target.value)}
+                            value={openingHours[key]?.close || '22:00'}
+                            onChange={(e) => updateOpeningHoursField(key, 'close', e.target.value)}
                             className="flex-1"
                           />
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Zatvorené</span>
+                        <span className="text-sm text-muted-foreground">{t('admin.closed')}</span>
                       )}
                     </div>
                   ))}
@@ -681,7 +673,7 @@ const AdminGymDetail = () => {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Ukladám...</> : 'Uložiť zmeny'}
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.saving')}</> : t('admin.save_changes')}
                 </Button>
               </form>
             </div>
@@ -692,11 +684,11 @@ const AdminGymDetail = () => {
         <Drawer open={isPhotoDrawerOpen} onOpenChange={setIsPhotoDrawerOpen}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Upraviť fotky</DrawerTitle>
+              <DrawerTitle>{t('admin.edit_photos_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 space-y-6 overflow-y-auto max-h-[75vh]">
               <div className="space-y-2">
-                <Label>Titulná fotka</Label>
+                <Label>{t('admin.cover_photo_label')}</Label>
                 <input
                   ref={coverInputRef}
                   type="file"
@@ -717,13 +709,13 @@ const AdminGymDetail = () => {
                   ) : (
                     <>
                       <ImageIcon className="w-6 h-6 text-muted-foreground mb-2" />
-                      <span className="text-sm text-muted-foreground">Pridať titulnú fotku</span>
+                      <span className="text-sm text-muted-foreground">{t('admin.add_cover_photo')}</span>
                     </>
                   )}
                 </button>
               </div>
               <div className="space-y-2">
-                <Label>Logo posilovne</Label>
+                <Label>{t('admin.gym_logo_label')}</Label>
                 <div className="flex justify-center">
                   <input
                     ref={logoInputRef}
@@ -761,7 +753,7 @@ const AdminGymDetail = () => {
         <Drawer open={isAddMachineDrawerOpen} onOpenChange={setIsAddMachineDrawerOpen}>
           <DrawerContent className="max-h-[85vh]">
             <DrawerHeader>
-              <DrawerTitle>Pridať stroj</DrawerTitle>
+              <DrawerTitle>{t('admin.add_machine_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 overflow-y-auto space-y-4">
               {!selectedMachine ? (
@@ -793,14 +785,14 @@ const AdminGymDetail = () => {
                       </Card>
                     ))}
                     {filteredMachines.length === 0 && (
-                      <p className="text-center text-muted-foreground py-4">Žiadne stroje nenájdené</p>
+                      <p className="text-center text-muted-foreground py-4">{t('admin.no_machines_found')}</p>
                     )}
                   </div>
                 </>
               ) : (
                 <>
                   <Button variant="ghost" onClick={() => setSelectedMachine(null)} className="mb-2">
-                    ← Vybrať iný stroj
+                    {t('admin.select_other_machine')}
                   </Button>
                   <Card>
                     <CardContent className="py-3 px-4">
@@ -812,15 +804,15 @@ const AdminGymDetail = () => {
                   </Card>
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label>Počet kusov</Label>
+                      <Label>{t('admin.quantity_label')}</Label>
                       <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Maximálna váha (kg)</Label>
+                      <Label>{t('admin.max_weight_label')}</Label>
                       <Input type="number" placeholder={t('admin.optional')} value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
                     </div>
                     <Button className="w-full" onClick={handleAddMachine} disabled={isSubmitting}>
-                      {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Pridávanie...</> : 'Pridať stroj'}
+                      {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.adding')}</> : t('admin.add_machine_btn')}
                     </Button>
                   </div>
                 </>
@@ -833,7 +825,7 @@ const AdminGymDetail = () => {
         <Drawer open={isEditMachineDrawerOpen} onOpenChange={setIsEditMachineDrawerOpen}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Upraviť stroj</DrawerTitle>
+              <DrawerTitle>{t('admin.edit_machine_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-8 space-y-4">
               {selectedGymMachine && (
@@ -844,15 +836,15 @@ const AdminGymDetail = () => {
                     </CardContent>
                   </Card>
                   <div className="space-y-2">
-                    <Label>Počet kusov</Label>
+                    <Label>{t('admin.quantity_label')}</Label>
                     <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Maximálna váha (kg)</Label>
+                    <Label>{t('admin.max_weight_label')}</Label>
                     <Input type="number" placeholder={t('admin.optional')} value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
                   </div>
                   <Button className="w-full" onClick={handleEditMachine} disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Ukladanie...</> : 'Uložiť zmeny'}
+                    {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.saving_machine')}</> : t('admin.save_changes')}
                   </Button>
                 </>
               )}
@@ -864,14 +856,14 @@ const AdminGymDetail = () => {
         <AlertDialog open={!!deleteMachineId} onOpenChange={() => setDeleteMachineId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Odstrániť stroj?</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.remove_machine_title')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Táto akcia je nevratná. Stroj bude odstránený z tejto posilovne.
+                {t('admin.remove_machine_desc')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Zrušiť</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteMachine}>Odstrániť</AlertDialogAction>
+              <AlertDialogCancel>{t('admin.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteMachine}>{t('admin.remove')}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -880,19 +872,19 @@ const AdminGymDetail = () => {
         <AlertDialog open={deleteGymDialog} onOpenChange={setDeleteGymDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Zmazať posilovňu?</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.delete_gym_title')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Táto akcia je nevratná. Posilovňa <strong>{gym.name}</strong> bude natrvalo zmazaná spolu so všetkými strojmi.
+                {t('admin.delete_gym_desc', { name: gym.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Zrušiť</AlertDialogCancel>
+              <AlertDialogCancel>{t('admin.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteGym}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={isDeleting}
               >
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Zmazať'}
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : t('admin.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -205,12 +205,12 @@ const GymProfile = ({ gym }: GymProfileProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="instagram_handle">Instagram</Label>
+                    <Label htmlFor="instagram_handle">{t('business.instagram_label')}</Label>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground text-sm">@</span>
                       <Input id="instagram_handle" placeholder="nazev_posilovny" {...register('instagram_handle')} />
                     </div>
-                    <p className="text-xs text-muted-foreground">Zobrazuje se na sdilene fotce z treninku</p>
+                    <p className="text-xs text-muted-foreground">{t('business.instagram_hint')}</p>
                   </div>
                 </div>
 

@@ -337,7 +337,7 @@ const TrainerProfile = () => {
                       className="pr-10"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      Kč
+                      {t('trainer_profile.currency')}
                     </span>
                   </div>
                   <button
@@ -355,7 +355,7 @@ const TrainerProfile = () => {
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Přidat položku
+                {t('trainer_profile.add_pricing_item')}
               </Button>
             </div>
           </motion.div>
@@ -366,13 +366,13 @@ const TrainerProfile = () => {
               <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
                 <Phone className="w-5 h-5 text-blue-500" />
               </div>
-              <h2 className="text-lg font-semibold">Kontakt</h2>
+              <h2 className="text-lg font-semibold">{t('trainer_profile.contact_title')}</h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="contactPhone" className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  Telefon
+                  {t('trainer_profile.phone_label')}
                 </Label>
                 <Input
                   id="contactPhone"
@@ -385,7 +385,7 @@ const TrainerProfile = () => {
               <div className="space-y-2">
                 <Label htmlFor="contactEmail" className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  E-mail
+                  {t('trainer_profile.email_label')}
                 </Label>
                 <Input
                   id="contactEmail"
@@ -421,12 +421,12 @@ const TrainerProfile = () => {
               {isSaving ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                  Ukládám...
+                  {t('trainer_profile.saving')}
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Uložit změny
+                  {t('trainer_profile.save_changes')}
                 </>
               )}
             </Button>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Phone, Mail, Facebook, Instagram, MessageCircle } from 'lucide-react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +15,7 @@ interface TrainerDetailDrawerProps {
 }
 
 const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawerProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { getOrCreateConversation } = useConversations();
   const { profile } = useUserProfile();
@@ -73,7 +75,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 mb-4"
             >
               <MessageCircle className="w-4 h-4" />
-              {startingChat ? 'Otevírám...' : 'Napsat zprávu'}
+              {startingChat ? t('business.trainer_opening') : t('business.trainer_write_msg')}
             </button>
 
             {/* Contact icons */}
@@ -100,8 +102,8 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
             {/* Tabs: Certifikace | Ceník */}
             <Tabs defaultValue="certifications" className="w-full">
               <TabsList className="w-full grid grid-cols-2 h-auto p-1">
-                <TabsTrigger value="certifications" className="text-xs py-2">Certifikace</TabsTrigger>
-                <TabsTrigger value="pricing" className="text-xs py-2">Ceník</TabsTrigger>
+                <TabsTrigger value="certifications" className="text-xs py-2">{t('business.trainer_certifications')}</TabsTrigger>
+                <TabsTrigger value="pricing" className="text-xs py-2">{t('business.trainer_pricing')}</TabsTrigger>
               </TabsList>
 
               {/* Certifications Tab */}
@@ -109,7 +111,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                 {/* Specializations */}
                 {trainer.specializations.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Na co se specializuji?</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t('business.trainer_specialization')}</h4>
                     <ul className="space-y-2">
                       {trainer.specializations.map((spec, i) => (
                         <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -124,7 +126,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                 {/* Certifications list */}
                 {trainer.certifications.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Certifikace</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t('business.trainer_certifications')}</h4>
                     <div className="space-y-3">
                       {trainer.certifications.map((cert, i) => (
                         <div key={i} className="border-b border-border/50 pb-3 last:border-0">
@@ -142,7 +144,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
               <TabsContent value="pricing" className="mt-4">
                 {trainer.pricing.length > 0 ? (
                   <div>
-                    <h4 className="text-sm font-semibold mb-3">Služby</h4>
+                    <h4 className="text-sm font-semibold mb-3">{t('business.trainer_services')}</h4>
                     <div className="space-y-0">
                       {trainer.pricing.map((item, i) => (
                         <div
@@ -159,7 +161,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground py-4 text-center">
-                    Ceník není k dispozici
+                    {t('business.pricing_unavailable')}
                   </div>
                 )}
               </TabsContent>

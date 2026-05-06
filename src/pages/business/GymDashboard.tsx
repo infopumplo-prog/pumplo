@@ -36,7 +36,7 @@ const GymDashboard = () => {
               {t('business.no_license')}
             </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Pro vytvoření posilovny potřebujete aktivní licenci. Kontaktujte administrátora pro přidělení licence.
+              {t('business.no_license_desc')}
             </AlertDescription>
           </Alert>
         </div>
@@ -144,9 +144,9 @@ const GymDashboard = () => {
               {t('business.no_gym_profile')}
             </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Vytvořte si profil své posilovny, abyste mohli spravovat stroje a zveřejnit ji na mapě.
+              {t('business.no_gym_desc')}
               <span className="block mt-1 font-medium">
-                Vaše licence: {licenseCount} {licenseCount === 1 ? t('business.license_singular') : licenseCount < 5 ? t('business.license_2_4') : t('business.license_plural')}
+                {t('business.license_count', { count: licenseCount })} {licenseCount === 1 ? t('business.license_singular') : licenseCount < 5 ? t('business.license_2_4') : t('business.license_plural')}
               </span>
             </AlertDescription>
           </Alert>

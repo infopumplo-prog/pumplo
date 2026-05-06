@@ -1841,6 +1841,137 @@ const en = {
   'admin.cardio_badge': 'Cardio',
   'admin.all_categories_label': 'All categories',
   'admin.category_placeholder': 'Category',
+
+  // CustomPlansTab
+  'custom_plan.delete_confirm': 'Are you sure you want to delete this plan?',
+  'custom_plan.create_btn': 'Create',
+  'custom_plan.new_plan': 'New plan',
+  'custom_plan.cancel_btn': 'Cancel',
+  'home.no_custom_plans': 'No custom plans',
+  'home.no_custom_plans_desc': 'Create your own workout plan',
+
+  // GymProfile
+  'business.instagram_label': 'Instagram',
+  'business.instagram_hint': 'Shown on the shared workout photo',
+
+  // GymContext
+  'gym.not_logged_in': 'You are not logged in',
+  'gym.license_limit': 'You have reached the limit of {{count}} gyms. Contact support to increase your license.',
+  'gym.not_found': 'Gym not found',
+  'gym.machine_already_added': 'This machine is already added',
+  'gym.machine_added': 'Machine added',
+  'gym.machine_update_error': 'Failed to update machine',
+  'gym.machine_updated': 'Machine updated',
+  'gym.machine_remove_error': 'Failed to remove machine',
+  'gym.machine_removed': 'Machine removed',
+  'gym.fetch_error': 'Failed to load gyms',
+
+  // Map page
+  'map.geo_not_supported': 'Geolocation is not supported',
+  'map.location_denied': 'Location access denied',
+  'map.location_denied_desc': 'Allow location access in your browser settings.',
+  'map.location_failed': 'Could not get location',
+  'map.location_failed_desc': 'Check your connection or GPS settings.',
+  'map.gym_selected': 'Gym selected',
+  'map.gym_selected_desc': '{{name}} has been set as your gym for training.',
+  'map.select_gym_error': 'Error',
+  'map.select_gym_error_desc': 'Failed to select gym.',
+  'map.map_locked': 'Map is locked',
+  'map.map_locked_desc': 'To access the gym map, first complete the questionnaire',
+  'map.fill_questionnaire': 'Fill questionnaire',
+
+  // TrainerProfile page
+  'trainer_profile.add_pricing_item': 'Add item',
+  'trainer_profile.currency': 'CZK',
+  'trainer_profile.contact_title': 'Contact',
+  'trainer_profile.phone_label': 'Phone',
+  'trainer_profile.email_label': 'E-mail',
+  'trainer_profile.saving': 'Saving...',
+  'trainer_profile.save_changes': 'Save changes',
+
+  // GymDashboard business page
+  'business.no_license_desc': 'You need an active license to create a gym. Contact the administrator to get a license.',
+  'business.no_gym_desc': 'Create your gym profile so you can manage equipment and publish it on the map.',
+  'business.license_count': 'Your license: {{count}}',
+
+  // GymStats - short day names for charts
+  'business.day_short_mon': 'Mo',
+  'business.day_short_tue': 'Tu',
+  'business.day_short_wed': 'We',
+  'business.day_short_thu': 'Th',
+  'business.day_short_fri': 'Fr',
+  'business.day_short_sat': 'Sa',
+  'business.day_short_sun': 'Su',
+
+  // GymMachines
+  'business.brand_other': 'Other brand',
+
+  // CustomWorkoutPlayer - category labels
+  'workout.category_chest': 'Chest',
+  'workout.category_back': 'Back',
+  'workout.category_shoulders': 'Shoulders',
+  'workout.category_arms': 'Arms',
+  'workout.category_legs': 'Legs',
+  'workout.category_core': 'Core',
+  'workout.category_cardio': 'Cardio',
+  'workout.category_full_body': 'Full body',
+  'workout.category_abdominals': 'Abdominals',
+  'workout.category_strength': 'Strength',
+
+  // CustomWorkoutPlayer - equipment labels
+  'workout.equip_bodyweight': 'Bodyweight',
+  'workout.equip_barbell': 'Barbell',
+  'workout.equip_dumbbell': 'Dumbbells',
+  'workout.equip_kettlebell': 'Kettlebell',
+  'workout.equip_machine': 'Machine',
+  'workout.equip_cable': 'Cable',
+  'workout.equip_free_weight': 'Free weight',
+  'workout.equip_plate_loaded': 'Plate loaded',
+  'workout.equip_other': 'Other',
+
+  // CustomWorkoutPlayer - exercise detail drawer
+  'workout.no_video': 'No video',
+  'workout.video_unavailable': 'Video unavailable',
+  'workout.primary_muscles': 'Primary muscles',
+  'workout.secondary_muscles': 'Secondary muscles',
+  'workout.description_technique': 'Description & technique',
+  'workout.setup': 'Setup',
+  'workout.common_mistakes': 'Common mistakes',
+  'workout.tips': 'Tips',
+  'workout.feedback_btn': 'Feedback on this exercise',
+  'workout.machine_not_in_gym': 'Machine not available in this gym',
+
+  // CustomWorkoutPlayer - player screens
+  'workout.plan_not_found': 'Plan not found',
+  'workout.back': 'Back',
+  'workout.change_gym': 'Change',
+  'workout.select_day': 'Select the day you want to train:',
+  'workout.day_label': 'Day {{number}}',
+  'workout.day_fallback': 'Day {{number}}',
+  'workout.exercises_count': '{{count}} exercises',
+  'workout.equipment_warning_title': 'Equipment warning',
+  'workout.exercises_unavailable': 'Some exercises are unavailable',
+  'workout.missing_equipment': 'The gym <strong>{{name}}</strong> is missing equipment for these exercises:',
+  'workout.recommendation': 'Recommendation:',
+  'workout.continue_anyway_desc': 'You can continue with these exercises or go back and edit your plan.',
+  'workout.continue_anyway': 'Continue anyway',
+  'workout.edit_plan': 'Edit plan',
+  'workout.rest_label': 'Rest',
+  'workout.next_label': 'Next:',
+  'workout.skip_rest': 'Skip rest',
+  'workout.exit_title': 'End workout?',
+  'workout.exit_desc': 'What do you want to do with the workout?',
+  'workout.exit_desc_simple': 'Your progress will be lost.',
+  'workout.pause_workout': 'Pause workout',
+  'workout.end_workout': 'End workout',
+  'workout.continue': 'Continue',
+  'workout.set_label': 'Set {{current}} / {{total}}',
+  'workout.series_next': 'Set {{number}}',
+  'workout.cardio_paused': 'Paused',
+  'workout.weight_label': 'Weight (kg)',
+  'workout.reps_label': 'Reps',
+  'workout.exercise_detail_title': 'Exercise detail',
+  'workout.weight_placeholder': '0',
 };
 
 export default en;

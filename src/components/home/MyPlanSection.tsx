@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ interface TrainingGoalWithDuration {
 }
 
 const MyPlanSection = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { plan, isLoading: planLoading } = useWorkoutPlan();
@@ -108,15 +110,15 @@ const MyPlanSection = () => {
     return dayTemplate?.dayName || `Trénink ${dayLetter}`;
   };
 
-  // Day names in Czech
+  // Day names via i18n
   const dayNamesCz: Record<string, string> = {
-    monday: 'Pondělí',
-    tuesday: 'Úterý',
-    wednesday: 'Středa',
-    thursday: 'Čtvrtek',
-    friday: 'Pátek',
-    saturday: 'Sobota',
-    sunday: 'Neděle'
+    monday: t('home.day_monday'),
+    tuesday: t('home.day_tuesday'),
+    wednesday: t('home.day_wednesday'),
+    thursday: t('home.day_thursday'),
+    friday: t('home.day_friday'),
+    saturday: t('home.day_saturday'),
+    sunday: t('home.day_sunday'),
   };
   
   const today = getCurrentWeekday();
@@ -141,11 +143,11 @@ const MyPlanSection = () => {
             <Calendar className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Můj plán</h3>
-            <p className="text-sm text-muted-foreground">Vyber posilovnu pro trénink</p>
+            <h3 className="font-semibold text-foreground">{t('home.my_plan')}</h3>
+            <p className="text-sm text-muted-foreground">{t('home.select_gym_prompt')}</p>
           </div>
         </div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -155,11 +157,11 @@ const MyPlanSection = () => {
             <MapPin className="w-8 h-8 text-muted-foreground" />
           </div>
           <p className="text-muted-foreground mb-4">
-            Pro vytvoření plánu nejdříve vyber posilovnu
+            {t('home.no_gym_desc')}
           </p>
           <Button onClick={() => navigate('/map')} className="gap-2">
             <MapPin className="w-4 h-4" />
-            Vybrat posilovnu
+            {t('home.select_gym_btn')}
           </Button>
         </motion.div>
       </Card>
@@ -175,11 +177,11 @@ const MyPlanSection = () => {
             <Calendar className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Můj plán</h3>
-            <p className="text-sm text-muted-foreground">Zatím nemáš aktivní plán</p>
+            <h3 className="font-semibold text-foreground">{t('home.my_plan')}</h3>
+            <p className="text-sm text-muted-foreground">{t('home.no_plan_desc')}</p>
           </div>
         </div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -189,10 +191,10 @@ const MyPlanSection = () => {
             <Dumbbell className="w-8 h-8 text-muted-foreground" />
           </div>
           <p className="text-muted-foreground mb-4">
-            Vyber si tréninkový plán a začni cvičit
+            {t('home.no_plan_create')}
           </p>
           <Button onClick={handleGoToTraining}>
-            Vytvořit plán
+            {t('home.create_plan_btn2')}
           </Button>
         </motion.div>
       </Card>
@@ -211,14 +213,14 @@ const MyPlanSection = () => {
             </div>
             <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold text-foreground">Týden {currentWeek}</span>
-                <span className="text-sm text-muted-foreground">z {goalInfo?.duration_weeks || 8}</span>
+                <span className="text-xl font-bold text-foreground">{t('home.week')} {currentWeek}</span>
+                <span className="text-sm text-muted-foreground">{t('home.week_of')} {goalInfo?.duration_weeks || 8}</span>
               </div>
               <button 
                 onClick={handleGoToTraining}
                 className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
               >
-                <span className="text-xs font-medium">{goalInfo?.name || 'Tréninkový plán'}</span>
+                <span className="text-xs font-medium">{goalInfo?.name || t('home.plan_fallback')}</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -230,7 +232,7 @@ const MyPlanSection = () => {
           <Progress value={weekProgress} className="h-1.5" />
         </div>
         <p className="text-xs text-muted-foreground text-right">
-          {Math.round(weekProgress)}% dokončeno
+          {t('home.percent_done', { n: Math.round(weekProgress) })}
         </p>
       </div>
 
@@ -238,7 +240,7 @@ const MyPlanSection = () => {
       <div className="px-4 pb-4 space-y-2">
         {schedule.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Nastav si tréningové dni v profile
+            {t('home.set_training_days')}
           </p>
         ) : (
           schedule.map((day, index) => {
@@ -304,12 +306,12 @@ const MyPlanSection = () => {
                     {isCompletedToday && (
                       <span className="text-xs font-medium text-green-600 bg-green-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Check className="w-3 h-3" />
-                        Hotovo
+                        {t('home.done')}
                       </span>
                     )}
                     {isCurrentDay && !isCompletedToday && (
                       <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                        Dnes
+                        {t('home.today')}
                       </span>
                     )}
                   </div>

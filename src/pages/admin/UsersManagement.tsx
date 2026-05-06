@@ -348,12 +348,12 @@ const UsersManagement = () => {
       <div className="space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Používatelia</h2>
+          <h2 className="text-xl font-bold">{t('admin.users_title')}</h2>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{users.length} celkom</span>
+            <span className="text-sm text-muted-foreground">{t('admin.users_total', { n: users.length })}</span>
             <Button size="sm" onClick={() => setDrawerMode('create')}>
               <Plus className="w-4 h-4 mr-1" />
-              Pridať
+              {t('admin.add_btn')}
             </Button>
           </div>
         </div>
@@ -383,7 +383,7 @@ const UsersManagement = () => {
                     <p className="font-medium truncate">
                       {user.first_name || user.last_name
                         ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                        : 'Bez mena'}
+                        : t('admin.no_name')}
                     </p>
                     <p className="text-sm text-muted-foreground truncate">{user.email || '-'}</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -507,7 +507,7 @@ const UsersManagement = () => {
             )}
             <DrawerFooter>
               <DrawerClose asChild>
-                <Button variant="outline">Zavrieť</Button>
+                <Button variant="outline">{t('admin.close_btn')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
@@ -517,25 +517,25 @@ const UsersManagement = () => {
         <Drawer open={drawerMode === 'edit'} onOpenChange={closeDrawer}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Upraviť používateľa</DrawerTitle>
+              <DrawerTitle>{t('admin.edit_user_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4">
               <div>
-                <Label>Meno</Label>
+                <Label>{t('admin.first_name_label')}</Label>
                 <Input
                   value={editForm.first_name}
                   onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Priezvisko</Label>
+                <Label>{t('admin.last_name_label')}</Label>
                 <Input
                   value={editForm.last_name}
                   onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Vek</Label>
+                <Label>{t('admin.age_label')}</Label>
                 <Input
                   type="number"
                   value={editForm.age}
@@ -543,7 +543,7 @@ const UsersManagement = () => {
                 />
               </div>
               <div>
-                <Label>Rola</Label>
+                <Label>{t('admin.role_label')}</Label>
                 <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value, gym_license_count: value === 'business' ? (editForm.gym_license_count || '1') : '0' })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -557,7 +557,7 @@ const UsersManagement = () => {
               </div>
               {editForm.role === 'business' && (
                 <div>
-                  <Label>Počet licencií na posilovne</Label>
+                  <Label>{t('admin.gym_licenses_label')}</Label>
                   <Input
                     type="number"
                     min="1"
@@ -567,15 +567,15 @@ const UsersManagement = () => {
                     placeholder="1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Koľko posilovní môže tento používateľ vytvoriť
+                    {t('admin.gym_licenses_desc')}
                   </p>
                 </div>
               )}
             </div>
             <DrawerFooter>
-              <Button onClick={saveUserEdit} className="w-full">Uložiť</Button>
+              <Button onClick={saveUserEdit} className="w-full">{t('admin.save_btn')}</Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
+                <Button variant="outline">{t('admin.cancel')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
@@ -585,30 +585,30 @@ const UsersManagement = () => {
         <Drawer open={drawerMode === 'change-email'} onOpenChange={closeDrawer}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Zmeniť email</DrawerTitle>
+              <DrawerTitle>{t('admin.change_email_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4">
               <div>
-                <Label className="text-muted-foreground text-xs">Aktuálny email</Label>
+                <Label className="text-muted-foreground text-xs">{t('admin.current_email_label')}</Label>
                 <p className="font-medium">{selectedUser?.email || '-'}</p>
               </div>
               <div>
-                <Label>Nový email</Label>
+                <Label>{t('admin.new_email_label')}</Label>
                 <Input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="novy@email.com"
+                  placeholder={t('admin.new_email_placeholder')}
                 />
               </div>
             </div>
             <DrawerFooter>
               <Button onClick={confirmChangeEmail} className="w-full" disabled={isChangingEmail || !newEmail}>
                 {isChangingEmail ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Zmeniť email
+                {t('admin.change_email_btn')}
               </Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
+                <Button variant="outline">{t('admin.cancel')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
@@ -618,11 +618,11 @@ const UsersManagement = () => {
         <Drawer open={drawerMode === 'create'} onOpenChange={closeDrawer}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Nový používateľ</DrawerTitle>
+              <DrawerTitle>{t('admin.new_user_title')}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-4 space-y-4">
               <div>
-                <Label>Email *</Label>
+                <Label>{t('admin.email_label')}</Label>
                 <Input
                   type="email"
                   value={createForm.email}
@@ -631,13 +631,13 @@ const UsersManagement = () => {
                 />
               </div>
               <div>
-                <Label>Heslo *</Label>
+                <Label>{t('admin.password_label')}</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    placeholder="Min. 6 znakov"
+                    placeholder={t('admin.password_placeholder')}
                   />
                   <Button
                     type="button"
@@ -651,21 +651,21 @@ const UsersManagement = () => {
                 </div>
               </div>
               <div>
-                <Label>Meno</Label>
+                <Label>{t('admin.first_name_label')}</Label>
                 <Input
                   value={createForm.first_name}
                   onChange={(e) => setCreateForm({ ...createForm, first_name: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Priezvisko</Label>
+                <Label>{t('admin.last_name_label')}</Label>
                 <Input
                   value={createForm.last_name}
                   onChange={(e) => setCreateForm({ ...createForm, last_name: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Rola</Label>
+                <Label>{t('admin.role_label')}</Label>
                 <Select value={createForm.role} onValueChange={(value) => setCreateForm({ ...createForm, role: value })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -679,7 +679,7 @@ const UsersManagement = () => {
               </div>
               {createForm.role === 'business' && (
                 <div>
-                  <Label>Počet licencií na posilovne</Label>
+                  <Label>{t('admin.gym_licenses_label')}</Label>
                   <Input
                     type="number"
                     min="1"
@@ -693,10 +693,10 @@ const UsersManagement = () => {
             <DrawerFooter>
               <Button onClick={handleCreateUser} className="w-full" disabled={isCreating}>
                 {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Vytvoriť používateľa
+                {t('admin.create_user_btn')}
               </Button>
               <DrawerClose asChild>
-                <Button variant="outline">Zrušiť</Button>
+                <Button variant="outline">{t('admin.cancel')}</Button>
               </DrawerClose>
             </DrawerFooter>
           </DrawerContent>
@@ -712,11 +712,11 @@ const UsersManagement = () => {
         }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Reset hesla</DialogTitle>
+              <DialogTitle>{t('admin.reset_password_title')}</DialogTitle>
               <DialogDescription>
-                {generatedPassword 
-                  ? 'Nové heslo bolo vygenerované. Skopírujte ho a pošlite užívateľovi.'
-                  : `Naozaj chcete resetovať heslo pre ${selectedUser?.email || 'tohto užívateľa'}?`
+                {generatedPassword
+                  ? t('admin.reset_password_new_desc')
+                  : t('admin.reset_password_confirm_desc', { email: selectedUser?.email || '' })
                 }
               </DialogDescription>
             </DialogHeader>
@@ -730,22 +730,22 @@ const UsersManagement = () => {
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Toto heslo sa zobrazí iba raz. Uistite sa, že ste ho skopírovali.
+                  {t('admin.password_show_once')}
                 </p>
               </div>
             ) : null}
             
             <DialogFooter>
               {generatedPassword ? (
-                <Button onClick={() => setResetPasswordDialog(false)}>Zavrieť</Button>
+                <Button onClick={() => setResetPasswordDialog(false)}>{t('admin.close_btn')}</Button>
               ) : (
                 <>
                   <Button variant="outline" onClick={() => setResetPasswordDialog(false)}>
-                    Zrušiť
+                    {t('admin.cancel')}
                   </Button>
                   <Button onClick={confirmResetPassword} disabled={isResettingPassword}>
                     {isResettingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Resetovať heslo
+                    {t('admin.reset_btn')}
                   </Button>
                 </>
               )}
@@ -760,24 +760,23 @@ const UsersManagement = () => {
         }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Odstrániť používateľa</DialogTitle>
+              <DialogTitle>{t('admin.delete_user_title')}</DialogTitle>
               <DialogDescription>
-                Naozaj chcete odstrániť používateľa <strong>{selectedUser?.email}</strong>? 
-                Táto akcia je nevratná a odstráni všetky údaje spojené s týmto účtom.
+                {t('admin.delete_user_desc', { email: selectedUser?.email || '' })}
               </DialogDescription>
             </DialogHeader>
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteUserDialog(false)}>
-                Zrušiť
+                {t('admin.cancel')}
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={confirmDeleteUser} 
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteUser}
                 disabled={isDeletingUser}
               >
                 {isDeletingUser ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Odstrániť
+                {t('admin.delete_user_btn')}
               </Button>
             </DialogFooter>
           </DialogContent>

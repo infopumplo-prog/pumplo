@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
@@ -49,6 +50,7 @@ const openNavigation = (gym: PublicGym) => {
 
 const Map = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
   const { gyms } = usePublishedGyms();
@@ -176,7 +178,7 @@ const Map = () => {
 
     // Try to get location again
     if (!navigator.geolocation) {
-      toast({ title: 'Geolokace není podporována', variant: 'destructive' });
+      toast({ title: t('map.geo_not_supported'), variant: 'destructive' });
       return;
     }
 
@@ -192,14 +194,14 @@ const Map = () => {
         console.log('Geolocation error:', error.code, error.message);
         if (error.code === 1) {
           toast({
-            title: 'Přístup k poloze zamítnut',
-            description: 'Povol přístup k poloze v nastavení prohlížeče.',
+            title: t('map.location_denied'),
+            description: t('map.location_denied_desc'),
             variant: 'destructive'
           });
         } else {
           toast({
-            title: 'Nepodařilo se získat polohu',
-            description: 'Zkontroluj připojení nebo nastavení GPS.',
+            title: t('map.location_failed'),
+            description: t('map.location_failed_desc'),
             variant: 'destructive'
           });
         }
@@ -296,15 +298,15 @@ const Map = () => {
     try {
       await updateProfile({ selected_gym_id: detailGym.id });
       toast({
-        title: 'Posilovna vybrána',
-        description: `${detailGym.name} byla nastavena jako tvoje posilovna pro trénink.`
+        title: t('map.gym_selected'),
+        description: t('map.gym_selected_desc', { name: detailGym.name })
       });
       setDetailGym(null);
       navigate('/');
     } catch (error) {
       toast({
-        title: 'Chyba',
-        description: 'Nepodařilo se vybrat posilovnu.',
+        title: t('map.select_gym_error'),
+        description: t('map.select_gym_error_desc'),
         variant: 'destructive'
       });
     } finally {
@@ -334,15 +336,15 @@ const Map = () => {
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
               <Lock className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Mapa je uzamčená</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t('map.map_locked')}</h2>
             <p className="text-muted-foreground mb-6">
-              Pro přístup k mapě posiloven nejdříve vyplň dotazník
+              {t('map.map_locked_desc')}
             </p>
             <button
               onClick={() => setOnboardingOpen(true)}
               className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium"
             >
-              Vyplnit dotazník
+              {t('map.fill_questionnaire')}
             </button>
           </motion.div>
         </div>
