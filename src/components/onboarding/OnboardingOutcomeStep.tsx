@@ -55,8 +55,8 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t('onboarding.training_type')}</p>
-            <p className="font-semibold text-sm">{splitInfo.labelCz}</p>
-            <p className="text-xs text-muted-foreground">dny {splitInfo.days.join(' / ')}</p>
+            <p className="font-semibold text-sm">{t(`onboarding.split_${split}`)}</p>
+            <p className="text-xs text-muted-foreground">{t('onboarding.split_days', { days: splitInfo.days.join(' / ') })}</p>
           </div>
         </motion.div>
 
@@ -72,7 +72,7 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeS
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t('onboarding.goal_label')}</p>
-            <p className="font-semibold text-sm">{goalInfo?.label} {goalInfo?.emoji}</p>
+            <p className="font-semibold text-sm">{t(`onboarding.goal_${goal}_label`)} {goalInfo?.emoji}</p>
             <p className="text-xs text-muted-foreground">{t(levelKey)}</p>
           </div>
         </motion.div>

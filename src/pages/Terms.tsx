@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 
 const Terms = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background">
@@ -14,7 +16,7 @@ const Terms = () => {
         </Button>
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
-          <span className="font-semibold">Podmínky používání</span>
+          <span className="font-semibold">{t('terms.title')}</span>
         </div>
       </div>
 
@@ -25,124 +27,95 @@ const Terms = () => {
         className="max-w-2xl mx-auto px-5 py-8 space-y-8 text-sm leading-relaxed"
       >
         <div>
-          <p className="text-muted-foreground">Poslední aktualizace: 2. května 2026</p>
+          <p className="text-muted-foreground">{t('terms.last_updated')}</p>
         </div>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">1. Provozovatel a kontakt</h2>
+          <h2 className="text-base font-bold">{t('terms.s1_title')}</h2>
           <p>
-            Aplikaci Pumplo provozuje společnost <strong>GynTools CZ s.r.o.</strong>,
-            IČ: 278 04 461, jednatel David Novotný.
+            {t('terms.s1_body')}<strong>{t('terms.s1_company')}</strong>{t('terms.s1_body2')}
           </p>
           <p>
-            Kontakt: <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>
+            {t('terms.s1_contact')} <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">2. Popis služby</h2>
+          <h2 className="text-base font-bold">{t('terms.s2_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s2_body')}</p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-base font-bold">{t('terms.s3_title')}</h2>
           <p className="text-muted-foreground">
-            Pumplo je mobilní aplikace pro sledování tréninků, personalizované tréninkové plány
-            a komunikaci s trenéry ve fitness centrech. Aplikace je dostupná bezplatně pro
-            koncové uživatele (členy posiloven).
+            {t('terms.s3_body1')}<strong className="text-foreground">{t('terms.s3_age')}</strong>{t('terms.s3_body2')}
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">3. Věková hranice</h2>
-          <p className="text-muted-foreground">
-            Služba Pumplo je určena osobám starším <strong className="text-foreground">15 let</strong>.
-            Registrací potvrzujete, že jste dosáhli tohoto věku. Osoby mladší 15 let mohou
-            službu využívat pouze se souhlasem zákonného zástupce.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">4. Uživatelský účet</h2>
+          <h2 className="text-base font-bold">{t('terms.s4_title')}</h2>
           <ul className="space-y-2 text-muted-foreground">
-            <li>• Registrací souhlasíte s těmito podmínkami a se zpracováním osobních údajů dle našich Zásad ochrany osobních údajů.</li>
-            <li>• Jste zodpovědní za zachování důvěrnosti svého hesla a za veškerou aktivitu na svém účtu.</li>
-            <li>• Jeden účet smí používat pouze jedna fyzická osoba.</li>
-            <li>• Svůj účet a všechna data můžete kdykoli smazat v sekci Nastavení.</li>
+            <li>{t('terms.s4_bullet1')}</li>
+            <li>{t('terms.s4_bullet2')}</li>
+            <li>{t('terms.s4_bullet3')}</li>
+            <li>{t('terms.s4_bullet4')}</li>
           </ul>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">5. Pravidla používání</h2>
-          <p className="text-muted-foreground">Zavazujete se, že nebudete:</p>
+          <h2 className="text-base font-bold">{t('terms.s5_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s5_intro')}</p>
           <ul className="space-y-2 text-muted-foreground">
-            <li>• Zneužívat aplikaci k nelegální činnosti nebo šíření škodlivého obsahu.</li>
-            <li>• Pokoušet se o neoprávněný přístup k účtům jiných uživatelů nebo systémům aplikace.</li>
-            <li>• Automatizovaně stahovat obsah aplikace bez předchozího písemného souhlasu.</li>
-            <li>• Vydávat se za jinou osobu nebo uvádět nepravdivé informace.</li>
+            <li>{t('terms.s5_bullet1')}</li>
+            <li>{t('terms.s5_bullet2')}</li>
+            <li>{t('terms.s5_bullet3')}</li>
+            <li>{t('terms.s5_bullet4')}</li>
           </ul>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">6. Zdravotní upozornění</h2>
+          <h2 className="text-base font-bold">{t('terms.s6_title')}</h2>
           <p className="text-muted-foreground">
-            Pumplo poskytuje tréninkové plány a doporučení jako <strong className="text-foreground">informační pomůcku</strong>,
-            nikoliv jako lékařskou poradenskou službu. Před zahájením cvičebního programu,
-            zejména při zdravotních omezeních nebo po zranění, doporučujeme konzultaci s lékařem.
-            Provozovatel neodpovídá za zdravotní újmy vzniklé v důsledku používání aplikace.
+            {t('terms.s6_body1')}<strong className="text-foreground">{t('terms.s6_emphasis')}</strong>{t('terms.s6_body2')}
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">7. Duševní vlastnictví</h2>
-          <p className="text-muted-foreground">
-            Veškerý obsah aplikace (design, cvičební videa, texty, algoritmy) je majetkem
-            GynTools CZ s.r.o. a je chráněn autorským právem. Obsah smíte používat výhradně
-            pro osobní, nekomerční účely.
-          </p>
+          <h2 className="text-base font-bold">{t('terms.s7_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s7_body')}</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">8. Dostupnost služby</h2>
-          <p className="text-muted-foreground">
-            Usilujeme o nepřetržitou dostupnost aplikace, ale nezaručujeme ji. Vyhrazujeme si
-            právo přerušit nebo ukončit provoz aplikace, nebo omezit přístup k účtu při
-            porušení těchto podmínek.
-          </p>
+          <h2 className="text-base font-bold">{t('terms.s8_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s8_body')}</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">9. Omezení odpovědnosti</h2>
-          <p className="text-muted-foreground">
-            Aplikace je poskytována „tak, jak je". Provozovatel neodpovídá za nepřímé,
-            náhodné ani následné škody vzniklé v souvislosti s používáním aplikace,
-            včetně ztráty dat nebo přerušení služby.
-          </p>
+          <h2 className="text-base font-bold">{t('terms.s9_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s9_body')}</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">10. Změny podmínek</h2>
-          <p className="text-muted-foreground">
-            Tyto podmínky můžeme kdykoli aktualizovat. O podstatných změnách vás budeme
-            informovat v aplikaci. Pokračováním v používání služby po oznámení změn
-            vyjadřujete souhlas s aktualizovanými podmínkami.
-          </p>
+          <h2 className="text-base font-bold">{t('terms.s10_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s10_body')}</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">11. Rozhodné právo</h2>
-          <p className="text-muted-foreground">
-            Tyto podmínky se řídí právním řádem České republiky. Veškeré spory budou
-            řešeny příslušnými soudy ČR.
-          </p>
+          <h2 className="text-base font-bold">{t('terms.s11_title')}</h2>
+          <p className="text-muted-foreground">{t('terms.s11_body')}</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-bold">12. Kontakt</h2>
+          <h2 className="text-base font-bold">{t('terms.s12_title')}</h2>
           <p className="text-muted-foreground">
-            Dotazy k těmto podmínkám zasílejte na{' '}
+            {t('terms.s12_body')}{' '}
             <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>.
           </p>
         </section>
 
         <div className="pt-4 pb-8">
           <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>
-            Zpět do aplikace
+            {t('terms.back_to_app')}
           </Button>
         </div>
       </motion.div>
