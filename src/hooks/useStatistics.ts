@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from './useUserProfile';
+import i18n from '@/i18n';
 
 interface WeeklyVolume {
   weekLabel: string;
@@ -20,6 +21,7 @@ interface SetHistory {
 interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
+  exerciseNameEn?: string | null;
   maxWeight: number;
   maxWeightReps: number;
   achievedAt: string;
@@ -66,7 +68,7 @@ export interface Statistics {
   muscleDistribution: MuscleDistribution[];
   monthComparison: MonthComparison;
   weekdayActivity: WeekdayActivity[];
-  topExercises: { name: string; sets: number }[];
+  topExercises: { name: string; nameEn?: string | null; sets: number }[];
 }
 
 const DAY_NAMES: Record<string, string> = {
@@ -76,6 +78,10 @@ const DAY_NAMES: Record<string, string> = {
 const DAY_SHORTS: Record<string, string> = {
   monday: 'Po', tuesday: 'Út', wednesday: 'St',
   thursday: 'Čt', friday: 'Pá', saturday: 'So', sunday: 'Ne',
+};
+const DAY_SHORTS_EN: Record<string, string> = {
+  monday: 'Mo', tuesday: 'Tu', wednesday: 'We',
+  thursday: 'Th', friday: 'Fr', saturday: 'Sa', sunday: 'Su',
 };
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -113,14 +119,14 @@ export const useStatistics = () => {
 
       // Fetch exercise details for muscle groups
       const exerciseIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
-      const exerciseMap = new Map<string, { name: string; muscles: string[] }>();
+      const exerciseMap = new Map<string, { name: string; name_en: string | null; muscles: string[] }>();
       if (exerciseIds.length > 0) {
         const { data: exercises } = await supabase
           .from('exercises')
-          .select('id, name, primary_muscles')
+          .select('id, name, name_en, primary_muscles')
           .in('id', exerciseIds);
         (exercises || []).forEach(e => {
-          exerciseMap.set(e.id, { name: e.name, muscles: e.primary_muscles || [] });
+          exerciseMap.set(e.id, { name: e.name, name_en: (e as { name_en?: string | null }).name_en || null, muscles: e.primary_muscles || [] });
         });
       }
 
@@ -189,6 +195,7 @@ export const useStatistics = () => {
         maxWeightReps: number;
         achievedAt: string;
         name: string;
+        name_en: string | null;
         previousMax: number | null;
         best1RM: number;
         sets: SetHistory[];
@@ -206,6 +213,7 @@ export const useStatistics = () => {
         if (!set.exercise_id || !set.weight_kg || set.weight_kg <= 0) return;
         const exInfo = exerciseMap.get(set.exercise_id);
         const name = exInfo?.name || set.exercise_name || 'Neznámý';
+        const name_en = exInfo?.name_en || null;
         const date = (set.workout_sessions as { started_at: string } | null)?.started_at || set.created_at;
         const reps = set.reps || 1;
         const est1RM = calc1RM(set.weight_kg, reps);
@@ -215,7 +223,7 @@ export const useStatistics = () => {
         if (!existing) {
           exerciseBests.set(set.exercise_id, {
             maxWeight: set.weight_kg, maxWeightReps: reps, achievedAt: date,
-            name, previousMax: null, best1RM: est1RM, sets: [setEntry], totalSets: 1,
+            name, name_en, previousMax: null, best1RM: est1RM, sets: [setEntry], totalSets: 1,
           });
         } else {
           existing.totalSets++;
@@ -241,6 +249,7 @@ export const useStatistics = () => {
           return {
             exerciseId: id,
             exerciseName: data.name,
+            exerciseNameEn: data.name_en,
             maxWeight: data.maxWeight,
             maxWeightReps: data.maxWeightReps,
             achievedAt: data.achievedAt,
@@ -309,7 +318,7 @@ export const useStatistics = () => {
         const isToday = i === todayIndex;
         return {
           day: DAY_NAMES[day],
-          short: DAY_SHORTS[day],
+          short: (i18n.language === 'en' ? DAY_SHORTS_EN : DAY_SHORTS)[day],
           trained: wasTrained,
           planned: isPlanned,
           missed: isPlanned && !wasTrained && (isPast || (isToday && !wasTrained)) && allSessions.length > 0,
@@ -317,15 +326,17 @@ export const useStatistics = () => {
       });
 
       // --- Top exercises by sets ---
-      const exerciseSetsMap = new Map<string, { name: string; sets: number }>();
+      const exerciseSetsMap = new Map<string, { name: string; nameEn: string | null; sets: number }>();
       allSets.forEach(set => {
-        const name = exerciseMap.get(set.exercise_id || '')?.name || set.exercise_name || 'Neznámý';
+        const exInfo = exerciseMap.get(set.exercise_id || '');
+        const name = exInfo?.name || set.exercise_name || 'Neznámý';
+        const nameEn = exInfo?.name_en || null;
         const key = set.exercise_id || set.exercise_name;
         const existing = exerciseSetsMap.get(key);
         if (existing) {
           existing.sets++;
         } else {
-          exerciseSetsMap.set(key, { name, sets: 1 });
+          exerciseSetsMap.set(key, { name, nameEn, sets: 1 });
         }
       });
 

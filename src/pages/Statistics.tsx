@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { format } from 'date-fns';
-import { cs } from 'date-fns/locale';
+import { cs, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 
 const MUSCLE_LABEL_KEYS: Record<string, string> = {
@@ -43,23 +43,26 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-interface TooltipProps { active?: boolean; payload?: { payload: SessionDataPoint }[]; metric: MetricKey; metricColor: string; metricUnit: string }
+interface TooltipProps { active?: boolean; payload?: { payload: SessionDataPoint }[]; metric: MetricKey; metricColor: string; metricUnit: string; isEn: boolean }
 
-const CustomTooltip = ({ active, payload, metric, metricColor, metricUnit }: TooltipProps) => {
+const CustomTooltip = ({ active, payload, metric, metricColor, metricUnit, isEn }: TooltipProps) => {
   if (!active || !payload?.[0]) return null;
   const data = payload[0].payload as SessionDataPoint;
+  const dateLocale = isEn ? enUS : cs;
   return (
     <div className="bg-background border border-border rounded-lg px-3 py-2 shadow-lg">
-      <p className="text-[10px] text-muted-foreground">{format(new Date(data.date), 'd. MMM yyyy', { locale: cs })}</p>
+      <p className="text-[10px] text-muted-foreground">{format(new Date(data.date), isEn ? 'MMM d, yyyy' : 'd. MMM yyyy', { locale: dateLocale })}</p>
       <p className="text-sm font-bold" style={{ color: metricColor }}>
-        {data[metric].toLocaleString('cs')} {metricUnit}
+        {data[metric].toLocaleString(isEn ? 'en' : 'cs')} {metricUnit}
       </p>
     </div>
   );
 };
 
 const Statistics = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
+  const dateLocale = isEn ? enUS : cs;
   const { stats, isLoading } = useStatistics();
 
   const METRICS: { key: MetricKey; label: string; unit: string; color: string; fill: string }[] = [
@@ -243,7 +246,7 @@ const Statistics = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold text-foreground">
-                      {visibleAvg.toLocaleString('cs')}
+                      {visibleAvg.toLocaleString(isEn ? 'en' : 'cs')}
                       <span className="text-sm font-normal text-muted-foreground ml-1">{metric.unit}</span>
                     </p>
                     <p className="text-[10px] text-muted-foreground">{t('stats.avg_per_workout')}</p>
@@ -298,7 +301,7 @@ const Statistics = () => {
                           tick={{ fill: 'hsl(var(--muted-foreground))' }}
                         />
                         <YAxis hide domain={['auto', 'auto']} />
-                        <Tooltip content={<CustomTooltip metric={activeMetric} metricColor={metric.color} metricUnit={metric.unit} />} />
+                        <Tooltip content={<CustomTooltip metric={activeMetric} metricColor={metric.color} metricUnit={metric.unit} isEn={isEn} />} />
                         <Area
                           type="monotone"
                           dataKey={activeMetric}
@@ -341,9 +344,9 @@ const Statistics = () => {
                   {recentPRs.map((pr) => (
                     <div key={pr.exerciseId} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{pr.exerciseName}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{(isEn && pr.exerciseNameEn) ? pr.exerciseNameEn : pr.exerciseName}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(pr.achievedAt), 'd. MMM yyyy', { locale: cs })}
+                          {format(new Date(pr.achievedAt), isEn ? 'MMM d, yyyy' : 'd. MMM yyyy', { locale: dateLocale })}
                         </p>
                       </div>
                       <div className="text-right">
@@ -395,9 +398,9 @@ const Statistics = () => {
                         className="flex items-center justify-between py-2.5 w-full text-left"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{pr.exerciseName}</p>
+                          <p className="text-sm font-medium text-foreground truncate">{(isEn && pr.exerciseNameEn) ? pr.exerciseNameEn : pr.exerciseName}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            {pr.totalSets} {t('stats.metric_sets')} · {format(new Date(pr.achievedAt), 'd. MMM yyyy', { locale: cs })}
+                            {pr.totalSets} {t('stats.metric_sets')} · {format(new Date(pr.achievedAt), isEn ? 'MMM d, yyyy' : 'd. MMM yyyy', { locale: dateLocale })}
                           </p>
                         </div>
                         <div className="text-right mr-2">
@@ -442,7 +445,7 @@ const Statistics = () => {
                                     <span key={i} className="text-[10px] bg-muted px-2 py-1 rounded-md text-foreground">
                                       {s.weight}kg × {s.reps}
                                       <span className="text-muted-foreground ml-1">
-                                        {format(new Date(s.date), 'd.M.', { locale: cs })}
+                                        {format(new Date(s.date), isEn ? 'M/d' : 'd.M.', { locale: dateLocale })}
                                       </span>
                                     </span>
                                   ))}
@@ -508,7 +511,7 @@ const Statistics = () => {
                     <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-primary w-5">{i + 1}.</span>
-                        <span className="text-sm text-foreground">{ex.name}</span>
+                        <span className="text-sm text-foreground">{(isEn && ex.nameEn) ? ex.nameEn : ex.name}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">{ex.sets} {t('stats.metric_sets')}</span>
                     </div>
