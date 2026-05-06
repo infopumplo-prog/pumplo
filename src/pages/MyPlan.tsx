@@ -41,6 +41,13 @@ const weekTypeStyles: Record<WeekType, { bg: string; border: string; text: strin
 
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+const DAY_NAME_EN: Record<string, string> = {
+  'Horní tělo': 'Upper body',
+  'Dolní tělo': 'Lower body',
+  'Celé tělo A': 'Full body A',
+  'Celé tělo B': 'Full body B',
+};
+
 const MyPlan = () => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -539,7 +546,7 @@ const MyPlan = () => {
                                   <div>
                                     <p className={cn("font-medium text-sm", isDayCompleted && "text-green-700")}>{DAY_NAMES_CZ[day.dayOfWeek]}</p>
                                     {dayTemplate?.dayName && (
-                                      <p className="text-xs text-muted-foreground">{dayTemplate.dayName}</p>
+                                      <p className="text-xs text-muted-foreground">{(isEn && DAY_NAME_EN[dayTemplate.dayName]) ? DAY_NAME_EN[dayTemplate.dayName] : dayTemplate.dayName}</p>
                                     )}
                                   </div>
                                 </div>
