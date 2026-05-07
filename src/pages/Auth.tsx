@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 import { Capacitor } from '@capacitor/core';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,8 @@ type AuthMode = 'login' | 'register';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const gymIdFromQR = searchParams.get('gymId');
   const [mode, setMode] = useState<AuthMode>('login');
   const { toast } = useToast();
   
@@ -66,7 +68,7 @@ const Auth = () => {
   const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
   const [showGymStep, setShowGymStep] = useState(false);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
-  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
+  const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword } = useAuth();
@@ -112,6 +114,12 @@ const Auth = () => {
       if (!result.success) {
         setError(result.error || t('auth.login_failed'));
       } else {
+        if (gymIdFromQR) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('user_profiles').update({ selected_gym_id: gymIdFromQR }).eq('user_id', user.id);
+          }
+        }
         navigate('/');
       }
     } catch {
@@ -252,7 +260,11 @@ const Auth = () => {
       }
       setShowTrainerTip(false);
       if (onboardingStep === 6) {
-        setShowGymStep(true);
+        if (gymIdFromQR) {
+          setShowOutcomeStep(true);
+        } else {
+          setShowGymStep(true);
+        }
         return;
       }
       setOnboardingStep(onboardingStep + 1);

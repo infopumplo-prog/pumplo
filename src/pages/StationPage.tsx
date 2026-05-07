@@ -61,7 +61,7 @@ const StationPage = () => {
       <div className="flex-1">
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} bannerVisible={!bannerDismissed} />
       </div>
-      <StationCTA />
+      <StationCTA gymId={data.gymId} />
     </div>
   );
 };
