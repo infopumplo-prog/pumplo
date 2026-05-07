@@ -12,10 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import { format, subDays, startOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
-import { cs } from 'date-fns/locale';
+import { cs, enUS } from 'date-fns/locale';
 
 const WorkoutHistory = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
+  const dateLocale = isEn ? enUS : cs;
   const navigate = useNavigate();
   const { stats, isLoading } = useWorkoutStats();
   const { sessions, exerciseStats, isLoading: historyLoading } = useWorkoutHistory();
@@ -30,7 +32,7 @@ const WorkoutHistory = () => {
   const weeklyChartData = last7Days.map(day => {
     const daySession = sessions.find(s => isSameDay(new Date(s.started_at), day));
     return {
-      day: format(day, 'EEE', { locale: cs }),
+      day: format(day, 'EEE', { locale: dateLocale }),
       date: format(day, 'd.M.'),
       duration: daySession ? Math.round((daySession.duration_seconds || 0) / 60) : 0,
       weight: daySession ? (daySession.total_weight_kg || 0) : 0,
@@ -238,7 +240,7 @@ const WorkoutHistory = () => {
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-foreground">{exercise.exerciseName}</h4>
+                            <h4 className="font-medium text-foreground">{(isEn && exercise.exerciseNameEn) ? exercise.exerciseNameEn : exercise.exerciseName}</h4>
                             <span className="text-xs text-muted-foreground">{exercise.totalSets}x</span>
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-sm">

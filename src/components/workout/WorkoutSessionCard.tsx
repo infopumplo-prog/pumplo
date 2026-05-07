@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { cs } from 'date-fns/locale';
+import { cs, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { estimateCalories } from '@/lib/calorieEstimation';
@@ -37,7 +37,9 @@ interface WorkoutSessionCardProps {
 }
 
 export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSessionCardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
+  const dateLocale = isEn ? enUS : cs;
   const [isExpanded, setIsExpanded] = useState(false);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [isLoadingSets, setIsLoadingSets] = useState(false);
@@ -48,8 +50,8 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
     ? `${session.day_letter.replace('_EXT', '')}+` 
     : session.day_letter;
   const displayTitle = isExtension
-    ? `Den ${session.day_letter.replace('_EXT', '')} (rozšírenie)`
-    : `Den ${session.day_letter}`;
+    ? `${isEn ? 'Day' : 'Den'} ${session.day_letter.replace('_EXT', '')} (${isEn ? 'extension' : 'rozšírenie'})`
+    : `${isEn ? 'Day' : 'Den'} ${session.day_letter}`;
 
   // Fetch sets when expanded
   useEffect(() => {
@@ -131,7 +133,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
             <div>
               <p className="font-semibold text-foreground">{displayTitle}</p>
               <p className="text-sm text-muted-foreground">
-                {format(new Date(session.started_at), variant === 'compact' ? 'd.M.' : 'EEEE d. MMMM', { locale: cs })}
+                {format(new Date(session.started_at), variant === 'compact' ? 'd.M.' : (isEn ? 'EEEE, MMMM d' : 'EEEE d. MMMM'), { locale: dateLocale })}
                 {variant === 'full' && ` • ${format(new Date(session.started_at), 'HH:mm')}`}
               </p>
             </div>

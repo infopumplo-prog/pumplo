@@ -18,6 +18,7 @@ interface WorkoutSession {
 interface ExerciseStats {
   exerciseId: string;
   exerciseName: string;
+  exerciseNameEn?: string | null;
   totalSets: number;
   totalReps: number;
   maxWeight: number;
@@ -98,10 +99,19 @@ export const useWorkoutHistory = () => {
         }
       });
 
+      // Fetch EN names for all exercises
+      const exerciseIds = [...new Set([...exerciseMap.keys()].filter(k => k.length > 10))];
+      const nameEnMap = new Map<string, string | null>();
+      if (exerciseIds.length > 0) {
+        const { data: exData } = await supabase.from('exercises').select('id, name_en').in('id', exerciseIds);
+        (exData || []).forEach(e => nameEnMap.set(e.id, (e as { name_en?: string | null }).name_en || null));
+      }
+
       const stats: ExerciseStats[] = Array.from(exerciseMap.values())
         .map(e => ({
           exerciseId: e.exerciseId,
           exerciseName: e.exerciseName,
+          exerciseNameEn: nameEnMap.get(e.exerciseId) || null,
           totalSets: e.totalSets,
           totalReps: e.totalReps,
           maxWeight: e.weights.length > 0 ? Math.max(...e.weights) : 0,
