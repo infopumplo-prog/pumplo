@@ -1113,6 +1113,10 @@ const en = {
   'station.open_btn': 'Open',
   'station.cta_btn': 'Create your free training plan',
   'station.exercise_label': 'Exercise {{n}}',
+  'station.not_found': 'Station not found',
+  'station.invalid_qr': 'QR code is invalid or has been removed.',
+  'station.no_videos': 'We don\'t have videos for this station yet.',
+  'station.title_suffix': 'exercises',
 
   // Training page — extended
   'training.fill_questionnaire_hint': 'Fill in the questionnaire to access training',

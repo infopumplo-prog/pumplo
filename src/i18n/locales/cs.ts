@@ -1113,6 +1113,10 @@ const cs = {
   'station.open_btn': 'Otevřít',
   'station.cta_btn': 'Vytvoř si tréninkový plán zdarma',
   'station.exercise_label': 'Cvik {{n}}',
+  'station.not_found': 'Cvičiště nenalezeno',
+  'station.invalid_qr': 'QR kód je neplatný nebo byl odstraněn.',
+  'station.no_videos': 'Pro toto cvičiště zatím nemáme videa.',
+  'station.title_suffix': 'cviky',
 
   // Training page — extended
   'training.fill_questionnaire_hint': 'Pro přístup k tréninku nejdříve vyplň dotazník',

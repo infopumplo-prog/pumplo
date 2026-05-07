@@ -5,17 +5,19 @@ import { StationCTA } from '@/components/station/StationCTA';
 import { StationVideoPlayer } from '@/components/station/StationVideoPlayer';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const StationPage = () => {
   const { code } = useParams<{ code: string }>();
   const { data, isLoading, error } = useStationData(code);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (data) {
-      document.title = `${data.machineName} — cviky | ${data.gymName} | Pumplo`;
+      document.title = `${data.machineName} — ${t('station.title_suffix')} | ${data.gymName} | Pumplo`;
     }
-  }, [data]);
+  }, [data, t]);
 
   if (isLoading) {
     return (
@@ -29,10 +31,10 @@ const StationPage = () => {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: '#0B1222' }}>
         <p style={{ color: '#fff', fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>
-          Cvičiště nenalezeno
+          {t('station.not_found')}
         </p>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', textAlign: 'center' }}>
-          QR kód je neplatný nebo byl odstraněn.
+          {t('station.invalid_qr')}
         </p>
       </div>
     );
@@ -46,7 +48,7 @@ const StationPage = () => {
           {data.machineName}
         </p>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', textAlign: 'center' }}>
-          Pro toto cvičiště zatím nemáme videa.
+          {t('station.no_videos')}
         </p>
         <StationCTA />
       </div>
