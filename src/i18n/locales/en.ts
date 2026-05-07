@@ -284,6 +284,8 @@ const en = {
   'workout.location_permission': 'Location permission',
   'workout.location_permission_desc': 'Pumplo needs location access to verify you are training at {{gymName}}.',
   'workout.location_privacy': 'Location is only used when starting a workout and is never stored.',
+  'workout.location_browser_blocked': 'Location blocked by browser',
+  'workout.location_browser_instructions': 'Click the lock icon in the address bar → Location → Allow → reload the page.',
   'workout.allow_location': 'Allow location',
   'workout.cancel': 'Cancel',
   'workout.not_in_gym': 'You are not at the gym',

@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { MapPin, AlertTriangle, RefreshCw, X, ShieldAlert } from 'lucide-react';
+import { MapPin, AlertTriangle, RefreshCw, X, ShieldAlert, Settings } from 'lucide-react';
 import { useGymLocation } from '@/hooks/useGymLocation';
+import { Capacitor } from '@capacitor/core';
 
 interface GymLocationGateProps {
   gymLat: number;
@@ -69,6 +70,7 @@ const CheckingState = ({ gymName }: { gymName: string }) => {
 
 const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string; onRetry: () => void; onCancel: () => void }) => {
   const { t } = useTranslation();
+  const isNative = Capacitor.isNativePlatform();
   return (
     <div className="text-center max-w-xs">
       <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
@@ -78,6 +80,17 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
       <p className="text-muted-foreground text-sm mb-2">
         {t('workout.location_permission_desc', { gymName })}
       </p>
+      {!isNative && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4 text-left">
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
+            <Settings className="w-3 h-3" />
+            {t('workout.location_browser_blocked')}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t('workout.location_browser_instructions')}
+          </p>
+        </div>
+      )}
       <p className="text-muted-foreground text-xs mb-6">
         {t('workout.location_privacy')}
       </p>

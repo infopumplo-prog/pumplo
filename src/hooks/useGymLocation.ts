@@ -35,13 +35,15 @@ export const useGymLocation = () => {
           return false;
         }
       } else {
-        // Web fallback — check browser permission
+        // Web fallback — check browser permission state (but don't early-return on 'denied'
+        // so getCurrentPosition below can still surface a meaningful error or re-prompt)
         if (navigator.permissions) {
           const perm = await navigator.permissions.query({ name: 'geolocation' });
           if (perm.state === 'denied') {
             setStatus('permission_denied');
             return false;
           }
+          // state === 'prompt' or 'granted' — proceed to getCurrentPosition
         }
       }
 
