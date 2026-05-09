@@ -1,5 +1,8 @@
 import { X, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '@/i18n';
+import i18n from '@/i18n';
 
 interface StationBannerProps {
   gymName: string;
@@ -9,6 +12,7 @@ interface StationBannerProps {
 
 export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
+  const { t } = useTranslation();
   if (dismissed) return null;
 
   const getStoreLink = () => {
@@ -35,10 +39,19 @@ export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBann
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <div className="flex gap-0.5">
+          {(['cs', 'en'] as const).map((lang) => (
+            <button key={lang} onClick={() => changeLanguage(lang)}
+              className="text-base transition-opacity"
+              style={{ opacity: i18n.language === lang ? 1 : 0.35 }}>
+              {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
+            </button>
+          ))}
+        </div>
         <a href={getStoreLink()}
           className="px-4 py-1.5 rounded-full text-sm font-semibold"
           style={{ background: '#4CC9FF', color: '#fff', fontSize: '13px' }}>
-          Otevřít
+          {t('station.open_btn')}
         </a>
         <button type="button" onClick={() => { setDismissed(true); onDismiss?.(); }}
           className="p-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
