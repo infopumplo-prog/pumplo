@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1414,15 +1415,16 @@ const CustomPlanDetail = () => {
         </div>
       )}
 
-      {showGymSelector && (
+      {showGymSelector && createPortal(
         <GymSelector
           onSelect={handleGymSelected}
           onCancel={() => setShowGymSelector(false)}
           selectedGymId={selectedWorkoutGymId || profile?.selected_gym_id}
-        />
+        />,
+        document.body
       )}
 
-      {showLocationGate && locationGymLat !== null && locationGymLng !== null && (
+      {showLocationGate && locationGymLat !== null && locationGymLng !== null && createPortal(
         <GymLocationGate
           gymLat={locationGymLat}
           gymLng={locationGymLng}
@@ -1432,7 +1434,8 @@ const CustomPlanDetail = () => {
             if (pendingWorkoutPath) navigate(pendingWorkoutPath);
           }}
           onCancel={() => setShowLocationGate(false)}
-        />
+        />,
+        document.body
       )}
     </>
   );

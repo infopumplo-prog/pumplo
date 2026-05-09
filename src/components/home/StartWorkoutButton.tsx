@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
@@ -48,15 +49,16 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
 
   return (
     <>
-      {showGymSelector && (
+      {showGymSelector && createPortal(
         <GymSelector
           onSelect={handleGymSelected}
           onCancel={() => setShowGymSelector(false)}
           selectedGymId={selectedGymId}
-        />
+        />,
+        document.body
       )}
 
-      {showLocationGate && gymLat !== null && gymLng !== null && (
+      {showLocationGate && gymLat !== null && gymLng !== null && createPortal(
         <GymLocationGate
           gymLat={gymLat}
           gymLng={gymLng}
@@ -66,7 +68,8 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
             navigate(`/training?start=true&gymId=${pickedGymId}`);
           }}
           onCancel={() => setShowLocationGate(false)}
-        />
+        />,
+        document.body
       )}
 
       <motion.div
