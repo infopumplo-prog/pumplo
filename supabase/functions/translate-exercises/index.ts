@@ -21,7 +21,7 @@ async function translateText(csText: string): Promise<string> {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [{
         role: "user",
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const { data: exercises } = await supabase
       .from("exercises")
       .select("id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en")
-      .or("name_en.is.null,description_en.is.null,tips_en.is.null");
+      .or("name_en.is.null,description_en.is.null,tips_en.is.null,common_mistakes_en.is.null,setup_instructions_en.is.null");
 
     if (!exercises?.length) {
       return new Response(JSON.stringify({ message: "All exercises already translated", count: 0 }), {
