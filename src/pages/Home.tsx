@@ -421,9 +421,16 @@ const Home = () => {
                             'Horní tělo': t('workout.day_upper_body'),
                             'Dolní tělo': t('workout.day_lower_body'),
                             'Celotělový': t('workout.day_full_body'),
+                            'Celé tělo': t('workout.day_full_body'),
+                            'Celé tělo A': `${t('workout.day_full_body')} A`,
+                            'Celé tělo B': `${t('workout.day_full_body')} B`,
                             'Push': 'Push',
                             'Pull': 'Pull',
                             'Nožní den': t('workout.day_leg_day'),
+                            'Nohy': t('workout.day_leg_day'),
+                            'Tlak': 'Push',
+                            'Tah': 'Pull',
+                            'Odpočinek': t('workout.rest') || 'Rest',
                           };
                           const dayTypeName = dayNameMap[dayTemplate?.dayName || ''] ?? (dayTemplate?.dayName || '');
 
