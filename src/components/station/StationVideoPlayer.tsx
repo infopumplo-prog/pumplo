@@ -349,11 +349,11 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
       {/* Info overlay */}
       {infoOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col overflow-y-auto"
+          className="fixed inset-0 z-50 flex flex-col"
           style={{ background: 'rgba(11,18,34,0.97)' }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-4 sticky top-0" style={{ background: 'rgba(11,18,34,0.97)', borderBottom: '1px solid rgba(76,201,255,0.15)' }}>
+          {/* Header — fixed at top, never scrolls */}
+          <div className="shrink-0 flex items-center justify-between px-4 py-4" style={{ background: 'rgba(11,18,34,0.97)', borderBottom: '1px solid rgba(76,201,255,0.15)' }}>
             <div>
               <p className="font-bold text-base" style={{ color: '#fff' }}>{displayName}</p>
               <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{displayMachineName}</p>
@@ -369,8 +369,8 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
             </button>
           </div>
 
-          {/* Content */}
-          <div className="px-4 py-5 flex flex-col gap-5">
+          {/* Content — scrollable area */}
+          <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-5" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
             {/* Difficulty */}
             {currentExercise.difficulty !== null && (
               <div>
