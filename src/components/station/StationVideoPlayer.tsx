@@ -29,6 +29,7 @@ interface StationVideoPlayerProps {
 }
 
 const MUSCLE_MAP: Record<string, string> = {
+  // Czech proper names
   'Kvadricepsy': 'Quadriceps',
   'Hamstringy': 'Hamstrings',
   'Hýžďové svaly': 'Glutes',
@@ -59,6 +60,72 @@ const MUSCLE_MAP: Record<string, string> = {
   'Předloktí': 'Forearms',
   'Hrudní svaly': 'Pectoral Muscles',
   'Mezilopatkové svaly': 'Interscapular Muscles',
+  // Czech informal / DB variants
+  'kvadriceps': 'Quadriceps',
+  'hamstringy': 'Hamstrings',
+  'lýtka': 'Calves',
+  'záda': 'Back',
+  'ramena': 'Shoulders',
+  'prsa': 'Chest',
+  'prsní svaly': 'Pectoral Muscles',
+  'břicho': 'Abs',
+  'střed zad': 'Middle Back',
+  'střed těla': 'Core',
+  'horní prsa': 'Upper Chest',
+  'spodní prsa': 'Lower Chest',
+  'bedra': 'Lower Back',
+  'trapézy': 'Trapezius',
+  'lopatky': 'Shoulder Blades',
+  'paže': 'Arms',
+  'ruce': 'Arms',
+  'nohy': 'Legs',
+  'nohy a zadek': 'Legs and Glutes',
+  'nohy a ruce': 'Legs and Arms',
+  'dolní končetiny': 'Lower Limbs',
+  'flexory kyčle': 'Hip Flexors',
+  'zadek': 'Glutes',
+  'Zadek': 'Glutes',
+  'latisimy': 'Lats',
+  'latissimy': 'Lats',
+  'latysimy': 'Lats',
+  'pilovitý sval': 'Serratus Anterior',
+  'přímý břišní sval': 'Rectus Abdominis',
+  'přímé břišní svaly': 'Rectus Abdominis',
+  'šikmé břišní svaly': 'Obliques',
+  'triceps ramena': 'Triceps & Shoulders',
+  'vspřimovače': 'Spinal Erectors',
+  'hamstrin': 'Hamstrings',
+  'fulbody': 'Full Body',
+  // English snake_case / lowercase variants (normalize capitalization)
+  'abs': 'Abs',
+  'back': 'Back',
+  'chest': 'Chest',
+  'glutes': 'Glutes',
+  'hamstrings': 'Hamstrings',
+  'hamstring': 'Hamstrings',
+  'quadriceps': 'Quadriceps',
+  'quads': 'Quads',
+  'calves': 'Calves',
+  'shoulders': 'Shoulders',
+  'biceps': 'Biceps',
+  'triceps': 'Triceps',
+  'core': 'Core',
+  'forearms': 'Forearms',
+  'fullbody': 'Full Body',
+  'back_thighs': 'Hamstrings',
+  'front_thighs': 'Quadriceps',
+  'front_shoulders': 'Front Deltoid',
+  'side_shoulders': 'Lateral Deltoid',
+  'hip_flexors': 'Hip Flexors',
+  'chest_muscles': 'Pectoral Muscles',
+  'stabilizing_muscles': 'Stabilizing Muscles',
+  'wide_back_muscles': 'Back (Wide)',
+  'lower_trapezius': 'Lower Trapezius',
+  'middle_trapezius': 'Middle Trapezius',
+  'upper_trapezius': 'Upper Trapezius',
+  'rhomboid_major': 'Rhomboid Major',
+  'rhomboid_minor': 'Rhomboid Minor',
+  'traps': 'Trapezius',
 };
 
 const DifficultyDots = ({ level }: { level: number | null }) => {
@@ -170,7 +237,8 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
           muted
           playsInline
           preload="auto"
-          // @ts-expect-error — webkit prefix for iOS
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           webkit-playsinline="true"
           className="w-full h-full object-cover"
           style={{ opacity: activeUrl ? 1 : 0, transition: 'opacity 0.3s' }}
@@ -182,7 +250,8 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
             muted
             playsInline
             preload="auto"
-            // @ts-expect-error — webkit prefix for iOS
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             webkit-playsinline="true"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: 0, pointerEvents: 'none' }}
