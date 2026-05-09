@@ -1,15 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 
 interface Exercise {
   id: string;
   name: string;
+  name_en: string | null;
   video_path: string | null;
   description: string | null;
+  description_en: string | null;
   setup_instructions: string | null;
+  setup_instructions_en: string | null;
   common_mistakes: string | null;
+  common_mistakes_en: string | null;
   tips: string | null;
+  tips_en: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
   difficulty: number | null;
@@ -18,8 +24,42 @@ interface Exercise {
 interface StationVideoPlayerProps {
   exercises: Exercise[];
   machineName: string;
+  machineName_en?: string | null;
   bannerVisible?: boolean;
 }
+
+const MUSCLE_MAP: Record<string, string> = {
+  'Kvadricepsy': 'Quadriceps',
+  'Hamstringy': 'Hamstrings',
+  'Hýžďové svaly': 'Glutes',
+  'Hýžďové svaly (gluteus maximus)': 'Glutes (gluteus maximus)',
+  'Lýtka': 'Calves',
+  'Hrudník': 'Chest',
+  'Záda': 'Back',
+  'Ramena': 'Shoulders',
+  'Bicepsy': 'Biceps',
+  'Tricepsy': 'Triceps',
+  'Břicho': 'Abs',
+  'Jádro': 'Core',
+  'Trapézový sval': 'Trapezius',
+  'Přední deltový sval': 'Front Deltoid',
+  'Střední deltový sval': 'Middle Deltoid',
+  'Zadní deltový sval': 'Rear Deltoid',
+  'Latissimus dorsi': 'Latissimus Dorsi',
+  'Rhomboidy': 'Rhomboids',
+  'Bederní oblast': 'Lower Back',
+  'Adduktory': 'Adductors',
+  'Abduktory': 'Abductors',
+  'Hlouboké stabilizátory': 'Deep Stabilizers',
+  'Stabilizátory páteře': 'Spinal Stabilizers',
+  'Kardiovaskulární systém': 'Cardiovascular System',
+  'Celé tělo': 'Full Body',
+  'Přitahovače': 'Adductors',
+  'Odtahovače': 'Abductors',
+  'Předloktí': 'Forearms',
+  'Hrudní svaly': 'Pectoral Muscles',
+  'Mezilopatkové svaly': 'Interscapular Muscles',
+};
 
 const DifficultyDots = ({ level }: { level: number | null }) => {
   const max = 4;
@@ -39,12 +79,19 @@ const DifficultyDots = ({ level }: { level: number | null }) => {
   );
 };
 
-export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = false }: StationVideoPlayerProps) => {
+export const StationVideoPlayer = ({ exercises, machineName, machineName_en, bannerVisible = false }: StationVideoPlayerProps) => {
   const { t } = useTranslation();
   const topOffset = bannerVisible ? '60px' : '12px';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
   const activeVideoRef = useRef<HTMLVideoElement>(null);
+
+  const lang = i18n.language;
+  const pick = (cs: string | null | undefined, en: string | null | undefined) =>
+    lang === 'en' && en ? en : cs ?? null;
+  const translateMuscle = (name: string) =>
+    lang === 'en' ? (MUSCLE_MAP[name] ?? name) : name;
+  const displayMachineName = pick(machineName, machineName_en) ?? machineName;
 
   const currentExercise = exercises[currentIndex] ?? null;
   const nextExercise = exercises[currentIndex + 1] ?? null;
@@ -68,8 +115,8 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
     if (!currentExercise || !('mediaSession' in navigator)) return;
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentExercise.name,
-      artist: machineName,
+      title: pick(currentExercise.name, currentExercise.name_en) ?? currentExercise.name,
+      artist: displayMachineName,
       artwork: [
         { src: '/pumplo-artwork-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/pumplo-artwork-512.png', sizes: '512x512', type: 'image/png' },
@@ -82,7 +129,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
     navigator.mediaSession.setActionHandler('nexttrack',
       currentIndex < exercises.length - 1 ? () => goTo(currentIndex + 1) : null
     );
-  }, [currentExercise, machineName, currentIndex, exercises.length, goTo]);
+  }, [currentExercise, displayMachineName, currentIndex, exercises.length, goTo]);
 
   // Sync playback state with lock screen widget
   useEffect(() => {
@@ -103,10 +150,12 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
         className="flex items-center justify-center w-full"
         style={{ height: '60vh', background: '#0B1222', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}
       >
-        Žádné cviky
+        {t('station.no_exercises')}
       </div>
     );
   }
+
+  const displayName = pick(currentExercise.name, currentExercise.name_en) ?? currentExercise.name;
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ background: '#000' }}>
@@ -185,7 +234,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
           onClick={(e) => { e.stopPropagation(); setInfoOpen(true); }}
           className="absolute right-3 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-sm z-20"
           style={{ top: topOffset, background: 'rgba(0,0,0,0.4)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)', transition: 'top 0.3s' }}
-          aria-label="Informace o cviku"
+          aria-label={t('station.exercise_info')}
         >
           <Info className="w-5 h-5" />
         </button>
@@ -200,10 +249,10 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
         {/* Exercise name overlay — z-20 above gradient+video, well above CTA */}
         <div className="absolute left-0 right-0 px-4 z-20" style={{ bottom: '160px' }}>
           <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
-            {currentExercise.name}
+            {displayName}
           </p>
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {machineName}
+            {displayMachineName}
           </p>
           {/* Dot indicators */}
           {exercises.length > 1 && exercises.length <= 20 && (
@@ -220,7 +269,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
                     background: i === currentIndex ? '#4CC9FF' : 'rgba(255,255,255,0.35)',
                     borderRadius: '3px',
                   }}
-                  aria-label={`Cvik ${i + 1}`}
+                  aria-label={t('station.exercise_label', { n: i + 1 })}
                 />
               ))}
             </div>
@@ -237,8 +286,8 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-4 sticky top-0" style={{ background: 'rgba(11,18,34,0.97)', borderBottom: '1px solid rgba(76,201,255,0.15)' }}>
             <div>
-              <p className="font-bold text-base" style={{ color: '#fff' }}>{currentExercise.name}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{machineName}</p>
+              <p className="font-bold text-base" style={{ color: '#fff' }}>{displayName}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{displayMachineName}</p>
             </div>
             <button
               type="button"
@@ -257,7 +306,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             {currentExercise.difficulty !== null && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Náročnost
+                  {t('station.difficulty')}
                 </p>
                 <DifficultyDots level={currentExercise.difficulty} />
               </div>
@@ -267,7 +316,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             {(currentExercise.primary_muscles ?? []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Primární svaly
+                  {t('station.primary_muscles')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(currentExercise.primary_muscles ?? []).map((m) => (
@@ -276,7 +325,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
                       className="px-2.5 py-1 rounded-full text-xs font-medium"
                       style={{ background: 'rgba(76,201,255,0.15)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
                     >
-                      {m}
+                      {translateMuscle(m)}
                     </span>
                   ))}
                 </div>
@@ -287,7 +336,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             {(currentExercise.secondary_muscles ?? []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Sekundární svaly
+                  {t('station.secondary_muscles')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(currentExercise.secondary_muscles ?? []).map((m) => (
@@ -296,7 +345,7 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
                       className="px-2.5 py-1 rounded-full text-xs font-medium"
                       style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
                     >
-                      {m}
+                      {translateMuscle(m)}
                     </span>
                   ))}
                 </div>
@@ -304,49 +353,49 @@ export const StationVideoPlayer = ({ exercises, machineName, bannerVisible = fal
             )}
 
             {/* Description */}
-            {currentExercise.description && (
+            {pick(currentExercise.description, currentExercise.description_en) && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Popis
+                  {t('station.description')}
                 </p>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {currentExercise.description}
+                  {pick(currentExercise.description, currentExercise.description_en)}
                 </p>
               </div>
             )}
 
             {/* Setup instructions */}
-            {currentExercise.setup_instructions && (
+            {pick(currentExercise.setup_instructions, currentExercise.setup_instructions_en) && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Nastavení
+                  {t('station.setup')}
                 </p>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {currentExercise.setup_instructions}
+                  {pick(currentExercise.setup_instructions, currentExercise.setup_instructions_en)}
                 </p>
               </div>
             )}
 
             {/* Common mistakes */}
-            {currentExercise.common_mistakes && (
+            {pick(currentExercise.common_mistakes, currentExercise.common_mistakes_en) && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Časté chyby
+                  {t('station.common_mistakes')}
                 </p>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {currentExercise.common_mistakes}
+                  {pick(currentExercise.common_mistakes, currentExercise.common_mistakes_en)}
                 </p>
               </div>
             )}
 
             {/* Tips */}
-            {currentExercise.tips && (
+            {pick(currentExercise.tips, currentExercise.tips_en) && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  Tipy
+                  {t('station.tips')}
                 </p>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {currentExercise.tips}
+                  {pick(currentExercise.tips, currentExercise.tips_en)}
                 </p>
               </div>
             )}
