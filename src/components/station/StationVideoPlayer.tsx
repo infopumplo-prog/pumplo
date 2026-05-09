@@ -369,8 +369,8 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
             </button>
           </div>
 
-          {/* Content — scrollable area */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-5" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+          {/* Content — scrollable area; min-h-0 required for flex overflow to work on mobile */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
             {/* Difficulty */}
             {currentExercise.difficulty !== null && (
               <div>
