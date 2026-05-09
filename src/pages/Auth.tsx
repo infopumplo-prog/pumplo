@@ -274,7 +274,12 @@ const Auth = () => {
   const handlePrevStep = () => {
     if (showOutcomeStep) {
       setShowOutcomeStep(false);
-      setShowGymStep(true);
+      if (gymIdFromQR) {
+        // came from QR — skip gym step, go back to equipment step
+        setOnboardingStep(6);
+      } else {
+        setShowGymStep(true);
+      }
       return;
     }
     if (showGymStep) {
