@@ -346,9 +346,9 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
         </div>
       </div>
 
-      {/* Info overlay */}
+      {/* Info overlay — z-[60] beats StationCTA z-50 */}
       {infoOpen && (
-        <div className="fixed inset-0 z-50" style={{ background: 'rgba(11,18,34,0.97)' }}>
+        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(11,18,34,0.97)' }}>
           {/* Header — pinned at top via absolute */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-4" style={{ background: 'rgba(11,18,34,0.97)', borderBottom: '1px solid rgba(76,201,255,0.15)' }}>
             <div>
