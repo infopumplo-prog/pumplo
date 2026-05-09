@@ -44,8 +44,13 @@ const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satu
 const DAY_NAME_EN: Record<string, string> = {
   'Horní tělo': 'Upper body',
   'Dolní tělo': 'Lower body',
+  'Celé tělo': 'Full body',
   'Celé tělo A': 'Full body A',
   'Celé tělo B': 'Full body B',
+  'Tlak': 'Push',
+  'Tah': 'Pull',
+  'Nohy': 'Legs',
+  'Odpočinek': 'Rest',
 };
 
 const MyPlan = () => {
