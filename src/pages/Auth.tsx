@@ -514,9 +514,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="h-full bg-background flex flex-col safe-top safe-bottom relative">
+    <div className="h-full bg-background flex flex-col safe-bottom relative">
       {/* Language toggle */}
-      <div className="absolute top-4 right-4 z-10 flex gap-1">
+      <div className="absolute right-4 z-10 flex gap-1" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
         {(['cs', 'en'] as const).map((lang) => (
           <button
             key={lang}
@@ -532,7 +532,7 @@ const Auth = () => {
         ))}
       </div>
       {/* Header with gradient */}
-      <div className="flex-shrink-0 gradient-hero pt-12 pb-8 px-6">
+      <div className="flex-shrink-0 gradient-hero pb-8 px-6" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}>
         <motion.div 
           className="flex flex-col items-center"
           initial={{ opacity: 0, y: -20 }}
