@@ -75,13 +75,14 @@ const GymPhotoViewer = ({
           {/* Close button - levý horní roh, výraznější */}
           <button
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
+            className="absolute left-4 z-[60] p-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/40 transition-colors pointer-events-auto"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
           >
             <X className="w-6 h-6 text-white" />
           </button>
 
           {/* Photo counter */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+          <div className="absolute left-1/2 -translate-x-1/2 z-[60] text-white text-sm bg-black/50 px-3 py-1 rounded-full" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
             {selectedIndex + 1} / {allImages.length}
           </div>
 

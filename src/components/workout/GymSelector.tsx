@@ -47,7 +47,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
       className="fixed inset-0 z-[200] bg-background flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between px-4 pb-4 border-b border-border" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
         <div>
           <h1 className="text-xl font-bold">{t('workout.where_to_train')}</h1>
           <p className="text-sm text-muted-foreground">{t('workout.select_gym_today')}</p>

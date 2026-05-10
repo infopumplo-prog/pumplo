@@ -159,14 +159,6 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, servi
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Attendance Chart */}
-        <div className="py-3 px-4 bg-muted/50 rounded-lg space-y-3">
-          <div className="flex items-center gap-3">
-            <Users className="w-5 h-5 text-muted-foreground" />
-            <span className="text-sm font-medium">{t('business.avg_attendance')}</span>
-          </div>
-          <GymAttendanceChart gymId={gymId} />
-        </div>
       </TabsContent>
 
       {/* Machines Tab */}

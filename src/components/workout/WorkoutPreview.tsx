@@ -9,6 +9,7 @@ import { WorkoutExercise } from '@/lib/trainingGoals';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -73,18 +74,23 @@ export const WorkoutPreview = ({
   const [selectedExercise, setSelectedExercise] = useState<WorkoutExercise | null>(null);
   const [exerciseDetail, setExerciseDetail] = useState<ExerciseDetail | null>(null);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [signedDetailVideoUrl, setSignedDetailVideoUrl] = useState<string | null>(null);
 
   // Fetch exercise detail when info drawer opens
   useEffect(() => {
     if (!selectedExercise?.exerciseId || !showInfoDrawer) return;
     setExerciseDetail(null);
+    setSignedDetailVideoUrl(null);
     supabase
       .from('exercises')
       .select('video_path, category, equipment_type, primary_muscles, secondary_muscles, difficulty')
       .eq('id', selectedExercise.exerciseId)
       .single()
       .then(({ data }) => {
-        if (data) setExerciseDetail(data as ExerciseDetail);
+        if (data) {
+          setExerciseDetail(data as ExerciseDetail);
+          getSignedVideoUrl((data as ExerciseDetail).video_path).then(url => setSignedDetailVideoUrl(url));
+        }
       });
   }, [selectedExercise?.exerciseId, showInfoDrawer]);
 
@@ -210,7 +216,7 @@ export const WorkoutPreview = ({
       className="fixed inset-0 z-50 bg-background flex flex-col w-screen max-w-full overflow-x-hidden"
     >
       {/* Header */}
-      <div className="flex-none p-4 border-b border-border flex items-center justify-between">
+      <div className="flex-none px-4 pb-4 border-b border-border flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
         <Button variant="ghost" size="icon" onClick={handleCloseClick}>
           <X className="w-5 h-5" />
         </Button>
@@ -336,12 +342,13 @@ export const WorkoutPreview = ({
             <DrawerTitle>{selectedExercise?.exerciseName || t('workout.exercise_label')}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
-            {exerciseDetail?.video_path ? (
+            {signedDetailVideoUrl ? (
               <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                 <video
-                  key={exerciseDetail.video_path}
-                  src={exerciseDetail.video_path}
+                  key={signedDetailVideoUrl}
+                  src={signedDetailVideoUrl}
                   playsInline autoPlay loop muted preload="auto"
+                  controlsList="nodownload"
                   className="w-full h-full object-contain"
                   style={{ opacity: 0, transition: 'opacity 0.3s' }}
                   onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
