@@ -11,6 +11,7 @@ import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
@@ -68,35 +69,6 @@ const getRestSecondsForCategory = (goalId: string, slotCategory?: string | null)
   }
 };
 
-/**
- * Extract relative file path from video_path which may be a full URL or relative path.
- * DB stores full URLs like: https://xxx.supabase.co/storage/v1/object/public/exercise-videos/file.mp4
- * But createSignedUrl() needs just: file.mp4
- */
-const extractVideoFilePath = (videoPath: string): string => {
-  const bucketMarker = '/exercise-videos/';
-  const idx = videoPath.indexOf(bucketMarker);
-  if (idx !== -1) {
-    return videoPath.substring(idx + bucketMarker.length);
-  }
-  return videoPath;
-};
-
-const getSignedVideoUrl = async (videoPath: string | null): Promise<string | null> => {
-  if (!videoPath) return null;
-
-  const filePath = extractVideoFilePath(videoPath);
-  const { data, error } = await supabase.storage
-    .from('exercise-videos')
-    .createSignedUrl(filePath, 3600);
-
-  if (error) {
-    console.error('Error getting signed video URL:', error);
-    return null;
-  }
-
-  return data?.signedUrl || null;
-};
 
 export const WorkoutSession = ({
   exercises,
@@ -524,7 +496,7 @@ export const WorkoutSession = ({
         totalWeight={totalWeight}
         totalReps={totalReps}
         exerciseCount={results.length}
-        exerciseDetails={results.map(r => ({ name: r.exerciseName, sets: r.sets.filter(s => s.completed).map(s => ({ weight: s.weight || 0, reps: s.reps || 0 })) }))}
+        exerciseDetails={results.map(r => ({ name: r.exerciseName, nameEn: r.exerciseNameEn ?? null, sets: r.sets.filter(s => s.completed).map(s => ({ weight: s.weight || 0, reps: s.reps || 0 })) }))}
         isBonus={isBonus}
         onClose={() => setShowSummary(false)}
         onFinish={handleFinishWorkout}
@@ -703,6 +675,8 @@ const ExercisePlayerWithVideo = ({
   initialSetsData?: SetData[];
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
 }) => {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const [videoData, setVideoData] = useState<{
     url: string | null;
     description: string | null;
