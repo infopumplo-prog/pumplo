@@ -133,6 +133,10 @@ const Training = () => {
   // Plan completion confirmation
   const [showPlanCompleteDialog, setShowPlanCompleteDialog] = useState(false);
   
+  // Gym closed warning dialog
+  const [showGymClosedWarning, setShowGymClosedWarning] = useState(false);
+  const [closedGymName, setClosedGymName] = useState('');
+
   // Missing exercises dialog
   const [showMissingExercisesDialog, setShowMissingExercisesDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
