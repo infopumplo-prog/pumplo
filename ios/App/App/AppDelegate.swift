@@ -6,45 +6,36 @@ import AVFoundation
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    private var audioSessionTimer: Timer?
 
     private func configureAudioSession() {
         do {
-            // .playback + .mixWithOthers: beeps play even in silent mode AND don't interrupt Spotify
             try AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {}
     }
 
-    // Re-asserts .mixWithOthers every 2s in case WKWebView overrides the audio session
-    private func startAudioSessionWatch() {
-        audioSessionTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            let session = AVAudioSession.sharedInstance()
-            if !session.categoryOptions.contains(.mixWithOthers) {
-                self?.configureAudioSession()
-            }
-        }
-
-        // Also re-assert when interrupted (e.g. phone call ends)
-        NotificationCenter.default.addObserver(
-            forName: AVAudioSession.interruptionNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            guard let info = notification.userInfo,
-                  let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  let type = AVAudioSession.InterruptionType(rawValue: typeRaw),
-                  type == .ended else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self?.configureAudioSession()
-            }
-        }
-    }
-
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         configureAudioSession()
-        startAudioSessionWatch()
+
+        // Re-assert .mixWithOthers after phone call or other interruption ends
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+
         return true
+    }
+
+    @objc private func handleAudioInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeRaw),
+              type == .ended else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.configureAudioSession()
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -61,7 +52,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
-        audioSessionTimer?.invalidate()
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
