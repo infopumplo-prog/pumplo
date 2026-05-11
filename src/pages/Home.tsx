@@ -329,7 +329,7 @@ const Home = () => {
           {/* My Plan Section (Pumplo plán) */}
           {isOnboardingComplete && activeTab === 'pumplo' && <>
               {/* No gym selected */}
-              {!profile?.selected_gym_id ? <motion.div variants={itemVariants}>
+              {!profile?.selected_gym_id && !planLoading ? <motion.div variants={itemVariants}>
                   <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
                     <div className="absolute -left-8 -bottom-8 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />

@@ -17,6 +17,7 @@ import {
 import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 
 export interface WarmupExercise {
   id: string;
@@ -57,6 +58,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const [videoError, setVideoError] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+  const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
 
   const handleToggleMute = () => {
     const next = !isMuted;
@@ -159,9 +161,20 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     return () => clearInterval(interval);
   }, [currentIndex, isPaused, currentExercise]);
 
+  // Fetch signed URL when exercise changes
+  useEffect(() => {
+    let cancelled = false;
+    setSignedVideoUrl(null);
+    setVideoError(false);
+    getSignedVideoUrl(currentExercise?.videoPath ?? null).then(url => {
+      if (!cancelled) setSignedVideoUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [currentIndex]);
+
   // Play/pause video with timer
   useEffect(() => {
-    if (videoRef.current && currentExercise?.videoPath) {
+    if (videoRef.current && signedVideoUrl) {
       videoRef.current.muted = true;
       if (isPaused) {
         videoRef.current.pause();
@@ -169,7 +182,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
         videoRef.current.play().catch(() => {});
       }
     }
-  }, [isPaused, currentExercise?.videoPath]);
+  }, [isPaused, signedVideoUrl]);
 
   const handleSkipExercise = useCallback(() => {
     if (currentIndex < exercises.length - 1) {
@@ -211,13 +224,14 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
       >
         {/* Full-screen video */}
         <div className="flex-1 relative">
-          {currentExercise.videoPath && !videoError ? (
+          {signedVideoUrl && !videoError ? (
             <video
               ref={videoRef}
-              key={currentExercise.videoPath}
-              src={currentExercise.videoPath}
+              key={signedVideoUrl}
+              src={signedVideoUrl}
               autoPlay loop muted playsInline
               preload="auto"
+              controlsList="nodownload"
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}

@@ -11,13 +11,18 @@ import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans'
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
 import { cn } from '@/lib/utils';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { translateMuscle } from '@/lib/muscleTranslation';
+import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import {
   DndContext,
   closestCenter,
@@ -39,6 +44,15 @@ import { CSS } from '@dnd-kit/utilities';
 interface ExerciseSearchResult {
   id: string;
   name: string;
+  name_en?: string | null;
+  description?: string | null;
+  description_en?: string | null;
+  setup_instructions?: string | null;
+  setup_instructions_en?: string | null;
+  common_mistakes?: string | null;
+  common_mistakes_en?: string | null;
+  tips?: string | null;
+  tips_en?: string | null;
   category: string;
   primary_muscles: string[];
   secondary_muscles: string[];
@@ -180,7 +194,8 @@ const getRoleFilterGroups = (t: (key: string) => string) => [
 const getCategoryLabel = (key: string, t: (k: string) => string): string =>
   ({ chest: t('category.chest'), back: t('category.back'), shoulders: t('category.shoulders'), arms: t('category.arms'),
      legs: t('category.legs'), core: t('category.core'), cardio: t('category.cardio'),
-     full_body: t('category.full_body'), abdominals: t('category.abdominals') }[key] ?? key);
+     full_body: t('category.full_body'), abdominals: t('category.abdominals'),
+     strength: t('category.strength') }[key] ?? key);
 
 const getEquipmentLabel = (key: string, t: (k: string) => string): string =>
   ({ bodyweight: t('equipment.bodyweight'), barbell: t('equipment.barbell'), dumbbell: t('equipment.dumbbell'),
@@ -271,7 +286,8 @@ interface SortableExerciseProps {
 
 const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const [setsInput, setSetsInput] = useState(String(exercise.sets));
 
   const style = {
@@ -316,7 +332,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
             )}
           >
             {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
-            {exercise.exercise_name || t('custom_plan.exercise_unknown')}
+            {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
           </button>
           <div className="flex items-center gap-3 mt-1">
             <button
@@ -430,7 +446,7 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
                 className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
               >
                 <ArrowRightLeft className="w-3 h-3 shrink-0" />
-                <span className="max-w-[120px] truncate">{alt.name}</span>
+                <span className="max-w-[120px] truncate">{(isEn && alt.name_en) ? alt.name_en : alt.name}</span>
               </button>
             ))}
           </div>
@@ -447,7 +463,8 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
 const CustomPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const {
@@ -561,7 +578,7 @@ const CustomPlanDetail = () => {
     for (const day of plan.days) {
       for (const ex of day.exercises) {
         if (ex.exercise_id === oldExerciseId) {
-          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name });
+          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name, exercise_name_en: alt.name_en ?? null });
         }
       }
     }
@@ -599,12 +616,28 @@ const CustomPlanDetail = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [detailExercise, setDetailExercise] = useState<ExerciseSearchResult | null>(null);
   const [videoError, setVideoError] = useState(false);
+  const [signedDetailVideoUrl, setSignedDetailVideoUrl] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [viewExerciseDrawerOpen, setViewExerciseDrawerOpen] = useState(false);
   const [viewExerciseData, setViewExerciseData] = useState<ExerciseSearchResult | null>(null);
   const [viewVideoError, setViewVideoError] = useState(false);
+  const [signedViewVideoUrl, setSignedViewVideoUrl] = useState<string | null>(null);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const { pausedWorkout: pausedCustomWorkout, clearPausedWorkout: clearPausedCustomWorkout } = usePausedCustomWorkout();
+
+  useEffect(() => {
+    let cancelled = false;
+    setSignedDetailVideoUrl(null);
+    getSignedVideoUrl(detailExercise?.video_path ?? null).then(url => { if (!cancelled) setSignedDetailVideoUrl(url); });
+    return () => { cancelled = true; };
+  }, [detailExercise]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSignedViewVideoUrl(null);
+    getSignedVideoUrl(viewExerciseData?.video_path ?? null).then(url => { if (!cancelled) setSignedViewVideoUrl(url); });
+    return () => { cancelled = true; };
+  }, [viewExerciseData]);
 
   const activeFilterCount = selectedMuscles.size + selectedEquipment.size + selectedSlotTypes.size + selectedRoles.size + (machineSearch.length > 0 ? 1 : 0);
 
@@ -620,11 +653,14 @@ const CustomPlanDetail = () => {
     setLoadingExercises(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .order('name', { ascending: true });
     const exercises = (data || []).map((e: any) => ({
       ...e,
+      name_en: (e as any).name_en ?? null,
       machine_name: e.machines?.name || null,
+      primary_muscles: e.primary_muscles || [],
+      secondary_muscles: e.secondary_muscles || [],
     }));
     setAllExercises(exercises);
     setFilteredExercises(exercises);
@@ -735,6 +771,14 @@ const CustomPlanDetail = () => {
     setEditingPlanName(false);
   };
 
+  const getPlanShareUrl = (token: string) => {
+    const isNative = Capacitor.isNativePlatform();
+    const base = isNative
+      ? (import.meta.env.VITE_WEB_APP_URL || 'https://app.pumplo.com')
+      : window.location.origin;
+    return `${base}/plan/${token}`;
+  };
+
   const handleShare = async () => {
     if (!plan) return;
     setIsSharing(true);
@@ -743,9 +787,11 @@ const CustomPlanDetail = () => {
       token = await sharePlan() ?? token;
     }
     if (token) {
-      const url = `${window.location.origin}/plan/${token}`;
+      const url = getPlanShareUrl(token);
       try {
-        if (navigator.share) {
+        if (Capacitor.isNativePlatform()) {
+          await Share.share({ title: plan.name, text: plan.name, url, dialogTitle: plan.name });
+        } else if (navigator.share) {
           await navigator.share({ title: plan.name, url });
         } else {
           await navigator.clipboard.writeText(url);
@@ -783,13 +829,15 @@ const CustomPlanDetail = () => {
     setViewExerciseDrawerOpen(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
       setViewExerciseData({
         ...data,
         machine_name: (data as any).machines?.name || null,
+        primary_muscles: (data as any).primary_muscles || [],
+        secondary_muscles: (data as any).secondary_muscles || [],
       } as ExerciseSearchResult);
     }
   }, []);
@@ -969,7 +1017,7 @@ const CustomPlanDetail = () => {
         {/* Exercise Search Drawer */}
         <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
           <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }}>
-            <DrawerHeader className="shrink-0 pb-2">
+            <DrawerHeader className="shrink-0 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
               <DrawerTitle>{t('custom_plan.select_exercise')}</DrawerTitle>
             </DrawerHeader>
 
@@ -984,15 +1032,16 @@ const CustomPlanDetail = () => {
                     {t('custom_plan.back_to_list')}
                   </button>
 
-                  {detailExercise.video_path ? (
+                  {signedDetailVideoUrl ? (
                     <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                       {videoError ? (
                         <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_loading')}</div>
                       ) : (
                         <video
-                          key={detailExercise.video_path}
-                          src={detailExercise.video_path}
+                          key={signedDetailVideoUrl}
+                          src={signedDetailVideoUrl}
                           playsInline autoPlay loop muted preload="auto"
+                          controlsList="nodownload"
                           className="w-full h-full object-contain"
                           style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
                           onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
@@ -1006,32 +1055,22 @@ const CustomPlanDetail = () => {
                     </div>
                   )}
 
-                  <h3 className="text-xl font-bold mb-1">{detailExercise.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {getCategoryLabel(detailExercise.category, t)}
-                    {detailExercise.equipment_type && ` · ${getEquipmentLabel(detailExercise.equipment_type, t)}`}
-                  </p>
-
-                  {detailExercise.primary_muscles?.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.primary_muscles')}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailExercise.primary_muscles.map((m) => (
-                          <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {detailExercise.secondary_muscles?.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.secondary_muscles')}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailExercise.secondary_muscles.map((m) => (
-                          <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <h3 className="text-xl font-bold mb-1">{(isEn && detailExercise.name_en) ? detailExercise.name_en : detailExercise.name}</h3>
+                  <ExerciseInfoContent
+                    category={detailExercise.category}
+                    equipmentType={detailExercise.equipment_type}
+                    machineName={detailExercise.machine_name}
+                    primaryMuscles={detailExercise.primary_muscles}
+                    secondaryMuscles={detailExercise.secondary_muscles}
+                    description={detailExercise.description}
+                    descriptionEn={detailExercise.description_en}
+                    setupInstructions={detailExercise.setup_instructions}
+                    setupInstructionsEn={detailExercise.setup_instructions_en}
+                    commonMistakes={detailExercise.common_mistakes}
+                    commonMistakesEn={detailExercise.common_mistakes_en}
+                    tips={detailExercise.tips}
+                    tipsEn={detailExercise.tips_en}
+                  />
                 </div>
 
                 <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border">
@@ -1241,10 +1280,10 @@ const CustomPlanDetail = () => {
                     {filteredExercises.map((exercise) => (
                       <div key={exercise.id} className="flex items-center rounded-xl hover:bg-muted transition-colors">
                         <button onClick={() => handleAddExercise(exercise)} className="flex-1 text-left px-4 py-3 min-w-0">
-                          <p className="text-sm font-medium truncate">{exercise.name}</p>
+                          <p className="text-sm font-medium truncate">{(isEn && exercise.name_en) ? exercise.name_en : exercise.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {getCategoryLabel(exercise.category, t)}
-                            {exercise.primary_muscles?.length > 0 && ` · ${exercise.primary_muscles.join(', ')}`}
+                            {exercise.primary_muscles?.length > 0 && ` · ${exercise.primary_muscles.map(m => translateMuscle(m, isEn)).join(', ')}`}
                           </p>
                         </button>
                         <button onClick={() => { setDetailExercise(exercise); setVideoError(false); }} className="shrink-0 p-3 text-muted-foreground hover:text-[#5BC8F5] transition-colors">
@@ -1262,21 +1301,22 @@ const CustomPlanDetail = () => {
         {/* Exercise Detail View Drawer (from plan) */}
         <Drawer open={viewExerciseDrawerOpen} onOpenChange={(open) => { setViewExerciseDrawerOpen(open); if (!open) { setViewExerciseData(null); setViewVideoError(false); } }}>
           <DrawerContent className="flex flex-col" style={{ height: '85dvh', maxHeight: '85dvh' }}>
-            <DrawerHeader className="shrink-0 pb-2">
+            <DrawerHeader className="shrink-0 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
               <DrawerTitle>{viewExerciseData?.name || t('custom_plan.exercise_detail')}</DrawerTitle>
             </DrawerHeader>
 
             {viewExerciseData ? (
               <div className="flex-1 overflow-y-auto px-4 pb-6">
-                {viewExerciseData.video_path ? (
+                {signedViewVideoUrl ? (
                   <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                     {viewVideoError ? (
                       <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_unavailable')}</div>
                     ) : (
                       <video
-                        key={viewExerciseData.video_path}
-                        src={viewExerciseData.video_path}
+                        key={signedViewVideoUrl}
+                        src={signedViewVideoUrl}
                         playsInline autoPlay loop muted preload="auto"
+                        controlsList="nodownload"
                         className="w-full h-full object-contain"
                         style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
                         onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
@@ -1290,32 +1330,21 @@ const CustomPlanDetail = () => {
                   </div>
                 )}
 
-                <p className="text-sm text-muted-foreground mb-4">
-                  {getCategoryLabel(viewExerciseData.category, t)}
-                  {viewExerciseData.equipment_type && ` · ${getEquipmentLabel(viewExerciseData.equipment_type, t)}`}
-                  {viewExerciseData.machine_name && ` · ${viewExerciseData.machine_name}`}
-                </p>
-
-                {viewExerciseData.primary_muscles?.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.primary_muscles')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {viewExerciseData.primary_muscles.map((m) => (
-                        <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {viewExerciseData.secondary_muscles?.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('custom_plan.secondary_muscles')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {viewExerciseData.secondary_muscles.map((m) => (
-                        <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <ExerciseInfoContent
+                  category={viewExerciseData.category}
+                  equipmentType={viewExerciseData.equipment_type}
+                  machineName={viewExerciseData.machine_name}
+                  primaryMuscles={viewExerciseData.primary_muscles}
+                  secondaryMuscles={viewExerciseData.secondary_muscles}
+                  description={viewExerciseData.description}
+                  descriptionEn={viewExerciseData.description_en}
+                  setupInstructions={viewExerciseData.setup_instructions}
+                  setupInstructionsEn={viewExerciseData.setup_instructions_en}
+                  commonMistakes={viewExerciseData.common_mistakes}
+                  commonMistakesEn={viewExerciseData.common_mistakes_en}
+                  tips={viewExerciseData.tips}
+                  tipsEn={viewExerciseData.tips_en}
+                />
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">

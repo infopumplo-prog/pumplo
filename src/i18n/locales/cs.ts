@@ -44,6 +44,16 @@ const cs = {
   'auth.email_sent': 'Email odeslán',
   'auth.check_email': 'Zkontrolujte svou emailovou schránku pro odkaz na reset hesla.',
   'auth.reset_failed': 'Nepodařilo se odeslat reset hesla',
+  'auth.passwords_mismatch': 'Hesla se neshodují',
+  'auth.new_password_title': 'Nastavit nové heslo',
+  'auth.set_new_password': 'Nové heslo',
+  'auth.set_new_password_desc': 'Zadej nové heslo pro svůj účet',
+  'auth.new_password': 'Nové heslo',
+  'auth.confirm_password': 'Potvrdit heslo',
+  'auth.save_new_password': 'Uložit nové heslo',
+  'auth.saving': 'Ukládám...',
+  'auth.password_changed': 'Heslo bylo změněno',
+  'auth.redirecting': 'Přesměrovávám do aplikace...',
 
   // BottomNav
   'nav.home': 'Domů',

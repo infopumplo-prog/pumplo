@@ -6,6 +6,7 @@ import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFini
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
+import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 
 
@@ -191,6 +192,13 @@ export const ExercisePlayer = ({
         videoRef.current.pause();
       }
     }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && videoRef.current && !showRestTimer) {
+        videoRef.current.play().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [showRestTimer, videoUrl]);
 
   const handleCompleteSet = () => {
@@ -458,68 +466,28 @@ export const ExercisePlayer = ({
             <DrawerTitle>{exerciseName}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
-            <p className="text-sm text-muted-foreground mb-4">
-              {t('category.' + category, { defaultValue: category })}
-              {equipmentType && ` · ${t('equipment.' + equipmentType, { defaultValue: equipmentType })}`}
-              {machineName && ` · ${machineName}`}
-            </p>
-
-            <button
-              onClick={() => {
-                setShowInfoDrawer(false);
-                setTimeout(() => setFeedbackOpen(true), 300);
-              }}
-              className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            <ExerciseInfoContent
+              category={category}
+              equipmentType={equipmentType}
+              machineName={machineName}
+              primaryMuscles={primaryMuscles}
+              secondaryMuscles={secondaryMuscles}
+              description={exerciseDescription}
+              setupInstructions={setupInstructions}
+              commonMistakes={commonMistakes}
+              tips={tips}
             >
-              <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
-              {t('workout.feedback_btn')}
-            </button>
-
-            {primaryMuscles.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {primaryMuscles.map((m) => (
-                    <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {secondaryMuscles.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {secondaryMuscles.map((m) => (
-                    <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {exerciseDescription && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-xl">
-                <p className="text-xs font-semibold text-foreground mb-1">{t('workout.description_technique')}</p>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exerciseDescription}</p>
-              </div>
-            )}
-            {setupInstructions && (
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-foreground mb-1">{t('workout.setup')}</p>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{setupInstructions}</p>
-              </div>
-            )}
-            {commonMistakes && (
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-amber-600 mb-1">{t('workout.common_mistakes')}</p>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{commonMistakes}</p>
-              </div>
-            )}
-            {tips && (
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-green-600 mb-1">{t('workout.tips')}</p>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tips}</p>
-              </div>
-            )}
+              <button
+                onClick={() => {
+                  setShowInfoDrawer(false);
+                  setTimeout(() => setFeedbackOpen(true), 300);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
+                {t('workout.feedback_btn')}
+              </button>
+            </ExerciseInfoContent>
           </div>
         </DrawerContent>
       </Drawer>

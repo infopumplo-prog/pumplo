@@ -4,65 +4,115 @@
 //   T=2s: 1 short beep (playCountdown2)
 //   T=1s: 1 short beep (playCountdown1)
 //   T=0s: 1 long beep  (playAlarmFinish)
+//
+// AudioContext is used for beeps (not HTMLAudioElement) so that iOS WKWebView
+// respects the app's AVAudioSession .mixWithOthers setting and doesn't interrupt Spotify.
 
-// --- Silent WAV for MediaSession lock screen support ---
-let silenceUrl: string|null = null;
-// eslint-disable-next-line no-empty
-try {
-  const sr=22050,n=sr*60;const buf=new ArrayBuffer(44+n);const v=new DataView(buf);
-  const w=(o:number,s:string)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
-  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);
-  v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
-  w(36,'data');v.setUint32(40,n,true);
-  for(let i=0;i<n;i++)v.setUint8(44+i,128);
-  silenceUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
-// eslint-disable-next-line no-empty
-} catch{}
-
-// --- Audio elements (pre-created once, unlocked during user gesture, reused) ---
-// Root cause of "plays only first time": new Audio() in timer callbacks is blocked by
-// Chrome Android autoplay policy. Fix: create elements once, unlock all in gesture, reuse.
-let silentEl: HTMLAudioElement | null = null;
-let beepEl: HTMLAudioElement | null = null;
-let alarmBeepEl: HTMLAudioElement | null = null;
-let alarmFinishEl: HTMLAudioElement | null = null;
-let unlocked = false;
+// --- Mute state ---
 let _muted = false;
 export const setAudioMuted = (muted: boolean) => { _muted = muted; };
 export const isAudioMuted = () => _muted;
 
+// --- Silent WAV for MediaSession lock screen support ---
+let silenceUrl: string | null = null;
+try {
+  const sr = 22050, n = sr * 60;
+  const buf = new ArrayBuffer(44 + n); const v = new DataView(buf);
+  const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  silenceUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+// eslint-disable-next-line no-empty
+} catch {}
+
+let silentEl: HTMLAudioElement | null = null;
+
+// --- Web Audio API context + buffers ---
+let audioCtx: AudioContext | null = null;
+let beepBuffer: AudioBuffer | null = null;
+let alarmBeepBuffer: AudioBuffer | null = null;
+let alarmFinishBuffer: AudioBuffer | null = null;
+let unlocked = false;
+
+function getCtx(): AudioContext | null {
+  if (!audioCtx) {
+    try { audioCtx = new AudioContext(); } catch { return null; }
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+async function decodeWavUrl(url: string): Promise<AudioBuffer | null> {
+  const ctx = getCtx();
+  if (!ctx) return null;
+  try {
+    const res = await fetch(url);
+    const arr = await res.arrayBuffer();
+    return await ctx.decodeAudioData(arr);
+  } catch { return null; }
+}
+
+// --- Beep WAV generation ---
+function generateWavBeep(freq: number, ms: number, sr = 22050): string {
+  const n = Math.floor(sr * ms / 1000); const buf = new ArrayBuffer(44 + n); const v = new DataView(buf);
+  const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) { const t = i / sr; const e = i > n * 0.8 ? (n - i) / (n * 0.2) : 1; v.setUint8(44 + i, Math.floor((Math.sin(2 * Math.PI * freq * t) * e * 0.4 + 1) * 127.5)); }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+let beepUrl: string | null = null;
+let alarmBeepUrl: string | null = null;
+let alarmFinishUrl: string | null = null;
+// eslint-disable-next-line no-empty
+try {
+  beepUrl = generateWavBeep(660, 150);
+  alarmBeepUrl = generateWavBeep(880, 120);
+  alarmFinishUrl = generateWavBeep(1175, 500);
+// eslint-disable-next-line no-empty
+} catch {}
+
+// --- Unlock + decode all buffers on first user gesture ---
 export const unlockAudio = () => {
   if (unlocked) return;
-  unlocked = true; // synchronous — prevents re-entry and race conditions
-  try {
-    if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
-    if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
-    if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
-    if (!silentEl) { silentEl = new Audio(); }
+  unlocked = true;
 
-    // Only start the silent loop — this unlocks the AudioContext for the whole page.
-    // Pre-playing beep elements caused an audible click/beep on some Android devices.
-    if (silentEl && silenceUrl) {
-      silentEl.src = silenceUrl;
-      silentEl.loop = true;
-      silentEl.volume = 0;
-      silentEl.play().catch(() => {});
-    }
-  // eslint-disable-next-line no-empty
-  } catch {}
+  // Start AudioContext (must happen in user gesture)
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  // Decode WAV blobs into AudioBuffers
+  if (beepUrl) decodeWavUrl(beepUrl).then(b => { beepBuffer = b; });
+  if (alarmBeepUrl) decodeWavUrl(alarmBeepUrl).then(b => { alarmBeepBuffer = b; });
+  if (alarmFinishUrl) decodeWavUrl(alarmFinishUrl).then(b => { alarmFinishBuffer = b; });
+
+  // Keep a silent HTMLAudioElement loop ONLY for MediaSession lock screen support.
+  // Volume 0 so it doesn't affect the audio session routing (no audio output).
+  if (!silentEl && silenceUrl) {
+    silentEl = new Audio(silenceUrl);
+    silentEl.loop = true;
+    silentEl.volume = 0;
+    silentEl.play().catch(() => {});
+  }
 };
 
-/** Start silent audio loop to keep MediaSession active (lock screen widget) */
+/** @deprecated Use unlockAudio — startSilentLoop kept for compatibility */
 export const startSilentLoop = () => {
   if (!silentEl || !silenceUrl) return;
   if (!silentEl.paused) return;
   silentEl.src = silenceUrl;
   silentEl.loop = true;
-  silentEl.volume = 0.001;
+  silentEl.volume = 0;
   silentEl.play().catch(() => {});
 };
 
-/** Stop silent audio loop and release iOS audio session so music can resume */
+/** Stop silent audio loop (e.g. when workout ends) */
 export const stopSilentLoop = () => {
   if (!silentEl) return;
   silentEl.pause();
@@ -70,48 +120,27 @@ export const stopSilentLoop = () => {
   silentEl.load();
 };
 
-
-// --- Beep generation ---
-function generateWavBeep(freq: number, ms: number, sr = 22050): string {
-  const n = Math.floor(sr * ms / 1000); const buf = new ArrayBuffer(44+n); const v = new DataView(buf);
-  const w = (o:number,s:string) => { for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
-  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);
-  v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
-  w(36,'data');v.setUint32(40,n,true);
-  for(let i=0;i<n;i++){const t=i/sr;const e=i>n*0.8?(n-i)/(n*0.2):1;v.setUint8(44+i,Math.floor((Math.sin(2*Math.PI*freq*t)*e*0.4+1)*127.5));}
-  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+// --- Core playback via AudioContext (mixes with Spotify, no session takeover) ---
+function playAudioBuffer(buffer: AudioBuffer | null, volume: number) {
+  if (_muted || !buffer) return;
+  const ctx = getCtx();
+  if (!ctx) return;
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.start(0);
 }
-let beepUrl: string|null=null;
-let alarmBeepUrl: string|null=null, alarmFinishUrl: string|null=null;
-// eslint-disable-next-line no-empty
-try {
-  beepUrl=generateWavBeep(660,150);
-  alarmBeepUrl=generateWavBeep(880,120); alarmFinishUrl=generateWavBeep(1175,500);
-// eslint-disable-next-line no-empty
-} catch{}
 
 /** Single short beep — for set completion */
-export const playBeep = () => {
-  if (_muted) return;
-  if (!beepEl && beepUrl) { beepEl = new Audio(beepUrl); beepEl.volume = 0.6; }
-  if (!beepEl) return;
-  beepEl.currentTime = 0; beepEl.play().catch(() => {});
-};
-
-function _playAlarmBeep() {
-  if (_muted) return;
-  if (!alarmBeepEl && alarmBeepUrl) { alarmBeepEl = new Audio(alarmBeepUrl); alarmBeepEl.volume = 0.85; }
-  if (!alarmBeepEl) return;
-  alarmBeepEl.currentTime = 0; alarmBeepEl.play().catch(() => {});
-}
+export const playBeep = () => playAudioBuffer(beepBuffer, 0.6);
 
 /** Long beep — signals end of rest or cardio (T=0) */
-export const playAlarmFinish = () => {
-  if (_muted) return;
-  if (!alarmFinishEl && alarmFinishUrl) { alarmFinishEl = new Audio(alarmFinishUrl); alarmFinishEl.volume = 0.85; }
-  if (!alarmFinishEl) return;
-  alarmFinishEl.currentTime = 0; alarmFinishEl.play().catch(() => {});
-};
+export const playAlarmFinish = () => playAudioBuffer(alarmFinishBuffer, 0.85);
+
+function _playAlarmBeep() { playAudioBuffer(alarmBeepBuffer, 0.85); }
 
 /** 1 short beep — play at T=3s remaining */
 export const playCountdown3 = () => _playAlarmBeep();

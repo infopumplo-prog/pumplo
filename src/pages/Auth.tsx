@@ -71,7 +71,7 @@ const Auth = () => {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
-  const { login, register, loginWithProvider, resetPassword } = useAuth();
+  const { login, register, loginWithProvider, resetPassword, setIsRegistering } = useAuth();
   const { t } = useTranslation();
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
@@ -133,6 +133,7 @@ const Auth = () => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+    setIsRegistering(true);
 
     try {
       // 1. Register user - returns userId directly
@@ -242,9 +243,14 @@ const Auth = () => {
 
       // 6. Force a small delay for React Query cache invalidation
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 7. All done - release the registration lock and navigate home
+      setIsRegistering(false);
+      navigate('/');
     } catch (err) {
       console.error('Registration error:', err);
       setError(t('auth.something_wrong'));
+      setIsRegistering(false);
     } finally {
       setIsSubmitting(false);
     }

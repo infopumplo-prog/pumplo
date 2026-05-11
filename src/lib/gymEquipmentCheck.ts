@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface AlternativeExercise {
   id: string;
   name: string;
+  name_en?: string | null;
   primary_muscles: string[];
   equipment_type: string;
   video_path: string | null;
@@ -12,6 +13,7 @@ export interface AlternativeExercise {
 export interface IncompatibleExercise {
   exercise_id: string;
   exercise_name: string;
+  exercise_name_en?: string | null;
   primary_role: string;
   primary_muscles: string[];
   alternatives: AlternativeExercise[];
@@ -80,7 +82,7 @@ export async function checkCustomPlanEquipment(
   // Get all exercises that have machines available in this gym
   const { data: allExercises } = await supabase
     .from('exercises')
-    .select('id, name, machine_id, primary_role, primary_muscles, equipment_type, video_path')
+    .select('id, name, name_en, machine_id, primary_role, primary_muscles, equipment_type, video_path')
     .in('machine_id', Array.from(gymMachineIds));
 
   const availableExercises = allExercises || [];
@@ -104,6 +106,7 @@ export async function checkCustomPlanEquipment(
     return {
       exercise_id: pe.exercise_id,
       exercise_name: ex?.name || 'Neznámý cvik',
+      exercise_name_en: ex?.name_en || null,
       primary_role: role,
       primary_muscles: muscles,
       alternatives: candidates,

@@ -44,6 +44,16 @@ const en = {
   'auth.email_sent': 'Email sent',
   'auth.check_email': 'Check your inbox for a password reset link.',
   'auth.reset_failed': 'Failed to send password reset',
+  'auth.passwords_mismatch': 'Passwords do not match',
+  'auth.new_password_title': 'Set new password',
+  'auth.set_new_password': 'New password',
+  'auth.set_new_password_desc': 'Enter a new password for your account',
+  'auth.new_password': 'New password',
+  'auth.confirm_password': 'Confirm password',
+  'auth.save_new_password': 'Save new password',
+  'auth.saving': 'Saving...',
+  'auth.password_changed': 'Password changed',
+  'auth.redirecting': 'Redirecting to app...',
 
   // BottomNav
   'nav.home': 'Home',
@@ -565,6 +575,13 @@ const en = {
   'workout_share.finish': 'Finish workout',
   'workout_share.new_record': 'New record! 🏆',
   'workout_share.powered_by': 'Training with Pumplo',
+  'workout_share.bonus_workout': 'Bonus workout',
+  'workout_share.exercises_label': 'exercises',
+  'workout_share.reps_abbr': 'reps',
+  'workout_share.sets_unit': 'sets',
+  'workout_share.share_title': 'My Pumplo workout',
+  'workout_share.share_dialog': 'Share workout',
+  'workout_share.completed': 'completed!',
 
   // WorkoutSession
   'workout_session.completed': 'Workout complete',

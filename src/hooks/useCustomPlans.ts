@@ -15,6 +15,9 @@ export interface CustomPlanExercise {
   day_id: string;
   exercise_id: string;
   exercise_name?: string;
+  exercise_name_en?: string | null;
+  machine_name?: string | null;
+  machine_name_en?: string | null;
   sets: number;
   reps: number;
   reps_per_set: number[] | null;
@@ -136,7 +139,7 @@ export function useCustomPlanDetail(planId: string | null) {
 
     const { data: exercisesData } = await supabase
       .from('custom_plan_exercises')
-      .select('*, exercises(name, unit_type, category)')
+      .select('*, exercises(name, name_en, unit_type, category, machines!exercises_machine_id_fkey(name, name_en))')
       .in('day_id', (daysData || []).map(d => d.id))
       .order('order_index');
 
@@ -152,7 +155,7 @@ export function useCustomPlanDetail(planId: string | null) {
       rest_seconds: number | null;
       rest_per_set: number[] | null;
       order_index: number;
-      exercises: { name: string; unit_type: string; category: string } | null;
+      exercises: { name: string; name_en: string | null; unit_type: string; category: string; machines: { name: string; name_en: string | null } | null } | null;
     };
 
     const days: CustomPlanDay[] = (daysData || []).map(d => ({
@@ -164,6 +167,9 @@ export function useCustomPlanDetail(planId: string | null) {
           day_id: e.day_id,
           exercise_id: e.exercise_id,
           exercise_name: e.exercises?.name,
+          exercise_name_en: e.exercises?.name_en ?? null,
+          machine_name: e.exercises?.machines?.name ?? null,
+          machine_name_en: e.exercises?.machines?.name_en ?? null,
           sets: e.sets,
           reps: e.reps,
           reps_per_set: e.reps_per_set || null,
@@ -220,7 +226,7 @@ export function useCustomPlanDetail(planId: string | null) {
     await fetchPlan();
   };
 
-  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: number[]; rest_seconds?: number; rest_per_set?: number[] }) => {
+  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: number[]; rest_seconds?: number; rest_per_set?: number[]; exercise_id?: string; exercise_name?: string; exercise_name_en?: string | null }) => {
     await supabase.from('custom_plan_exercises').update(updates).eq('id', exerciseId);
     await fetchPlan();
   };

@@ -1,11 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
@@ -51,8 +52,44 @@ import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
+import ResetPassword from "@/pages/ResetPassword";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
+
+// Handles com.pumplo.app://plan/{token} deep links
+const PlanDeepLinkNavigator = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = CapApp.addListener('appUrlOpen', ({ url }) => {
+      if (url.includes('://plan/')) {
+        const token = url.split('/plan/')[1]?.split('?')[0];
+        if (token) navigate(`/plan/${token}`);
+      }
+    });
+    return () => { listener.then(h => h.remove()); };
+  }, [navigate]);
+  return null;
+};
+
+// Navigates to /reset-password when a password reset deep link is detected
+const PasswordResetNavigator = () => {
+  const { pendingPasswordReset } = useAuth();
+  const navigate = useNavigate();
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (pendingPasswordReset && !handled.current) {
+      handled.current = true;
+      navigate('/reset-password', { replace: true });
+    }
+    if (!pendingPasswordReset) {
+      handled.current = false;
+    }
+  }, [pendingPasswordReset, navigate]);
+
+  return null;
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -127,23 +164,27 @@ const BusinessLayout = () => {
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isRegistering } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
-  
-  if (authLoading || roleLoading) {
+
+  if (authLoading || roleLoading || isRegistering) {
     return <LoadingSpinner />;
   }
-  
+
   if (user) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 const AppRoutes = () => (
+  <>
+    <PasswordResetNavigator />
+    <PlanDeepLinkNavigator />
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+    <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/privacy" element={<Privacy />} />
     <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
@@ -181,6 +222,7 @@ const AppRoutes = () => (
     {/* Fallback */}
     <Route path="*" element={<NotFound />} />
   </Routes>
+  </>
 );
 
 const App = () => {

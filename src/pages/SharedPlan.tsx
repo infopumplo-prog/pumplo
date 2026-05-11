@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Dumbbell, Calendar, CheckCircle, LogIn, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Dumbbell, Calendar, CheckCircle, LogIn, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -211,8 +211,59 @@ const SharedPlan = () => {
 
   const repsAbbr = t('shared_plan.reps_abbr');
 
+  const handleOpenInApp = () => {
+    window.location.href = `com.pumplo.app://plan/${token}`;
+  };
+
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+
   return (
     <div className="min-h-screen bg-background safe-top pb-nav">
+      {/* Open in app banner — shown in browsers only */}
+      {isMobile && (
+        <div className="bg-[#5BC8F5]/10 border-b border-[#5BC8F5]/20 px-4 py-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#5BC8F5] flex items-center justify-center shrink-0">
+            <Dumbbell className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Pumplo</p>
+            <p className="text-xs text-muted-foreground">Tréninkový plán</p>
+          </div>
+          <button
+            onClick={handleOpenInApp}
+            className="shrink-0 px-4 py-2 rounded-xl bg-[#5BC8F5] text-white text-sm font-semibold"
+          >
+            Otevřít
+          </button>
+        </div>
+      )}
+      {isMobile && (
+        <div className="px-4 py-2 flex items-center gap-2 text-xs text-muted-foreground border-b border-border">
+          <Download className="w-3.5 h-3.5 shrink-0" />
+          <span>Nemáš Pumplo?</span>
+          {isIOS && (
+            <a
+              href="https://apps.apple.com/app/pumplo/id6744960498"
+              className="text-[#5BC8F5] font-medium"
+              target="_blank" rel="noopener noreferrer"
+            >
+              App Store
+            </a>
+          )}
+          {isAndroid && (
+            <a
+              href="https://play.google.com/store/apps/details?id=com.pumplo.app"
+              className="text-[#5BC8F5] font-medium"
+              target="_blank" rel="noopener noreferrer"
+            >
+              Google Play
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
         <div className="flex items-center gap-3 mb-6">

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { MUSCLE_MAP, translateMuscle as _translateMuscle } from '@/lib/muscleTranslation';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 
 interface Exercise {
   id: string;
@@ -28,105 +30,6 @@ interface StationVideoPlayerProps {
   bannerVisible?: boolean;
 }
 
-const MUSCLE_MAP: Record<string, string> = {
-  // Czech proper names
-  'Kvadricepsy': 'Quadriceps',
-  'Hamstringy': 'Hamstrings',
-  'Hýžďové svaly': 'Glutes',
-  'Hýžďové svaly (gluteus maximus)': 'Glutes (gluteus maximus)',
-  'Lýtka': 'Calves',
-  'Hrudník': 'Chest',
-  'Záda': 'Back',
-  'Ramena': 'Shoulders',
-  'Bicepsy': 'Biceps',
-  'Tricepsy': 'Triceps',
-  'Břicho': 'Abs',
-  'Jádro': 'Core',
-  'Trapézový sval': 'Trapezius',
-  'Přední deltový sval': 'Front Deltoid',
-  'Střední deltový sval': 'Middle Deltoid',
-  'Zadní deltový sval': 'Rear Deltoid',
-  'Latissimus dorsi': 'Latissimus Dorsi',
-  'Rhomboidy': 'Rhomboids',
-  'Bederní oblast': 'Lower Back',
-  'Adduktory': 'Adductors',
-  'Abduktory': 'Abductors',
-  'Hlouboké stabilizátory': 'Deep Stabilizers',
-  'Stabilizátory páteře': 'Spinal Stabilizers',
-  'Kardiovaskulární systém': 'Cardiovascular System',
-  'Celé tělo': 'Full Body',
-  'Přitahovače': 'Adductors',
-  'Odtahovače': 'Abductors',
-  'Předloktí': 'Forearms',
-  'Hrudní svaly': 'Pectoral Muscles',
-  'Mezilopatkové svaly': 'Interscapular Muscles',
-  // Czech informal / DB variants
-  'kvadriceps': 'Quadriceps',
-  'hamstringy': 'Hamstrings',
-  'lýtka': 'Calves',
-  'záda': 'Back',
-  'ramena': 'Shoulders',
-  'prsa': 'Chest',
-  'prsní svaly': 'Pectoral Muscles',
-  'břicho': 'Abs',
-  'střed zad': 'Middle Back',
-  'střed těla': 'Core',
-  'horní prsa': 'Upper Chest',
-  'spodní prsa': 'Lower Chest',
-  'bedra': 'Lower Back',
-  'trapézy': 'Trapezius',
-  'lopatky': 'Shoulder Blades',
-  'paže': 'Arms',
-  'ruce': 'Arms',
-  'nohy': 'Legs',
-  'nohy a zadek': 'Legs and Glutes',
-  'nohy a ruce': 'Legs and Arms',
-  'dolní končetiny': 'Lower Limbs',
-  'flexory kyčle': 'Hip Flexors',
-  'zadek': 'Glutes',
-  'Zadek': 'Glutes',
-  'latisimy': 'Lats',
-  'latissimy': 'Lats',
-  'latysimy': 'Lats',
-  'pilovitý sval': 'Serratus Anterior',
-  'přímý břišní sval': 'Rectus Abdominis',
-  'přímé břišní svaly': 'Rectus Abdominis',
-  'šikmé břišní svaly': 'Obliques',
-  'triceps ramena': 'Triceps & Shoulders',
-  'vspřimovače': 'Spinal Erectors',
-  'hamstrin': 'Hamstrings',
-  'fulbody': 'Full Body',
-  // English snake_case / lowercase variants (normalize capitalization)
-  'abs': 'Abs',
-  'back': 'Back',
-  'chest': 'Chest',
-  'glutes': 'Glutes',
-  'hamstrings': 'Hamstrings',
-  'hamstring': 'Hamstrings',
-  'quadriceps': 'Quadriceps',
-  'quads': 'Quads',
-  'calves': 'Calves',
-  'shoulders': 'Shoulders',
-  'biceps': 'Biceps',
-  'triceps': 'Triceps',
-  'core': 'Core',
-  'forearms': 'Forearms',
-  'fullbody': 'Full Body',
-  'back_thighs': 'Hamstrings',
-  'front_thighs': 'Quadriceps',
-  'front_shoulders': 'Front Deltoid',
-  'side_shoulders': 'Lateral Deltoid',
-  'hip_flexors': 'Hip Flexors',
-  'chest_muscles': 'Pectoral Muscles',
-  'stabilizing_muscles': 'Stabilizing Muscles',
-  'wide_back_muscles': 'Back (Wide)',
-  'lower_trapezius': 'Lower Trapezius',
-  'middle_trapezius': 'Middle Trapezius',
-  'upper_trapezius': 'Upper Trapezius',
-  'rhomboid_major': 'Rhomboid Major',
-  'rhomboid_minor': 'Rhomboid Minor',
-  'traps': 'Trapezius',
-};
 
 const DifficultyDots = ({ level }: { level: number | null }) => {
   const max = 4;
@@ -156,14 +59,26 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
   const lang = i18n.language;
   const pick = (cs: string | null | undefined, en: string | null | undefined) =>
     lang === 'en' && en ? en : cs ?? null;
-  const translateMuscle = (name: string) =>
-    lang === 'en' ? (MUSCLE_MAP[name] ?? name) : name;
+  const translateMuscle = (name: string) => _translateMuscle(name, lang === 'en');
   const displayMachineName = pick(machineName, machineName_en) ?? machineName;
 
   const currentExercise = exercises[currentIndex] ?? null;
   const nextExercise = exercises[currentIndex + 1] ?? null;
-  const activeUrl = currentExercise?.video_path ?? null;
-  const nextUrl = nextExercise?.video_path ?? null;
+  const [activeUrl, setActiveUrl] = useState<string | null>(null);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      getSignedVideoUrl(currentExercise?.video_path ?? null),
+      getSignedVideoUrl(nextExercise?.video_path ?? null),
+    ]).then(([active, next]) => {
+      if (cancelled) return;
+      setActiveUrl(active);
+      setNextUrl(next);
+    });
+    return () => { cancelled = true; };
+  }, [currentIndex, exercises]);
 
   useEffect(() => {
     setInfoOpen(false);
@@ -171,7 +86,7 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
       activeVideoRef.current.load();
       activeVideoRef.current.play().catch(() => {});
     }
-  }, [currentIndex]);
+  }, [activeUrl]);
 
   const goTo = useCallback((index: number) => {
     setCurrentIndex(Math.max(0, Math.min(index, exercises.length - 1)));
@@ -237,6 +152,7 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
           muted
           playsInline
           preload="auto"
+          controlsList="nodownload"
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           webkit-playsinline="true"
@@ -250,6 +166,7 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
             muted
             playsInline
             preload="auto"
+            controlsList="nodownload"
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             webkit-playsinline="true"

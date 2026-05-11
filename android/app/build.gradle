@@ -45,6 +45,15 @@ repositories {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'androidx.activity') {
+            details.useVersion androidxActivityVersion
+            details.because 'align all activity versions to avoid duplicate R class'
+        }
+    }
+}
+
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"

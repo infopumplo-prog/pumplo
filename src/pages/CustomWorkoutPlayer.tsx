@@ -15,6 +15,7 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
 import { CompactWorkoutView } from '@/components/workout/CompactWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedVideoUrl } from '@/lib/videoUtils';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
@@ -24,6 +25,7 @@ interface ExerciseWithVideo {
   id: string;
   exercise_id: string;
   exercise_name: string;
+  exercise_name_en?: string | null;
   sets: number;
   reps: number;
   reps_per_set: number[] | null;
@@ -60,6 +62,7 @@ interface ExerciseDetail {
 
 interface UnavailableExercise {
   exercise_name: string;
+  exercise_name_en?: string | null;
   exercise_id: string;
   reason: string;
 }
@@ -100,7 +103,8 @@ type PlayerState = 'select_gym' | 'select_day' | 'equipment_warning' | 'exercise
 const CustomWorkoutPlayer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const { user } = useAuth();
   const { plan, isLoading } = useCustomPlanDetail(id || null);
   const { pausedWorkout, savePausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
@@ -122,10 +126,12 @@ const CustomWorkoutPlayer = () => {
   const [startTime] = useState<Date>(new Date());
   const [totalSetsCompleted, setTotalSetsCompleted] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  const [signedCurrentVideoUrl, setSignedCurrentVideoUrl] = useState<string | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
   const [exerciseDetail, setExerciseDetail] = useState<ExerciseDetail | null>(null);
   const [infoVideoError, setInfoVideoError] = useState(false);
+  const [signedInfoVideoUrl, setSignedInfoVideoUrl] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [unavailableExercises, setUnavailableExercises] = useState<UnavailableExercise[]>([]);
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<SuggestedAlternative[]>([]);
@@ -137,6 +143,19 @@ const CustomWorkoutPlayer = () => {
   // Track completed sets per exercise: Map<exerciseIndex, CompletedSetData[]>
   const [completedSetsMap, setCompletedSetsMap] = useState<Map<number, CompletedSetData[]>>(new Map());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const workoutVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Cached completion data — survives app being killed during share/photo picker
+  interface ShareCacheData {
+    dayLetter: string; dayName: string; gymName: string; gymInstagram: string | null;
+    totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
+    exerciseCount: number;
+    exerciseDetails: { name: string; nameEn: string | null; isCardio: boolean; sets: { weight: number; reps: number }[] }[];
+  }
+  const SHARE_CACHE_KEY = `pumplo_share_${id}`;
+  const [shareCache, setShareCache] = useState<ShareCacheData | null>(() => {
+    try { const s = localStorage.getItem(`pumplo_share_${id}`); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
 
   // Rest duration from plan DB (default 120s)
   const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
@@ -154,6 +173,70 @@ const CustomWorkoutPlayer = () => {
   // Must be declared before the cardio useEffects — dep array evaluates immediately (not a closure)
   const currentExercise = exercises[currentExerciseIndex] || null;
   const isCurrentCardio = currentExercise?.unit_type === 'time_min' || currentExercise?.category === 'cardio';
+
+  useEffect(() => {
+    let cancelled = false;
+    setSignedCurrentVideoUrl(null);
+    setVideoError(false);
+    getSignedVideoUrl(currentExercise?.video_path ?? null).then(url => { if (!cancelled) setSignedCurrentVideoUrl(url); });
+    return () => { cancelled = true; };
+  }, [currentExerciseIndex, exercises]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && playerState === 'exercise') {
+        workoutVideoRef.current?.play().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [playerState]);
+
+  // Restore completion screen if app was killed during share/photo picker
+  useEffect(() => {
+    if (shareCache) setPlayerState('completed');
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          const s = localStorage.getItem(SHARE_CACHE_KEY);
+          if (s) { setShareCache(JSON.parse(s)); setPlayerState('completed'); }
+        } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save completion data to localStorage when workout finishes
+  useEffect(() => {
+    if (playerState !== 'completed' || !plan) return;
+    try {
+      const cache: ShareCacheData = {
+        dayLetter: plan.name.substring(0, 2).toUpperCase(),
+        dayName: plan.name,
+        gymName,
+        gymInstagram,
+        totalDuration: durationMinutes,
+        totalSets: totalSetsCompleted,
+        totalWeight,
+        totalReps,
+        exerciseCount: exercises.length,
+        exerciseDetails: exercises.map((ex, i) => {
+          const sets = completedSetsMap.get(i) || [];
+          return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
+        }),
+      };
+      localStorage.setItem(SHARE_CACHE_KEY, JSON.stringify(cache));
+      setShareCache(cache);
+    } catch {}
+  }, [playerState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let cancelled = false;
+    setSignedInfoVideoUrl(null);
+    getSignedVideoUrl(exerciseDetail?.video_path ?? null).then(url => { if (!cancelled) setSignedInfoVideoUrl(url); });
+    return () => { cancelled = true; };
+  }, [exerciseDetail]);
 
   // Init cardio timer when cardio exercise starts
   useEffect(() => {
@@ -246,6 +329,9 @@ const CustomWorkoutPlayer = () => {
 
   // Handle gym selection
   const handleGymSelected = async (gymId: string) => {
+    // Starting a fresh workout — clear any stale completion cache
+    try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
+    setShareCache(null);
     setSelectedGymId(gymId);
 
     // Fetch gym name
@@ -287,6 +373,7 @@ const CustomWorkoutPlayer = () => {
       if (ex.machine_id && !gymMachineIds.has(ex.machine_id)) {
         unavailable.push({
           exercise_name: ex.exercise_name,
+          exercise_name_en: ex.exercise_name_en,
           exercise_id: ex.exercise_id,
           reason: t('workout.machine_not_in_gym'),
         });
@@ -337,16 +424,17 @@ const CustomWorkoutPlayer = () => {
     const exerciseIds = day.exercises.map(e => e.exercise_id);
     const { data: exerciseData } = await supabase
       .from('exercises')
-      .select('id, name, video_path, machine_id, unit_type, category')
+      .select('id, name, name_en, video_path, machine_id, unit_type, category')
       .in('id', exerciseIds);
 
-    const dataMap = new Map<string, { video_path: string | null; machine_id: string | null; unit_type: string; category: string }>();
-    exerciseData?.forEach(e => dataMap.set(e.id, { video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '' }));
+    const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string }>();
+    exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '' }));
 
     const loaded: ExerciseWithVideo[] = day.exercises.map(e => ({
       id: e.id,
       exercise_id: e.exercise_id,
       exercise_name: e.exercise_name || 'Cvik',
+      exercise_name_en: dataMap.get(e.exercise_id)?.name_en || e.exercise_name_en || null,
       sets: e.sets,
       reps: e.reps,
       reps_per_set: e.reps_per_set || null,
@@ -650,10 +738,10 @@ const CustomWorkoutPlayer = () => {
   const getNextInfo = () => {
     if (!currentExercise) return '';
     if (currentSet < currentExercise.sets) {
-      return `${currentExercise.exercise_name} · ${t('workout.series_next', { number: currentSet + 1 })}`;
+      return `${(isEn && currentExercise.exercise_name_en) ? currentExercise.exercise_name_en : currentExercise.exercise_name} · ${t('workout.series_next', { number: currentSet + 1 })}`;
     }
     if (currentExerciseIndex < exercises.length - 1) {
-      return exercises[currentExerciseIndex + 1].exercise_name;
+      const next = exercises[currentExerciseIndex + 1]; return (isEn && next.exercise_name_en) ? next.exercise_name_en : next.exercise_name;
     }
     return '';
   };
@@ -685,6 +773,7 @@ const CustomWorkoutPlayer = () => {
 
   // Finish workout — save session + navigate home
   const handleFinishWorkout = async () => {
+    try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
     setIsSaving(true);
     try {
       if (user) {
@@ -855,7 +944,7 @@ const CustomWorkoutPlayer = () => {
                 <div key={i} className="bg-card border border-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <X className="w-4 h-4 text-red-500" />
-                    <p className="font-medium text-sm">{ex.exercise_name}</p>
+                    <p className="font-medium text-sm">{(isEn && ex.exercise_name_en) ? ex.exercise_name_en : ex.exercise_name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground ml-6">{ex.reason}</p>
                   {alt && (
@@ -897,26 +986,27 @@ const CustomWorkoutPlayer = () => {
 
   // --- Completed Screen (Share Card) ---
   if (playerState === 'completed') {
+    const sc = shareCache;
     return (
       <WorkoutShareCard
-        dayLetter={plan.name.substring(0, 2).toUpperCase()}
-        dayName={plan.name}
+        dayLetter={sc?.dayLetter ?? plan?.name.substring(0, 2).toUpperCase() ?? ''}
+        dayName={sc?.dayName ?? plan?.name ?? ''}
         goalId="general_fitness"
-        gymName={gymName}
-        gymInstagram={gymInstagram}
-        totalDuration={durationMinutes}
-        totalSets={totalSetsCompleted}
-        totalWeight={totalWeight}
-        totalReps={totalReps}
-        exerciseCount={totalExercises}
-        exerciseDetails={exercises.map((ex, i) => {
+        gymName={sc?.gymName ?? gymName}
+        gymInstagram={sc?.gymInstagram ?? gymInstagram}
+        totalDuration={sc?.totalDuration ?? durationMinutes}
+        totalSets={sc?.totalSets ?? totalSetsCompleted}
+        totalWeight={sc?.totalWeight ?? totalWeight}
+        totalReps={sc?.totalReps ?? totalReps}
+        exerciseCount={sc?.exerciseCount ?? totalExercises}
+        exerciseDetails={sc?.exerciseDetails ?? exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
-          return { name: ex.exercise_name, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
+          return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         })}
-        onClose={() => setPlayerState('exercise')}
+        onClose={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} setShareCache(null); setPlayerState('exercise'); }}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}
-        onAbandon={() => navigate(-1)}
+        onAbandon={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} navigate(-1); }}
       />
     );
   }
@@ -999,8 +1089,10 @@ const CustomWorkoutPlayer = () => {
       id: ex.id,
       exerciseId: ex.exercise_id,
       exerciseName: ex.exercise_name,
+      exerciseNameEn: ex.exercise_name_en ?? null,
       roleId: '',
-      machineName: null as string | null,
+      machineName: ex.machine_name ?? null,
+      machineNameEn: ex.machine_name_en ?? null,
       sets: ex.sets,
       repMin: ex.reps,
       repMax: ex.reps,
@@ -1175,15 +1267,16 @@ const CustomWorkoutPlayer = () => {
             </DrawerHeader>
             {exerciseDetail && (
               <div className="px-4 pb-6 overflow-y-auto">
-                {exerciseDetail.video_path ? (
+                {signedInfoVideoUrl ? (
                   <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                     {infoVideoError ? (
                       <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                     ) : (
                       <video
-                        key={exerciseDetail.video_path}
-                        src={exerciseDetail.video_path}
+                        key={signedInfoVideoUrl}
+                        src={signedInfoVideoUrl}
                         playsInline autoPlay loop muted preload="auto"
+                        controlsList="nodownload"
                         className="w-full h-full object-contain"
                         style={{ opacity: 0, transition: 'opacity 0.3s' }}
                         onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
@@ -1269,12 +1362,14 @@ const CustomWorkoutPlayer = () => {
           >
             {/* Full-screen video */}
             <div className="flex-1 relative">
-              {currentExercise.video_path && !videoError ? (
+              {signedCurrentVideoUrl && !videoError ? (
                 <video
-                  key={currentExercise.video_path}
-                  src={currentExercise.video_path!}
+                  ref={workoutVideoRef}
+                  key={signedCurrentVideoUrl}
+                  src={signedCurrentVideoUrl}
                   autoPlay loop muted playsInline
                   preload="auto"
+                  controlsList="nodownload"
                   className="w-full h-full object-cover"
                   style={{ pointerEvents: 'none' }}
                   onError={() => setVideoError(true)}
@@ -1323,7 +1418,7 @@ const CustomWorkoutPlayer = () => {
                 style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', pointerEvents: 'none' }}
               >
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
-                  <p className="text-white font-bold text-base leading-tight">{currentExercise.exercise_name}</p>
+                  <p className="text-white font-bold text-base leading-tight">{(isEn && currentExercise.exercise_name_en) ? currentExercise.exercise_name_en : currentExercise.exercise_name}</p>
                   <p className="text-white/70 text-sm mt-0.5">
                     {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
                   </p>
@@ -1534,15 +1629,16 @@ const CustomWorkoutPlayer = () => {
           </DrawerHeader>
           {exerciseDetail && (
             <div className="px-4 pb-6 overflow-y-auto">
-              {exerciseDetail.video_path ? (
+              {signedInfoVideoUrl ? (
                 <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                   {infoVideoError ? (
                     <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                   ) : (
                     <video
-                      key={exerciseDetail.video_path}
-                      src={exerciseDetail.video_path}
+                      key={signedInfoVideoUrl}
+                      src={signedInfoVideoUrl}
                       playsInline autoPlay loop muted preload="auto"
+                      controlsList="nodownload"
                       className="w-full h-full object-contain"
                       style={{ opacity: 0, transition: 'opacity 0.3s' }}
                       onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}

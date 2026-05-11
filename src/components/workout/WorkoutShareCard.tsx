@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { Camera, Images, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
-import { cs } from 'date-fns/locale';
+import { cs, enUS } from 'date-fns/locale';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { estimateCalories } from '@/lib/calorieEstimation';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
-interface ExerciseDetail { name: string; sets: { weight: number; reps: number }[]; isCardio?: boolean }
+interface ExerciseDetail { name: string; nameEn?: string | null; sets: { weight: number; reps: number }[]; isCardio?: boolean }
 
 interface WorkoutShareCardProps {
   dayLetter: string; dayName?: string; goalId: string; gymName: string; gymInstagram?: string | null;
@@ -27,21 +27,21 @@ interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
 // ===== TEMPLATES =====
 
 // 1. Dark Blur
-const T_DarkBlur = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
+const T_DarkBlur = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform, exercisesLabel, repsLabel }: TProps) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
         <Grid2x2 stats={stats} bg="rgba(0,0,0,0.5)" />
-        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" />
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
       </Draggable>
     </Center>
   </>
 );
 
 // 2. Minimal Clean
-const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
+const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform, exercisesLabel, repsLabel }: TProps) => (
   <>
     <BG photo={photo} gradient="#000" />
     {photo && <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} />}
@@ -65,7 +65,7 @@ const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, trans
               </div>
             ))}
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '12px' }}>{exCount} cviku &middot; {reps} opak.</p>
+          <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '12px' }}>{exCount} {exercisesLabel} &middot; {reps} {repsLabel}</p>
         </div>
       </Draggable>
     </Center>
@@ -73,7 +73,7 @@ const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, trans
 );
 
 // 3. Bold Big Number
-const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform }: TProps) => (
+const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform, exercisesLabel, repsLabel, setsLabel }: TProps) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #0c0c0c 0%, #1c1c1c 100%)" />
     {photo && <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.8) 100%)' }} />}
@@ -86,7 +86,7 @@ const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transfor
           </p>
           <div className="flex items-center justify-center gap-4 mb-6" style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>
             <span>{stats[0].value} min</span><span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-            <span>{stats[2].value} serii</span><span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+            <span>{stats[2].value} {setsLabel}</span><span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
             <span>{stats[3].value} kcal</span>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
@@ -95,7 +95,7 @@ const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transfor
               <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{gym}{gymIg ? ` @${gymIg}` : ''} &middot; {date}</span>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '4px' }}>{exCount} cviku &middot; {reps} opak.</p>
+            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '4px' }}>{exCount} {exercisesLabel} &middot; {reps} {repsLabel}</p>
           </div>
         </div>
       </Draggable>
@@ -104,7 +104,7 @@ const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transfor
 );
 
 // 4. Exercise List
-const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }: TProps & { exercises: ExerciseDetail[] }) => (
+const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform, repsLabel, isEn }: TProps & { exercises: ExerciseDetail[] }) => (
   <>
     <BG photo={photo} gradient="linear-gradient(135deg, #0d1117 0%, #161b22 100%)" />
     {photo && <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} />}
@@ -123,7 +123,7 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }
               return (
                 <div key={i} className="rounded-xl px-4 py-2.5" style={{ background: 'rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between">
-                    <span style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>{ex.name}</span>
+                    <span style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>{(isEn && ex.nameEn) ? ex.nameEn : ex.name}</span>
                     <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{ex.sets.length}x</span>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
@@ -132,7 +132,7 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }
                     ) : (
                       <>
                         {maxW > 0 && <span style={{ color: '#34d399', fontSize: '12px' }}>{maxW} kg</span>}
-                        <span style={{ color: '#fbbf24', fontSize: '12px' }}>{totalR} opak.</span>
+                        <span style={{ color: '#fbbf24', fontSize: '12px' }}>{totalR} {repsLabel}</span>
                       </>
                     )}
                   </div>
@@ -151,7 +151,7 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform }
 );
 
 // 5. Single Exercise Spotlight
-const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selectedEx, onSelectEx }: TProps & { exercises: ExerciseDetail[]; selectedEx: number; onSelectEx: (i: number) => void }) => {
+const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selectedEx, onSelectEx, isEn }: TProps & { exercises: ExerciseDetail[]; selectedEx: number; onSelectEx: (i: number) => void }) => {
   const ex = exercises[selectedEx] || exercises[0];
   if (!ex) return <BG photo={photo} gradient="#000" />;
   const maxW = Math.max(...ex.sets.map(s => s.weight), 0);
@@ -163,7 +163,7 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
         <Draggable transform={transform}>
           <div style={{ maxWidth: '300px', width: '100%', textAlign: 'center' }}>
             <span style={{ color: '#4CC9FF', fontSize: '11px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase' }}>Pumplo</span>
-            <p style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '6px 0 12px' }}>{ex.name}</p>
+            <p style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '6px 0 12px' }}>{(isEn && ex.nameEn) ? ex.nameEn : ex.name}</p>
             {maxW > 0 && (
               <p style={{ color: '#fff', fontSize: '44px', fontWeight: 900, lineHeight: 1 }}>
                 {maxW} <span style={{ fontSize: '18px', color: 'rgba(255,255,255,0.5)' }}>kg</span>
@@ -196,7 +196,7 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
 };
 
 // ===== SHARED PARTS =====
-interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string }
+interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string; exercisesLabel: string; repsLabel: string; setsLabel: string; isEn: boolean }
 
 const BG = ({ photo, gradient }: { photo: string | null; gradient: string }) => (
   <>
@@ -228,7 +228,7 @@ const Grid2x2 = ({ stats, bg }: { stats: Stat[]; bg: string }) => (
     </div>
   </div>
 );
-const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg }: { title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; bg: string }) => (
+const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, repsLabel }: { title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; bg: string; exercisesLabel: string; repsLabel: string }) => (
   <div className="rounded-2xl px-5 py-4" style={{ background: bg, backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
     <div className="flex items-start justify-between">
       <div>
@@ -238,7 +238,7 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg }: { title: strin
           <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
           {gymIg && <span style={{ color: '#4CC9FF', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '4px' }}>{date} &middot; {exCount} cviku &middot; {reps} opak.</p>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '4px' }}>{date} &middot; {exCount} {exercisesLabel} &middot; {reps} {repsLabel}</p>
       </div>
       <span style={{ color: '#4CC9FF', fontSize: '18px', fontWeight: 800 }}>Pumplo</span>
     </div>
@@ -252,7 +252,8 @@ export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
   exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
 }: WorkoutShareCardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -291,6 +292,15 @@ export const WorkoutShareCard = ({
     if (!el) return;
 
     const onStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const overlay = e.currentTarget as HTMLElement;
+      overlay.style.pointerEvents = 'none';
+      const under = document.elementFromPoint(touch.clientX, touch.clientY);
+      overlay.style.pointerEvents = '';
+      if (under) {
+        const btn = (under as HTMLElement).closest('button');
+        if (btn) { (btn as HTMLButtonElement).click(); return; }
+      }
       e.preventDefault(); e.stopPropagation();
       movedRef.current = false;
       tapStartRef.current = Date.now();
@@ -341,9 +351,9 @@ export const WorkoutShareCard = ({
   }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
-  const title = isBonus ? 'Bonusovy trenink' : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
+  const title = isBonus ? t('workout_share.bonus_workout') : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
   const today = new Date();
-  const dateStr = format(today, 'd. MMMM yyyy', { locale: cs });
+  const dateStr = format(today, 'd. MMMM yyyy', { locale: isEn ? enUS : cs });
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -364,9 +374,9 @@ export const WorkoutShareCard = ({
     const blob = cachedBlobRef.current; if (!blob) return;
     const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
     const igTag = gymInstagram ? ` @${gymInstagram}` : '';
-    const txt = `${title} dokoncen! ${Math.round(totalWeight)} kg | ${totalSets} serii | ${totalDuration} min${igTag}`;
+    const txt = `${title} ${t('workout_share.completed')} ${Math.round(totalWeight)} kg | ${totalSets} ${t('workout_share.sets_unit')} | ${totalDuration} min${igTag}`;
     if (Capacitor.isNativePlatform()) {
-      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: 'Muj trenink na Pumplo', text: txt, url: s.uri, dialogTitle: 'Sdilet trenink' }); return; }
+      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: t('workout_share.share_title'), text: txt, url: s.uri, dialogTitle: t('workout_share.share_dialog') }); return; }
       catch (e) { if ((e as Error).message?.includes('canceled')) return; }
     }
     const file = new File([blob], fn, { type: 'image/png' });
@@ -377,12 +387,12 @@ export const WorkoutShareCard = ({
   const stats: Stat[] = [
     { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
     { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString('cs')}`, unit: 'kg' },
-    { icon: Dumbbell, color: '#fbbf24', value: `${totalSets}`, unit: 'serie' },
+    { icon: Dumbbell, color: '#fbbf24', value: `${totalSets}`, unit: t('workout_share.sets_unit') },
     { icon: Flame, color: '#fb923c', value: `${kcal}`, unit: 'kcal' },
   ];
 
   const tf = `translate(${pos.x}px, ${pos.y}px) scale(${scale})`;
-  const tp: TProps = { photo: userPhoto, title, gym: gymName, gymIg: gymInstagram || null, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf };
+  const tp: TProps = { photo: userPhoto, title, gym: gymName, gymIg: gymInstagram || null, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf, exercisesLabel: t('workout_share.exercises_label'), repsLabel: t('workout_share.reps_abbr'), setsLabel: t('workout_share.sets_unit'), isEn };
 
   const renderTemplate = () => {
     switch (templateIndex) {

@@ -104,16 +104,16 @@ const Profile = () => {
 
   return (
     <PageTransition>
-    <div className="min-h-screen bg-background safe-top">
+    <div className="min-h-screen bg-background">
       {/* Onboarding Warning */}
       {profile && !profile.onboarding_completed && (
-        <div className="pt-4">
+        <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }} className="px-4 pt-4">
           <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
         </div>
       )}
 
-      {/* Header */}
-      <div className="gradient-hero px-6 pt-8 pb-6">
+      {/* Header — single gradient extends behind status bar */}
+      <div className="gradient-hero px-6 pb-6" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2rem)' }}>
         <motion.h1
           className="text-2xl font-bold text-foreground"
           initial={{ opacity: 0, y: -10 }}

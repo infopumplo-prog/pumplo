@@ -11,6 +11,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  isRegistering: boolean;
+  setIsRegistering: (v: boolean) => void;
+  pendingPasswordReset: boolean;
+  clearPasswordReset: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; userId?: string }>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<{ success: boolean; error?: string }>;
@@ -24,6 +28,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [pendingPasswordReset, setPendingPasswordReset] = useState(false);
+  const clearPasswordReset = () => setPendingPasswordReset(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -32,6 +39,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        if (event === 'PASSWORD_RECOVERY') {
+          setPendingPasswordReset(true);
+        }
       }
     );
 
@@ -46,16 +56,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let appUrlListener: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
       App.addListener('appUrlOpen', async ({ url }) => {
+        const fragment = url.split('#')[1] ?? url.split('?')[1] ?? '';
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
         if (url.includes('login-callback')) {
-          // Implicit flow: tokens in URL hash (#access_token=...&refresh_token=...)
-          const fragment = url.split('#')[1] ?? url.split('?')[1] ?? '';
-          const params = new URLSearchParams(fragment);
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
           if (accessToken && refreshToken) {
             await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           }
           await Browser.close();
+        } else if (url.includes('reset-password')) {
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            setPendingPasswordReset(true);
+          }
         }
       }).then(handle => {
         appUrlListener = () => handle.remove();
@@ -189,8 +204,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'com.pumplo.app://reset-password'
+      : `${window.location.origin}/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo,
     });
 
     if (error) {
@@ -204,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, register, loginWithProvider, resetPassword, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, isRegistering, setIsRegistering, pendingPasswordReset, clearPasswordReset, login, register, loginWithProvider, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

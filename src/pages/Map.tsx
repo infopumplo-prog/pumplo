@@ -359,7 +359,7 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
-        <div className="absolute inset-0" style={{ bottom: 'var(--bottom-nav-offset)' }}>
+        <div className="absolute inset-0">
           <GymMap
             gyms={filteredGyms}
             userLocation={userLocation}
@@ -369,7 +369,7 @@ const Map = () => {
           />
 
           {/* Filter button */}
-          <div className="absolute top-4 right-[60px] z-50">
+          <div className="absolute right-[60px] z-50" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
             <button
               onClick={() => setFiltersOpen(true)}
               className="relative w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
@@ -389,7 +389,8 @@ const Map = () => {
           {/* Center on user button */}
           <button
             onClick={handleCenterOnUser}
-            className="absolute top-4 right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
+            className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
             aria-label="Vycentrovat na mou polohu"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "#4CC9FF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

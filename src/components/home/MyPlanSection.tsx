@@ -78,7 +78,7 @@ const MyPlanSection = () => {
   };
 
   const handleGoToTraining = () => {
-    navigate('/my-plan');
+    navigate('/profile/plan');
   };
 
   // Use snapshotted training_days from the plan (stable, not affected by profile changes)
