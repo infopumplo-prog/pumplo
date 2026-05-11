@@ -298,7 +298,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {currentExercise.primaryMuscles.slice(0, 3).map(m => (
-                    <span key={m} className="text-[10px] bg-orange-400/20 text-orange-300 px-1.5 py-0.5 rounded-full">{getMuscleLabel(m)}</span>
+                    <span key={m} className="text-[10px] bg-orange-400/20 text-orange-300 px-1.5 py-0.5 rounded-full">{getMuscleLabel(m, isEn)}</span>
                   ))}
                 </div>
               )}
@@ -392,7 +392,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                 <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentExercise.primaryMuscles.map(m => (
-                    <span key={m} className="text-xs bg-orange-400/15 text-orange-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m)}</span>
+                    <span key={m} className="text-xs bg-orange-400/15 text-orange-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m, isEn)}</span>
                   ))}
                 </div>
               </div>

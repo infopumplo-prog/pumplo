@@ -32,7 +32,10 @@ export const MUSCLE_LABELS: Record<string, string> = {
   rhomboid_minor: 'Malý rhomboid',
 };
 
-export const getMuscleLabel = (muscle: string): string => {
+import { MUSCLE_MAP } from './muscleTranslation';
+
+export const getMuscleLabel = (muscle: string, isEn = false): string => {
   const normalized = muscle.toLowerCase().replace(/[-\s]/g, '_');
+  if (isEn) return MUSCLE_MAP[normalized] ?? MUSCLE_MAP[muscle] ?? muscle.replace(/_/g, ' ');
   return MUSCLE_LABELS[normalized] || muscle.replace(/_/g, ' ');
 };
