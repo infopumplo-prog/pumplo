@@ -181,7 +181,25 @@ const SharedPlan = () => {
     }
   }, [user, plan, saved, isSaving, token, handleSave]);
 
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+
   const handleLoginAndSave = () => {
+    if (isIOS) {
+      window.location.href = `com.pumplo.app://plan/${token}`;
+      setTimeout(() => {
+        window.location.href = 'https://apps.apple.com/app/pumplo/id6744960498';
+      }, 500);
+      return;
+    }
+    if (isAndroid) {
+      window.location.href = `com.pumplo.app://plan/${token}`;
+      setTimeout(() => {
+        window.location.href = 'https://play.google.com/store/apps/details?id=com.pumplo.app';
+      }, 500);
+      return;
+    }
     sessionStorage.setItem(PENDING_SAVE_KEY, token!);
     navigate(`/auth?redirect=/plan/${token}`);
   };
@@ -214,10 +232,6 @@ const SharedPlan = () => {
   const handleOpenInApp = () => {
     window.location.href = `com.pumplo.app://plan/${token}`;
   };
-
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
-  const isMobile = isIOS || isAndroid;
 
   return (
     <div className="min-h-screen bg-background safe-top pb-nav">
