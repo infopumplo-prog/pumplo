@@ -71,10 +71,12 @@ export const unlockAudio = () => {
   const ctx = getCtx();
   if (!ctx) return;
 
-  // Decode WAV blobs into AudioBuffers
-  if (beepUrl) decodeWavUrl(beepUrl).then(b => { beepBuffer = b; });
-  if (alarmBeepUrl) decodeWavUrl(alarmBeepUrl).then(b => { alarmBeepBuffer = b; });
-  if (alarmFinishUrl) decodeWavUrl(alarmFinishUrl).then(b => { alarmFinishBuffer = b; });
+  // Decode WAV blobs in series — parallel decodeAudioData calls can crash WebKit libpas
+  (async () => {
+    if (beepUrl) beepBuffer = await decodeWavUrl(beepUrl);
+    if (alarmBeepUrl) alarmBeepBuffer = await decodeWavUrl(alarmBeepUrl);
+    if (alarmFinishUrl) alarmFinishBuffer = await decodeWavUrl(alarmFinishUrl);
+  })();
 };
 
 // --- Core playback via AudioContext (mixes with Spotify, no session takeover) ---
