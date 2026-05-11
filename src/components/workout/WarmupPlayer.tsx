@@ -74,6 +74,16 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
   const totalExercises = exercises.length;
   const progressPercent = ((currentIndex) / totalExercises) * 100 + (((currentExercise?.duration || 30) - timeRemaining) / (currentExercise?.duration || 30)) * (100 / totalExercises);
 
+  // Clear MediaSession when unmounting so it doesn't linger in Now Playing after workout
+  useEffect(() => {
+    return () => {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = 'none';
+      }
+    };
+  }, []);
+
   // Lock screen widget — metadata + countdown timer
   useEffect(() => {
     if (!currentExercise || !('mediaSession' in navigator)) return;

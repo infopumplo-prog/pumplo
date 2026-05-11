@@ -5,29 +5,13 @@
 //   T=1s: 1 short beep (playCountdown1)
 //   T=0s: 1 long beep  (playAlarmFinish)
 //
-// AudioContext is used for beeps (not HTMLAudioElement) so that iOS WKWebView
-// respects the app's AVAudioSession .mixWithOthers setting and doesn't interrupt Spotify.
+// AudioContext is used for all beeps. No HTMLAudioElement is created so that
+// WKWebView never changes the AVAudioSession away from .mixWithOthers.
 
 // --- Mute state ---
 let _muted = false;
 export const setAudioMuted = (muted: boolean) => { _muted = muted; };
 export const isAudioMuted = () => _muted;
-
-// --- Silent WAV for MediaSession lock screen support ---
-let silenceUrl: string | null = null;
-try {
-  const sr = 22050, n = sr * 60;
-  const buf = new ArrayBuffer(44 + n); const v = new DataView(buf);
-  const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
-  w(36, 'data'); v.setUint32(40, n, true);
-  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
-  silenceUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-// eslint-disable-next-line no-empty
-} catch {}
-
-let silentEl: HTMLAudioElement | null = null;
 
 // --- Web Audio API context + buffers ---
 let audioCtx: AudioContext | null = null;
@@ -91,33 +75,6 @@ export const unlockAudio = () => {
   if (beepUrl) decodeWavUrl(beepUrl).then(b => { beepBuffer = b; });
   if (alarmBeepUrl) decodeWavUrl(alarmBeepUrl).then(b => { alarmBeepBuffer = b; });
   if (alarmFinishUrl) decodeWavUrl(alarmFinishUrl).then(b => { alarmFinishBuffer = b; });
-
-  // Keep a silent HTMLAudioElement loop ONLY for MediaSession lock screen support.
-  // Volume 0 so it doesn't affect the audio session routing (no audio output).
-  if (!silentEl && silenceUrl) {
-    silentEl = new Audio(silenceUrl);
-    silentEl.loop = true;
-    silentEl.volume = 0;
-    silentEl.play().catch(() => {});
-  }
-};
-
-/** @deprecated Use unlockAudio — startSilentLoop kept for compatibility */
-export const startSilentLoop = () => {
-  if (!silentEl || !silenceUrl) return;
-  if (!silentEl.paused) return;
-  silentEl.src = silenceUrl;
-  silentEl.loop = true;
-  silentEl.volume = 0;
-  silentEl.play().catch(() => {});
-};
-
-/** Stop silent audio loop (e.g. when workout ends) */
-export const stopSilentLoop = () => {
-  if (!silentEl) return;
-  silentEl.pause();
-  silentEl.src = '';
-  silentEl.load();
 };
 
 // --- Core playback via AudioContext (mixes with Spotify, no session takeover) ---

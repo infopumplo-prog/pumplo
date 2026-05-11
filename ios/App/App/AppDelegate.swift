@@ -6,6 +6,7 @@ import AVFoundation
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var audioSessionTimer: Timer?
 
     private func configureAudioSession() {
         do {
@@ -15,8 +16,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         } catch {}
     }
 
+    // Re-asserts .mixWithOthers every 2s in case WKWebView overrides the audio session
+    private func startAudioSessionWatch() {
+        audioSessionTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            let session = AVAudioSession.sharedInstance()
+            if !session.categoryOptions.contains(.mixWithOthers) {
+                self?.configureAudioSession()
+            }
+        }
+
+        // Also re-assert when interrupted (e.g. phone call ends)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let info = notification.userInfo,
+                  let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeRaw),
+                  type == .ended else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self?.configureAudioSession()
+            }
+        }
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         configureAudioSession()
+        startAudioSessionWatch()
         return true
     }
 
@@ -30,24 +57,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Re-assert after WKWebView may have changed the session
         configureAudioSession()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+        audioSessionTimer?.invalidate()
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Called when the app was launched with a url. Feel free to add additional processing here,
-        // but if you want the App API to support tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
