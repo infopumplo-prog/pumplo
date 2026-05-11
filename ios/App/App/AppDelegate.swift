@@ -16,26 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         configureAudioSession()
-
-        // Re-assert .mixWithOthers after phone call or other interruption ends
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAudioInterruption(_:)),
-            name: AVAudioSession.interruptionNotification,
-            object: nil
-        )
-
         return true
-    }
-
-    @objc private func handleAudioInterruption(_ notification: Notification) {
-        guard let info = notification.userInfo,
-              let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeRaw),
-              type == .ended else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            self?.configureAudioSession()
-        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
