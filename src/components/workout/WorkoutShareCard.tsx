@@ -259,6 +259,7 @@ export const WorkoutShareCard = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const cachedBlobRef = useRef<Blob | null>(null);
   const [imageReady, setImageReady] = useState(false);
+  const genIdRef = useRef(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const { profile } = useUserProfile();
   const [templateIndex, setTemplateIndex] = useState(0);
@@ -276,8 +277,12 @@ export const WorkoutShareCard = ({
   const genImg = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
     try {
-      const c = await html2canvas(cardRef.current, { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
-      return new Promise(r => c.toBlob(b => r(b), 'image/png', 1.0));
+      const c = await html2canvas(cardRef.current, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
+      const blob = await new Promise<Blob | null>(r => c.toBlob(b => r(b), 'image/png', 1.0));
+      // Free the large canvas bitmap immediately to prevent WebKit libpas heap crash
+      c.width = 0;
+      c.height = 0;
+      return blob;
     } catch { return null; }
   }, []);
 
@@ -337,9 +342,12 @@ export const WorkoutShareCard = ({
       }
 
       cachedBlobRef.current = null; setImageReady(false);
+      const id = ++genIdRef.current;
       setTimeout(async () => {
+        if (id !== genIdRef.current) return;
         setIsGenerating(true);
         const blob = await genImg();
+        if (id !== genIdRef.current) return;
         cachedBlobRef.current = blob; setImageReady(!!blob); setIsGenerating(false);
       }, 300);
     };
@@ -364,7 +372,14 @@ export const WorkoutShareCard = ({
 
   useEffect(() => {
     cachedBlobRef.current = null; setImageReady(false);
-    const t = setTimeout(async () => { setIsGenerating(true); const b = await genImg(); cachedBlobRef.current = b; setImageReady(!!b); setIsGenerating(false); }, 600);
+    const id = ++genIdRef.current;
+    const t = setTimeout(async () => {
+      if (id !== genIdRef.current) return;
+      setIsGenerating(true);
+      const b = await genImg();
+      if (id !== genIdRef.current) return;
+      cachedBlobRef.current = b; setImageReady(!!b); setIsGenerating(false);
+    }, 600);
     return () => clearTimeout(t);
   }, [userPhoto, templateIndex, selectedEx, genImg]);
 
