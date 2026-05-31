@@ -145,16 +145,39 @@ const GymDetailTabs = ({ hours, machines, machinesLoading, pricing, gymId, servi
             )} />
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-2">
-            <div className="bg-muted/30 rounded-lg p-4">
-              {services && services.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {services.map((s) => (
-                    <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s}</span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('business.services')}</p>
-              )}
+            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+              {(() => {
+                const CARD_KEYS = ['multisport', 'edenred', 'pluxee', 'benefit plus', 'sodexo'];
+                const cards = (services || []).filter(s => CARD_KEYS.includes(s.toLowerCase()));
+                const other = (services || []).filter(s => !CARD_KEYS.includes(s.toLowerCase()));
+                return (
+                  <>
+                    {other.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {other.map((s) => (
+                          <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s}</span>
+                        ))}
+                      </div>
+                    )}
+                    {cards.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground font-medium">{t('business.accepted_cards')}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {cards.map((c) => (
+                            <span key={c} className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium">{c}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!services || services.length === 0 && (
+                      <p className="text-sm text-muted-foreground">{t('business.no_services')}</p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </CollapsibleContent>
         </Collapsible>
