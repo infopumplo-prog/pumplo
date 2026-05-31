@@ -191,9 +191,10 @@ const SERVICES = [
 
 const CARDS = [
   { key: 'multisport', label: 'MultiSport' },
+  { key: 'edenred', label: 'Edenred' },
+  { key: 'pluxee', label: 'Pluxee' },
   { key: 'benefit plus', label: 'Benefit Plus' },
   { key: 'sodexo', label: 'Sodexo' },
-  { key: 'edenred', label: 'Edenred' },
 ];
 
 const DIST_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 3];
