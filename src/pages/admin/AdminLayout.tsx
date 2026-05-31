@@ -1,0 +1,107 @@
+import { ReactNode } from 'react';
+import { useLocation, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/contexts/AuthContext';
+import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut, Layout, Target } from 'lucide-react';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
+import { useTranslation } from 'react-i18next';
+
+interface AdminLayoutProps {
+  children: ReactNode;
+}
+
+const AdminLayout = ({ children }: AdminLayoutProps) => {
+  const { isAdmin, isLoading } = useUserRole();
+  const location = useLocation();
+  const { logout } = useAuth();
+  const { t } = useTranslation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  const navItems = [
+    { path: '/admin', icon: LayoutDashboard, label: t('admin.dashboard') },
+    { path: '/admin/users', icon: Users, label: t('admin.users') },
+    { path: '/admin/gyms', icon: Building2, label: t('admin.gyms') },
+    { path: '/admin/machines', icon: Dumbbell, label: t('admin.machines') },
+    { path: '/admin/exercises', icon: Activity, label: t('admin.exercises') },
+    { path: '/admin/templates', icon: Layout, label: t('admin.templates') },
+    { path: '/admin/roles', icon: Target, label: t('admin.roles') },
+    { path: '/admin/feedback/skipped', icon: SkipForward, label: t('admin.skipped') },
+    { path: '/admin/feedback/user', icon: MessageSquare, label: t('admin.user_fb') },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col pb-20">
+      {/* Minimal Top Bar - just back button */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h1 className="text-lg font-semibold">{t('admin.title')}</h1>
+          <button
+            onClick={logout}
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <LogOut className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+      </header>
+
+      {/* Content - scrollable area */}
+      <motion.main
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 px-4 py-2"
+      >
+        {children}
+      </motion.main>
+
+      {/* Bottom Navigation - Apple-style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-4">
+        <div className="bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-lg mx-auto max-w-lg overflow-x-auto">
+          <div className="flex items-center justify-between py-2 px-1 min-w-max">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 relative rounded-xl transition-colors flex-shrink-0 ${
+                    isActive ? 'bg-primary/10' : ''
+                  }`}
+                >
+                  <item.icon
+                    className={`w-4 h-4 transition-colors ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  />
+                  <span
+                    className={`text-[10px] font-medium transition-colors whitespace-nowrap ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+      <FeedbackButton />
+    </div>
+  );
+};
+
+export default AdminLayout;

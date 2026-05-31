@@ -1,0 +1,21 @@
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Nápad roku 2026 · Květen 2026
+      - generic [ref=e8]: Duben 2026
+    - generic [ref=e9]:
+      - generic [ref=e10]: Pumplo
+      - generic [ref=e11]: Retenční platforma pro nezávislé posilovny.
+      - generic [ref=e12]: Pomáháme cvičícím vědět, co cvičit — a posilovnám udržet je déle.
+      - generic [ref=e15]:
+        - generic [ref=e16]: David Novotný
+        - generic [ref=e17]: zakladatel · pumplo.com
+  - toolbar "Deck controls" [ref=e18]:
+    - button "Previous slide" [ref=e19]:
+      - img [ref=e20]
+    - generic [ref=e22]: 1/15
+    - button "Next slide" [ref=e23]:
+      - img [ref=e24]
+    - button "Reset to first slide" [ref=e27]:
+      - text: Reset
+      - generic [ref=e28]: R
