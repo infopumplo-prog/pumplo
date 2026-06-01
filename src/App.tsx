@@ -53,6 +53,8 @@ import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
 import ResetPassword from "@/pages/ResetPassword";
+import { usePushRegistration } from "@/hooks/usePushRegistration";
+import { usePushNavigation } from "@/hooks/usePushNavigation";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
 
@@ -178,7 +180,10 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AppRoutes = () => (
+const AppRoutes = () => {
+  usePushRegistration();
+  usePushNavigation();
+  return (
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
@@ -223,7 +228,8 @@ const AppRoutes = () => (
     <Route path="*" element={<NotFound />} />
   </Routes>
   </>
-);
+  );
+};
 
 const App = () => {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);

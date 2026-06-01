@@ -62,6 +62,9 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Native-only FCM plugin imports firebase/messaging in its web entry;
+      // Pumplo uses VAPID on web, so stub it out of the web build.
+      "firebase/messaging": path.resolve(__dirname, "./src/lib/firebaseMessagingWebStub.ts"),
     },
   },
 }));
