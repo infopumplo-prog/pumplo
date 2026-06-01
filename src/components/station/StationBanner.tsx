@@ -1,6 +1,5 @@
 import { X, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 
@@ -12,15 +11,7 @@ interface StationBannerProps {
 
 export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
-  const { t } = useTranslation();
   if (dismissed) return null;
-
-  const getStoreLink = () => {
-    const ua = navigator.userAgent;
-    if (/iPhone|iPad|iPod/i.test(ua)) return '/auth';
-    if (/Android/i.test(ua)) return '/auth';
-    return '/auth';
-  };
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2.5"
@@ -48,11 +39,6 @@ export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBann
             </button>
           ))}
         </div>
-        <a href={getStoreLink()}
-          className="px-4 py-1.5 rounded-full text-sm font-semibold"
-          style={{ background: '#4CC9FF', color: '#fff', fontSize: '13px' }}>
-          {t('station.open_btn')}
-        </a>
         <button type="button" onClick={() => { setDismissed(true); onDismiss?.(); }}
           className="p-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
           <X className="w-4 h-4" />
