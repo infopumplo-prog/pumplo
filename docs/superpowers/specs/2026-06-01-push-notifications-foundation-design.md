@@ -25,8 +25,15 @@ prerequisite for the later phases, which get their own specs:
 - **Phase 1 — Automated reminders** (mostly already exists in `send-push-notifications`:
   morning / missed-workout / closing-soon / streak templates + Prague-time logic).
   Will "just work" on native once Phase 0 lands; minor tidy-up afterward.
-- **Phase 2 — Admin → members broadcast** (gym owner / super_admin sends a push to a
-  gym's members). Lives in the separate `pumplo-admin` repo + a Supabase function.
+- **Phase 2 — Admin/super_admin notifications** — two audiences:
+  - → **members** broadcast (push). Lives in the separate `pumplo-admin` repo + a
+    Supabase function.
+  - → **gym managers** (gym_admin) via **EMAIL** (primary, must always land) plus
+    optional **desktop Web Push** (reuse the existing VAPID system in the admin
+    dashboard). Triggers: (a) a member's churn/leave risk rises, (b) someone
+    messages/replies to the gym, (c) super_admin sends the gym something. Needs an
+    email provider (likely Resend) — none exists in the repo yet. Churn-risk scoring
+    is not in this member repo (likely admin repo or to be built) — confirm in planning.
 - **Phase 3 — Trainer → client** (message / plan assignment fires a push, wired into the
   existing Messages / ChatThread feature).
 
@@ -106,15 +113,22 @@ browser/PWA the existing VAPID path is unchanged.
   delivery channels inside the helper.
 - Keep the existing cron trigger and message templates intact.
 
-## External prerequisites (David provides, manual)
+## External prerequisites — ✅ DONE (2026-06-01)
 
-1. **Firebase service account key** (JSON) from the existing Firebase project →
-   stored as Supabase secret.
-2. **APNs Auth Key (.p8)** from Apple Developer → uploaded to Firebase.
-3. **GoogleService-Info.plist** (iOS Firebase app) → added to Xcode.
+Firebase project **`pumplo-app`** (number `556331013170`, Spark/free) confirmed; iOS +
+Android apps registered for `com.pumplo.app`. All artifacts in `~/Downloads`:
 
-(Confirm the Firebase project behind the existing `android/app/google-services.json`
-is the one we'll use, and that it has an iOS app registered for `com.pumplo.app`.)
+1. ✅ **Firebase service account key** — `pumplo-app-firebase-adminsdk-fbsvc-9a3470cdcc.json`
+   → to be added as a Supabase secret (NEVER git).
+2. ✅ **APNs Auth Key** — `AuthKey_3JU63V36PS.p8` (Key ID `3JU63V36PS`, Team `DF748BR59G`,
+   Sandbox & Production) → uploaded to Firebase Cloud Messaging (both dev + prod slots).
+3. ✅ **GoogleService-Info.plist** (iOS) → to be added to the Xcode project.
+4. ✅ **google-services.json** (real Android, app_id `...android:aa1ba033021c1e106a982b`)
+   → replaces the old placeholder in `android/app/`.
+
+Cloud Messaging API (Legacy) is Disabled (correct — we use FCM HTTP v1 via the service
+account). Note: Android Google Sign-In SHA-1 fingerprints may need re-adding to the new
+Firebase Android app — verify Google login still works during testing.
 
 ## Verification / success criteria — "everything works"
 
