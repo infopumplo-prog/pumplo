@@ -6,9 +6,31 @@
 	<string>556331013170-tedqhkd5ji6ivd06dh5o1imr053cc3rt.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
 	<string>com.googleusercontent.apps.556331013170-tedqhkd5ji6ivd06dh5o1imr053cc3rt</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>556331013170-qlgegdqcgkfp56mco5lsfdd54m0ickvb.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDHHWXXlEFXbGlPYN1ObCGJ_pb7PhD-Yfk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>556331013170</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.pumplo.app</string>
+	<key>PROJECT_ID</key>
+	<string>pumplo-app</string>
+	<key>STORAGE_BUCKET</key>
+	<string>pumplo-app.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:556331013170:ios:f0b6147d7c59cc156a982b</string>
 </dict>
 </plist>
