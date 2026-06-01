@@ -1,4 +1,4 @@
-const APP_STORE_URL = 'https://apps.apple.com/app/pumplo/id6744960498';
+const APP_STORE_URL = 'https://apps.apple.com/app/pumplo/id6768619318';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.pumplo.app';
 
 /**

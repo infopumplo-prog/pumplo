@@ -249,7 +249,7 @@ const SharedPlan = () => {
           <span>Nemáš Pumplo?</span>
           {isIOS && (
             <a
-              href="https://apps.apple.com/app/pumplo/id6744960498"
+              href="https://apps.apple.com/app/pumplo/id6768619318"
               className="text-[#5BC8F5] font-medium"
               target="_blank" rel="noopener noreferrer"
             >
