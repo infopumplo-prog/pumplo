@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { openAppOrStore } from '@/lib/appRedirect';
 
 interface SharedPlanExercise {
   exercise_id: string;
@@ -186,20 +187,9 @@ const SharedPlan = () => {
   const isMobile = isIOS || isAndroid;
 
   const handleLoginAndSave = () => {
-    if (isIOS) {
-      window.location.href = `com.pumplo.app://plan/${token}`;
-      setTimeout(() => {
-        window.location.href = 'https://apps.apple.com/app/pumplo/id6744960498';
-      }, 500);
-      return;
-    }
-    if (isAndroid) {
-      window.location.href = `com.pumplo.app://plan/${token}`;
-      setTimeout(() => {
-        window.location.href = 'https://play.google.com/store/apps/details?id=com.pumplo.app';
-      }, 500);
-      return;
-    }
+    // Mobile: open the app at this plan (or fall back to its store).
+    if (openAppOrStore(`plan/${token}`)) return;
+    // Desktop: keep the web save flow.
     sessionStorage.setItem(PENDING_SAVE_KEY, token!);
     navigate(`/auth?redirect=/plan/${token}`);
   };
@@ -230,7 +220,7 @@ const SharedPlan = () => {
   const repsAbbr = t('shared_plan.reps_abbr');
 
   const handleOpenInApp = () => {
-    window.location.href = `com.pumplo.app://plan/${token}`;
+    openAppOrStore(`plan/${token}`);
   };
 
   return (

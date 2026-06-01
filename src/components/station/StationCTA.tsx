@@ -1,38 +1,16 @@
 import { Dumbbell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { openAppOrStore, APP_STORE_URL } from '@/lib/appRedirect';
 
-const APP_STORE_URL = 'https://apps.apple.com/app/pumplo/id6744960498';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.pumplo.app';
-
-interface StationCTAProps {
-  gymId?: string;
-}
-
-export const StationCTA = ({ gymId }: StationCTAProps) => {
+export const StationCTA = () => {
   const { t } = useTranslation();
 
   const handleOpen = () => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-
-    if (isIOS) {
-      // Try to open app, fall back to App Store after 500ms
-      window.location.href = `com.pumplo.app://station`;
-      setTimeout(() => {
-        window.location.href = APP_STORE_URL;
-      }, 500);
-      return;
+    // Mobile: open the app (or fall back to its store). Desktop: there is no
+    // app, so send straight to the App Store listing.
+    if (!openAppOrStore('station')) {
+      window.location.href = APP_STORE_URL;
     }
-    if (isAndroid) {
-      // Try to open app, fall back to Google Play after 500ms
-      window.location.href = `com.pumplo.app://station`;
-      setTimeout(() => {
-        window.location.href = PLAY_STORE_URL;
-      }, 500);
-      return;
-    }
-    const authUrl = gymId ? `/auth?gymId=${gymId}` : '/auth';
-    window.location.href = authUrl;
   };
 
   return (

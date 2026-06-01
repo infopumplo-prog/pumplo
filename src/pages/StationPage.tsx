@@ -63,7 +63,7 @@ const StationPage = () => {
       <div className="flex-1">
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} machineName_en={data.machineName_en} bannerVisible={!bannerDismissed} />
       </div>
-      <StationCTA gymId={data.gymId} />
+      <StationCTA />
     </div>
   );
 };
