@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
+import { Capacitor } from "@capacitor/core";
 import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
@@ -31,8 +32,10 @@ function triggerUpdateBanner() {
   }
 }
 
-// Register service worker for PWA with injectManifest strategy
-const updateSW = registerSW({
+// Register service worker for PWA — web/PWA only. On native (Capacitor) the SW
+// would cache and serve stale JS bundles inside the WKWebView, so we skip it.
+const noopUpdateSW = async (_reloadPage?: boolean): Promise<void> => {};
+const updateSW = Capacitor.isNativePlatform() ? noopUpdateSW : registerSW({
 onNeedRefresh() {
     console.log('[Main] New version available, auto-updating...');
     triggerUpdateBanner();
