@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { dbg } from '@/lib/debugOverlay';
 
 const platform = (): 'ios' | 'android' | null => {
   const p = Capacitor.getPlatform();
@@ -27,26 +28,27 @@ export const usePushRegistration = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    console.log('[push] hook run — native:', Capacitor.isNativePlatform(), 'user:', !!user);
+    dbg('hook run — native=' + Capacitor.isNativePlatform() + ' user=' + !!user);
     if (!Capacitor.isNativePlatform() || !user) return;
     let removeRefresh: (() => void) | undefined;
 
     (async () => {
       try {
-        console.log('[push] requesting permission…');
+        dbg('requesting permission…');
         const perm = await FirebaseMessaging.requestPermissions();
-        console.log('[push] permission result:', JSON.stringify(perm));
-        if (perm.receive !== 'granted') return;
+        dbg('permission = ' + JSON.stringify(perm));
+        if (perm.receive !== 'granted') { dbg('NOT granted — stopping'); return; }
         const { token } = await FirebaseMessaging.getToken();
-        console.log('[push] got token:', token ? token.slice(0, 14) + '…' : 'NULL');
+        dbg('token = ' + (token ? token.slice(0, 16) + '…' : 'NULL'));
         if (token) await saveToken(user.id, token);
+        dbg('saved to device_tokens ✅');
 
         const handle = await FirebaseMessaging.addListener('tokenReceived', async (e) => {
           if (e.token) await saveToken(user.id, e.token);
         });
         removeRefresh = () => { handle.remove(); };
       } catch (err) {
-        console.error('[push] registration failed', err);
+        dbg('ERROR: ' + (err instanceof Error ? err.message : String(err)));
       }
     })();
 
