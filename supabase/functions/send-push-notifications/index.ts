@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { sendFcmToUser } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -583,10 +584,11 @@ async function processMorningNotifications(
   console.log(`Processing morning notifications for preferred_time=${targetPreferredTime}, weekday=${weekday}`);
 
   // Query users
+  // Select by preferences only — no longer require a web push_subscription, so
+  // native-app users (FCM device tokens, no web sub) are included too.
   const { data: users, error } = await supabase
     .from('user_profiles')
     .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout')
-    .not('push_subscription', 'is', null)
     .eq('preferred_time', targetPreferredTime)
     .eq('notification_morning_reminder', true);
 
@@ -629,29 +631,41 @@ async function processMorningNotifications(
       data: { url: '/' },
     });
 
-    const result = await sendWebPush(
-      user.push_subscription!,
-      payload,
-      vapidPublicKey,
-      vapidPrivateKey,
-      vapidSubject
-    );
+    let delivered = false;
 
-    if (result.success) {
+    // Web push (browser/PWA) — only if the user has a subscription and VAPID is set.
+    if (user.push_subscription && vapidPrivateKey) {
+      const result = await sendWebPush(
+        user.push_subscription,
+        payload,
+        vapidPublicKey,
+        vapidPrivateKey,
+        vapidSubject
+      );
+      if (result.success) {
+        delivered = true;
+      } else if (result.error === 'subscription_expired') {
+        await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+        console.log(`Cleared expired subscription for user ${user.user_id}`);
+      } else {
+        console.error(`Web push failed for user ${user.user_id}:`, result.error);
+      }
+    }
+
+    // Native push (iOS/Android via FCM) — no-op if no device tokens.
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`FCM failed for user ${user.user_id}:`, e);
+    }
+
+    if (delivered) {
       await logNotification(supabase, user.user_id, missedPrevious ? 'missed' : 'morning', dateKey);
       stats.sent++;
       console.log(`Sent ${missedPrevious ? 'missed' : 'morning'} notification to user ${user.user_id}`);
-    } else if (result.error === 'subscription_expired') {
-      // Clear invalid subscription
-      await supabase
-        .from('user_profiles')
-        .update({ push_subscription: null })
-        .eq('user_id', user.user_id);
-      stats.errors++;
-      console.log(`Cleared expired subscription for user ${user.user_id}`);
     } else {
-      stats.errors++;
-      console.error(`Failed to send to user ${user.user_id}:`, result.error);
+      stats.skipped++;
     }
   }
 
@@ -681,7 +695,6 @@ async function processClosingNotifications(
       notification_closing_soon, 
       selected_gym_id
     `)
-    .not('push_subscription', 'is', null)
     .not('selected_gym_id', 'is', null)
     .eq('notification_closing_soon', true);
 
@@ -748,27 +761,38 @@ async function processClosingNotifications(
       data: { url: '/' },
     });
 
-    const result = await sendWebPush(
-      user.push_subscription!,
-      payload,
-      vapidPublicKey,
-      vapidPrivateKey,
-      vapidSubject
-    );
+    let delivered = false;
 
-    if (result.success) {
+    if (user.push_subscription && vapidPrivateKey) {
+      const result = await sendWebPush(
+        user.push_subscription,
+        payload,
+        vapidPublicKey,
+        vapidPrivateKey,
+        vapidSubject
+      );
+      if (result.success) {
+        delivered = true;
+      } else if (result.error === 'subscription_expired') {
+        await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+      } else {
+        console.error(`Web push failed for user ${user.user_id}:`, result.error);
+      }
+    }
+
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`FCM failed for user ${user.user_id}:`, e);
+    }
+
+    if (delivered) {
       await logNotification(supabase, user.user_id, 'closing', dateKey);
       stats.sent++;
       console.log(`Sent closing notification to user ${user.user_id}`);
-    } else if (result.error === 'subscription_expired') {
-      await supabase
-        .from('user_profiles')
-        .update({ push_subscription: null })
-        .eq('user_id', user.user_id);
-      stats.errors++;
     } else {
-      stats.errors++;
-      console.error(`Failed to send to user ${user.user_id}:`, result.error);
+      stats.skipped++;
     }
   }
 
@@ -878,32 +902,27 @@ Deno.serve(async (req) => {
     hasSubject: !!vapidSubject,
   });
 
-  if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
-    console.error('Missing VAPID configuration');
-    return new Response(
-      JSON.stringify({ error: 'Missing VAPID configuration' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  // VAPID is only needed for WEB push. Native (FCM) reminders work without it,
+  // so don't hard-fail — just disable the web-push channel when VAPID is absent.
+  const webPushEnabled = !!(vapidPublicKey && vapidPrivateKey && vapidSubject);
+  if (!webPushEnabled) {
+    console.warn('VAPID not configured — web push disabled, FCM (native) still active');
   }
   
-  // Validate key formats
-  try {
-    const pubKeyBytes = base64UrlDecode(vapidPublicKey);
-    const privKeyBytes = base64UrlDecode(vapidPrivateKey);
-    console.log('Decoded key sizes:', {
-      publicKeyBytes: pubKeyBytes.length,
-      privateKeyBytes: privKeyBytes.length,
-      publicKeyFirstByte: pubKeyBytes[0],
-    });
-    
-    if (pubKeyBytes.length !== 65) {
-      console.error(`Invalid public key: expected 65 bytes, got ${pubKeyBytes.length}`);
+  // Validate key formats (only when web push is enabled)
+  if (webPushEnabled) {
+    try {
+      const pubKeyBytes = base64UrlDecode(vapidPublicKey!);
+      const privKeyBytes = base64UrlDecode(vapidPrivateKey!);
+      if (pubKeyBytes.length !== 65) {
+        console.error(`Invalid public key: expected 65 bytes, got ${pubKeyBytes.length}`);
+      }
+      if (privKeyBytes.length !== 32) {
+        console.error(`Invalid private key: expected 32 bytes, got ${privKeyBytes.length}`);
+      }
+    } catch (e) {
+      console.error('Key decode error:', e);
     }
-    if (privKeyBytes.length !== 32) {
-      console.error(`Invalid private key: expected 32 bytes, got ${privKeyBytes.length}`);
-    }
-  } catch (e) {
-    console.error('Key decode error:', e);
   }
 
   const supabase = createClient(
