@@ -15,32 +15,76 @@ interface MessageTemplate {
   body: string;
 }
 
-const MORNING_MESSAGES: MessageTemplate[] = [
-  { title: '🏋️ Pripravený na tréning?', body: 'Dnes máš naplánovaný {workout}. Ideme do toho!' },
-  { title: '💪 Čas na tréning!', body: '{workout} čaká. Si pripravený?' },
-  { title: '🔥 Tvoje svaly volajú!', body: 'Dnes je deň na {workout}. Ukáž im, čo vieš!' },
-  { title: '⚡ Energia na maximum!', body: '{workout} - dnešný cieľ. Zvládneš to!' },
-  { title: '🎯 Fokus na cieľ!', body: 'Dnes {workout}. Každý tréning ťa posúva vpred!' },
-];
+type Lang = 'cs' | 'en';
 
-const MISSED_WORKOUT_MESSAGES: MessageTemplate[] = [
-  { title: '😤 Včera si vynechal tréning!', body: 'Dnes to naprav. {workout} na teba čaká!' },
-  { title: '💪 Návrat silnejší!', body: 'Vynechaný tréning? Dnes to dožeň s {workout}!' },
-  { title: '🔥 Čas na comeback!', body: 'Včera pause, dnes {workout}. Ideme!' },
-  { title: '⚡ Dvojnásobná motivácia!', body: 'Za včerajšok aj dnes - {workout} volá!' },
-];
+interface MessageBundle {
+  morning: MessageTemplate[];
+  missed: MessageTemplate[];
+  closing: MessageTemplate[];
+  closingStreak: MessageTemplate[];
+  test: MessageTemplate;
+}
 
-const CLOSING_SOON_MESSAGES: MessageTemplate[] = [
-  { title: '⏰ Posilka čoskoro zatvára!', body: 'Ešte {time} do zatvorenia. Stihneš rýchly tréning?' },
-  { title: '🏃 Posledná šanca dnes!', body: 'Gym zatvára o {time}. Bež trénovať!' },
-  { title: '⚡ Teraz alebo nikdy!', body: 'Už len {time} do zatvorenia. Zvládneš to!' },
-];
+// Localized message templates. The recipient's chosen UI language
+// (user_profiles.language) selects the bundle; 'cs' is the fallback.
+const MESSAGES: Record<Lang, MessageBundle> = {
+  cs: {
+    morning: [
+      { title: '🏋️ Připravený na trénink?', body: 'Dnes máš naplánovaný {workout}. Jdeme na to!' },
+      { title: '💪 Čas na trénink!', body: '{workout} čeká. Jsi připravený?' },
+      { title: '🔥 Tvoje svaly volají!', body: 'Dnes je den na {workout}. Ukaž jim, co umíš!' },
+      { title: '⚡ Energie na maximum!', body: '{workout} – dnešní cíl. Zvládneš to!' },
+      { title: '🎯 Soustřeď se na cíl!', body: 'Dnes {workout}. Každý trénink tě posouvá vpřed!' },
+    ],
+    missed: [
+      { title: '😤 Včera jsi vynechal trénink!', body: 'Dnes to naprav. {workout} na tebe čeká!' },
+      { title: '💪 Návrat silnější!', body: 'Vynechaný trénink? Dnes to dožeň s {workout}!' },
+      { title: '🔥 Čas na comeback!', body: 'Včera pauza, dnes {workout}. Jdeme!' },
+      { title: '⚡ Dvojnásobná motivace!', body: 'Za včerejšek i dnešek – {workout} volá!' },
+    ],
+    closing: [
+      { title: '⏰ Posilovna brzy zavírá!', body: 'Ještě {time} do zavření. Stihneš rychlý trénink?' },
+      { title: '🏃 Poslední šance dnes!', body: 'Posilovna zavírá za {time}. Běž trénovat!' },
+      { title: '⚡ Teď, nebo nikdy!', body: 'Už jen {time} do zavření. Zvládneš to!' },
+    ],
+    closingStreak: [
+      { title: '🔥 Nepřeruš sérii {streak} dní!', body: 'Posilovna zavírá za {time}. Udrž svůj streak!' },
+      { title: '💪 {streak} dní v řadě!', body: 'Ještě {time} do zavření. Nepřeruš sérii!' },
+      { title: '⚡ Streak {streak} je v ohrožení!', body: 'Posilovna zavírá za {time}. Stihni to!' },
+    ],
+    test: { title: '🧪 Testovací notifikace', body: 'Toto je testovací notifikace. Streak: {streak} dní.' },
+  },
+  en: {
+    morning: [
+      { title: '🏋️ Ready to train?', body: 'You have {workout} planned today. Let’s go!' },
+      { title: '💪 Time to train!', body: '{workout} is waiting. Are you ready?' },
+      { title: '🔥 Your muscles are calling!', body: 'Today is {workout} day. Show them what you’ve got!' },
+      { title: '⚡ Energy to the max!', body: '{workout} – today’s goal. You’ve got this!' },
+      { title: '🎯 Focus on the goal!', body: '{workout} today. Every workout moves you forward!' },
+    ],
+    missed: [
+      { title: '😤 You skipped yesterday’s workout!', body: 'Make up for it today. {workout} is waiting!' },
+      { title: '💪 Come back stronger!', body: 'Missed a workout? Make it up today with {workout}!' },
+      { title: '🔥 Time for a comeback!', body: 'Rest yesterday, {workout} today. Let’s go!' },
+      { title: '⚡ Double the motivation!', body: 'For yesterday and today – {workout} is calling!' },
+    ],
+    closing: [
+      { title: '⏰ The gym closes soon!', body: '{time} left until closing. Time for a quick workout?' },
+      { title: '🏃 Last chance today!', body: 'The gym closes in {time}. Go train!' },
+      { title: '⚡ Now or never!', body: 'Only {time} until closing. You can make it!' },
+    ],
+    closingStreak: [
+      { title: '🔥 Don’t break your {streak}-day streak!', body: 'The gym closes in {time}. Keep your streak alive!' },
+      { title: '💪 {streak} days in a row!', body: '{time} left until closing. Don’t break the streak!' },
+      { title: '⚡ Your {streak}-day streak is at risk!', body: 'The gym closes in {time}. Make it!' },
+    ],
+    test: { title: '🧪 Test notification', body: 'This is a test notification. Streak: {streak} days.' },
+  },
+};
 
-const CLOSING_SOON_STREAK_MESSAGES: MessageTemplate[] = [
-  { title: '🔥 Neprerušuj sériu {streak} dní!', body: 'Gym zatvára o {time}. Udrž svoj streak!' },
-  { title: '💪 {streak} dní v rade!', body: 'Ešte {time} do zatvorenia. Neprerušuj sériu!' },
-  { title: '⚡ Streak {streak} je v ohrození!', body: 'Posilka zatvára o {time}. Stihni to!' },
-];
+function pickLang(value: string | null | undefined): Lang {
+  return value === 'en' ? 'en' : 'cs';
+}
 
 // ============================================================================
 // Helpers
@@ -52,8 +96,15 @@ function getRandomMessage(messages: MessageTemplate[]): MessageTemplate {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes} minút`;
+function formatMinutes(minutes: number, lang: Lang): string {
+  if (lang === 'en') {
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (m === 0) return `${h} ${h === 1 ? 'hour' : 'hours'}`;
+    return `${h}h ${m}min`;
+  }
+  if (minutes < 60) return `${minutes} minut`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (mins === 0) return `${hours} ${hours === 1 ? 'hodinu' : 'hodiny'}`;
@@ -446,10 +497,13 @@ interface UserProfile {
   notification_missed_workout: boolean;
   notification_closing_soon: boolean;
   selected_gym_id: string | null;
+  language: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutName(supabase: SupabaseClient<any>, userId: string): Promise<string> {
+async function getWorkoutName(supabase: SupabaseClient<any>, userId: string, lang: Lang): Promise<string> {
+  const fallback = lang === 'en' ? 'workout' : 'trénink';
+
   const { data: plan } = await supabase
     .from('user_workout_plans')
     .select('goal_id')
@@ -457,16 +511,24 @@ async function getWorkoutName(supabase: SupabaseClient<any>, userId: string): Pr
     .eq('is_active', true)
     .single();
 
-  if (!plan) return 'tréning';
+  if (!plan) return fallback;
 
-  const goalNames: Record<string, string> = {
-    'strength': 'silový tréning',
-    'hypertrophy': 'objemový tréning',
-    'endurance': 'vytrvalostný tréning',
-    'weight_loss': 'tréning na chudnutie',
+  const goalNames: Record<Lang, Record<string, string>> = {
+    cs: {
+      'strength': 'silový trénink',
+      'hypertrophy': 'objemový trénink',
+      'endurance': 'vytrvalostní trénink',
+      'weight_loss': 'trénink na hubnutí',
+    },
+    en: {
+      'strength': 'strength workout',
+      'hypertrophy': 'hypertrophy workout',
+      'endurance': 'endurance workout',
+      'weight_loss': 'weight-loss workout',
+    },
   };
 
-  return goalNames[plan.goal_id] || 'tréning';
+  return goalNames[lang][plan.goal_id] || fallback;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -588,7 +650,7 @@ async function processMorningNotifications(
   // native-app users (FCM device tokens, no web sub) are included too.
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout')
+    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout, language')
     .eq('preferred_time', targetPreferredTime)
     .eq('notification_morning_reminder', true);
 
@@ -616,8 +678,9 @@ async function processMorningNotifications(
     const missedPrevious = user.notification_missed_workout && 
       await checkMissedPreviousTraining(supabase, user.user_id, user.training_days);
 
-    const workoutName = await getWorkoutName(supabase, user.user_id);
-    const messages = missedPrevious ? MISSED_WORKOUT_MESSAGES : MORNING_MESSAGES;
+    const lang = pickLang(user.language);
+    const workoutName = await getWorkoutName(supabase, user.user_id, lang);
+    const messages = missedPrevious ? MESSAGES[lang].missed : MESSAGES[lang].morning;
     const message = getRandomMessage(messages);
 
     const title = message.title.replace('{workout}', workoutName);
@@ -692,8 +755,9 @@ async function processClosingNotifications(
       push_subscription, 
       training_days, 
       current_streak, 
-      notification_closing_soon, 
-      selected_gym_id
+      notification_closing_soon,
+      selected_gym_id,
+      language
     `)
     .not('selected_gym_id', 'is', null)
     .eq('notification_closing_soon', true);
@@ -742,10 +806,11 @@ async function processClosingNotifications(
       continue;
     }
 
-    const messages = user.current_streak > 0 ? CLOSING_SOON_STREAK_MESSAGES : CLOSING_SOON_MESSAGES;
+    const lang = pickLang(user.language);
+    const messages = user.current_streak > 0 ? MESSAGES[lang].closingStreak : MESSAGES[lang].closing;
     const message = getRandomMessage(messages);
 
-    const timeStr = formatMinutes(minutesUntilClose);
+    const timeStr = formatMinutes(minutesUntilClose, lang);
     const title = message.title
       .replace('{streak}', String(user.current_streak))
       .replace('{time}', timeStr);
@@ -817,7 +882,7 @@ async function processTestNotifications(
   // Query ALL users with push_subscription (no conditions)
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('user_id, push_subscription, current_streak')
+    .select('user_id, push_subscription, current_streak, language')
     .not('push_subscription', 'is', null);
 
   if (error) {
@@ -835,9 +900,11 @@ async function processTestNotifications(
       continue;
     }
 
+    const lang = pickLang(user.language);
+    const tpl = MESSAGES[lang].test;
     const payload = JSON.stringify({
-      title: '🧪 Test notifikácia',
-      body: `Toto je testovacia notifikácia. Streak: ${user.current_streak || 0} dní.`,
+      title: tpl.title,
+      body: tpl.body.replace('{streak}', String(user.current_streak || 0)),
       icon: '/pwa-192x192.png',
       badge: '/favicon.ico',
       data: { url: '/' },

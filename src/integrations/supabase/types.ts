@@ -902,6 +902,7 @@ export type Database = {
           preferred_time: string | null
           primary_goal: string | null
           push_subscription: Json | null
+          language: string | null
           secondary_goals: string[] | null
           selected_gym_id: string | null
           streak_updated_at: string | null
@@ -937,6 +938,7 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
+          language?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null
@@ -972,6 +974,7 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
+          language?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null
