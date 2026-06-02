@@ -1,11 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import { Capacitor } from "@capacitor/core";
-import { dbg } from "./lib/debugOverlay";
 import App from "./App.tsx";
-
-// TEMP: prove our bundle is the one running (paints before React mounts).
-dbg('MAIN loaded — native=' + Capacitor.isNativePlatform() + ' platform=' + Capacitor.getPlatform());
 
 // On native, kill any service worker + caches left over from a previous build.
 // An old SW persisting in the WKWebView would keep serving stale JS bundles.
@@ -14,16 +10,14 @@ if (Capacitor.isNativePlatform()) {
     try {
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
-        dbg('native cleanup — found ' + regs.length + ' service workers');
         await Promise.all(regs.map((r) => r.unregister()));
       }
       if ('caches' in window) {
         const names = await caches.keys();
-        dbg('native cleanup — found ' + names.length + ' caches');
         await Promise.all(names.map((n) => caches.delete(n)));
       }
     } catch (e) {
-      dbg('native cleanup error: ' + String(e));
+      console.error('[native cleanup]', e);
     }
   })();
 }
