@@ -48,6 +48,9 @@ verify_jwt = false
 [functions.send-message-push]
 verify_jwt = false
 
+[functions.gym-intelligence]
+verify_jwt = false
+
 [functions.admin-user-actions]
 verify_jwt = false
 

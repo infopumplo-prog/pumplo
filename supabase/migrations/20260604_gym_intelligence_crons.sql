@@ -1,0 +1,13 @@
+-- Gym owner intelligence schedules (applied to prod via Management API / cron.schedule).
+-- Weekly retention report (Mon 08:00 Prague = 06:00 UTC) and daily rescue alerts
+-- (09:00 Prague = 07:00 UTC), both POST to the gym-intelligence Edge Function.
+-- Documentation only; the live jobs were created with cron.schedule(...).
+--
+-- SELECT cron.schedule('gym-weekly-report', '0 6 * * 1',
+--   $$ SELECT net.http_post(url:='https://udqwjqgdsjobdufdxbpn.supabase.co/functions/v1/gym-intelligence',
+--      headers:='{"Authorization":"Bearer <CRON_SECRET>","Content-Type":"application/json"}'::jsonb,
+--      body:='{"mode":"weekly"}'::jsonb); $$);
+-- SELECT cron.schedule('gym-daily-alerts', '0 7 * * *',
+--   $$ SELECT net.http_post(url:='.../gym-intelligence',
+--      headers:='{"Authorization":"Bearer <CRON_SECRET>",...}'::jsonb,
+--      body:='{"mode":"alerts"}'::jsonb); $$);
