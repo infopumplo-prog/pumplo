@@ -59,6 +59,18 @@ export async function sendFcmToUser(
         token,
         notification: { title: payload.title, body: payload.body },
         data: payload.data ?? {},
+        // Android: high priority + a HIGH-importance channel so the push shows
+        // as heads-up (pop-up + sound), not silently in the shade. The channel
+        // 'pumplo_default' is created on-device by usePushRegistration.
+        android: {
+          priority: "HIGH",
+          notification: {
+            channel_id: "pumplo_default",
+            sound: "default",
+            notification_priority: "PRIORITY_HIGH",
+            default_sound: true,
+          },
+        },
         apns: { payload: { aps: { sound: "default" } } },
       } }),
     });

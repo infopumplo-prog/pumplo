@@ -33,6 +33,26 @@ export const usePushRegistration = () => {
       try {
         const perm = await FirebaseMessaging.requestPermissions();
         if (perm.receive !== 'granted') return;
+
+        // Android 8+: notifications need a channel. Create a HIGH-importance one
+        // so pushes appear as heads-up (pop-up + sound), not silently in the shade.
+        // Idempotent — re-creating an existing channel is a no-op.
+        if (platform() === 'android') {
+          try {
+            await FirebaseMessaging.createChannel({
+              id: 'pumplo_default',
+              name: 'Pumplo',
+              description: 'Připomínky tréninků a zprávy',
+              importance: 4, // Importance.High -> heads-up + sound
+              visibility: 1, // Visibility.Public
+              vibration: true,
+              lights: true,
+            });
+          } catch (e) {
+            console.error('[push] createChannel failed', e);
+          }
+        }
+
         const { token } = await FirebaseMessaging.getToken();
         if (token) await saveToken(user.id, token);
 
