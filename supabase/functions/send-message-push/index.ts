@@ -42,7 +42,7 @@ async function getDisplayName(supabase: SupabaseClient<any>, userId: string): Pr
   return name || null;
 }
 
-interface Results { sent: number; skipped: number; errors: number }
+interface Results { sent: number; skipped: number; errors: number; emailed: number }
 
 // Resolves the recipient's language, builds the localized title/body, sends FCM.
 // Never notifies the sender; no-ops when the recipient has no device token.
@@ -71,6 +71,57 @@ async function deliver(
     console.error(`FCM failed for ${recipientId}:`, e);
     results.errors++;
   }
+}
+
+// ---- Email channel (gym owner is on the web admin, no device token) ----
+
+const RESEND_FROM = "Pumplo <zpravy@pumplo.com>";
+
+function escapeHtml(s: string): string {
+  return (s || "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Emails the gym owner that a member sent them a message. Returns true on send.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendGymEmail(
+  supabase: SupabaseClient<any>,
+  ownerId: string,
+  senderName: string,
+  messageBody: string,
+): Promise<boolean> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.error("RESEND_API_KEY not set — skipping gym email"); return false; }
+
+  const { data: userRes } = await supabase.auth.admin.getUserById(ownerId);
+  const to = userRes?.user?.email;
+  if (!to) { console.error(`No email for gym owner ${ownerId}`); return false; }
+
+  const safeBody = escapeHtml(messageBody).replace(/\n/g, "<br>");
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+      <p style="font-size:15px">Máte novou zprávu v Pumplo od <strong>${escapeHtml(senderName)}</strong>:</p>
+      <blockquote style="margin:12px 0;padding:12px 16px;background:#f5f5f5;border-left:3px solid #ec4899;border-radius:8px;font-size:15px">${safeBody || "(příloha)"}</blockquote>
+      <p style="font-size:13px;color:#666">Odpovědět můžete v administraci Pumplo.</p>
+    </div>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to,
+      subject: `💬 Nová zpráva od ${senderName} – Pumplo`,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    console.error("Resend error", res.status, await res.text().catch(() => ""));
+    return false;
+  }
+  console.log(`Emailed gym owner ${ownerId} (${to})`);
+  return true;
 }
 
 // gym -> member(s): one targeted member, or broadcast to all gym members.
@@ -118,6 +169,7 @@ async function handleDirectMessage(supabase: SupabaseClient<any>, rowId: string,
 
   // Recipient = the other side of the conversation.
   let recipientId: string | null = null;
+  let recipientIsGymOwner = false;
   if (msg.sender_id !== conv.participant_user_id) {
     // Trainer or gym owner sent it -> notify the member.
     recipientId = conv.participant_user_id;
@@ -128,12 +180,21 @@ async function handleDirectMessage(supabase: SupabaseClient<any>, rowId: string,
       .from("gym_trainers").select("user_id").eq("id", conv.trainer_id).single();
     recipientId = gt?.user_id ?? null;
   } else if (conv.gym_id) {
-    // Member -> gym owner (web admin). Usually no device token -> no-op now;
-    // this is the email-channel case handled by a later feature.
+    // Member -> gym owner (web admin, no device token) -> notify by EMAIL.
     const { data: g } = await supabase.from("gyms").select("owner_id").eq("id", conv.gym_id).single();
     recipientId = g?.owner_id ?? null;
+    recipientIsGymOwner = true;
   }
   if (!recipientId) return;
+
+  // Email channel: a member messaged the gym -> email the owner (no push).
+  if (recipientIsGymOwner) {
+    const senderName = (await getDisplayName(supabase, msg.sender_id)) || "Člen";
+    const isTextMsg = !msg.message_type || msg.message_type === "text";
+    const ok = await sendGymEmail(supabase, recipientId, senderName, isTextMsg ? (msg.body ?? "") : "");
+    if (ok) results.emailed++; else results.errors++;
+    return;
+  }
 
   // Title = sender's name. Gym owner -> gym name; trainer -> gym_trainers.name
   // (their app account may be unlinked, so resolve via the conversation, not
@@ -196,7 +257,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const results: Results = { sent: 0, skipped: 0, errors: 0 };
+  const results: Results = { sent: 0, skipped: 0, errors: 0, emailed: 0 };
   try {
     if (table === "gym_messages") {
       await handleGymMessage(supabase, rowId, results);
