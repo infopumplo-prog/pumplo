@@ -135,12 +135,19 @@ async function handleDirectMessage(supabase: SupabaseClient<any>, rowId: string,
   }
   if (!recipientId) return;
 
-  // Title = sender display name (gym name when the gym owner sent it).
+  // Title = sender's name. Gym owner -> gym name; trainer -> gym_trainers.name
+  // (their app account may be unlinked, so resolve via the conversation, not
+  // user_profiles); member -> their profile name.
   let makeTitle: (lang: Lang) => string;
-  if (msg.sender_type === "gym_owner") {
+  const senderIsMember = msg.sender_id === conv.participant_user_id;
+  if (!senderIsMember && msg.sender_type === "gym_owner") {
     const { data: g } = await supabase.from("gyms").select("name").eq("id", conv.gym_id).single();
     const gymName: string | null = g?.name ?? null;
     makeTitle = (lang) => `💬 ${gymName || FALLBACK[lang].gym}`;
+  } else if (!senderIsMember && conv.trainer_id) {
+    const { data: gt } = await supabase.from("gym_trainers").select("name").eq("id", conv.trainer_id).single();
+    const tname: string | null = gt?.name ?? null;
+    makeTitle = (lang) => `💬 ${tname || FALLBACK[lang].trainer}`;
   } else {
     const name = await getDisplayName(supabase, msg.sender_id);
     makeTitle = (lang) => `💬 ${name || FALLBACK[lang].trainer}`;
