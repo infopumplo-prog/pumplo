@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Users, Dumbbell, UserCheck, TrendingUp, Bell, BellRing, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { useTrainingNotifications } from '@/hooks/useTrainingNotifications';
 import { toast } from 'sonner';
@@ -30,6 +32,8 @@ const Dashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
   const [dataQuality, setDataQuality] = useState<DataQuality>({
     exercisesNoRole: 0, exercisesNoVideo: 0, machinesNoExercises: 0, rolesNoEquipment: 0,
   });
@@ -102,10 +106,18 @@ const Dashboard = () => {
   };
 
   const handleBroadcastNotification = async () => {
+    const title = broadcastTitle.trim();
+    const body = broadcastBody.trim();
+    if (!title || !body) {
+      toast.error(t('admin.broadcast_missing'));
+      return;
+    }
+    if (!window.confirm(t('admin.broadcast_confirm'))) return;
+
     setIsBroadcasting(true);
     try {
       const response = await supabase.functions.invoke('send-push-notifications', {
-        body: { type: 'test' }
+        body: { type: 'broadcast', title, body }
       });
 
       if (response.error) {
@@ -113,9 +125,11 @@ const Dashboard = () => {
         return;
       }
 
-      const results = response.data?.results?.test;
+      const results = response.data?.results?.broadcast;
       if (results) {
-        toast.success(`Sent: ${results.sent}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
+        toast.success(`Odesláno: ${results.sent} · přeskočeno: ${results.skipped} · chyby: ${results.errors}`);
+        setBroadcastTitle('');
+        setBroadcastBody('');
       } else {
         toast.success(t('admin.broadcast_done'));
       }
@@ -274,9 +288,24 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground mb-4">
             {t('admin.broadcast_desc')}
           </p>
+          <div className="space-y-2 mb-4">
+            <Input
+              value={broadcastTitle}
+              onChange={(e) => setBroadcastTitle(e.target.value)}
+              placeholder={t('admin.broadcast_title_ph')}
+              maxLength={60}
+            />
+            <Textarea
+              value={broadcastBody}
+              onChange={(e) => setBroadcastBody(e.target.value)}
+              placeholder={t('admin.broadcast_body_ph')}
+              maxLength={180}
+              rows={3}
+            />
+          </div>
           <Button
             onClick={handleBroadcastNotification}
-            disabled={isBroadcasting}
+            disabled={isBroadcasting || !broadcastTitle.trim() || !broadcastBody.trim()}
             className="w-full"
           >
             {isBroadcasting ? (

@@ -1058,6 +1058,54 @@ async function processComebackNotifications(
 }
 
 // ============================================================================
+// Broadcast: admin-authored custom push to all users (or one gym), native + web
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processBroadcast(
+  supabase: SupabaseClient<any>,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string,
+  title: string,
+  body: string,
+  gymId?: string,
+): Promise<{ sent: number; skipped: number; errors: number }> {
+  const stats = { sent: 0, skipped: 0, errors: 0 };
+
+  let query = supabase.from('user_profiles').select('user_id, push_subscription');
+  if (gymId) query = query.eq('selected_gym_id', gymId);
+  const { data: users, error } = await query;
+  if (error) { console.error('Broadcast user fetch error:', error); return stats; }
+
+  const payload = JSON.stringify({
+    title, body, icon: '/pwa-192x192.png', badge: '/favicon.ico', data: { url: '/' },
+  });
+
+  for (const user of (users || []) as UserProfile[]) {
+    let delivered = false;
+
+    if (user.push_subscription && vapidPrivateKey) {
+      const r = await sendWebPush(user.push_subscription, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+      if (r.success) delivered = true;
+      else if (r.error === 'subscription_expired') await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+    }
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`Broadcast FCM failed for ${user.user_id}:`, e);
+    }
+
+    if (delivered) stats.sent++;
+    else stats.skipped++;
+  }
+
+  console.log(`Broadcast sent=${stats.sent} skipped=${stats.skipped}`);
+  return stats;
+}
+
+// ============================================================================
 // Test Mode: Send notification to all users with push_subscription (bypass conditions)
 // ============================================================================
 
@@ -1195,12 +1243,18 @@ Deno.serve(async (req) => {
   let forceComeback = false;
   let testComebackDays: number | undefined;
   let testComebackUser: string | undefined;
+  let bcTitle = '';
+  let bcBody = '';
+  let bcGymId: string | undefined;
   try {
     const body = await req.json();
     notificationType = body.type || null;
     forceComeback = body.force === true;
     testComebackDays = typeof body.test_days === 'number' ? body.test_days : undefined;
     testComebackUser = typeof body.test_user_id === 'string' ? body.test_user_id : undefined;
+    bcTitle = typeof body.title === 'string' ? body.title.trim() : '';
+    bcBody = typeof body.body === 'string' ? body.body.trim() : '';
+    bcGymId = typeof body.gym_id === 'string' ? body.gym_id : undefined;
   } catch {
     // No body or invalid JSON - process all types
   }
@@ -1222,6 +1276,18 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true, mode: 'test', results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
+
+  // BROADCAST: admin sends a custom push to all users (or one gym), native + web.
+  if (notificationType === 'broadcast') {
+    if (!bcTitle || !bcBody) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing title/body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    results.broadcast = await processBroadcast(supabase, vapidPublicKey, vapidPrivateKey, vapidSubject, bcTitle, bcBody, bcGymId);
+    console.log('Broadcast complete:', results);
+    return new Response(JSON.stringify({ success: true, mode: 'broadcast', results }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
   // Process comeback notifications FIRST so morning/closing can suppress
