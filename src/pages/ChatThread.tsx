@@ -54,6 +54,8 @@ const ChatThread = () => {
   const [isSending, setIsSending] = useState(false);
   const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
   const [trainerInfo, setTrainerInfo] = useState<TrainerInfo | null>(null);
+  // The gym announcement this conversation was started from (shown as a banner).
+  const [announcement, setAnnouncement] = useState<{ title: string; body: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -65,11 +67,25 @@ const ChatThread = () => {
 
     const { data: conv } = await supabase
       .from('conversations')
-      .select('trainer_id, gym_id, participant_type')
+      .select('trainer_id, gym_id, participant_type, original_gym_message_id')
       .eq('id', conversationId)
       .single();
 
     if (!conv) return;
+
+    // If this conversation was started by replying to a gym announcement,
+    // load it so we can show it as a context banner at the top of the thread.
+    const gymMessageId = (conv as any).original_gym_message_id;
+    if (gymMessageId) {
+      const { data: ann } = await supabase
+        .from('gym_messages')
+        .select('title, body')
+        .eq('id', gymMessageId)
+        .single();
+      setAnnouncement(ann ? { title: (ann as any).title, body: (ann as any).body } : null);
+    } else {
+      setAnnouncement(null);
+    }
 
     // If it's a trainer conversation
     if ((conv as any).trainer_id) {
@@ -221,6 +237,16 @@ const ChatThread = () => {
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 py-4 pb-nav"
         >
+          {/* Context banner: the gym announcement this thread was started from */}
+          {announcement && (
+            <div className="mb-4 rounded-xl border border-border bg-muted/50 p-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">
+                📢 {announcement.title}
+              </p>
+              <p className="text-sm whitespace-pre-wrap">{announcement.body}</p>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
