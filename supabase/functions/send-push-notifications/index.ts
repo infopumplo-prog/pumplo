@@ -87,10 +87,66 @@ function pickLang(value: string | null | undefined): Lang {
 }
 
 // ============================================================================
+// Comeback / re-engagement templates (Duolingo-style escalating).
+// Keyed by "days since last completed workout". `needs` = which progress signal
+// the personalized (hook) variant requires; falls back to `generic` if absent.
+// ============================================================================
+
+type ComebackSignal = 'streak' | 'workouts' | 'goal' | null;
+interface ComebackTpl { needs: ComebackSignal; hook: string; generic: string }
+
+const COMEBACK_STAGES = [2, 4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
+const COMEBACK_TAIL_FROM = 44; // day 44+ all use the gentle "tail" template
+
+const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl>; tail: ComebackTpl }> = {
+  cs: {
+    title: 'Pumplo 💪',
+    stages: {
+      2: { needs: null, hook: '👋 Hej {name}, dva dny pauza? Tělo už kouká, kde seš.', generic: '👋 Hej {name}, dva dny pauza? Vídíme se v posilce?' },
+      4: { needs: 'streak', hook: '🙏 {name}, čtyři dny… tvůj rekord {streak} dní by to neschvaloval.', generic: '🙏 {name}, čtyři dny ticho. Dáme to zítra?' },
+      7: { needs: 'workouts', hook: '🔥 Týden bez tréninku, {name}. {workouts} tréninků za tebou — teď to nezahodíš.', generic: '🔥 Týden bez tréninku, {name}. Pojď zpátky do hry.' },
+      11: { needs: 'goal', hook: '😅 {name}, svaly ti píšou, že jim chybíš. Tvůj cíl ({goal}) pořád čeká.', generic: '😅 {name}, svaly ti píšou, že jim chybíš. Vrátíš se?' },
+      16: { needs: 'workouts', hook: '😤 {name}, {workouts} tréninků a teď ticho? Deal byl jinej. Zítra náprava?', generic: '😤 {name}, dva týdny? Deal byl jinej. Zítra náprava?' },
+      23: { needs: null, hook: '🥺 {name}, fakt tě tam chybíš. Jeden trénink a jsi zpátky v sérii.', generic: '🥺 {name}, fakt tě tam chybíš. Jeden trénink stačí.' },
+      30: { needs: 'streak', hook: '💔 Poslední šťouch, {name}. Pak tě nechám bejt — ale rekord {streak} dní by byl škoda.', generic: '💔 Poslední šťouch, {name}. Pak tě nechám bejt. Bylo by škoda toho nechat.' },
+    },
+    tail: { needs: null, hook: '🌱 {name}, pořád tu na tebe čeká tvůj plán. Kdykoliv budeš chtít.', generic: '🌱 {name}, pořád tu pro tebe jsme. Kdykoliv budeš chtít.' },
+  },
+  en: {
+    title: 'Pumplo 💪',
+    stages: {
+      2: { needs: null, hook: "👋 Hey {name}, two days off? Your body's asking where you are.", generic: '👋 Hey {name}, two days off? See you at the gym?' },
+      4: { needs: 'streak', hook: '🙏 {name}, four days… your {streak}-day record wouldn’t approve.', generic: '🙏 {name}, four quiet days. Get back to it tomorrow?' },
+      7: { needs: 'workouts', hook: "🔥 A week off, {name}. {workouts} workouts behind you — don't throw it away now.", generic: '🔥 A week off, {name}. Come back into the game.' },
+      11: { needs: 'goal', hook: '😅 {name}, your muscles say they miss you. Your goal ({goal}) is still waiting.', generic: '😅 {name}, your muscles say they miss you. Coming back?' },
+      16: { needs: 'workouts', hook: "😤 {name}, {workouts} workouts and now silence? That wasn't the deal. Fix it tomorrow?", generic: "😤 {name}, two weeks? That wasn't the deal. Fix it tomorrow?" },
+      23: { needs: null, hook: "🥺 {name}, we really miss you. One workout and you're back in the game.", generic: '🥺 {name}, we really miss you. One workout is all it takes.' },
+      30: { needs: 'streak', hook: "💔 Last nudge, {name}. Then I'll leave you be — but a {streak}-day record would be a shame to lose.", generic: "💔 Last nudge, {name}. Then I'll leave you be. Would be a shame to quit." },
+    },
+    tail: { needs: null, hook: '🌱 {name}, your plan is still here waiting. Whenever you’re ready.', generic: '🌱 {name}, we’re still here for you. Whenever you’re ready.' },
+  },
+};
+
+const GOAL_LABELS: Record<Lang, Record<string, string>> = {
+  cs: { muscle_gain: 'nabrat svaly', strength: 'síla', fat_loss: 'zhubnout', general_fitness: 'kondice', endurance: 'vytrvalost' },
+  en: { muscle_gain: 'build muscle', strength: 'strength', fat_loss: 'fat loss', general_fitness: 'fitness', endurance: 'endurance' },
+};
+
+// Fill {name} gracefully — drop it (and surrounding comma/space) when missing.
+function fillName(text: string, name: string | null): string {
+  if (name) return text.replace(/\{name\}/g, name);
+  return text
+    .replace(/,?\s*\{name\}/g, '')
+    .replace(/\{name\}\s*,?\s*/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
-type NotificationType = 'morning' | 'missed' | 'closing';
+type NotificationType = 'morning' | 'missed' | 'closing' | 'comeback';
 
 function getRandomMessage(messages: MessageTemplate[]): MessageTemplate {
   return messages[Math.floor(Math.random() * messages.length)];
@@ -674,6 +730,12 @@ async function processMorningNotifications(
       continue;
     }
 
+    // Suppress if a comeback push already went out today (avoid double-spam).
+    if (await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) {
+      stats.skipped++;
+      continue;
+    }
+
     // Check if missed previous training
     const missedPrevious = user.notification_missed_workout && 
       await checkMissedPreviousTraining(supabase, user.user_id, user.training_days);
@@ -782,6 +844,12 @@ async function processClosingNotifications(
       continue;
     }
 
+    // Suppress if a comeback push already went out today (avoid double-spam).
+    if (await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) {
+      stats.skipped++;
+      continue;
+    }
+
     // Check if already worked out today
     if (await checkWorkedOutOnDate(supabase, user.user_id, new Date())) {
       stats.skipped++;
@@ -856,6 +924,131 @@ async function processClosingNotifications(
       await logNotification(supabase, user.user_id, 'closing', dateKey);
       stats.sent++;
       console.log(`Sent closing notification to user ${user.user_id}`);
+    } else {
+      stats.skipped++;
+    }
+  }
+
+  return stats;
+}
+
+// ============================================================================
+// Comeback / re-engagement notifications
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getDaysSinceLastWorkout(supabase: SupabaseClient<any>, userId: string): Promise<number | null> {
+  const { data } = await supabase
+    .from('workout_sessions')
+    .select('started_at, completed_at')
+    .eq('user_id', userId)
+    .not('completed_at', 'is', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const last = new Date((data.completed_at || data.started_at) as string);
+  const pragueNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+  const pragueLast = new Date(last.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+  const d0 = Date.UTC(pragueNow.getFullYear(), pragueNow.getMonth(), pragueNow.getDate());
+  const d1 = Date.UTC(pragueLast.getFullYear(), pragueLast.getMonth(), pragueLast.getDate());
+  return Math.floor((d0 - d1) / 86400000);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getCompletedWorkoutCount(supabase: SupabaseClient<any>, userId: string): Promise<number> {
+  const { count } = await supabase
+    .from('workout_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .not('completed_at', 'is', null);
+  return count || 0;
+}
+
+interface ComebackUser {
+  user_id: string;
+  first_name: string | null;
+  preferred_time: string | null;
+  language: string | null;
+  primary_goal: string | null;
+  max_streak: number | null;
+  push_subscription: { endpoint: string; keys: { p256dh: string; auth: string } } | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processComebackNotifications(
+  supabase: SupabaseClient<any>,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string,
+  force = false,
+  testDays?: number,
+  testUserId?: string,
+): Promise<{ sent: number; skipped: number; errors: number }> {
+  const stats = { sent: 0, skipped: 0, errors: 0 };
+  const { hour, dateKey } = getPragueTime();
+  const timeToHour: Record<string, number> = { morning: 6, late_morning: 10, afternoon: 14, evening: 18 };
+
+  // Comeback sends at the user's preferred hour (null -> 10:00). Bail otherwise.
+  // `force` (test only) bypasses the hour gate, per-day dedup and logging;
+  // testDays overrides the computed absence; testUserId limits to one user.
+  if (!force && ![6, 10, 14, 18].includes(hour)) return stats;
+
+  let query = supabase
+    .from('user_profiles')
+    .select('user_id, first_name, preferred_time, language, primary_goal, max_streak, push_subscription')
+    .eq('notification_comeback', true);
+  if (testUserId) query = query.eq('user_id', testUserId);
+  const { data: users, error } = await query;
+  if (error) { console.error('Error fetching comeback users:', error); return stats; }
+
+  for (const user of (users || []) as ComebackUser[]) {
+    const sendHour = timeToHour[user.preferred_time ?? ''] ?? 10;
+    if (!force && sendHour !== hour) { stats.skipped++; continue; }
+
+    const d = testDays ?? await getDaysSinceLastWorkout(supabase, user.user_id);
+    if (d === null || !COMEBACK_STAGES.includes(d)) { stats.skipped++; continue; }
+
+    if (!force && await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) { stats.skipped++; continue; }
+
+    const lang = pickLang(user.language);
+    const tpl = d >= COMEBACK_TAIL_FROM ? COMEBACK[lang].tail : COMEBACK[lang].stages[d];
+    if (!tpl) { stats.skipped++; continue; }
+
+    // Personalized (hook) when the required signal exists, else generic.
+    let chosen = tpl.generic;
+    if (tpl.needs === null) {
+      chosen = tpl.hook;
+    } else if (tpl.needs === 'streak' && (user.max_streak ?? 0) >= 3) {
+      chosen = tpl.hook.replace('{streak}', String(user.max_streak));
+    } else if (tpl.needs === 'workouts') {
+      const count = await getCompletedWorkoutCount(supabase, user.user_id);
+      if (count >= 5) chosen = tpl.hook.replace('{workouts}', String(count));
+    } else if (tpl.needs === 'goal' && user.primary_goal) {
+      const label = GOAL_LABELS[lang][user.primary_goal];
+      if (label) chosen = tpl.hook.replace('{goal}', label); // else keep generic
+    }
+
+    const title = COMEBACK[lang].title;
+    const body = fillName(chosen, user.first_name);
+
+    const payload = JSON.stringify({ title, body, icon: '/pwa-192x192.png', badge: '/favicon.ico', data: { url: '/' } });
+    let delivered = false;
+
+    if (user.push_subscription && vapidPrivateKey) {
+      const r = await sendWebPush(user.push_subscription, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+      if (r.success) delivered = true;
+      else if (r.error === 'subscription_expired') await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+    }
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) { console.error(`FCM comeback failed for ${user.user_id}:`, e); }
+
+    if (delivered) {
+      if (!force) await logNotification(supabase, user.user_id, 'comeback', dateKey);
+      stats.sent++;
+      console.log(`Sent comeback (day ${d}) to user ${user.user_id}`);
     } else {
       stats.skipped++;
     }
@@ -999,9 +1192,15 @@ Deno.serve(async (req) => {
 
   // Parse request body
   let notificationType: NotificationType | 'test' | null = null;
+  let forceComeback = false;
+  let testComebackDays: number | undefined;
+  let testComebackUser: string | undefined;
   try {
     const body = await req.json();
     notificationType = body.type || null;
+    forceComeback = body.force === true;
+    testComebackDays = typeof body.test_days === 'number' ? body.test_days : undefined;
+    testComebackUser = typeof body.test_user_id === 'string' ? body.test_user_id : undefined;
   } catch {
     // No body or invalid JSON - process all types
   }
@@ -1022,6 +1221,20 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ success: true, mode: 'test', results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Process comeback notifications FIRST so morning/closing can suppress
+  // themselves for any user who just received a comeback push today.
+  if (!notificationType || notificationType === 'comeback') {
+    results.comeback = await processComebackNotifications(
+      supabase,
+      vapidPublicKey,
+      vapidPrivateKey,
+      vapidSubject,
+      forceComeback,
+      testComebackDays,
+      testComebackUser
     );
   }
 

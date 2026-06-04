@@ -140,6 +140,8 @@ const cs = {
   'settings.notif.missed_desc': 'Upozornění po vynechaném tréninku',
   'settings.notif.closing_title': 'Posilovna zavírá',
   'settings.notif.closing_desc': 'Upozornění 2h před zavíračkou',
+  'settings.notif.comeback_title': 'Připomínky návratu',
+  'settings.notif.comeback_desc': 'Když delší dobu nezatrénuješ, pošťouchneme tě zpátky',
 
   // Toasts
   'toast.saved': 'Uloženo',

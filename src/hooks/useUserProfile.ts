@@ -34,6 +34,7 @@ export interface UserProfile {
   notification_morning_reminder: boolean;
   notification_missed_workout: boolean;
   notification_closing_soon: boolean;
+  notification_comeback: boolean;
   notification_onboarding_shown: boolean;
   push_subscription: Record<string, unknown> | null;
   language: 'cs' | 'en' | null;

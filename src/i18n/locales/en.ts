@@ -140,6 +140,8 @@ const en = {
   'settings.notif.missed_desc': 'Notification after a missed workout',
   'settings.notif.closing_title': 'Gym closing soon',
   'settings.notif.closing_desc': 'Notification 2h before closing',
+  'settings.notif.comeback_title': 'Comeback reminders',
+  'settings.notif.comeback_desc': 'When you haven’t trained for a while, we’ll nudge you back',
 
   // Toasts
   'toast.saved': 'Saved',

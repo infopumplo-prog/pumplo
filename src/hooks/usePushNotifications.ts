@@ -117,12 +117,13 @@ export const usePushNotifications = () => {
     morningReminder: profile?.notification_morning_reminder ?? true,
     missedWorkout: profile?.notification_missed_workout ?? true,
     closingSoon: profile?.notification_closing_soon ?? true,
+    comeback: profile?.notification_comeback ?? true,
     onboardingShown: profile?.notification_onboarding_shown ?? false
   };
 
   // Update individual notification preference
   const updateNotificationPreference = useCallback(async (
-    type: 'morning_reminder' | 'missed_workout' | 'closing_soon',
+    type: 'morning_reminder' | 'missed_workout' | 'closing_soon' | 'comeback',
     enabled: boolean
   ): Promise<boolean> => {
     const key = `notification_${type}` as const;

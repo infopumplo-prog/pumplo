@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -64,6 +64,7 @@ const Settings = () => {
   const [morningReminder, setMorningReminder] = useState(true);
   const [missedWorkout, setMissedWorkout] = useState(true);
   const [closingSoon, setClosingSoon] = useState(true);
+  const [comeback, setComeback] = useState(true);
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
 
   // Sync profile data when loaded
@@ -79,6 +80,7 @@ const Settings = () => {
     setMorningReminder(notificationPreferences.morningReminder);
     setMissedWorkout(notificationPreferences.missedWorkout);
     setClosingSoon(notificationPreferences.closingSoon);
+    setComeback(notificationPreferences.comeback);
   }, [notificationPreferences]);
 
   const handleSaveProfile = async () => {
@@ -195,14 +197,15 @@ const Settings = () => {
   };
 
   const handleNotificationTypeToggle = async (
-    type: 'morning_reminder' | 'missed_workout' | 'closing_soon',
+    type: 'morning_reminder' | 'missed_workout' | 'closing_soon' | 'comeback',
     enabled: boolean
   ) => {
     // Update local state immediately for responsiveness
     if (type === 'morning_reminder') setMorningReminder(enabled);
     if (type === 'missed_workout') setMissedWorkout(enabled);
     if (type === 'closing_soon') setClosingSoon(enabled);
-    
+    if (type === 'comeback') setComeback(enabled);
+
     // Persist to database
     const success = await updateNotificationPreference(type, enabled);
     if (!success) {
@@ -210,6 +213,7 @@ const Settings = () => {
       if (type === 'morning_reminder') setMorningReminder(!enabled);
       if (type === 'missed_workout') setMissedWorkout(!enabled);
       if (type === 'closing_soon') setClosingSoon(!enabled);
+      if (type === 'comeback') setComeback(!enabled);
       toast({ title: t('toast.error'), description: t('toast.settings_save_failed'), variant: 'destructive' });
     }
   };
@@ -319,6 +323,15 @@ const Settings = () => {
       enabled: closingSoon,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10'
+    },
+    {
+      id: 'comeback' as const,
+      icon: Heart,
+      title: t('settings.notif.comeback_title'),
+      description: t('settings.notif.comeback_desc'),
+      enabled: comeback,
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-500/10'
     }
   ];
 

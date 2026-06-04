@@ -895,6 +895,7 @@ export type Database = {
           max_streak: number | null
           motivations: string[] | null
           notification_closing_soon: boolean | null
+          notification_comeback: boolean | null
           notification_missed_workout: boolean | null
           notification_morning_reminder: boolean | null
           notification_onboarding_shown: boolean | null
@@ -931,6 +932,7 @@ export type Database = {
           max_streak?: number | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
+          notification_comeback?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
@@ -967,6 +969,7 @@ export type Database = {
           max_streak?: number | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
+          notification_comeback?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
