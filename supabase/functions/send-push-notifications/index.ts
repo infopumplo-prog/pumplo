@@ -102,12 +102,12 @@ const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl
   cs: {
     title: 'Pumplo 💪',
     stages: {
-      2: { needs: null, hook: '👋 Hej {name}, dva dny pauza? Tělo už kouká, kde seš.', generic: '👋 Hej {name}, dva dny pauza? Vídíme se v posilce?' },
+      2: { needs: null, hook: '👋 Hej {name}, dva dny pauza? Tělo už kouká, kde seš.', generic: '👋 Hej {name}, dva dny pauza? Uvidíme se v posilce?' },
       4: { needs: 'streak', hook: '🙏 {name}, čtyři dny… tvůj rekord {streak} dní by to neschvaloval.', generic: '🙏 {name}, čtyři dny ticho. Dáme to zítra?' },
       7: { needs: 'workouts', hook: '🔥 Týden bez tréninku, {name}. {workouts} tréninků za tebou — teď to nezahodíš.', generic: '🔥 Týden bez tréninku, {name}. Pojď zpátky do hry.' },
       11: { needs: 'goal', hook: '😅 {name}, svaly ti píšou, že jim chybíš. Tvůj cíl ({goal}) pořád čeká.', generic: '😅 {name}, svaly ti píšou, že jim chybíš. Vrátíš se?' },
       16: { needs: 'workouts', hook: '😤 {name}, {workouts} tréninků a teď ticho? Deal byl jinej. Zítra náprava?', generic: '😤 {name}, dva týdny? Deal byl jinej. Zítra náprava?' },
-      23: { needs: null, hook: '🥺 {name}, fakt tě tam chybíš. Jeden trénink a jsi zpátky v sérii.', generic: '🥺 {name}, fakt tě tam chybíš. Jeden trénink stačí.' },
+      23: { needs: null, hook: '🥺 {name}, fakt nám tam chybíš. Jeden trénink a jsi zpátky v sérii.', generic: '🥺 {name}, fakt nám tam chybíš. Jeden trénink stačí.' },
       30: { needs: 'streak', hook: '💔 Poslední šťouch, {name}. Pak tě nechám bejt — ale rekord {streak} dní by byl škoda.', generic: '💔 Poslední šťouch, {name}. Pak tě nechám bejt. Bylo by škoda toho nechat.' },
     },
     tail: { needs: null, hook: '🌱 {name}, pořád tu na tebe čeká tvůj plán. Kdykoliv budeš chtít.', generic: '🌱 {name}, pořád tu pro tebe jsme. Kdykoliv budeš chtít.' },
