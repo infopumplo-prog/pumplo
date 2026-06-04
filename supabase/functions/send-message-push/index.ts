@@ -76,11 +76,29 @@ async function deliver(
 // ---- Email channel (gym owner is on the web admin, no device token) ----
 
 const RESEND_FROM = "Pumplo <zpravy@pumplo.com>";
+// Super-admin (David) — receives a copy of every app feedback submission.
+const SUPER_ADMIN_EMAIL = "info.pumplo@gmail.com";
 
 function escapeHtml(s: string): string {
   return (s || "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Generic Resend send. Returns true on success.
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.error("RESEND_API_KEY not set — skipping email"); return false; }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: RESEND_FROM, to, subject, html }),
+  });
+  if (!res.ok) {
+    console.error("Resend error", res.status, await res.text().catch(() => ""));
+    return false;
+  }
+  return true;
 }
 
 // Emails the gym owner that a member sent them a message. Returns true on send.
@@ -91,9 +109,6 @@ async function sendGymEmail(
   senderName: string,
   messageBody: string,
 ): Promise<boolean> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) { console.error("RESEND_API_KEY not set — skipping gym email"); return false; }
-
   const { data: userRes } = await supabase.auth.admin.getUserById(ownerId);
   const to = userRes?.user?.email;
   if (!to) { console.error(`No email for gym owner ${ownerId}`); return false; }
@@ -106,22 +121,54 @@ async function sendGymEmail(
       <p style="font-size:13px;color:#666">Odpovědět můžete v administraci Pumplo.</p>
     </div>`;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: RESEND_FROM,
-      to,
-      subject: `💬 Nová zpráva od ${senderName} – Pumplo`,
-      html,
-    }),
-  });
-  if (!res.ok) {
-    console.error("Resend error", res.status, await res.text().catch(() => ""));
-    return false;
+  const ok = await sendEmail(to, `💬 Nová zpráva od ${senderName} – Pumplo`, html);
+  if (ok) console.log(`Emailed gym owner ${ownerId} (${to})`);
+  return ok;
+}
+
+const FEEDBACK_TYPE_CS: Record<string, string> = {
+  bug_error: "🐞 Chyba",
+  missing_feature: "💡 Chybějící funkce",
+  training_exercises: "🏋️ Tréninky / cviky",
+  confusion: "❓ Nejasnost / matoucí",
+  other: "💬 Jiné",
+};
+
+// Emails the super-admin (David) a copy of a new app feedback submission.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleFeedback(supabase: SupabaseClient<any>, rowId: string, results: Results): Promise<void> {
+  const { data: fb } = await supabase
+    .from("user_feedback")
+    .select("feedback_type, message, platform, app_version, current_route, locale, contact_email, can_contact, user_id")
+    .eq("id", rowId).single();
+  if (!fb) return;
+
+  let who = "Anonymní uživatel";
+  if (fb.user_id) {
+    const { data: p } = await supabase
+      .from("user_profiles").select("first_name, last_name").eq("user_id", fb.user_id).single();
+    const name = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+    if (name) who = name;
   }
-  console.log(`Emailed gym owner ${ownerId} (${to})`);
-  return true;
+  const typeLabel = FEEDBACK_TYPE_CS[fb.feedback_type as string] || (fb.feedback_type as string) || "Feedback";
+  const contact = fb.can_contact && fb.contact_email ? fb.contact_email : "—";
+
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
+      <p style="font-size:16px;margin:0 0 4px"><strong>${typeLabel}</strong></p>
+      <p style="font-size:13px;color:#666;margin:0 0 12px">od ${escapeHtml(who)}</p>
+      <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f5f5f5;border-left:3px solid #6366f1;border-radius:8px;font-size:15px">${escapeHtml(fb.message || "(bez textu)").replace(/\n/g, "<br>")}</blockquote>
+      <table style="font-size:13px;color:#444;border-collapse:collapse">
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Platforma</td><td>${escapeHtml(fb.platform || "?")} · v${escapeHtml(fb.app_version || "?")}</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Obrazovka</td><td>${escapeHtml(fb.current_route || "?")}</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Jazyk</td><td>${escapeHtml(fb.locale || "?")}</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#888">Kontakt</td><td>${escapeHtml(contact)}</td></tr>
+      </table>
+    </div>`;
+
+  const ok = await sendEmail(SUPER_ADMIN_EMAIL, `${typeLabel} – nový feedback v Pumplo`, html);
+  if (ok) { results.emailed++; console.log(`Feedback emailed to super-admin (${rowId})`); }
+  else results.errors++;
 }
 
 // gym -> member(s): one targeted member, or broadcast to all gym members.
@@ -251,29 +298,38 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  if (table !== "gym_messages" && table !== "direct_messages" && table !== "user_feedback") {
+    return new Response(JSON.stringify({ error: `Unknown table: ${table}` }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const results: Results = { sent: 0, skipped: 0, errors: 0, emailed: 0 };
-  try {
-    if (table === "gym_messages") {
-      await handleGymMessage(supabase, rowId, results);
-    } else if (table === "direct_messages") {
-      await handleDirectMessage(supabase, rowId, results);
-    } else {
-      return new Response(JSON.stringify({ error: `Unknown table: ${table}` }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+  // Do the work in the background so pg_net gets an immediate 200 — email
+  // delivery (Resend) can exceed pg_net's 5s timeout.
+  const id = rowId;
+  const tbl = table;
+  const work = (async () => {
+    const results: Results = { sent: 0, skipped: 0, errors: 0, emailed: 0 };
+    try {
+      if (tbl === "gym_messages") await handleGymMessage(supabase, id, results);
+      else if (tbl === "direct_messages") await handleDirectMessage(supabase, id, results);
+      else if (tbl === "user_feedback") await handleFeedback(supabase, id, results);
+    } catch (e) {
+      console.error("send-message-push error:", e);
     }
-  } catch (e) {
-    console.error("send-message-push error:", e);
-  }
+    console.log(`send-message-push (${tbl}/${id}):`, results);
+  })();
 
-  console.log(`send-message-push (${table}/${rowId}):`, results);
-  return new Response(JSON.stringify({ success: true, results }), {
+  // @ts-ignore EdgeRuntime is a Supabase Edge global
+  if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
+  else await work;
+
+  return new Response(JSON.stringify({ success: true, accepted: true }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
