@@ -5,25 +5,25 @@ Captured from David's training-session notes + 4 screenshots. Big update before 
 ## A. App bugs / features (member app — this repo)
 
 ### 🔴 High priority
-- **A1. Regenerace plánu NEFUNGUJE** (marked !!!): "mám 5 dní a stále mám upper/lower, mám mít PPL". Plan regeneration ignores the day count / split — produces wrong split. David's #1 concern.
-- **A2. Videa se nepřehrávají hned** — first set video doesn't play immediately (plays on 2nd set). Also: video doesn't autoplay when returning from another app. Also: on slow connections videos load extremely slowly or not at all ("přítah kolen k hrudníku se nenačetl vůbec").
+- **A1. ✅ NOT A BUG (resolved 2026-06-08).** 5 days → upper/lower (not PPL) is an INTENTIONAL beginner safety cap in `getSplitFromFrequency` (src/lib/trainingGoals.ts:47-49): `userLevel==='beginner' && frequency>=5 → upper_lower`. David is `beginner` with 5 days. David accepted it as correct ("tím pádem je to v pořádku"). No code change. (Possible future UX: surface WHY a beginner with 5 days gets upper/lower, to avoid the same confusion for other users.)
+- **A2. ✅ DONE (commit 800252b).** Reliable video autoplay (play on canplay/loadeddata, resume on app return) + next-exercise preview during rest also preloads for slow connections.
 
 ### 🟡 Workout UX
-- **A3. Časomíra pauzy musí zaznít i na pozadí** — rest timer sound must fire even when app is backgrounded / when it ends.
-- **A4. Pauza → ukázat rovnou video dalšího cviku** — during rest before next exercise, show the next exercise's video so user can walk to the next machine during the rest.
-- **A5. Trénink jde zobrazit i mimo gym, ale nesmí se spustit** — show the workout even when not at the gym, but block starting it (currently?). Confirm exact current behavior.
+- **A3. ✅ DONE (878dfea).** Rest-end local notification when app is backgrounded.
+- **A4. ✅ DONE (800252b).** Next-exercise video preview during the between-exercise rest.
+- **A5. ✅ ALREADY DONE.** The location gate only triggers on START, so view/regenerate/info already work anywhere; start is on-site-only. Confirmed in B1 commit.
 
 ### 🟡 Onboarding / profile
-- **A6. Jméno / username povinný údaj** — make name a required field.
-- **A7. První volba posilovny není intuitivní** — gym selection on first run is hard to find; needs clearer UX.
-- **A8. Poloha (Simona)** — location didn't work, had to enable via Settings. Improve location permission prompt/flow.
+- **A6. ✅ DONE (b952578).** Name required in onboarding demographics (covers OAuth users).
+- **A7. ⏳ NEEDS DAVID'S INPUT.** "První volba posilovny není intuitivní, těžko se to hledá" — UX. Need specifics: where does first gym selection happen and what's hard (can't find the button? too many steps? search unclear?). Then redesign.
+- **A8. ✅ DONE (f4ebb21).** Native location-denied now guides the user to Settings (Simona's stuck case).
 
 ### 🟡 Content / sharing
-- **A9. Nesrovnaný překlad cviků** — exercise descriptions are mixed EN/CS (headings "Description & technique / Setup / Common mistakes / Tips" in English, body partly EN partly CS). Needs consistent localization per user language.
-- **A10. Instagram sdílení** — shared photo stretches/distorts; Instagram (and other targets) not auto-offered in the share sheet.
+- **A9. ✅ DONE (33e1be6).** Exercise mistakes/tips now localize consistently with the app language.
+- **A10. ✅ DONE (27ba938).** True 9:16 export (no stretch) + share as image file so Instagram is offered.
 
 ## B. Team/staff member feature (code + data)
-- **B1. Team-member "train anywhere" flag** — Pumplo team members (staff) must be able to use/start the app ANYWHERE regardless of gym geofence, even if they selected Eurogym. Needs a staff designation on their profile + bypass of the location/gym gate. (Related to A5's gym gate.)
+- **B1. ✅ DONE (c742d73).** `user_profiles.is_staff` flag; GymLocationGate bypasses on-site check for staff. David marked is_staff=true for testing. TODO: optional admin UI toggle to mark team members as staff (currently set via DB). Mark the real Pumplo team accounts as staff when known.
 
 ### ✅ GYM GATE DECISION (David, 2026-06-08)
 - **Normal users:** after selecting a gym, they SEE the workout with the exercises that will be there, CAN regenerate the plan, and CAN view exercise info — all WITHOUT being at the gym. But they **cannot START a workout unless their location is physically inside that gym**.
