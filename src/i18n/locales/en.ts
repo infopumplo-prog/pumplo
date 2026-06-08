@@ -376,6 +376,10 @@ const en = {
   // Onboarding
   'onboarding.days_title': 'Which days of the week do you want to train?',
   'onboarding.demographics_title': 'About you',
+  'onboarding.first_name_label': 'First name',
+  'onboarding.first_name_ph': 'Your first name',
+  'onboarding.last_name_label': 'Last name',
+  'onboarding.last_name_ph': 'Your last name',
   'onboarding.gender': 'Gender',
   'onboarding.male': 'Male',
   'onboarding.female': 'Female',

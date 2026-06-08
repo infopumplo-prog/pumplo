@@ -376,6 +376,10 @@ const cs = {
   // Onboarding
   'onboarding.days_title': 'Ve které dny v týdnu chceš cvičit?',
   'onboarding.demographics_title': 'O tobě',
+  'onboarding.first_name_label': 'Jméno',
+  'onboarding.first_name_ph': 'Tvoje jméno',
+  'onboarding.last_name_label': 'Příjmení',
+  'onboarding.last_name_ph': 'Tvoje příjmení',
   'onboarding.gender': 'Pohlaví',
   'onboarding.male': 'Muž',
   'onboarding.female': 'Žena',

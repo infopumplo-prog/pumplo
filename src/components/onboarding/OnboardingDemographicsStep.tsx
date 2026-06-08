@@ -2,10 +2,14 @@ import { Input } from '@/components/ui/input';
 import { useTranslation } from 'react-i18next';
 
 interface OnboardingDemographicsStepProps {
+  firstName: string;
+  lastName: string;
   gender: string | null;
   age: string;
   height: string;
   weight: string;
+  onFirstNameChange: (v: string) => void;
+  onLastNameChange: (v: string) => void;
   onGenderChange: (gender: string) => void;
   onAgeChange: (age: string) => void;
   onHeightChange: (height: string) => void;
@@ -13,10 +17,14 @@ interface OnboardingDemographicsStepProps {
 }
 
 const OnboardingDemographicsStep = ({
+  firstName,
+  lastName,
   gender,
   age,
   height,
   weight,
+  onFirstNameChange,
+  onLastNameChange,
   onGenderChange,
   onAgeChange,
   onHeightChange,
@@ -32,6 +40,28 @@ const OnboardingDemographicsStep = ({
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-center">{t('onboarding.demographics_title')}</h2>
+
+      {/* Name (required) */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">{t('onboarding.first_name_label')}</label>
+          <Input
+            value={firstName}
+            onChange={(e) => onFirstNameChange(e.target.value)}
+            placeholder={t('onboarding.first_name_ph')}
+            className="text-lg"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">{t('onboarding.last_name_label')}</label>
+          <Input
+            value={lastName}
+            onChange={(e) => onLastNameChange(e.target.value)}
+            placeholder={t('onboarding.last_name_ph')}
+            className="text-lg"
+          />
+        </div>
+      </div>
 
       {/* Gender Selection */}
       <div className="space-y-2">
