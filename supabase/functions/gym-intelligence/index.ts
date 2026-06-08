@@ -49,11 +49,15 @@ interface GymStats {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function computeGymStats(supabase: SupabaseClient<any>, gymId: string, nowDayNum: number): Promise<GymStats | null> {
-  const { data: members } = await supabase
+async function computeGymStats(supabase: SupabaseClient<any>, gymId: string, nowDayNum: number, ownerId?: string): Promise<GymStats | null> {
+  let mq = supabase
     .from("user_profiles")
     .select("user_id, first_name, last_name, created_at, current_streak")
     .eq("selected_gym_id", gymId);
+  // The gym owner is often also a member of their own gym — exclude them so
+  // they don't appear in their own churn/retention report.
+  if (ownerId) mq = mq.neq("user_id", ownerId);
+  const { data: members } = await mq;
   if (!members?.length) return null;
 
   const ids = members.map((m: { user_id: string }) => m.user_id);
@@ -80,7 +84,7 @@ async function computeGymStats(supabase: SupabaseClient<any>, gymId: string, now
     const gapBeforeLast = list.length >= 2 ? list[0] - list[1] : null;
     return {
       user_id: m.user_id,
-      name: [m.first_name, m.last_name].filter(Boolean).join(" ").trim() || "Člen",
+      name: [m.first_name, m.last_name].filter(Boolean).join(" ").trim() || `Člen #${String(m.user_id).slice(0, 4)}`,
       days, weekly, priorWeekly, gapBeforeLast,
       createdDayNum: pragueDayNumber(new Date(m.created_at)),
       current_streak: m.current_streak ?? 0,
@@ -208,7 +212,7 @@ Deno.serve(async (req) => {
     for (const gym of (gyms ?? []) as { id: string; name: string; owner_id: string }[]) {
       const to = await ownerEmail(supabase, gym.owner_id);
       if (!to) continue;
-      const s = await computeGymStats(supabase, gym.id, nowDayNum);
+      const s = await computeGymStats(supabase, gym.id, nowDayNum, gym.owner_id);
       if (!s) continue;
 
       if (mode === "weekly") {
