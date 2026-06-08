@@ -1,6 +1,14 @@
 {
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "pumplo-nine.vercel.app" }],
+      "destination": "https://app.pumplo.com/:path*",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
