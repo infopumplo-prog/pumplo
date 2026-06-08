@@ -278,10 +278,29 @@ export const WorkoutShareCard = ({
     if (!cardRef.current) return null;
     try {
       const c = await html2canvas(cardRef.current, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
-      const blob = await new Promise<Blob | null>(r => c.toBlob(b => r(b), 'image/png', 1.0));
-      // Free the large canvas bitmap immediately to prevent WebKit libpas heap crash
+
+      // Composite onto a fixed 9:16 (1080×1920) canvas. The rendered card box
+      // isn't always exactly 9:16 (maxHeight constraint), so exporting it raw
+      // made Instagram stretch the photo to fit its story format. Cover-fit onto
+      // a true 9:16 output guarantees no distortion.
+      const TW = 1080, TH = 1920;
+      const out = document.createElement('canvas');
+      out.width = TW; out.height = TH;
+      const ctx = out.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, TW, TH);
+        const sAR = c.width / c.height, tAR = TW / TH;
+        let dw: number, dh: number, dx: number, dy: number;
+        if (sAR > tAR) { dh = TH; dw = dh * sAR; dx = (TW - dw) / 2; dy = 0; }
+        else { dw = TW; dh = dw / sAR; dx = 0; dy = (TH - dh) / 2; }
+        ctx.drawImage(c, dx, dy, dw, dh);
+      }
+      // Free the large source bitmap immediately to prevent WebKit libpas heap crash
       c.width = 0;
       c.height = 0;
+      const blob = await new Promise<Blob | null>(r => out.toBlob(b => r(b), 'image/png', 1.0));
+      out.width = 0; out.height = 0;
       return blob;
     } catch { return null; }
   }, []);
@@ -391,7 +410,7 @@ export const WorkoutShareCard = ({
     const igTag = gymInstagram ? ` @${gymInstagram}` : '';
     const txt = `${title} ${t('workout_share.completed')} ${Math.round(totalWeight)} kg | ${totalSets} ${t('workout_share.sets_unit')} | ${totalDuration} min${igTag}`;
     if (Capacitor.isNativePlatform()) {
-      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: t('workout_share.share_title'), text: txt, url: s.uri, dialogTitle: t('workout_share.share_dialog') }); return; }
+      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: t('workout_share.share_title'), text: txt, files: [s.uri], dialogTitle: t('workout_share.share_dialog') }); return; }
       catch (e) { if ((e as Error).message?.includes('canceled')) return; }
     }
     const file = new File([blob], fn, { type: 'image/png' });
