@@ -896,6 +896,7 @@ export type Database = {
           motivations: string[] | null
           notification_closing_soon: boolean | null
           notification_comeback: boolean | null
+          is_staff: boolean | null
           notification_missed_workout: boolean | null
           notification_morning_reminder: boolean | null
           notification_onboarding_shown: boolean | null
@@ -933,6 +934,7 @@ export type Database = {
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
           notification_comeback?: boolean | null
+          is_staff?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
@@ -970,6 +972,7 @@ export type Database = {
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
           notification_comeback?: boolean | null
+          is_staff?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null

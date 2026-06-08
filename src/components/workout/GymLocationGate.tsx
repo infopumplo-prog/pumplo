@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MapPin, AlertTriangle, RefreshCw, X, ShieldAlert, Settings } from 'lucide-react';
 import { useGymLocation } from '@/hooks/useGymLocation';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Capacitor } from '@capacitor/core';
 
 interface GymLocationGateProps {
@@ -15,12 +16,19 @@ interface GymLocationGateProps {
 
 export const GymLocationGate = ({ gymLat, gymLng, gymName, onConfirmed, onCancel }: GymLocationGateProps) => {
   const { status, distanceFromGym, checkLocation, GYM_RADIUS_METRES } = useGymLocation();
+  const { profile, isLoading: profileLoading } = useUserProfile();
 
+  // Pumplo team/staff can start a workout anywhere — skip the location check.
+  const isStaff = profile?.is_staff === true;
+
+  // Wait for the profile so a staff member never gets a stray location prompt.
   useEffect(() => {
+    if (profileLoading) return;
+    if (isStaff) { onConfirmed(); return; }
     checkLocation(gymLat, gymLng).then((ok) => {
       if (ok) onConfirmed();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isStaff, profileLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const retry = () => {
     checkLocation(gymLat, gymLng).then((ok) => {

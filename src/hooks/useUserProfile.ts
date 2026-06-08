@@ -36,6 +36,7 @@ export interface UserProfile {
   notification_closing_soon: boolean;
   notification_comeback: boolean;
   notification_onboarding_shown: boolean;
+  is_staff: boolean;
   push_subscription: Record<string, unknown> | null;
   language: 'cs' | 'en' | null;
   avatar_url: string | null;
