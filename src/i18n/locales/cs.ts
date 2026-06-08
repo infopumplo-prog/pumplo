@@ -310,6 +310,8 @@ const cs = {
   'workout.location_error': 'Chyba polohy',
   'workout.location_error_desc': 'Nepodařilo se zjistit polohu. Zkontroluj, zda máš zapnuté GPS.',
   'workout.rest': 'Odpočinek',
+  'workout.rest_over_title': '💪 Konec pauzy!',
+  'workout.rest_over_body': 'Zpátky do toho — čeká tě další série.',
   'workout.next_exercise': 'Další: {{name}}',
   'workout.paused': 'Pozastaveno',
   'workout.skip_tap': 'Klikni pro přeskočení',

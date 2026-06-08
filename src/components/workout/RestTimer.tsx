@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
+import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -34,6 +35,19 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
   // No speech during rest — exercise announcement happens when next exercise loads
 
+  // Schedule a local notification at rest-end so the alert still fires when the
+  // app is backgrounded (web audio is suspended in the background). Cancelled on
+  // pause, completion (above) and unmount.
+  useEffect(() => {
+    if (isPaused || completedRef.current) {
+      cancelRestEndNotification();
+      return;
+    }
+    const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+    scheduleRestEndNotification(remaining, t('workout.rest_over_title'), t('workout.rest_over_body'));
+    return () => { cancelRestEndNotification(); };
+  }, [isPaused, t]);
+
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
     if (isPaused) return;
@@ -49,6 +63,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
       if (remaining <= 0 && !completedRef.current) {
         completedRef.current = true;
+        cancelRestEndNotification();
         playAlarmFinish();
         onComplete();
       }

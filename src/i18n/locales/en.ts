@@ -310,6 +310,8 @@ const en = {
   'workout.location_error': 'Location error',
   'workout.location_error_desc': 'Could not determine location. Check that GPS is enabled.',
   'workout.rest': 'Rest',
+  'workout.rest_over_title': '💪 Rest over!',
+  'workout.rest_over_body': 'Back to it — your next set is waiting.',
   'workout.next_exercise': 'Next: {{name}}',
   'workout.paused': 'Paused',
   'workout.skip_tap': 'Tap to skip',
