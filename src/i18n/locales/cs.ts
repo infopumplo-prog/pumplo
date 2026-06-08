@@ -301,6 +301,8 @@ const cs = {
   'workout.location_privacy': 'Poloha se používá pouze při zahájení tréninku a nikdy se neukládá.',
   'workout.location_browser_blocked': 'Poloha je blokována prohlížečem',
   'workout.location_browser_instructions': 'Klikni na ikonu zámku v adresním řádku → Poloha → Povolit → znovu načti stránku.',
+  'workout.location_settings_blocked': 'Poloha je vypnutá v nastavení',
+  'workout.location_settings_instructions': 'Otevři Nastavení telefonu → Pumplo → Poloha → povol „Při používání aplikace". Pak se vrať a klikni na Zkusit znovu.',
   'workout.allow_location': 'Povolit polohu',
   'workout.cancel': 'Zrušit',
   'workout.not_in_gym': 'Nejsi v posilovně',

@@ -301,6 +301,8 @@ const en = {
   'workout.location_privacy': 'Location is only used when starting a workout and is never stored.',
   'workout.location_browser_blocked': 'Location blocked by browser',
   'workout.location_browser_instructions': 'Click the lock icon in the address bar → Location → Allow → reload the page.',
+  'workout.location_settings_blocked': 'Location is off in settings',
+  'workout.location_settings_instructions': 'Open your phone Settings → Pumplo → Location → allow “While Using the App”. Then come back and tap Retry.',
   'workout.allow_location': 'Allow location',
   'workout.cancel': 'Cancel',
   'workout.not_in_gym': 'You are not at the gym',

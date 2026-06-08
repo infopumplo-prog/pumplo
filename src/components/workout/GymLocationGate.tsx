@@ -99,6 +99,17 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
           </p>
         </div>
       )}
+      {isNative && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4 text-left">
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
+            <Settings className="w-3 h-3" />
+            {t('workout.location_settings_blocked')}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t('workout.location_settings_instructions')}
+          </p>
+        </div>
+      )}
       <p className="text-muted-foreground text-xs mb-6">
         {t('workout.location_privacy')}
       </p>
