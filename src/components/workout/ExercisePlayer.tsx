@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
@@ -183,23 +185,38 @@ export const ExercisePlayer = ({
     }
   }, [currentSet]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Robust autoplay: the <video> can mount before its data is buffered, so a
+  // bare play() right after mount rejects on the first set (it only worked on
+  // set 2 once the file was cached). playVideo() retries; onCanPlay/onLoadedData
+  // on the element call it once the video is actually ready.
+  const playVideo = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !videoUrl || showRestTimer) return;
+    v.muted = true;
+    const p = v.play();
+    if (p) p.catch(() => {});
+  }, [videoUrl, showRestTimer]);
+
   useEffect(() => {
-    if (videoRef.current && videoUrl) {
-      videoRef.current.muted = true;
-      if (!showRestTimer) {
-        videoRef.current.play().catch(() => {});
-      } else {
-        videoRef.current.pause();
-      }
+    if (showRestTimer) {
+      videoRef.current?.pause();
+      return;
     }
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && videoRef.current && !showRestTimer) {
-        videoRef.current.play().catch(() => {});
-      }
-    };
+    playVideo();
+
+    // Resume playback when the user returns to the app. visibilitychange covers
+    // web/PWA; Capacitor 'resume' is the reliable signal in the native WKWebView.
+    const onVisible = () => { if (document.visibilityState === 'visible') playVideo(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [showRestTimer, videoUrl]);
+    let removeResume: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('resume', playVideo).then((h) => { removeResume = () => h.remove(); });
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      removeResume?.();
+    };
+  }, [showRestTimer, videoUrl, playVideo]);
 
   const handleCompleteSet = () => {
     const weightNum = weight ? parseFloat(weight) : undefined;
@@ -277,6 +294,8 @@ export const ExercisePlayer = ({
               preload="auto"
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
+              onLoadedData={playVideo}
+              onCanPlay={playVideo}
               onError={() => setVideoError(true)}
             />
           ) : (

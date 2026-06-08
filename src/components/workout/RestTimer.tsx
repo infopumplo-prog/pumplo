@@ -11,9 +11,10 @@ interface RestTimerProps {
   onSkip?: () => void;
   label?: string;
   nextExerciseName?: string;
+  nextVideoUrl?: string | null;
 }
 
-export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName }: RestTimerProps) => {
+export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl }: RestTimerProps) => {
   const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
@@ -116,9 +117,21 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       <p className="text-lg text-muted-foreground mb-2">{label ?? t('workout.rest')}</p>
 
       {nextExerciseName && (
-        <p className="text-sm font-medium text-primary mb-4">
+        <p className="text-sm font-medium text-primary mb-3">
           {t('workout.next_exercise', { name: nextExerciseName })}
         </p>
+      )}
+
+      {/* Next exercise video preview — lets the user see the next movement and
+          walk to the machine during the rest; also preloads it for slow nets. */}
+      {nextVideoUrl && (
+        <div className="w-40 h-40 rounded-2xl overflow-hidden mb-5 bg-neutral-900 shadow-lg">
+          <video
+            src={nextVideoUrl}
+            autoPlay loop muted playsInline preload="auto"
+            className="w-full h-full object-cover"
+          />
+        </div>
       )}
 
       <div className="relative w-64 h-64 mb-8">

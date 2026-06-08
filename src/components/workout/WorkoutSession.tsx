@@ -123,6 +123,19 @@ export const WorkoutSession = ({
   // currentExercise declared here so it's available in the useEffect dep arrays below
   const currentExercise = liveExercises[currentExerciseIndex];
 
+  // Prefetch the NEXT exercise's video URL while the current one plays, so on
+  // slow connections it's already buffering and we can show it during the rest
+  // (lets the user walk to the next machine). video_path is a full public URL.
+  const [nextVideoUrl, setNextVideoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const nextId = liveExercises[currentExerciseIndex + 1]?.exerciseId;
+    if (!nextId) { setNextVideoUrl(null); return; }
+    supabase.from('exercises').select('video_path').eq('id', nextId).single()
+      .then(({ data }) => { if (!cancelled) setNextVideoUrl(data?.video_path || null); });
+    return () => { cancelled = true; };
+  }, [currentExerciseIndex, liveExercises]);
+
   // Lock screen widget — elapsed count-up timer
   useEffect(() => {
     const interval = setInterval(() => {
@@ -515,6 +528,7 @@ export const WorkoutSession = ({
         onComplete={handleRestComplete}
         label={restLabel}
         nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
+        nextVideoUrl={nextVideoUrl}
       />
     );
   }
