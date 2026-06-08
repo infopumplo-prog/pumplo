@@ -15,7 +15,7 @@ Captured from David's training-session notes + 4 screenshots. Big update before 
 
 ### 🟡 Onboarding / profile
 - **A6. ✅ DONE (b952578).** Name required in onboarding demographics (covers OAuth users).
-- **A7. ⏳ NEEDS DAVID'S INPUT.** "První volba posilovny není intuitivní, těžko se to hledá" — UX. Need specifics: where does first gym selection happen and what's hard (can't find the button? too many steps? search unclear?). Then redesign.
+- **A7. ✅ DONE (9e0d5d9).** First gym pick: map quick-preview shows a prominent green "Vybrat tuto posilovnu" CTA (driven by `hasNoGymYet = !profile.selected_gym_id`) instead of just Detail/Navigate; the gym detail select button is green/emphasised. David's ask: replace navigation with green "select" on the very first choice + highlight the detail more.
 - **A8. ✅ DONE (f4ebb21).** Native location-denied now guides the user to Settings (Simona's stuck case).
 
 ### 🟡 Content / sharing
@@ -32,7 +32,7 @@ Captured from David's training-session notes + 4 screenshots. Big update before 
 
 ## C. Ops / external (David's accounts / not app code)
 - **C1. App nejde stáhnout na Slovensku** — Samko can't download in SK. App Store + Google Play country/region availability must include Slovakia.
-- **C2. Odstranit "Vercel" ze všech domén** — e.g. scanning the QR code shows a *.vercel.app URL. Map all surfaces to the real pumplo.com domain (QR target, any vercel.app references).
+- **C2. Odstranit "Vercel" ze všech domén** — confirmed: the QR resolves to `pumplo-nine.vercel.app` (whole app has no custom domain). Root: `src/lib/qrGenerator.ts:6` uses `window.location.origin`, and the app is only served from vercel.app. FIX (ops, with David): add a custom domain to the Vercel project (e.g. `app.pumplo.com`) → then window.location.origin (and QR) become the real domain automatically. Optional hardening: hardcode/env the QR base URL so QRs are always correct regardless of where the admin generates them. Physical QR codes already printed encode vercel.app — keep vercel.app working (Vercel serves both) or reprint after domain is set.
 - **C3. Změnit e-mail + heslo pro přihlášení Eurogymu** — set real credentials so we can show the gym their admin login.
 - **C4. Plakát na recepci** — design the reception poster (QR + value prop).
 - **C5. Polepit vše** — physical stickers/QR at the gym, ASAP.
