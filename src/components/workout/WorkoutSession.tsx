@@ -698,14 +698,16 @@ const ExercisePlayerWithVideo = ({
     setupInstructions: string | null;
     setupInstructionsEn: string | null;
     commonMistakes: string | null;
+    commonMistakesEn: string | null;
     tips: string | null;
+    tipsEn: string | null;
     difficulty: number | null;
     exerciseWithWeights: boolean;
     category: string;
     equipmentType: string | null;
     primaryMuscles: string[];
     secondaryMuscles: string[];
-  }>({ url: null, description: null, descriptionEn: null, setupInstructions: null, setupInstructionsEn: null, commonMistakes: null, tips: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
+  }>({ url: null, description: null, descriptionEn: null, setupInstructions: null, setupInstructionsEn: null, commonMistakes: null, commonMistakesEn: null, tips: null, tipsEn: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
   const [lastWeight, setLastWeight] = useState<number | undefined>(undefined);
 
   // Fetch video path + detail from exercise on mount
@@ -715,7 +717,7 @@ const ExercisePlayerWithVideo = ({
 
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
+        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
         .eq('id', exercise.exerciseId)
         .single();
 
@@ -727,7 +729,9 @@ const ExercisePlayerWithVideo = ({
           setupInstructions: data.setup_instructions || null,
           setupInstructionsEn: data.setup_instructions_en || null,
           commonMistakes: data.common_mistakes || null,
+          commonMistakesEn: data.common_mistakes_en || null,
           tips: data.tips || null,
+          tipsEn: data.tips_en || null,
           difficulty: data.difficulty,
           exerciseWithWeights: data.exercise_with_weights ?? true,
           category: data.category || '',
@@ -768,8 +772,8 @@ const ExercisePlayerWithVideo = ({
       exerciseName={(isEn && exercise.exerciseNameEn) ? exercise.exerciseNameEn : (exercise.exerciseName || t('workout.exercise_label'))}
       exerciseDescription={(isEn && videoData.descriptionEn) ? videoData.descriptionEn : (videoData.description || undefined)}
       setupInstructions={(isEn && videoData.setupInstructionsEn) ? videoData.setupInstructionsEn : (videoData.setupInstructions || undefined)}
-      commonMistakes={videoData.commonMistakes || undefined}
-      tips={videoData.tips || undefined}
+      commonMistakes={((isEn && videoData.commonMistakesEn) ? videoData.commonMistakesEn : videoData.commonMistakes) || undefined}
+      tips={((isEn && videoData.tipsEn) ? videoData.tipsEn : videoData.tips) || undefined}
       rirMin={exercise.rirMin}
       rirMax={exercise.rirMax}
       videoUrl={videoData.url}
