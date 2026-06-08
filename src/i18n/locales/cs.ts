@@ -1803,6 +1803,7 @@ const cs = {
   'map.address_unknown': 'Adresa neuvedena',
   'map.detail': 'Detail',
   'map.navigate': 'Navigace',
+  'map.select_this_gym': 'Vybrat tuto posilovnu',
 
   // legal pages
   'legal.terms_title': 'Podmínky používání',

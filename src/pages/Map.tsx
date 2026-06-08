@@ -291,17 +291,21 @@ const Map = () => {
     ? isGymCurrentlyOpen(detailGym.opening_hours as OpeningHours)
     : false;
 
-  const handleSelectGymForTraining = async () => {
-    if (!detailGym || !detailGymIsOpen) return;
-    
+  // True until the user has ever picked a gym — drives the green "Vybrat
+  // posilovnu" CTA on first run (A7).
+  const hasNoGymYet = !profile?.selected_gym_id;
+
+  const selectGym = async (gym: PublicGym | null) => {
+    if (!gym) return;
     setIsSelectingGym(true);
     try {
-      await updateProfile({ selected_gym_id: detailGym.id });
+      await updateProfile({ selected_gym_id: gym.id });
       toast({
         title: t('map.gym_selected'),
-        description: t('map.gym_selected_desc', { name: detailGym.name })
+        description: t('map.gym_selected_desc', { name: gym.name })
       });
       setDetailGym(null);
+      setQuickPreviewGym(null);
       navigate('/');
     } catch (error) {
       toast({
@@ -312,6 +316,11 @@ const Map = () => {
     } finally {
       setIsSelectingGym(false);
     }
+  };
+
+  const handleSelectGymForTraining = async () => {
+    if (!detailGym || !detailGymIsOpen) return;
+    await selectGym(detailGym);
   };
 
   // Early returns AFTER all hooks
@@ -409,8 +418,11 @@ const Map = () => {
             <GymQuickPreview
               gym={quickPreviewGym}
               distance={getGymDistance(quickPreviewGym)}
+              firstTimeSelect={hasNoGymYet}
+              isSelecting={isSelectingGym}
               onDetailClick={handleDetailClick}
               onNavigateClick={handleNavigateClick}
+              onSelectClick={() => selectGym(quickPreviewGym)}
               onClose={() => setQuickPreviewGym(null)}
             />
           </div>

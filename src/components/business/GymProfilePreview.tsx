@@ -231,7 +231,10 @@ const GymProfilePreview = ({
             {onSelectGym ? (
               <Button
                 size="lg"
-                className="flex-1 gap-2"
+                className={cn(
+                  "flex-1 gap-2 font-semibold shadow-lg",
+                  isGymOpen && "bg-green-600 hover:bg-green-700 text-white"
+                )}
                 disabled={!isGymOpen || isSelectingGym}
                 onClick={onSelectGym}
               >

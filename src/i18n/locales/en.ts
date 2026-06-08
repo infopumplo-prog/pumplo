@@ -1818,6 +1818,7 @@ const en = {
   'map.address_unknown': 'Address not listed',
   'map.detail': 'Detail',
   'map.navigate': 'Navigate',
+  'map.select_this_gym': 'Select this gym',
 
   // legal pages
   'legal.terms_title': 'Terms of Service',
