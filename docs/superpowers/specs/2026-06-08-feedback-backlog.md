@@ -39,3 +39,9 @@ Captured from David's training-session notes + 4 screenshots. Big update before 
 
 ## Status
 Triage done 2026-06-08. Order/priority pending David's confirmation.
+
+## D. Second feedback batch (2026-06-10, David's training notes)
+- **D1. Wrong day after rest day** 🔴 — trained on a rest day; workout started as LOWER (same as last completed) instead of UPPER (next in sequence). Day-progression (current_day_index) doesn't advance / off-schedule start picks wrong day.
+- **D2. Pre-start exercise swap not persisted** 🔴 — refreshing/swapping an exercise in the workout PREVIEW (before starting) changes the video, but starting the workout uses the ORIGINAL exercise.
+- **D3. Store screenshots look amateur** 🟡 — Google Play + App Store screenshots show status bar (flashlight/battery etc.). Redo with clean frames. (Ops/assets, with David. Desktop folders: pumplo-appstore-screenshots, pumplo-ipad-screenshots.)
+- **D4. Exercise names in Czech in EN mode** 🟡 — many exercise names render in Czech although app language is EN. name_en is 100% populated (201/201) — so some UI render paths use `name` without resolving `name_en`.
