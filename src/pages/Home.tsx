@@ -155,7 +155,10 @@ const Home = () => {
 
   // Week progress calculation - use actual training days per week
   const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
-  const goalDurationWeeks = 8; // default
+  // 12 weeks for ALL goals (PUMPLO methodology §10) — keep in sync with
+  // training_goals.duration_weeks used on the Training page, otherwise the two
+  // progress percentages diverge (hardcoded 8 made Home show 3% vs detail 2%).
+  const goalDurationWeeks = 12;
   const totalPlanDays = goalDurationWeeks * trainingDaysCount;
   const weekProgress = plan ? (plan.currentDayIndex || 0) / totalPlanDays * 100 : 0;
   const currentWeek = plan ? Math.floor((plan.currentDayIndex || 0) / trainingDaysCount) + 1 : 1;

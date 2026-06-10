@@ -581,18 +581,6 @@ const Training = () => {
         effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
       }
       
-      // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
-      const workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
-      
-      // Check if this day is completed (non-bonus) - match by week and dayOfWeek
-      // For extra week days, they are always in the future
-      const completedSession = isExtraWeek 
-        ? null 
-        : regularCompletedWorkouts.find(w => 
-            w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
-          );
-      const isCompleted = !!completedSession;
-      
       // Is this the actual "today" - check if day of week matches today's day
       const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
       const isToday = !isExtraWeek && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
@@ -637,7 +625,45 @@ const Training = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const isActuallyInPast = actualDate && actualDate < today;
-      
+
+      // Match completion by ACTUAL calendar date (not week×weekday position) so
+      // sessions trained off-schedule still attribute to the right card.
+      const completedSession = isExtraWeek || !actualDate
+        ? null
+        : regularCompletedWorkouts.find(w => {
+            const d = new Date(w.date);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === actualDate.getTime();
+          });
+      const isCompleted = !!completedSession;
+
+      // Day letter: completed days show what was ACTUALLY trained; today and
+      // future days of the current week anchor to the live rotation
+      // (plan.currentDayLetter, incl. the missed-advancement self-heal).
+      // Other weeks keep the calendar estimate.
+      let workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
+      const sessionLetter = completedSession?.dayLetter?.replace('_EXT', '');
+      if (sessionLetter && workoutLetters.includes(sessionLetter)) {
+        workoutLetter = sessionLetter;
+      } else if (!isExtraWeek && viewingWeek === currentWeek && plan.currentDayLetter && dayOrderIndex >= todayDayOrder) {
+        const baseIdx = workoutLetters.indexOf(plan.currentDayLetter);
+        if (baseIdx !== -1) {
+          // Scheduled days from today (inclusive) up to this one…
+          let futureOffset = daysToShow.filter(d => {
+            const di = DAY_ORDER.indexOf(d);
+            return di >= todayDayOrder && di < dayOrderIndex;
+          }).length;
+          // …minus today if it's already trained (rotation moved past it).
+          const todayDone = regularCompletedWorkouts.some(w => {
+            const d = new Date(w.date);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === today.getTime();
+          });
+          if (todayDone && futureOffset > 0 && daysToShow.includes(todayWeekday)) futureOffset -= 1;
+          workoutLetter = workoutLetters[(baseIdx + futureOffset) % workoutTypes];
+        }
+      }
+
       // Is this day missed? Only if:
       // 1. Not in extra week (shifted days at end of plan)
       // 2. Its actual calendar date is in the PAST (not future)
