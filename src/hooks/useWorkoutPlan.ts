@@ -115,7 +115,7 @@ export const useWorkoutPlan = () => {
         .eq('user_id', user.id)
         .single();
 
-      const currentDayIndex = profileData?.current_day_index || 0;
+      let currentDayIndex = profileData?.current_day_index || 0;
       const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
       const goalName = (planData.training_goals as { name: string } | null)?.name || 'Trénink';
 
@@ -137,6 +137,31 @@ export const useWorkoutPlan = () => {
         (exercisesData || []).map(e => e.day_letter)
       );
       const dayCount = uniqueDayLetters.size || 2;
+
+      // Self-heal the day counter: day advancement runs in onComplete, which the
+      // user can skip by closing the app on the post-workout summary/share screen
+      // (the session is saved earlier, on summary open). If the LAST completed
+      // non-bonus session of this plan has the same letter the counter points to,
+      // the advancement was missed — advance past it now and persist.
+      const { data: lastSession } = await supabase
+        .from('workout_sessions')
+        .select('day_letter')
+        .eq('user_id', user.id)
+        .eq('plan_id', planData.id)
+        .eq('is_bonus', false)
+        .not('completed_at', 'is', null)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastLetter = lastSession?.day_letter?.replace('_EXT', '');
+      if (lastLetter && lastLetter === getCurrentDayLetter(dayCount, currentDayIndex)) {
+        currentDayIndex += 1;
+        await supabase
+          .from('user_profiles')
+          .update({ current_day_index: currentDayIndex })
+          .eq('user_id', user.id);
+      }
+
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
       // 5. Determine split_type: use stored value, snapshot, or derive from exercise roles

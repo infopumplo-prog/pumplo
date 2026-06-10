@@ -115,7 +115,7 @@ export const WorkoutPreview = ({
 
       let query = supabase
         .from('exercises')
-        .select('id, name, primary_role, machine_id, equipment_type, category')
+        .select('id, name, name_en, primary_role, machine_id, equipment_type, category')
         .eq('allowed_phase', 'main');
 
       if (isCardio) {
@@ -144,13 +144,15 @@ export const WorkoutPreview = ({
       const pick = valid[Math.floor(Math.random() * valid.length)];
 
       let newMachineName: string | null = null;
+      let newMachineNameEn: string | null = null;
       if (pick.machine_id) {
         const { data: machine } = await supabase
           .from('machines')
-          .select('name')
+          .select('name, name_en')
           .eq('id', pick.machine_id)
           .single();
         newMachineName = machine?.name || null;
+        newMachineNameEn = (machine as Record<string, unknown> | null)?.name_en as string | null || null;
       }
 
       // Update DB
@@ -173,7 +175,12 @@ export const WorkoutPreview = ({
         ...exercise,
         exerciseId: pick.id,
         exerciseName: pick.name,
+        // Localized fields MUST follow the new exercise — keeping the old
+        // exerciseNameEn made EN-mode users see the old exercise's name while
+        // the video already showed the new one (bug D2).
+        exerciseNameEn: (pick as Record<string, unknown>).name_en as string | null || null,
         machineName: newMachineName,
+        machineNameEn: newMachineNameEn,
         isFallback: true,
         fallbackReason: 'user_swap',
       };
@@ -263,7 +270,7 @@ export const WorkoutPreview = ({
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <p className={`font-medium text-sm truncate ${!ex.exerciseName ? 'text-muted-foreground italic' : ''}`}>
-                    {ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
+                    {((isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName) || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
                   </p>
                   {ex.slotCategory && SLOT_CATEGORY_LABELS[ex.slotCategory] && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${SLOT_CATEGORY_LABELS[ex.slotCategory].color}`}>
@@ -339,7 +346,7 @@ export const WorkoutPreview = ({
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{selectedExercise?.exerciseName || t('workout.exercise_label')}</DrawerTitle>
+            <DrawerTitle>{((isEn && selectedExercise?.exerciseNameEn) ? selectedExercise.exerciseNameEn : selectedExercise?.exerciseName) || t('workout.exercise_label')}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6 overflow-y-auto">
             {signedDetailVideoUrl ? (

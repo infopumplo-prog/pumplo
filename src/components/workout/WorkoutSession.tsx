@@ -218,7 +218,7 @@ export const WorkoutSession = ({
       // Query candidates with same role
       let query = supabase
         .from('exercises')
-        .select('id, name, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
+        .select('id, name, name_en, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
         .eq('allowed_phase', 'main');
 
       if (isCardio) {
@@ -253,13 +253,15 @@ export const WorkoutSession = ({
 
       // Fetch machine name if applicable
       let newMachineName: string | null = null;
+      let newMachineNameEn: string | null = null;
       if (pick.machine_id) {
         const { data: machine } = await supabase
           .from('machines')
-          .select('name')
+          .select('name, name_en')
           .eq('id', pick.machine_id)
           .single();
         newMachineName = machine?.name || null;
+        newMachineNameEn = (machine as Record<string, unknown> | null)?.name_en as string | null || null;
       }
 
       // Update DB
@@ -285,6 +287,7 @@ export const WorkoutSession = ({
           exerciseName: pick.name,
           exerciseNameEn: (pick as Record<string, unknown>).name_en as string | null || null,
           machineName: newMachineName,
+          machineNameEn: newMachineNameEn,
           isFallback: true,
           fallbackReason: 'user_swap',
         };
