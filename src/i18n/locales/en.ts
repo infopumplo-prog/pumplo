@@ -307,6 +307,7 @@ const en = {
   'workout.cancel': 'Cancel',
   'workout.not_in_gym': 'You are not at the gym',
   'workout.not_in_gym_desc': 'You must be physically at {{gymName}} to start a workout.',
+  'workout.gym_missing_nudge': 'Your gym isn’t on Pumplo yet? Recommend us at their front desk, or reach out at',
   'workout.distance_info': 'You are ~{{distance}} m from the gym (allowed: {{radius}} m)',
   'workout.retry': 'Try again',
   'workout.location_error': 'Location error',

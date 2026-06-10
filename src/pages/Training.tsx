@@ -1371,24 +1371,38 @@ const Training = () => {
       
       const { data } = await supabase
         .from('workout_session_sets')
-        .select('exercise_name, set_number, reps, weight_kg')
+        .select('exercise_id, exercise_name, set_number, reps, weight_kg')
         .eq('session_id', sessionId)
         .order('exercise_name')
         .order('set_number');
-      
+
       if (data) {
+        // exercise_name is a Czech snapshot saved at workout time — in EN mode
+        // resolve current name_en via exercise_id so history is localized too.
+        const enNames: Record<string, string> = {};
+        if (isEn) {
+          const ids = [...new Set(data.map(s => s.exercise_id).filter(Boolean))] as string[];
+          if (ids.length) {
+            const { data: exRows } = await supabase
+              .from('exercises')
+              .select('id, name_en')
+              .in('id', ids);
+            (exRows || []).forEach(r => { if (r.name_en) enNames[r.id] = r.name_en; });
+          }
+        }
+
         // Group by exercise name
-        const grouped: Record<string, { reps: number[], weights: number[] }> = {};
+        const grouped: Record<string, { reps: number[], weights: number[], exerciseId: string | null }> = {};
         data.forEach(set => {
           if (!grouped[set.exercise_name]) {
-            grouped[set.exercise_name] = { reps: [], weights: [] };
+            grouped[set.exercise_name] = { reps: [], weights: [], exerciseId: set.exercise_id || null };
           }
           grouped[set.exercise_name].reps.push(set.reps || 0);
           grouped[set.exercise_name].weights.push(set.weight_kg || 0);
         });
-        
+
         const exercises: HistoryExercise[] = Object.entries(grouped).map(([name, data]) => ({
-          exerciseName: name,
+          exerciseName: (isEn && data.exerciseId && enNames[data.exerciseId]) ? enNames[data.exerciseId] : name,
           sets: data.reps.length,
           reps: data.reps.length > 0 ? Math.round(data.reps.reduce((a, b) => a + b, 0) / data.reps.length) : null,
           weight: data.weights.some(w => w > 0) ? Math.max(...data.weights) : null

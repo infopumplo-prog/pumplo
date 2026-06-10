@@ -307,6 +307,7 @@ const cs = {
   'workout.cancel': 'Zrušit',
   'workout.not_in_gym': 'Nejsi v posilovně',
   'workout.not_in_gym_desc': 'Pro spuštění tréninku musíš být fyzicky v {{gymName}}.',
+  'workout.gym_missing_nudge': 'Tvoje posilovna v Pumplu zatím není? Doporuč nás u nich na recepci, nebo se nám ozvi na',
   'workout.distance_info': 'Jsi ~{{distance}} m od posilovny (povolené rozpětí: {{radius}} m)',
   'workout.retry': 'Zkusit znovu',
   'workout.location_error': 'Chyba polohy',

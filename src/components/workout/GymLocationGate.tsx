@@ -139,10 +139,19 @@ const OutsideState = ({ gymName, distance, radius, onRetry, onCancel }: { gymNam
         {t('workout.not_in_gym_desc', { gymName })}
       </p>
       {distance != null && (
-        <p className="text-xs text-muted-foreground mb-6">
+        <p className="text-xs text-muted-foreground mb-4">
           {t('workout.distance_info', { distance, radius })}
         </p>
       )}
+      {/* Growth nudge: their gym may not be on Pumplo yet — ask them to refer us */}
+      <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 mb-5 text-left">
+        <p className="text-xs text-muted-foreground">
+          {t('workout.gym_missing_nudge')}{' '}
+          <a href="https://pumplo.com" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline">
+            pumplo.com
+          </a>
+        </p>
+      </div>
       <button
         onClick={onRetry}
         className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
