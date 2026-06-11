@@ -14,7 +14,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS, SPLIT_INFO } from '@/lib/trainingGoals';
-import { getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
+import { getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
@@ -156,17 +156,70 @@ const MyPlan = () => {
   // Progress calculation based on actual sessions
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
-  // Build week schedule: training days in calendar order with day letters for the viewing week
+  // Build week schedule: training days in calendar order with day letters for the viewing week.
+  // Must tell the SAME story as Training.tsx: completed days show what was actually
+  // trained (matched by calendar date), today and future days of the current week
+  // anchor to the live rotation (plan.currentDayLetter). Other weeks keep the
+  // positional calendar estimate.
   const weekSchedule = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
     const dayCount = plan.dayCount || 2;
+    const letters = getAllDayLetters(dayCount);
     // Starting rotation index for this week
     const weekStartIndex = (viewingWeek - 1) * trainingDaysCount;
-    return trainingDays.map((dayOfWeek, i) => ({
-      dayOfWeek,
-      dayLetter: getCurrentDayLetter(dayCount, weekStartIndex + i),
-    }));
-  }, [plan, trainingDays, trainingDaysCount, viewingWeek]);
+
+    // Sessions of the current CALENDAR week, keyed by weekday name
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const mondayOffset = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const weekMonday = new Date(now);
+    weekMonday.setDate(now.getDate() - mondayOffset);
+    const nextMonday = new Date(weekMonday);
+    nextMonday.setDate(weekMonday.getDate() + 7);
+    const trainedByWeekday = new Map<string, string>();
+    planSessions.forEach(s => {
+      const d = new Date(s.started_at);
+      if (d >= weekMonday && d < nextMonday) {
+        const weekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][d.getDay()];
+        trainedByWeekday.set(weekday, s.day_letter.replace('_EXT', ''));
+      }
+    });
+
+    const todayName = getCurrentWeekday();
+    const todayOrder = DAY_ORDER.indexOf(todayName);
+    const weekCompletedCount = completedCountByWeek.get(viewingWeek) || 0;
+
+    return trainingDays.map((dayOfWeek, i) => {
+      const order = DAY_ORDER.indexOf(dayOfWeek);
+      let dayLetter = getCurrentDayLetter(dayCount, weekStartIndex + i);
+      let isCompleted = false;
+
+      if (viewingWeek === currentWeek) {
+        const trained = trainedByWeekday.get(dayOfWeek);
+        if (trained && letters.includes(trained)) {
+          dayLetter = trained;
+          isCompleted = true;
+        } else if (plan.currentDayLetter && order >= todayOrder) {
+          const baseIdx = letters.indexOf(plan.currentDayLetter);
+          if (baseIdx !== -1) {
+            // Scheduled days from today (inclusive) up to this one…
+            let offset = trainingDays.filter(d => {
+              const di = DAY_ORDER.indexOf(d);
+              return di >= todayOrder && di < order;
+            }).length;
+            // …minus today if it's already trained (rotation moved past it).
+            if (trainedByWeekday.has(todayName) && offset > 0 && trainingDays.includes(todayName)) offset -= 1;
+            dayLetter = letters[(baseIdx + offset) % dayCount];
+          }
+        }
+      } else if (viewingWeek < currentWeek) {
+        // Past weeks: positional completion (sessions are mapped to weeks by count)
+        isCompleted = i < weekCompletedCount;
+      }
+
+      return { dayOfWeek, dayLetter, isCompleted };
+    });
+  }, [plan, trainingDays, trainingDaysCount, viewingWeek, currentWeek, planSessions, completedCountByWeek]);
 
   const today = getCurrentWeekday();
 
@@ -521,7 +574,7 @@ const MyPlan = () => {
                           </div>
                         ) : (
                           weekSchedule.map((day, index) => {
-                            const isDayCompleted = index < weekCompletedCount;
+                            const isDayCompleted = day.isCompleted;
                             const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
 
