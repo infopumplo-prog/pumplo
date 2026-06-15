@@ -20,6 +20,7 @@ const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
+import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 
 interface ExerciseWithVideo {
   id: string;
@@ -525,6 +526,7 @@ const CustomWorkoutPlayer = () => {
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
   const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
+  const restNativeBeepsRef = useRef(false); // true once native audio owns the rest beeps
 
   // Set end time when rest starts
   useEffect(() => {
@@ -538,17 +540,26 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (playerState !== 'rest') return;
 
+    // Native background-capable beeps (heard locked / backgrounded / headphones,
+    // music keeps playing). Falls back to the JS beeps below on web / if missing.
+    let cancelled = false;
+    const remainingAtStart = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000));
+    startRestBeeps(remainingAtStart).then(handled => { if (!cancelled) restNativeBeepsRef.current = handled; });
+
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000));
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
+      if (!restNativeBeepsRef.current) {
+        if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
+        if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
+        if (remaining === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
+      }
       if (remaining <= 0 && !b.done) {
         b.done = true;
-        playAlarmFinish();
+        if (!restNativeBeepsRef.current) playAlarmFinish();
+        stopRestBeeps();
         advanceAfterRest();
       }
     };
@@ -559,6 +570,9 @@ const CustomWorkoutPlayer = () => {
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      cancelled = true;
+      stopRestBeeps();
+      restNativeBeepsRef.current = false;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
