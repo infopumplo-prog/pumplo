@@ -17,6 +17,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var player: AVAudioPlayer?
+    private var duckItems: [DispatchWorkItem] = []
+
+    private func cancelDuckItems() {
+        duckItems.forEach { $0.cancel() }
+        duckItems = []
+    }
 
     @objc func start(_ call: CAPPluginCall) {
         let seconds = call.getDouble("seconds") ?? 0
@@ -34,6 +40,24 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                     p.prepareToPlay()
                     p.play()
                     self.player = p
+
+                    // Duck music ONLY around the beeps: switch to .duckOthers ~3.3s
+                    // before the end, back to .mixWithOthers shortly after the final
+                    // beep. The app stays alive (audio is playing) so these fire even
+                    // when backgrounded/locked. Music lowers for the beep, then restores.
+                    self.cancelDuckItems()
+                    let duckOn = DispatchWorkItem {
+                        try? session.setCategory(.playback, options: [.duckOthers])
+                        try? session.setActive(true)
+                    }
+                    let duckOff = DispatchWorkItem {
+                        try? session.setCategory(.playback, options: [.mixWithOthers])
+                        try? session.setActive(true)
+                    }
+                    self.duckItems = [duckOn, duckOff]
+                    DispatchQueue.main.asyncAfter(deadline: .now() + max(0, seconds - 3.3), execute: duckOn)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + seconds + 0.5, execute: duckOff)
+
                     call.resolve()
                 } catch {
                     call.reject("rest audio start failed: \(error.localizedDescription)")
@@ -43,9 +67,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func stop(_ call: CAPPluginCall) {
+        cancelDuckItems()
         player?.stop()
         player = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, options: [.mixWithOthers])
+        try? session.setActive(false, options: [.notifyOthersOnDeactivation])
         call.resolve()
     }
 
