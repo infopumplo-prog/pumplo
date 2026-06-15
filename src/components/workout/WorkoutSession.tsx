@@ -132,7 +132,19 @@ export const WorkoutSession = ({
     const nextId = liveExercises[currentExerciseIndex + 1]?.exerciseId;
     if (!nextId) { setNextVideoUrl(null); return; }
     supabase.from('exercises').select('video_path').eq('id', nextId).single()
-      .then(({ data }) => { if (!cancelled) setNextVideoUrl(data?.video_path || null); });
+      .then(({ data }) => {
+        if (cancelled) return;
+        const url = data?.video_path || null;
+        setNextVideoUrl(url);
+        // Warm the cache NOW (during the current exercise) via a detached video
+        // element so the rest screen shows it instantly/smoothly.
+        if (url) {
+          try {
+            const v = document.createElement('video');
+            v.preload = 'auto'; v.muted = true; v.src = url; v.load();
+          } catch { /* noop */ }
+        }
+      });
     return () => { cancelled = true; };
   }, [currentExerciseIndex, liveExercises]);
 
