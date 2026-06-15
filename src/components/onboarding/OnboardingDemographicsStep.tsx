@@ -41,27 +41,7 @@ const OnboardingDemographicsStep = ({
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-center">{t('onboarding.demographics_title')}</h2>
 
-      {/* Name (required) */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">{t('onboarding.first_name_label')}</label>
-          <Input
-            value={firstName}
-            onChange={(e) => onFirstNameChange(e.target.value)}
-            placeholder={t('onboarding.first_name_ph')}
-            className="text-lg"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">{t('onboarding.last_name_label')}</label>
-          <Input
-            value={lastName}
-            onChange={(e) => onLastNameChange(e.target.value)}
-            placeholder={t('onboarding.last_name_ph')}
-            className="text-lg"
-          />
-        </div>
-      </div>
+      {/* Name is collected at account creation (required there) — not here. */}
 
       {/* Gender Selection */}
       <div className="space-y-2">

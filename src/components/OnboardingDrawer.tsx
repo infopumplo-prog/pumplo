@@ -101,7 +101,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       case 1: return userLevel !== null;
       case 2: return trainingDays.length > 0;
       case 3: return preferredTime !== null;
-      case 4: return firstName.trim() !== '' && gender !== null && age !== '' && height !== '' && weight !== '';
+      case 4: return gender !== null && age !== '' && height !== '' && weight !== '';
       case 5: return injuries.length > 0;
       case 6: return equipmentPreference !== null;
       default: return false;
@@ -127,8 +127,6 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         : null;
       
       await updateProfile({
-        first_name: firstName.trim() || null,
-        last_name: lastName.trim() || null,
         gender,
         primary_goal: primaryGoal,
         training_days: trainingDays,
