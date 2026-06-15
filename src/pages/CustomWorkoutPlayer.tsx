@@ -152,11 +152,24 @@ const CustomWorkoutPlayer = () => {
     totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
     exerciseCount: number;
     exerciseDetails: { name: string; nameEn: string | null; isCardio: boolean; sets: { weight: number; reps: number }[] }[];
+    savedAt?: number;
   }
   const SHARE_CACHE_KEY = `pumplo_share_${id}`;
-  const [shareCache, setShareCache] = useState<ShareCacheData | null>(() => {
-    try { const s = localStorage.getItem(`pumplo_share_${id}`); return s ? JSON.parse(s) : null; } catch { return null; }
-  });
+  // Only auto-restore the completion screen if the cache is fresh — i.e. the app
+  // was killed mid-share moments ago. An old cache (user closed the app on the
+  // share screen a while back) must NOT hijack a deliberate fresh start.
+  const SHARE_CACHE_TTL_MS = 10 * 60 * 1000;
+  const readFreshShareCache = (): ShareCacheData | null => {
+    try {
+      const s = localStorage.getItem(`pumplo_share_${id}`);
+      if (!s) return null;
+      const c = JSON.parse(s) as ShareCacheData;
+      if (c.savedAt && Date.now() - c.savedAt < SHARE_CACHE_TTL_MS) return c;
+      localStorage.removeItem(`pumplo_share_${id}`); // stale → drop it
+      return null;
+    } catch { return null; }
+  };
+  const [shareCache, setShareCache] = useState<ShareCacheData | null>(() => readFreshShareCache());
 
   // Rest duration from plan DB (default 120s)
   const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
@@ -193,15 +206,15 @@ const CustomWorkoutPlayer = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [playerState]);
 
-  // Restore completion screen if app was killed during share/photo picker
+  // Restore completion screen only if the app was killed mid-share moments ago
+  // (fresh cache). A stale cache is ignored so a deliberate fresh start isn't
+  // hijacked onto the previous workout's share screen.
   useEffect(() => {
     if (shareCache) setPlayerState('completed');
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        try {
-          const s = localStorage.getItem(SHARE_CACHE_KEY);
-          if (s) { setShareCache(JSON.parse(s)); setPlayerState('completed'); }
-        } catch {}
+        const c = readFreshShareCache();
+        if (c) { setShareCache(c); setPlayerState('completed'); }
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -226,6 +239,7 @@ const CustomWorkoutPlayer = () => {
           const sets = completedSetsMap.get(i) || [];
           return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         }),
+        savedAt: Date.now(),
       };
       localStorage.setItem(SHARE_CACHE_KEY, JSON.stringify(cache));
       setShareCache(cache);
