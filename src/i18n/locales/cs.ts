@@ -377,7 +377,8 @@ const cs = {
   'workout.abandon_confirm': 'Ukončit trénink?',
 
   // Onboarding
-  'onboarding.days_title': 'Ve které dny v týdnu chceš cvičit?',
+  'onboarding.days_title': 'Ve které dny obvykle chodíš cvičit?',
+  'onboarding.days_subtitle': 'Slouží jen jako tvůj rozvrh pro připomínky. Plán je flexibilní — když některý den vynecháš nebo přijdeš jindy, nic se neztratí, jen pokračuješ dalším tréninkem v pořadí.',
   'onboarding.demographics_title': 'O tobě',
   'onboarding.first_name_label': 'Jméno',
   'onboarding.first_name_ph': 'Tvoje jméno',
