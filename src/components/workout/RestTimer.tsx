@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { App as CapApp } from '@capacitor/app';
 import { useTranslation } from 'react-i18next';
 import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 
@@ -32,6 +34,20 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   const beeped3Ref = useRef(false);
   const beeped2Ref = useRef(false);
   const beeped1Ref = useRef(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // The background video pauses when iOS suspends the webview (e.g. user switches
+  // to Spotify). Resume it whenever the app/tab comes back to the foreground.
+  useEffect(() => {
+    const resumeVideo = () => { videoRef.current?.play().catch(() => {}); };
+    const onVisible = () => { if (document.visibilityState === 'visible') resumeVideo(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const sub = CapApp.addListener('resume', resumeVideo);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      sub.then(s => s.remove()).catch(() => {});
+    };
+  }, []);
 
   // No speech during rest — exercise announcement happens when next exercise loads
 
@@ -113,91 +129,101 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   };
 
   const progress = ((duration - timeLeft) / duration) * 100;
+  const onVideo = !!nextVideoUrl;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-6"
+      className="fixed inset-0 z-50 overflow-hidden flex flex-col items-center justify-center p-6"
     >
+      {/* Background: the next-exercise video fills the screen (user sees the next
+          movement while resting). Falls back to a solid backdrop if no video. */}
+      {onVideo ? (
+        <>
+          <video
+            ref={videoRef}
+            src={nextVideoUrl!}
+            autoPlay loop muted playsInline preload="auto"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" />
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm" />
+      )}
+
       <button
         onClick={handleToggleMute}
-        className="absolute right-4 p-2.5 rounded-xl bg-muted/80 text-foreground"
+        className={cn(
+          'absolute right-4 z-20 p-2.5 rounded-xl',
+          onVideo ? 'bg-black/40 text-white' : 'bg-muted/80 text-foreground'
+        )}
         style={{ top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))' }}
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
 
-      <p className="text-lg text-muted-foreground mb-2">{label ?? t('workout.rest')}</p>
+      <div className="relative z-10 flex flex-col items-center w-full">
+        <p className={cn('text-lg mb-2', onVideo ? 'text-white/80' : 'text-muted-foreground')}>{label ?? t('workout.rest')}</p>
 
-      {nextExerciseName && (
-        <p className="text-sm font-medium text-primary mb-3">
-          {t('workout.next_exercise', { name: nextExerciseName })}
-        </p>
-      )}
+        {nextExerciseName && (
+          <p className={cn('text-sm font-medium mb-6', onVideo ? 'text-cyan-300' : 'text-primary')}>
+            {t('workout.next_exercise', { name: nextExerciseName })}
+          </p>
+        )}
 
-      {/* Next exercise video preview — lets the user see the next movement and
-          walk to the machine during the rest; also preloads it for slow nets. */}
-      {nextVideoUrl && (
-        <div className="w-40 h-40 rounded-2xl overflow-hidden mb-5 bg-neutral-900 shadow-lg">
-          <video
-            src={nextVideoUrl}
-            autoPlay loop muted playsInline preload="auto"
-            className="w-full h-full object-cover"
-          />
+        <div className="relative w-64 h-64 mb-8">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke={onVideo ? 'rgba(255,255,255,0.2)' : 'hsl(var(--muted))'} strokeWidth="8" />
+            <motion.circle
+              cx="50" cy="50" r="45" fill="none"
+              stroke={timeLeft <= 3 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
+              strokeWidth="8" strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 45}`}
+              strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
+              transition={{ duration: 0.3 }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {timeLeft <= 3 && timeLeft > 0 ? (
+              <motion.span
+                key={timeLeft}
+                initial={{ scale: 1.5, opacity: 0.5 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-7xl font-black text-destructive"
+              >
+                {timeLeft}
+              </motion.span>
+            ) : (
+              <motion.span
+                key={timeLeft}
+                initial={{ scale: 1.05 }}
+                animate={{ scale: 1 }}
+                className={cn('text-5xl font-bold tabular-nums', onVideo && 'text-white')}
+              >
+                {formatTime(timeLeft)}
+              </motion.span>
+            )}
+            {isPaused && <span className={cn('text-sm mt-2', onVideo ? 'text-white/70' : 'text-muted-foreground')}>{t('workout.paused')}</span>}
+          </div>
         </div>
-      )}
 
-      <div className="relative w-64 h-64 mb-8">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
-          <motion.circle
-            cx="50" cy="50" r="45" fill="none"
-            stroke={timeLeft <= 3 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
-            strokeWidth="8" strokeLinecap="round"
-            strokeDasharray={`${2 * Math.PI * 45}`}
-            strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
-            transition={{ duration: 0.3 }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {timeLeft <= 3 && timeLeft > 0 ? (
-            <motion.span
-              key={timeLeft}
-              initial={{ scale: 1.5, opacity: 0.5 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-7xl font-black text-destructive"
-            >
-              {timeLeft}
-            </motion.span>
-          ) : (
-            <motion.span
-              key={timeLeft}
-              initial={{ scale: 1.05 }}
-              animate={{ scale: 1 }}
-              className="text-5xl font-bold tabular-nums"
-            >
-              {formatTime(timeLeft)}
-            </motion.span>
-          )}
-          {isPaused && <span className="text-sm text-muted-foreground mt-2">{t('workout.paused')}</span>}
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={handleReset}>
+            <RotateCcw className="w-6 h-6" />
+          </Button>
+          <Button size="icon" className="w-20 h-20 rounded-full" onClick={handlePause}>
+            {isPaused ? <Play className="w-10 h-10 ml-1" /> : <Pause className="w-10 h-10" />}
+          </Button>
+          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={onSkip || onComplete}>
+            <SkipForward className="w-6 h-6" />
+          </Button>
         </div>
-      </div>
 
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={handleReset}>
-          <RotateCcw className="w-6 h-6" />
-        </Button>
-        <Button size="icon" className="w-20 h-20 rounded-full" onClick={handlePause}>
-          {isPaused ? <Play className="w-10 h-10 ml-1" /> : <Pause className="w-10 h-10" />}
-        </Button>
-        <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={onSkip || onComplete}>
-          <SkipForward className="w-6 h-6" />
-        </Button>
+        <p className={cn('text-sm mt-6', onVideo ? 'text-white/60' : 'text-muted-foreground')}>{t('workout.skip_tap')}</p>
       </div>
-
-      <p className="text-sm text-muted-foreground mt-6">{t('workout.skip_tap')}</p>
     </motion.div>
   );
 };
