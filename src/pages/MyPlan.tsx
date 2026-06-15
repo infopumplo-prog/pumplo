@@ -14,7 +14,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS, SPLIT_INFO } from '@/lib/trainingGoals';
-import { getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
+import { getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
@@ -114,18 +114,6 @@ const MyPlan = () => {
   const trainingDaysCount = trainingDays.length || 3;
   const totalPlanSessions = totalWeeks * trainingDaysCount;
 
-  // Plan start anchors the whole week grid to real calendar dates (same model as
-  // Training.tsx), so completed sessions land on the day they were actually trained.
-  const planStartDate = useMemo(() => (plan?.startedAt ? new Date(plan.startedAt) : null), [plan]);
-  const planWeek1Monday = useMemo(() => {
-    if (!planStartDate) return null;
-    const d = new Date(planStartDate);
-    d.setHours(0, 0, 0, 0);
-    const off = d.getDay() === 0 ? 6 : d.getDay() - 1; // Monday = 0
-    d.setDate(d.getDate() - off);
-    return d;
-  }, [planStartDate]);
-
   // Fetch actual completed sessions from DB (source of truth)
   useEffect(() => {
     const fetchSessions = async () => {
@@ -144,27 +132,24 @@ const MyPlan = () => {
 
   const completedSessions = planSessions.length;
 
-  // Map sessions to weeks by the calendar week they were actually trained in.
+  // Completion is the source of truth: each completed training fills the next slot
+  // in the queue. Week N = trainings (N-1)*count .. N*count-1.
   const completedCountByWeek = useMemo(() => {
     const map = new Map<number, number>();
-    if (!planWeek1Monday) return map;
-    planSessions.forEach((s) => {
-      const d = new Date(s.started_at);
-      d.setHours(0, 0, 0, 0);
-      const wk = Math.floor((d.getTime() - planWeek1Monday.getTime()) / 86400000 / 7) + 1;
-      if (wk >= 1) map.set(wk, (map.get(wk) || 0) + 1);
-    });
+    for (let p = 0; p < completedSessions; p++) {
+      const wk = Math.floor(p / trainingDaysCount) + 1;
+      map.set(wk, (map.get(wk) || 0) + 1);
+    }
     return map;
-  }, [planSessions, planWeek1Monday]);
+  }, [completedSessions, trainingDaysCount]);
 
-  // Current week = calendar weeks elapsed since the plan started (the week we're in now).
+  // Current week = the week holding the NEXT training to do. The plan advances by
+  // completing trainings, not by the calendar — so it stretches in real time until
+  // all (totalWeeks × count) trainings are done (David's "queue, not calendar").
   const currentWeek = useMemo(() => {
-    if (!plan || !planWeek1Monday) return 1;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((now.getTime() - planWeek1Monday.getTime()) / 86400000);
-    return Math.min(Math.max(1, Math.floor(diffDays / 7) + 1), totalWeeks);
-  }, [plan, planWeek1Monday, totalWeeks]);
+    if (!plan) return 1;
+    return Math.min(Math.floor(completedSessions / trainingDaysCount) + 1, totalWeeks);
+  }, [plan, completedSessions, trainingDaysCount, totalWeeks]);
 
   // Initialize viewing week to current week
   useEffect(() => {
@@ -174,67 +159,33 @@ const MyPlan = () => {
   // Progress calculation based on actual sessions
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
-  // Build week schedule: training days in calendar order with day letters for the viewing week.
-  // Must tell the SAME story as Training.tsx: completed days show what was actually
-  // trained (matched by calendar date), today and future days of the current week
-  // anchor to the live rotation (plan.currentDayLetter). Other weeks keep the
-  // positional calendar estimate.
+  // Build the week as a slice of the training QUEUE (not the calendar):
+  // - slot = global position in the 0..totalPlanSessions queue
+  // - completed slots (slot < completed) show the letter actually trained ✓
+  // - the slot at `completed` is the NEXT workout to do (matches Home)
+  // - later slots continue the live rotation from currentDayIndex
   const weekSchedule = useMemo(() => {
-    if (!plan || trainingDays.length === 0 || !planWeek1Monday) return [];
+    if (!plan || trainingDays.length === 0) return [];
     const dayCount = plan.dayCount || 2;
-    const letters = getAllDayLetters(dayCount);
-    const weekStartIndex = (viewingWeek - 1) * trainingDaysCount;
-
-    // Completed sessions keyed by the actual calendar day they were trained (source of truth).
-    const sessionByDate = new Map<number, string>();
-    planSessions.forEach(s => {
-      const d = new Date(s.started_at);
-      d.setHours(0, 0, 0, 0);
-      sessionByDate.set(d.getTime(), s.day_letter.replace('_EXT', ''));
-    });
-
-    const todayD = new Date();
-    todayD.setHours(0, 0, 0, 0);
-    const todayOrder = DAY_ORDER.indexOf(getCurrentWeekday());
-    const planStart0 = planStartDate ? new Date(planStartDate) : null;
-    if (planStart0) planStart0.setHours(0, 0, 0, 0);
-    const weeksAhead = viewingWeek - currentWeek;
+    const queueHead = plan.currentDayIndex ?? completedSessions; // index of the next workout
+    const weekStartSlot = (viewingWeek - 1) * trainingDaysCount;
 
     return trainingDays.map((dayOfWeek, i) => {
-      const order = DAY_ORDER.indexOf(dayOfWeek);
-      // Actual calendar date of this card = Monday of plan week 1 + week offset + weekday.
-      const date = new Date(planWeek1Monday);
-      date.setDate(planWeek1Monday.getDate() + (viewingWeek - 1) * 7 + order);
-      const isToday = date.getTime() === todayD.getTime();
-      const isBeforeStart = !!(planStart0 && date < planStart0);
+      const slot = weekStartSlot + i;
+      const isCompleted = slot < completedSessions;
+      const isNext = slot === completedSessions; // the workout to do now
 
-      let dayLetter = getCurrentDayLetter(dayCount, weekStartIndex + i);
-      let isCompleted = false;
-
-      const trained = sessionByDate.get(date.getTime());
-      if (trained && letters.includes(trained)) {
-        // What was ACTUALLY trained that day wins.
-        dayLetter = trained;
-        isCompleted = true;
-      } else if (date >= todayD) {
-        // Today + future: anchor to the live queue so letters match Home/Training.
-        let offset: number;
-        if (weeksAhead === 0) {
-          offset = trainingDays.filter(d => {
-            const di = DAY_ORDER.indexOf(d);
-            return di > todayOrder && di <= order;
-          }).length;
-        } else {
-          const afterToday = trainingDays.filter(d => DAY_ORDER.indexOf(d) > todayOrder).length;
-          const upToCard = trainingDays.filter(d => DAY_ORDER.indexOf(d) <= order).length;
-          offset = afterToday + (weeksAhead - 1) * trainingDaysCount + upToCard;
-        }
-        dayLetter = getCurrentDayLetter(dayCount, (plan.currentDayIndex ?? 0) + offset);
+      let dayLetter: string;
+      if (isCompleted) {
+        const s = planSessions[slot];
+        dayLetter = s ? s.day_letter.replace('_EXT', '') : getCurrentDayLetter(dayCount, slot);
+      } else {
+        dayLetter = getCurrentDayLetter(dayCount, queueHead + (slot - completedSessions));
       }
 
-      return { dayOfWeek, dayLetter, isCompleted, isToday, isBeforeStart };
+      return { dayOfWeek, dayLetter, isCompleted, isNext };
     });
-  }, [plan, trainingDays, trainingDaysCount, viewingWeek, currentWeek, planSessions, planWeek1Monday, planStartDate]);
+  }, [plan, trainingDays, trainingDaysCount, viewingWeek, planSessions, completedSessions]);
 
   // Gym name
   const [gymName, setGymName] = useState<string | null>(null);
@@ -588,7 +539,7 @@ const MyPlan = () => {
                         ) : (
                           weekSchedule.map((day, index) => {
                             const isDayCompleted = day.isCompleted;
-                            const isToday = day.isToday;
+                            const isToday = day.isNext; // the next workout to do gets the highlight
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
 
                             return (
@@ -624,7 +575,9 @@ const MyPlan = () => {
                                 {isDayCompleted ? (
                                   <Check className="w-4 h-4 text-green-500" />
                                 ) : isToday ? (
-                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">{t('myplan.today')}</Badge>
+                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">
+                                    {day.dayOfWeek === getCurrentWeekday() ? t('myplan.today') : t('myplan.next_workout')}
+                                  </Badge>
                                 ) : null}
                               </div>
                             );

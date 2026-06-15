@@ -439,6 +439,7 @@ const cs = {
   'myplan.set_training_days': 'Nastav si tréninkové dny',
   'myplan.week': 'Týden {{n}}',
   'myplan.today': 'Dnes',
+  'myplan.next_workout': 'Další',
   'myplan.current': 'Aktuální',
   'myplan.regenerate': 'Regenerovat plán',
   'myplan.generating': 'Generuji...',

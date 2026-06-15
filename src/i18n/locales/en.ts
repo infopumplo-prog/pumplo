@@ -439,6 +439,7 @@ const en = {
   'myplan.set_training_days': 'Set your training days',
   'myplan.week': 'Week {{n}}',
   'myplan.today': 'Today',
+  'myplan.next_workout': 'Next',
   'myplan.current': 'Current',
   'myplan.regenerate': 'Regenerate plan',
   'myplan.generating': 'Generating...',
