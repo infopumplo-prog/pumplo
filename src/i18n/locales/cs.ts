@@ -440,6 +440,7 @@ const cs = {
   'myplan.week': 'Týden {{n}}',
   'myplan.today': 'Dnes',
   'myplan.next_workout': 'Další',
+  'myplan.workout_n': '{{n}}. trénink',
   'myplan.current': 'Aktuální',
   'myplan.regenerate': 'Regenerovat plán',
   'myplan.generating': 'Generuji...',

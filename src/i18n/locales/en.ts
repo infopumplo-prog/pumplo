@@ -440,6 +440,7 @@ const en = {
   'myplan.week': 'Week {{n}}',
   'myplan.today': 'Today',
   'myplan.next_workout': 'Next',
+  'myplan.workout_n': 'Workout {{n}}',
   'myplan.current': 'Current',
   'myplan.regenerate': 'Regenerate plan',
   'myplan.generating': 'Generating...',
