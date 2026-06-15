@@ -378,7 +378,7 @@ const cs = {
 
   // Onboarding
   'onboarding.days_title': 'Ve které dny obvykle chodíš cvičit?',
-  'onboarding.days_subtitle': 'Slouží jen jako tvůj rozvrh pro připomínky. Plán je flexibilní — když některý den vynecháš nebo přijdeš jindy, nic se neztratí, jen pokračuješ dalším tréninkem v pořadí.',
+  'onboarding.days_subtitle': 'Slouží jen jako tvůj rozvrh pro připomínky.',
   'onboarding.demographics_title': 'O tobě',
   'onboarding.first_name_label': 'Jméno',
   'onboarding.first_name_ph': 'Tvoje jméno',

@@ -378,7 +378,7 @@ const en = {
 
   // Onboarding
   'onboarding.days_title': 'Which days do you usually train?',
-  'onboarding.days_subtitle': 'This is just your schedule for reminders. The plan is flexible — if you skip a day or come another time, nothing is lost; you simply continue with the next workout in line.',
+  'onboarding.days_subtitle': 'Just your schedule for reminders.',
   'onboarding.demographics_title': 'About you',
   'onboarding.first_name_label': 'First name',
   'onboarding.first_name_ph': 'Your first name',
