@@ -53,7 +53,14 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private static func composeWav(totalSeconds: Double) -> Data {
         let sr = 22050
         let total = max(1, Int(Double(sr) * totalSeconds))
+        // NOT pure silence: a near-inaudible ~40 Hz tone (±1 around 128, ~-48 dBFS)
+        // keeps the audio stream genuinely "playing" so iOS grants background time
+        // and doesn't suspend the app before the beep fires.
         var samples = [UInt8](repeating: 128, count: total)
+        for i in 0..<total {
+            let keepAlive = sin(2.0 * Double.pi * 40.0 * Double(i) / Double(sr))
+            samples[i] = UInt8(128 + Int((keepAlive * 1.4).rounded()))
+        }
 
         func writeBeep(endingAtSecondsFromEnd endGap: Double, durationMs: Double, freq: Double, vol: Double) {
             let n = Int(Double(sr) * durationMs / 1000.0)

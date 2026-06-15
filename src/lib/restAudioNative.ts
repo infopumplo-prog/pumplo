@@ -15,8 +15,10 @@ export async function startRestBeeps(seconds: number): Promise<boolean> {
   if (!Capacitor.isNativePlatform() || seconds <= 0) return false;
   try {
     await RestAudio.start({ seconds });
+    console.log('[RestAudio] native beeps started for', seconds, 's');
     return true;
-  } catch {
+  } catch (e) {
+    console.warn('[RestAudio] native unavailable, using web fallback:', e);
     return false; // plugin missing / failed → caller falls back to web beeps
   }
 }
