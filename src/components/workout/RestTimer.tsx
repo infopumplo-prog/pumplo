@@ -6,7 +6,7 @@ import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
-import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
+import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -35,6 +35,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   const beeped2Ref = useRef(false);
   const beeped1Ref = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const nativeBeepsRef = useRef(false); // true once native audio owns the beeps
 
   // The background video pauses when iOS suspends the webview (e.g. user switches
   // to Spotify). Resume it whenever the app/tab comes back to the foreground.
@@ -51,18 +52,21 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
   // No speech during rest — exercise announcement happens when next exercise loads
 
-  // Schedule a local notification at rest-end so the alert still fires when the
-  // app is backgrounded (web audio is suspended in the background). Cancelled on
-  // pause, completion (above) and unmount.
+  // Native audio: play the whole countdown (incl. final beep) as one background-
+  // capable clip so it's heard even when the phone is locked / app backgrounded /
+  // headphones in, while music keeps playing. No banner notification. On web (or
+  // if the native plugin is unavailable) this no-ops and the JS beeps below run.
   useEffect(() => {
     if (isPaused || completedRef.current) {
-      cancelRestEndNotification();
+      stopRestBeeps();
+      nativeBeepsRef.current = false;
       return;
     }
     const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
-    scheduleRestEndNotification(remaining, t('workout.rest_over_title'), t('workout.rest_over_body'));
-    return () => { cancelRestEndNotification(); };
-  }, [isPaused, t]);
+    let cancelled = false;
+    startRestBeeps(remaining).then(handled => { if (!cancelled) nativeBeepsRef.current = handled; });
+    return () => { cancelled = true; stopRestBeeps(); nativeBeepsRef.current = false; };
+  }, [isPaused]);
 
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
@@ -73,14 +77,17 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
       setTimeLeft(remaining);
 
-      if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
-      if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
-      if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playCountdown1(); }
+      // JS beeps are a fallback for web / when native audio isn't handling them.
+      if (!nativeBeepsRef.current) {
+        if (remaining === 3 && !beeped3Ref.current) { beeped3Ref.current = true; playCountdown3(); }
+        if (remaining === 2 && !beeped2Ref.current) { beeped2Ref.current = true; playCountdown2(); }
+        if (remaining === 1 && !beeped1Ref.current) { beeped1Ref.current = true; playCountdown1(); }
+      }
 
       if (remaining <= 0 && !completedRef.current) {
         completedRef.current = true;
-        cancelRestEndNotification();
-        playAlarmFinish();
+        if (!nativeBeepsRef.current) playAlarmFinish();
+        stopRestBeeps();
         onComplete();
       }
     };
