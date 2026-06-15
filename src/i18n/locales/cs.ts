@@ -340,6 +340,7 @@ const cs = {
   'workout.gallery': 'Galerie',
   'workout.preparing': 'Připravuji...',
   'workout.share': 'Sdílet trénink',
+  'workout.share_instagram': 'Sdílet na Instagram',
   'workout.finish': 'Dokončit trénink',
   'workout.saving': 'Ukládám...',
   'workout.session_sets': 'sérií',

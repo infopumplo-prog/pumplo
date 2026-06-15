@@ -340,6 +340,7 @@ const en = {
   'workout.gallery': 'Gallery',
   'workout.preparing': 'Preparing...',
   'workout.share': 'Share workout',
+  'workout.share_instagram': 'Share to Instagram',
   'workout.finish': 'Finish workout',
   'workout.saving': 'Saving...',
   'workout.session_sets': 'sets',

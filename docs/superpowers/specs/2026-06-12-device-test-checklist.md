@@ -38,7 +38,8 @@ GPX hotový: `ios/App/App/Eurogym.gpx` (skutečné souřadnice z DB: **49.5893, 
 
 ## 4. Sdílení (A10)
 - [ ] 4a. Share obrázek je čisté 9:16 bez roztažení
-- [ ] 4b. V share sheetu se nabízí Instagram (sdílí se jako soubor)
+- [ ] 4b. V share sheetu se nabízí Instagram (sdílí se jako soubor) — přes „Sdílet…" tlačítko
+- [ ] 4c. **NOVÉ: „Instagram Stories" tlačítko → karta je POZADÍ story (ne nálepka přes kameru).** Nativní handoff: iOS pasteboard `com.instagram.sharedSticker.backgroundImage` + `instagram-stories://share`; Android `ADD_TO_STORY` intent (background = data URI přes FileProvider). Tlačítko se zobrazí jen když je IG nainstalovaný. Fallback na generic sheet při selhání.
 
 ## 5. Onboarding / gym (A6–A8, B1)
 - [ ] 5a. Nový účet (OAuth i e-mail): jméno je povinné v onboardingu
@@ -57,8 +58,11 @@ GPX hotový: `ios/App/App/Eurogym.gpx` (skutečné souřadnice z DB: **49.5893, 
 - [x] Onboarding: jméno pryč z „About you" (0108204).
 
 ## Zbývá / nové bugy
-- [ ] **SDÍLENÍ pořád špatně** (David 15.6.): sdílený obrázek se v Instagram Stories chová jako NÁLEPKA přes kameru (vidět selfie za kartou), ne jako pozadí. Composite v WorkoutShareCard.tsx JE opaque (fillRect #000), takže to není průhlednost obrázku → problém je v PŘEDÁNÍ do IG (Capacitor Share files → IG to bere jako sticker). FIX (příště, čerstvý kontext): nejspíš použít IG Stories pasteboard API `com.instagram.sharedSticker.backgroundImage` místo generic share sheetu. Vyžaduje nativní + device test.
-- [ ] 4b. Instagram v share sheetu (souvisí s ^).
+- [x] **SDÍLENÍ — nálepka místo pozadí: IMPLEMENTOVÁNO (čeká device test).** Příčina potvrzena: generic Capacitor Share předá IG soubor → IG ho hodí jako sticker přes kameru. FIX = nativní „Instagram Stories" handoff přes background-image API:
+  - **iOS** `InstagramSharePlugin.swift` (registrace v `MainViewController.capacitorDidLoad`): pasteboard `com.instagram.sharedSticker.backgroundImage` + open `instagram-stories://share`. `LSApplicationQueriesSchemes` += `instagram-stories` (Info.plist). Soubor v pbxproj přidán (IDs ...005/...006).
+  - **Android** `InstagramSharePlugin.java` (registrace v `MainActivity.onCreate` před super): `ADD_TO_STORY` intent, image = data URI přes FileProvider (`${app}.fileprovider`, cache-path už pokrytý). `<queries>` pro `com.instagram.android` přidány do manifestu.
+  - **JS** `src/lib/instagramShare.ts` (`isInstagramInstalled`, `shareToInstagramStories`). UI: `WorkoutShareCard.tsx` má teď dvě tlačítka — modré „Instagram Stories" (jen když IG nainstalovaný) + „Sdílet…" generic sheet. IG selhání → fallback na generic.
+  - **DEVICE TEST iOS + Android:** karta musí být POZADÍ story (žádná selfie za kartou). Vyžaduje rebuild (Xcode ▶ / `npx cap run android`) — nový nativní kód se neprojeví v starém buildu.
 - [ ] 5a–5e onboarding/gym (5d potřebuje non-staff účet), 6a push sanity.
 - [ ] ducking (ztlumit hudbu při pípnutí) — ODLOŽENO na příští update.
 - [ ] D3 store screenshoty, Eurogym materiály/creds (C3/C4/C5), Slovensko (C1), gym-admin e-maily, web PR #1 merge+publish.

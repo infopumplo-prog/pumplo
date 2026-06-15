@@ -11,6 +11,7 @@ import { estimateCalories } from '@/lib/calorieEstimation';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { isInstagramInstalled, shareToInstagramStories } from '@/lib/instagramShare';
 
 interface ExerciseDetail { name: string; nameEn?: string | null; sets: { weight: number; reps: number }[]; isCardio?: boolean }
 
@@ -200,7 +201,7 @@ interface TProps { photo: string | null; title: string; gym: string; gymIg: stri
 
 const BG = ({ photo, gradient }: { photo: string | null; gradient: string }) => (
   <>
-    {photo ? <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
+    {photo ? <img data-share-photo src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
       : <div className="absolute inset-0" style={{ background: gradient }} />}
   </>
 );
@@ -264,6 +265,9 @@ export const WorkoutShareCard = ({
   const { profile } = useUserProfile();
   const [templateIndex, setTemplateIndex] = useState(0);
   const [selectedEx, setSelectedEx] = useState(0);
+  const [igInstalled, setIgInstalled] = useState(false);
+
+  useEffect(() => { isInstagramInstalled().then(setIgInstalled); }, []);
 
   // Drag + pinch
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -277,12 +281,47 @@ export const WorkoutShareCard = ({
   const genImg = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
     try {
-      const c = await html2canvas(cardRef.current, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
+      // html2canvas (1.4.1) does NOT honour `object-fit: cover` on <img>, so it
+      // stretches the user photo to the card box. We therefore HIDE the photo
+      // during capture (transparent background), draw it ourselves with proper
+      // cover-fit below, and layer the captured UI (cards/overlay/text) on top.
+      const cardEl = cardRef.current;
+      const photoEl = cardEl.querySelector('img[data-share-photo]') as HTMLImageElement | null;
+      const prevVis = photoEl?.style.visibility ?? '';
+      const prevBg = cardEl.style.background;
+      // Hide the photo AND make the card's own black background transparent, so
+      // the captured layer is transparent where the photo sits (the card el has
+      // `background:#000`, which would otherwise capture as opaque and hide the
+      // manually-drawn photo).
+      if (photoEl) photoEl.style.visibility = 'hidden';
+      cardEl.style.background = 'transparent';
+      const c = await html2canvas(cardEl, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: null, logging: false });
+      if (photoEl) photoEl.style.visibility = prevVis;
+      cardEl.style.background = prevBg;
 
-      // Composite onto a fixed 9:16 (1080×1920) canvas. The rendered card box
-      // isn't always exactly 9:16 (maxHeight constraint), so exporting it raw
-      // made Instagram stretch the photo to fit its story format. Cover-fit onto
-      // a true 9:16 output guarantees no distortion.
+      // Load the user photo as a bitmap for manual cover-fit drawing.
+      let photoImg: HTMLImageElement | null = null;
+      if (userPhoto) {
+        photoImg = await new Promise<HTMLImageElement | null>(res => {
+          const im = new Image();
+          im.onload = () => res(im); im.onerror = () => res(null);
+          im.src = userPhoto;
+        });
+      }
+
+      // Cover-fit helper: scales source uniformly to fill W×H, centred, cropping
+      // overflow. Uniform scale = never stretches.
+      const cover = (ctx: CanvasRenderingContext2D, src: CanvasImageSource, sw: number, sh: number, W: number, H: number) => {
+        const sAR = sw / sh, tAR = W / H;
+        let dw: number, dh: number, dx: number, dy: number;
+        if (sAR > tAR) { dh = H; dw = H * sAR; dx = (W - dw) / 2; dy = 0; }
+        else { dw = W; dh = W / sAR; dx = 0; dy = (H - dh) / 2; }
+        ctx.drawImage(src, dx, dy, dw, dh);
+      };
+
+      // Composite onto a fixed 9:16 (1080×1920) canvas: black base → photo
+      // (cover) → captured UI overlay (cover). Guarantees a true 9:16 output
+      // with no distortion regardless of the preview box size.
       const TW = 1080, TH = 1920;
       const out = document.createElement('canvas');
       out.width = TW; out.height = TH;
@@ -290,20 +329,20 @@ export const WorkoutShareCard = ({
       if (ctx) {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, TW, TH);
-        const sAR = c.width / c.height, tAR = TW / TH;
-        let dw: number, dh: number, dx: number, dy: number;
-        if (sAR > tAR) { dh = TH; dw = dh * sAR; dx = (TW - dw) / 2; dy = 0; }
-        else { dw = TW; dh = dw / sAR; dx = 0; dy = (TH - dh) / 2; }
-        ctx.drawImage(c, dx, dy, dw, dh);
+        if (photoImg) cover(ctx, photoImg, photoImg.naturalWidth, photoImg.naturalHeight, TW, TH);
+        cover(ctx, c, c.width, c.height, TW, TH);
       }
       // Free the large source bitmap immediately to prevent WebKit libpas heap crash
       c.width = 0;
       c.height = 0;
-      const blob = await new Promise<Blob | null>(r => out.toBlob(b => r(b), 'image/png', 1.0));
+      // Export JPEG (not PNG): JPEG has no alpha channel, so the story
+      // background is guaranteed fully opaque. A transparent PNG made
+      // Instagram show the live camera through the card (sticker-like look).
+      const blob = await new Promise<Blob | null>(r => out.toBlob(b => r(b), 'image/jpeg', 0.95));
       out.width = 0; out.height = 0;
       return blob;
     } catch { return null; }
-  }, []);
+  }, [userPhoto]);
 
   // Native touch listeners with { passive: false } to actually prevent browser zoom/scroll
   const posRef = useRef(pos);
@@ -404,19 +443,35 @@ export const WorkoutShareCard = ({
 
   const b2b = (blob: Blob): Promise<string> => new Promise((res, rej) => { const r = new FileReader(); r.onloadend = () => res((r.result as string).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
 
+  // Write the cached JPEG to the native cache and return its file URI.
+  const writeShareFile = useCallback(async (blob: Blob): Promise<string | null> => {
+    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.jpg`;
+    try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); return s.uri; }
+    catch { return null; }
+  }, [today]);
+
+  // Single "Share" (Strava-style): when Instagram is installed, hand the card
+  // straight to IG Stories as the BACKGROUND (native pasteboard / ADD_TO_STORY).
+  // Otherwise fall back to the generic share sheet (feed/WhatsApp/save/web).
   const handleShare = useCallback(async () => {
     const blob = cachedBlobRef.current; if (!blob) return;
-    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
+    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.jpg`;
     const igTag = gymInstagram ? ` @${gymInstagram}` : '';
     const txt = `${title} ${t('workout_share.completed')} ${Math.round(totalWeight)} kg | ${totalSets} ${t('workout_share.sets_unit')} | ${totalDuration} min${igTag}`;
     if (Capacitor.isNativePlatform()) {
-      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: t('workout_share.share_title'), text: txt, files: [s.uri], dialogTitle: t('workout_share.share_dialog') }); return; }
-      catch (e) { if ((e as Error).message?.includes('canceled')) return; }
+      const uri = await writeShareFile(blob);
+      if (uri) {
+        // IG installed → Story background (opaque JPEG, no sticker, no camera).
+        if (igInstalled && await shareToInstagramStories(uri)) return;
+        // Otherwise generic native share sheet.
+        try { await Share.share({ title: t('workout_share.share_title'), text: txt, files: [uri], dialogTitle: t('workout_share.share_dialog') }); return; }
+        catch (e) { if ((e as Error).message?.includes('canceled')) return; }
+      }
     }
-    const file = new File([blob], fn, { type: 'image/png' });
+    const file = new File([blob], fn, { type: 'image/jpeg' });
     if (navigator.share) { try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Pumplo', text: txt }); return; } } catch (e) { if ((e as Error).name === 'AbortError') return; } }
     const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = fn; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
-  }, [today, title, totalWeight, totalSets, totalDuration]);
+  }, [today, title, totalWeight, totalSets, totalDuration, gymInstagram, t, writeShareFile, igInstalled]);
 
   const stats: Stat[] = [
     { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
@@ -500,7 +555,7 @@ export const WorkoutShareCard = ({
           className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
           style={{ height: '44px', background: '#4CC9FF', color: '#fff', fontSize: '15px', fontWeight: 600, border: 'none' }}>
           <Share2 className="w-4 h-4" />
-          {isGenerating ? t('workout.preparing') : imageReady ? t('workout.share') : t('workout.preparing')}
+          {(isGenerating || !imageReady) ? t('workout.preparing') : igInstalled ? t('workout.share_instagram') : t('workout.share')}
         </button>
         <button type="button" onClick={onFinish} disabled={isSaving || isGenerating}
           className="w-full flex items-center justify-center rounded-xl disabled:opacity-50"
