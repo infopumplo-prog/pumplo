@@ -714,6 +714,7 @@ const cs = {
   'training.streak_3': '🔥 Streak aktivován! Máš 3 tréninky za sebou!',
   'training.streak_record': '🔥 Nový rekord! {{n}} dní streak!',
   'training.workout_letter': 'Trénink {{letter}}',
+  'training.workout_number': '{{n}}. trénink',
 
   'onboarding.age': 'Věk',
   'onboarding.height': 'Výška',

@@ -721,6 +721,7 @@ const en = {
   'training.streak_3': '🔥 Streak activated! 3 workouts in a row!',
   'training.streak_record': '🔥 New record! {{n}} day streak!',
   'training.workout_letter': 'Workout {{letter}}',
+  'training.workout_number': 'Workout {{n}}',
 
   'onboarding.age': 'Age',
   'onboarding.height': 'Height',

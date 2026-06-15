@@ -240,18 +240,13 @@ const Training = () => {
   // For display: totalWeeks stays same but last week shows extra days
   const totalWeeks = goalInfo?.duration_weeks || 8;
 
-  // Current week and day based on current_day_index
+  // Current week = the week holding the next workout in the queue (completion-based,
+  // not calendar). Plan advances only by completing trainings → it stretches in time.
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
-    const completedDays = plan.currentDayIndex || 0;
-    
-    // Week 1 has effectiveFirstWeekDayCount days
-    if (completedDays < effectiveFirstWeekDayCount) return 1;
-    
-    // Remaining weeks have trainingFrequency days each
-    const daysAfterFirstWeek = completedDays - effectiveFirstWeekDayCount;
-    return 2 + Math.floor(daysAfterFirstWeek / trainingFrequency);
-  }, [plan, effectiveFirstWeekDayCount, trainingFrequency]);
+    const done = plan.currentDayIndex || 0;
+    return Math.min(Math.floor(done / trainingFrequency) + 1, totalWeeks);
+  }, [plan, trainingFrequency, totalWeeks]);
 
   const currentDayInWeek = useMemo(() => {
     if (!plan) return 0;
@@ -541,178 +536,64 @@ const Training = () => {
   // Implements shifted week logic: 
   // - Week 1: Only show days from plan start onwards (skip days before)
   // - Week after last (totalWeeks + 1): Add the skipped days from week 1
+  // QUEUE model (same as Můj plán): each card is a slot in the training queue,
+  // NOT a calendar weekday. Completed slots show what was actually trained ✓;
+  // the slot at `totalCompletedDays` is the next workout; later slots are upcoming.
+  // The plan advances by completion, so it stretches in real time to all trainings.
   const daysInViewingWeek = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
-    
-    const workoutLetters = getAllDayLetters(workoutTypes);
-    const isFirstWeek = viewingWeek === 1;
-    // Extra week only exists if there are skipped days from week 1
-    const isExtraWeek = skippedDaysCount > 0 && viewingWeek === totalWeeks + 1;
-    
-    // Build the list of days to show in this week
-    let daysToShow: string[] = [];
-    
-    if (isFirstWeek) {
-      // Week 1: Only show days from plan start onwards (hide skipped days)
-      daysToShow = firstWeekEffectiveDays;
-    } else if (isExtraWeek) {
-      // Extra week (after last regular week): Show only the skipped days from first week
-      daysToShow = firstWeekSkippedDays;
-    } else {
-      // Normal weeks (including last regular week): Show all training days
-      daysToShow = trainingDays;
-    }
-    
-    // Calculate base properties for each day
-    const daysWithBaseProps = daysToShow.map((dayOfWeek, indexInWeek) => {
-      // For split calculation, we need the EFFECTIVE global day index
-      // Week 1 starts at 0, week 2 starts at firstWeekEffectiveDays, etc.
-      let effectiveGlobalIndex: number;
-      
-      if (isFirstWeek) {
-        effectiveGlobalIndex = indexInWeek;
-      } else if (isExtraWeek) {
-        // Extra week days: these are the LAST days of the entire plan
-        const regularDaysInPlan = effectiveFirstWeekDayCount + (totalWeeks - 1) * trainingFrequency;
-        effectiveGlobalIndex = regularDaysInPlan + indexInWeek;
+    const dayCount = workoutTypes;
+    const queueHead = plan.currentDayIndex ?? totalCompletedDays;
+    const weekStartSlot = (viewingWeek - 1) * trainingFrequency;
+
+    return trainingDays.map((dayOfWeek, i) => {
+      const slot = weekStartSlot + i;
+      const isCompleted = slot < totalCompletedDays;
+      const isNext = slot === totalCompletedDays;
+      const isFuture = slot > totalCompletedDays;
+
+      let workoutLetter: string;
+      let sessionId: string | null = null;
+      if (isCompleted) {
+        const w = regularCompletedWorkouts[slot];
+        workoutLetter = w ? String(w.dayLetter).replace('_EXT', '') : getCurrentDayLetter(dayCount, slot);
+        sessionId = w?.sessionId ?? null;
       } else {
-        // Normal calculation for other weeks
-        const daysBeforeThisWeek = effectiveFirstWeekDayCount + (viewingWeek - 2) * trainingFrequency;
-        effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
-      }
-      
-      // Is this the actual "today" - check if day of week matches today's day
-      const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
-      const isToday = !isExtraWeek && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
-      
-      // Is this day in the past within the current week?
-      const isPastThisWeek = !isExtraWeek && viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
-      
-      // Is the entire viewing week in the past?
-      const isWeekInPast = viewingWeek < currentWeek;
-      
-      // Is this day in the future?
-      // Extra week days are always considered "future" since they're at the end of the plan
-      const isFuture = isExtraWeek || viewingWeek > currentWeek || 
-        (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
-      
-      // Calculate actual calendar date for this day in this week
-      // Used to check if day is before plan start (shouldn't be marked as missed)
-      const getActualDateForDay = (): Date | null => {
-        if (!planStartDate) return null;
-        
-        // Calculate the Monday of the plan's start week
-        const startDay = planStartDate.getDay(); // 0=Sunday
-        const daysFromMonday = startDay === 0 ? 6 : startDay - 1; // Convert to Mon=0
-        const planWeekMonday = new Date(planStartDate);
-        planWeekMonday.setDate(planStartDate.getDate() - daysFromMonday);
-        
-        // Add weeks to get to the viewing week's Monday
-        const viewingWeekMonday = new Date(planWeekMonday);
-        viewingWeekMonday.setDate(planWeekMonday.getDate() + (viewingWeek - 1) * 7);
-        
-        // Add days to get to the specific day of week
-        const targetDate = new Date(viewingWeekMonday);
-        targetDate.setDate(viewingWeekMonday.getDate() + dayOrderIndex);
-        
-        return targetDate;
-      };
-      
-      const actualDate = getActualDateForDay();
-      const isBeforePlanStart = planStartDate && actualDate && actualDate < planStartDate;
-      
-      // Compare with TODAY's actual calendar date (not day-of-week index)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isActuallyInPast = actualDate && actualDate < today;
-
-      // Match completion by ACTUAL calendar date (not week×weekday position) so
-      // sessions trained off-schedule still attribute to the right card.
-      const completedSession = isExtraWeek || !actualDate
-        ? null
-        : regularCompletedWorkouts.find(w => {
-            const d = new Date(w.date);
-            d.setHours(0, 0, 0, 0);
-            return d.getTime() === actualDate.getTime();
-          });
-      const isCompleted = !!completedSession;
-
-      // Day letter: completed days show what was ACTUALLY trained; today and
-      // future days of the current week anchor to the live rotation
-      // (plan.currentDayLetter, incl. the missed-advancement self-heal).
-      // Other weeks keep the calendar estimate.
-      let workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
-      const sessionLetter = completedSession?.dayLetter?.replace('_EXT', '');
-      if (sessionLetter && workoutLetters.includes(sessionLetter)) {
-        workoutLetter = sessionLetter;
-      } else if (!isExtraWeek && viewingWeek === currentWeek && plan.currentDayLetter && dayOrderIndex >= todayDayOrder) {
-        const baseIdx = workoutLetters.indexOf(plan.currentDayLetter);
-        if (baseIdx !== -1) {
-          // Scheduled days from today (inclusive) up to this one…
-          let futureOffset = daysToShow.filter(d => {
-            const di = DAY_ORDER.indexOf(d);
-            return di >= todayDayOrder && di < dayOrderIndex;
-          }).length;
-          // …minus today if it's already trained (rotation moved past it).
-          const todayDone = regularCompletedWorkouts.some(w => {
-            const d = new Date(w.date);
-            d.setHours(0, 0, 0, 0);
-            return d.getTime() === today.getTime();
-          });
-          if (todayDone && futureOffset > 0 && daysToShow.includes(todayWeekday)) futureOffset -= 1;
-          workoutLetter = workoutLetters[(baseIdx + futureOffset) % workoutTypes];
-        }
+        workoutLetter = getCurrentDayLetter(dayCount, queueHead + (slot - totalCompletedDays));
       }
 
-      // Is this day missed? Only if:
-      // 1. Not in extra week (shifted days at end of plan)
-      // 2. Its actual calendar date is in the PAST (not future)
-      // 3. Not before plan start date
-      // 4. Not already completed
-      // 5. User has at least 1 completed workout (don't show X marks for brand new users)
-      const isMissed = !isExtraWeek && isActuallyInPast && !isBeforePlanStart && !isCompleted && totalCompletedDays > 0;
-      
-      // Is this the current day to train (next up)?
-      const isCurrentDay = isToday && !isCompleted;
-      
-      // Get day template info - shows split name (e.g., "Push", "Pull & Ramena")
       const dayInfo = plan.allDays?.find(d => d.dayLetter === workoutLetter);
-      
+      const workoutName = dayInfo?.dayName || t('training.workout_letter', { letter: workoutLetter });
+
       return {
         dayOfWeek,
-        dayOrderIndex,
-        dayName: DAY_NAMES_CZ[dayOfWeek] || dayOfWeek,
-        dayNameShort: DAY_NAMES_SHORT_CZ[dayOfWeek] || dayOfWeek.slice(0, 2),
         workoutLetter,
-        // Show split name, NOT "Den A" - use dayName from template
-        workoutName: dayInfo?.dayName || t('training.workout_letter', { letter: workoutLetter }),
+        workoutName,
+        dayName: workoutName, // legacy safety: any leftover ref shows the workout
+        ordinalLabel: t('training.workout_number', { n: slot + 1 }),
+        sessionId,
         isCompleted,
-        isCurrentDay,
-        isToday,
+        isNext,
         isFuture,
-        isPast: isPastThisWeek || isWeekInPast,
-        isMissed,
-        isFirstWeekSkip: false, // No longer used
-        isShiftedDay: false, // No longer highlighted
-        globalDayIndex: effectiveGlobalIndex,
-        sessionId: completedSession?.sessionId || null,
-        isUpcoming: false // Will be set in second pass
+        globalDayIndex: slot,
+        // legacy fields kept inert so older render branches don't trigger
+        isToday: isNext,
+        isMissed: false,
+        isUpcoming: false,
+        isShiftedDay: false,
       };
     });
-    
-    // Second pass: find the first upcoming day (future, not completed)
-    // Only mark upcoming if we're viewing the current week
-    if (viewingWeek === currentWeek) {
-      const upcomingIndex = daysWithBaseProps.findIndex(day => 
-        day.isFuture && !day.isCompleted
-      );
-      if (upcomingIndex !== -1) {
-        daysWithBaseProps[upcomingIndex].isUpcoming = true;
-      }
-    }
-    
-    return daysWithBaseProps;
-  }, [plan, viewingWeek, currentWeek, totalWeeks, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, firstWeekEffectiveDays, firstWeekSkippedDays, skippedDaysCount, effectiveFirstWeekDayCount, totalCompletedDays]);
+  }, [plan, viewingWeek, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, totalCompletedDays, t]);
+
+  // Did the user already complete a (regular) workout TODAY — by real date, not
+  // queue position. Drives whether today's Start button / preview shows.
+  const completedToday = useMemo(() => {
+    const now = new Date();
+    return regularCompletedWorkouts.some(w => {
+      const d = new Date(w.date);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    });
+  }, [regularCompletedWorkouts]);
 
   // Fetch available goals
   useEffect(() => {
@@ -1904,7 +1785,7 @@ const Training = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">
-              {t('training.week_of', { week: viewingWeek, total: skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks })}
+              {t('training.week_of', { week: viewingWeek, total: totalWeeks })}
             </span>
             {isViewingCurrentWeek && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t('training.now_badge')}</Badge>
@@ -1914,7 +1795,7 @@ const Training = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            disabled={viewingWeek >= (skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks)}
+            disabled={viewingWeek >= totalWeeks}
             onClick={() => {
               setViewingWeek(w => w + 1);
               setSelectedDayIndex(null);
@@ -1986,13 +1867,10 @@ const Training = () => {
                             ? "text-amber-600"
                             : "text-foreground"
                   )}>
-                    {day.dayName}
+                    {day.workoutName}
                   </h3>
-                  {day.isToday && isViewingCurrentWeek && !day.isCompleted && !day.isMissed && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">{t('training.today_badge')}</Badge>
-                  )}
-                  {day.isUpcoming && !day.isToday && (
-                    <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">{t('training.next_badge')}</Badge>
+                  {day.isNext && isViewingCurrentWeek && !day.isCompleted && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">{t('training.next_badge')}</Badge>
                   )}
                 </div>
                 <p className={cn(
@@ -2003,7 +1881,7 @@ const Training = () => {
                       ? "text-destructive/70" 
                       : "text-muted-foreground"
                 )}>
-                  {day.workoutName}
+                  {day.ordinalLabel}
                 </p>
               </div>
 
@@ -2038,12 +1916,9 @@ const Training = () => {
                   return (
                     <>
                       <h3 className="font-bold mb-3 flex items-center gap-2">
-                        {day.dayName} - {day.workoutName}
+                        {day.workoutName} <span className="text-muted-foreground font-normal text-sm">· {day.ordinalLabel}</span>
                         {day.isCompleted && (
                           <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        )}
-                        {day.isMissed && (
-                          <X className="w-4 h-4 text-destructive" />
                         )}
                       </h3>
                       
@@ -2120,9 +1995,10 @@ const Training = () => {
 
         {/* Show bonus workout option on non-training days */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const isNonTrainingDay = isViewingCurrentWeek && !todayTrainingDay;
-          
+          // Bonus offered when today (real calendar) is NOT one of the user's scheduled days.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const isNonTrainingDay = isViewingCurrentWeek && !todayIsScheduled;
+
           if (!isNonTrainingDay || isWorkoutActive) return null;
           
           return (
@@ -2180,14 +2056,11 @@ const Training = () => {
 
         {/* Current Day Preview - only when today is a training day, viewing current week, and not completed */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const showPreview = isViewingCurrentWeek && 
-            todayTrainingDay && 
-            !todayTrainingDay.isCompleted && 
-            !todayTrainingDay.isMissed &&
-            selectedDayIndex === null;
-          
-          if (!showPreview || !todayTrainingDay) return null;
+          // Preview today's next workout when today is a scheduled day and not yet done today.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const showPreview = todayIsScheduled && !completedToday && selectedDayIndex === null;
+
+          if (!showPreview) return null;
           
           return (
             <div className="px-4">
@@ -2198,7 +2071,7 @@ const Training = () => {
                       {t('workout.today_workout')}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {todayTrainingDay.dayName} • {todayTrainingDay.workoutName}
+                      {getTodayDayName()}
                     </p>
                   </div>
                   {generatedExercises.length > 0 && (
@@ -2238,12 +2111,10 @@ const Training = () => {
 
         {/* Action Button - only when today is a training day and not completed */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const showButton = isViewingCurrentWeek && 
-            todayTrainingDay && 
-            !todayTrainingDay.isCompleted && 
-            !todayTrainingDay.isMissed;
-          
+          // Start shown when today is a scheduled day and no workout done today yet.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const showButton = todayIsScheduled && !completedToday;
+
           if (!showButton) return null;
           
           return (
