@@ -49,17 +49,18 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
-    // 8-bit unsigned mono PCM WAV: 128 = silence; beeps written near the end.
+    // 16-bit signed mono PCM WAV. The whole clip carries an inaudibly quiet
+    // keep-alive tone (~-58 dBFS) so the stream is non-silent (app keeps
+    // background time) without an audible buzz; the beeps are written loud at the end.
     private static func composeWav(totalSeconds: Double) -> Data {
         let sr = 22050
         let total = max(1, Int(Double(sr) * totalSeconds))
-        // NOT pure silence: a near-inaudible ~40 Hz tone (±1 around 128, ~-48 dBFS)
-        // keeps the audio stream genuinely "playing" so iOS grants background time
-        // and doesn't suspend the app before the beep fires.
-        var samples = [UInt8](repeating: 128, count: total)
+        var samples = [Int16](repeating: 0, count: total)
+
+        // Keep-alive: ~-58 dBFS, well below audible especially under music.
+        let keepAmp = 40.0
         for i in 0..<total {
-            let keepAlive = sin(2.0 * Double.pi * 40.0 * Double(i) / Double(sr))
-            samples[i] = UInt8(128 + Int((keepAlive * 1.4).rounded()))
+            samples[i] = Int16((sin(2.0 * Double.pi * 120.0 * Double(i) / Double(sr)) * keepAmp).rounded())
         }
 
         func writeBeep(endingAtSecondsFromEnd endGap: Double, durationMs: Double, freq: Double, vol: Double) {
@@ -70,8 +71,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             for i in 0..<n {
                 let t = Double(i) / Double(sr)
                 let env = i > Int(Double(n) * 0.8) ? Double(n - i) / (Double(n) * 0.2) : 1.0
-                let v = sin(2.0 * Double.pi * freq * t) * env * vol
-                samples[startIdx + i] = UInt8(max(0, min(255, Int((v * 0.5 + 0.5) * 255.0))))
+                let v = sin(2.0 * Double.pi * freq * t) * env * vol * 32000.0
+                samples[startIdx + i] = Int16(max(-32768.0, min(32767.0, v)))
             }
         }
 
@@ -84,11 +85,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         var d = Data()
         func u32(_ v: UInt32) -> Data { var x = v.littleEndian; return Data(bytes: &x, count: 4) }
         func u16(_ v: UInt16) -> Data { var x = v.littleEndian; return Data(bytes: &x, count: 2) }
-        let dataLen = UInt32(samples.count)
+        let dataLen = UInt32(samples.count * 2)
         d.append("RIFF".data(using: .ascii)!); d.append(u32(36 + dataLen)); d.append("WAVE".data(using: .ascii)!)
         d.append("fmt ".data(using: .ascii)!); d.append(u32(16)); d.append(u16(1)); d.append(u16(1))
-        d.append(u32(UInt32(sr))); d.append(u32(UInt32(sr))); d.append(u16(1)); d.append(u16(8))
-        d.append("data".data(using: .ascii)!); d.append(u32(dataLen)); d.append(Data(samples))
+        d.append(u32(UInt32(sr))); d.append(u32(UInt32(sr * 2))); d.append(u16(2)); d.append(u16(16))
+        d.append("data".data(using: .ascii)!); d.append(u32(dataLen))
+        samples.withUnsafeBufferPointer { d.append(Data(buffer: $0)) }
         return d
     }
 }
