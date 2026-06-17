@@ -34,7 +34,10 @@ export async function scheduleRestEndNotification(seconds: number, title: string
         title,
         body,
         schedule: { at: new Date(Date.now() + seconds * 1000), allowWhileIdle: true },
-        sound: undefined, // default system sound
+        // Bundled beep so the rest-end alert is audible when the app is
+        // backgrounded / phone locked (iOS: rest_beep.wav in app bundle,
+        // Android: res/raw/rest_beep). Replaces the old background-audio hack.
+        sound: 'rest_beep.wav',
       }],
     });
   } catch (e) {

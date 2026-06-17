@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
+import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -52,21 +53,27 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
   // No speech during rest — exercise announcement happens when next exercise loads
 
-  // Native audio: play the whole countdown (incl. final beep) as one background-
-  // capable clip so it's heard even when the phone is locked / app backgrounded /
-  // headphones in, while music keeps playing. No banner notification. On web (or
-  // if the native plugin is unavailable) this no-ops and the JS beeps below run.
+  // Audio while the app is in the FOREGROUND: play the whole countdown (incl.
+  // final beep) as one clip so the 3-2-1 is heard while the screen is on. On web
+  // (or if the native plugin is unavailable) this no-ops and the JS beeps run.
+  //
+  // BACKGROUND / locked phone: we no longer keep audio alive in the background
+  // (Apple 2.5.4 — the audio background mode isn't allowed for a near-silent
+  // keep-alive). Instead we schedule a LOCAL NOTIFICATION with a beep that fires
+  // at rest-end. It's cancelled if the rest finishes or is paused in-app.
   useEffect(() => {
     if (isPaused || completedRef.current) {
       stopRestBeeps();
+      cancelRestEndNotification();
       nativeBeepsRef.current = false;
       return;
     }
     const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
     let cancelled = false;
     startRestBeeps(remaining).then(handled => { if (!cancelled) nativeBeepsRef.current = handled; });
-    return () => { cancelled = true; stopRestBeeps(); nativeBeepsRef.current = false; };
-  }, [isPaused]);
+    scheduleRestEndNotification(remaining, t('workout.rest_over_title'), t('workout.rest_over_body'));
+    return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); nativeBeepsRef.current = false; };
+  }, [isPaused, t]);
 
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
@@ -88,6 +95,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
         completedRef.current = true;
         if (!nativeBeepsRef.current) playAlarmFinish();
         stopRestBeeps();
+        cancelRestEndNotification(); // finished in-app → no need for the banner
         onComplete();
       }
     };
@@ -127,7 +135,10 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     beeped1Ref.current = false;
     setTimeLeft(duration);
     setIsPaused(false);
-  }, [duration]);
+    // Re-arm the backgrounded rest-end notification for the new end time.
+    cancelRestEndNotification();
+    scheduleRestEndNotification(duration, t('workout.rest_over_title'), t('workout.rest_over_body'));
+  }, [duration, t]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
