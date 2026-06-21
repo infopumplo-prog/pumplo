@@ -46,6 +46,12 @@
 	<string>Pumplo ověřuje, že cvičíš ve své posilovně. Poloha se používá pouze při zahájení tréninku.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Pumplo ověřuje, že cvičíš ve své posilovně. Poloha se používá pouze při zahájení tréninku.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Pumplo používá fotoaparát, abys mohl přidat vlastní fotku ke sdílení svého tréninku.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pumplo potřebuje přístup k fotkám, abys mohl přidat vlastní fotku ke sdílení svého tréninku.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Pumplo ukládá obrázek tvého tréninku do fotek, abys ho mohl sdílet.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
