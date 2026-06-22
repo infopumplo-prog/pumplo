@@ -20,6 +20,8 @@ interface Exercise {
   tips_en: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en?: string[];
+  secondary_muscles_en?: string[];
   difficulty: number | null;
 }
 
@@ -296,41 +298,47 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
             )}
 
             {/* Primary muscles */}
-            {(currentExercise.primary_muscles ?? []).length > 0 && (
+            {((lang === 'en' && (currentExercise.primary_muscles_en?.length ?? 0) > 0) ? currentExercise.primary_muscles_en! : (currentExercise.primary_muscles ?? [])).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   {t('station.primary_muscles')}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(currentExercise.primary_muscles ?? []).map((m) => (
-                    <span
-                      key={m}
-                      className="px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={{ background: 'rgba(76,201,255,0.15)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
-                    >
-                      {translateMuscle(m)}
-                    </span>
-                  ))}
+                  {(() => {
+                    const useEn = lang === 'en' && (currentExercise.primary_muscles_en?.length ?? 0) > 0;
+                    return (useEn ? currentExercise.primary_muscles_en! : (currentExercise.primary_muscles ?? [])).map((m) => (
+                      <span
+                        key={m}
+                        className="px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{ background: 'rgba(76,201,255,0.15)', color: '#4CC9FF', border: '1px solid rgba(76,201,255,0.3)' }}
+                      >
+                        {useEn ? m : translateMuscle(m)}
+                      </span>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
 
             {/* Secondary muscles */}
-            {(currentExercise.secondary_muscles ?? []).length > 0 && (
+            {((lang === 'en' && (currentExercise.secondary_muscles_en?.length ?? 0) > 0) ? currentExercise.secondary_muscles_en! : (currentExercise.secondary_muscles ?? [])).length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   {t('station.secondary_muscles')}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(currentExercise.secondary_muscles ?? []).map((m) => (
-                    <span
-                      key={m}
-                      className="px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
-                    >
-                      {translateMuscle(m)}
-                    </span>
-                  ))}
+                  {(() => {
+                    const useEn = lang === 'en' && (currentExercise.secondary_muscles_en?.length ?? 0) > 0;
+                    return (useEn ? currentExercise.secondary_muscles_en! : (currentExercise.secondary_muscles ?? [])).map((m) => (
+                      <span
+                        key={m}
+                        className="px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        {useEn ? m : translateMuscle(m)}
+                      </span>
+                    ));
+                  })()}
                 </div>
               </div>
             )}

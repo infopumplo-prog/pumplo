@@ -46,6 +46,8 @@ interface ExercisePlayerProps {
   equipmentType?: string | null;
   primaryMuscles?: string[];
   secondaryMuscles?: string[];
+  primaryMusclesEn?: string[] | null;
+  secondaryMusclesEn?: string[] | null;
   restBetweenSets?: number;
   lastWeight?: number;
   setupInstructions?: string | null;
@@ -84,6 +86,8 @@ export const ExercisePlayer = ({
   equipmentType,
   primaryMuscles = [],
   secondaryMuscles = [],
+  primaryMusclesEn,
+  secondaryMusclesEn,
   restBetweenSets = 90,
   lastWeight,
   setupInstructions,
@@ -491,6 +495,8 @@ export const ExercisePlayer = ({
               machineName={machineName}
               primaryMuscles={primaryMuscles}
               secondaryMuscles={secondaryMuscles}
+              primaryMusclesEn={primaryMusclesEn}
+              secondaryMusclesEn={secondaryMusclesEn}
               description={exerciseDescription}
               setupInstructions={setupInstructions}
               commonMistakes={commonMistakes}

@@ -16,6 +16,8 @@ interface StationExercise {
   tips_en: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en: string[];
+  secondary_muscles_en: string[];
   difficulty: number | null;
   category: string | null;
   equipment_type: string | null;
@@ -64,7 +66,7 @@ export const useStationData = (shortCode: string | undefined) => {
 
       const { data: exercises } = await supabase
         .from('exercises')
-        .select('id, name, name_en, video_path, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, primary_muscles, secondary_muscles, difficulty, category, equipment_type')
+        .select('id, name, name_en, video_path, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, difficulty, category, equipment_type')
         .eq('machine_id', gymMachine.machine_id);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,6 +88,8 @@ export const useStationData = (shortCode: string | undefined) => {
           tips_en: e.tips_en ?? null,
           primary_muscles: e.primary_muscles || [],
           secondary_muscles: e.secondary_muscles || [],
+          primary_muscles_en: e.primary_muscles_en || [],
+          secondary_muscles_en: e.secondary_muscles_en || [],
         })),
       });
       setIsLoading(false);

@@ -722,7 +722,9 @@ const ExercisePlayerWithVideo = ({
     equipmentType: string | null;
     primaryMuscles: string[];
     secondaryMuscles: string[];
-  }>({ url: null, description: null, descriptionEn: null, setupInstructions: null, setupInstructionsEn: null, commonMistakes: null, commonMistakesEn: null, tips: null, tipsEn: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [] });
+    primaryMusclesEn: string[];
+    secondaryMusclesEn: string[];
+  }>({ url: null, description: null, descriptionEn: null, setupInstructions: null, setupInstructionsEn: null, commonMistakes: null, commonMistakesEn: null, tips: null, tipsEn: null, difficulty: null, exerciseWithWeights: true, category: '', equipmentType: null, primaryMuscles: [], secondaryMuscles: [], primaryMusclesEn: [], secondaryMusclesEn: [] });
   const [lastWeight, setLastWeight] = useState<number | undefined>(undefined);
 
   // Fetch video path + detail from exercise on mount
@@ -732,7 +734,7 @@ const ExercisePlayerWithVideo = ({
 
       const { data } = await supabase
         .from('exercises')
-        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
+        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
         .eq('id', exercise.exerciseId)
         .single();
 
@@ -753,6 +755,8 @@ const ExercisePlayerWithVideo = ({
           equipmentType: data.equipment_type || null,
           primaryMuscles: data.primary_muscles || [],
           secondaryMuscles: data.secondary_muscles || [],
+          primaryMusclesEn: data.primary_muscles_en || [],
+          secondaryMusclesEn: data.secondary_muscles_en || [],
         });
       }
     };
@@ -815,6 +819,8 @@ const ExercisePlayerWithVideo = ({
       equipmentType={videoData.equipmentType}
       primaryMuscles={videoData.primaryMuscles}
       secondaryMuscles={videoData.secondaryMuscles}
+      primaryMusclesEn={videoData.primaryMusclesEn}
+      secondaryMusclesEn={videoData.secondaryMusclesEn}
       restBetweenSets={restBetweenSets}
       lastWeight={lastWeight}
       initialSetIndex={initialSetIndex}

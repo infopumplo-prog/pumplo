@@ -8,6 +8,8 @@ interface ExerciseInfoContentProps {
   machineName?: string | null;
   primaryMuscles?: string[];
   secondaryMuscles?: string[];
+  primaryMusclesEn?: string[] | null;
+  secondaryMusclesEn?: string[] | null;
   description?: string | null;
   descriptionEn?: string | null;
   setupInstructions?: string | null;
@@ -31,6 +33,8 @@ export function ExerciseInfoContent({
   machineName,
   primaryMuscles = [],
   secondaryMuscles = [],
+  primaryMusclesEn,
+  secondaryMusclesEn,
   description,
   descriptionEn,
   setupInstructions,
@@ -49,6 +53,9 @@ export function ExerciseInfoContent({
   const mistakes = isEn && commonMistakesEn ? commonMistakesEn : commonMistakes;
   const tipsText = isEn && tipsEn ? tipsEn : tips;
 
+  const primaryMusclesDisplay = isEn && primaryMusclesEn?.length ? primaryMusclesEn : null;
+  const secondaryMusclesDisplay = isEn && secondaryMusclesEn?.length ? secondaryMusclesEn : null;
+
   return (
     <div>
       {(category || equipmentType || machineName) && (
@@ -61,26 +68,26 @@ export function ExerciseInfoContent({
 
       {children}
 
-      {(primaryMuscles?.length ?? 0) > 0 && (
+      {((primaryMusclesDisplay ?? primaryMuscles)?.length ?? 0) > 0 && (
         <div className="mb-3">
           <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
           <div className="flex flex-wrap gap-1.5">
-            {primaryMuscles!.map((m) => (
+            {(primaryMusclesDisplay ?? primaryMuscles).map((m) => (
               <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">
-                {translateMuscle(m, isEn)}
+                {primaryMusclesDisplay ? m : translateMuscle(m, isEn)}
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {(secondaryMuscles?.length ?? 0) > 0 && (
+      {((secondaryMusclesDisplay ?? secondaryMuscles)?.length ?? 0) > 0 && (
         <div className="mb-3">
           <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
           <div className="flex flex-wrap gap-1.5">
-            {secondaryMuscles!.map((m) => (
+            {(secondaryMusclesDisplay ?? secondaryMuscles).map((m) => (
               <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">
-                {translateMuscle(m, isEn)}
+                {secondaryMusclesDisplay ? m : translateMuscle(m, isEn)}
               </span>
             ))}
           </div>

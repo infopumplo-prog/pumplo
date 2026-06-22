@@ -313,10 +313,12 @@ export type Database = {
           name: string
           name_en: string | null
           primary_muscles: string[]
+          primary_muscles_en: string[] | null
           primary_role: string | null
           required_bench_config: string | null
           secondary_machine_id: string | null
           secondary_muscles: string[]
+          secondary_muscles_en: string[] | null
           setup_instructions: string | null
           setup_instructions_en: string | null
           slot_type: string | null
@@ -345,10 +347,12 @@ export type Database = {
           name: string
           name_en?: string | null
           primary_muscles?: string[]
+          primary_muscles_en?: string[] | null
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          secondary_muscles_en?: string[] | null
           setup_instructions?: string | null
           setup_instructions_en?: string | null
           slot_type?: string | null
@@ -377,10 +381,12 @@ export type Database = {
           name?: string
           name_en?: string | null
           primary_muscles?: string[]
+          primary_muscles_en?: string[] | null
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          secondary_muscles_en?: string[] | null
           setup_instructions?: string | null
           setup_instructions_en?: string | null
           slot_type?: string | null

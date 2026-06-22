@@ -53,6 +53,8 @@ interface ExerciseDetail {
   equipment_type: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en: string[];
+  secondary_muscles_en: string[];
   video_path: string | null;
   machine_name: string | null;
   description: string | null;
@@ -778,7 +780,7 @@ const CustomWorkoutPlayer = () => {
     setInfoVideoError(false);
     const { data } = await supabase
       .from('exercises')
-      .select('name, category, equipment_type, primary_muscles, secondary_muscles, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
+      .select('name, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
@@ -788,6 +790,8 @@ const CustomWorkoutPlayer = () => {
         equipment_type: data.equipment_type,
         primary_muscles: data.primary_muscles || [],
         secondary_muscles: data.secondary_muscles || [],
+        primary_muscles_en: (data as any).primary_muscles_en || [],
+        secondary_muscles_en: (data as any).secondary_muscles_en || [],
         video_path: data.video_path,
         machine_name: (data as any).machines?.name || null,
         description: (data as any).description || null,
@@ -1322,21 +1326,21 @@ const CustomWorkoutPlayer = () => {
                   {exerciseDetail.equipment_type && ` · ${getEquipmentLabel(t, exerciseDetail.equipment_type)}`}
                   {exerciseDetail.machine_name && ` · ${exerciseDetail.machine_name}`}
                 </p>
-                {exerciseDetail.primary_muscles.length > 0 && (
+                {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.primary_muscles.map((m) => (
+                      {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
                         <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
                       ))}
                     </div>
                   </div>
                 )}
-                {exerciseDetail.secondary_muscles.length > 0 && (
+                {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.secondary_muscles.map((m) => (
+                      {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).map((m) => (
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                       ))}
                     </div>
@@ -1697,21 +1701,21 @@ const CustomWorkoutPlayer = () => {
                 {t('workout.feedback_btn')}
               </button>
 
-              {exerciseDetail.primary_muscles.length > 0 && (
+              {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {exerciseDetail.primary_muscles.map((m) => (
+                    {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
                       <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {exerciseDetail.secondary_muscles.length > 0 && (
+              {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {exerciseDetail.secondary_muscles.map((m) => (
+                    {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).map((m) => (
                       <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                     ))}
                   </div>

@@ -56,6 +56,8 @@ interface ExerciseSearchResult {
   category: string;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en?: string[] | null;
+  secondary_muscles_en?: string[] | null;
   equipment_type: string | null;
   video_path: string | null;
   slot_type: string | null;
@@ -653,7 +655,7 @@ const CustomPlanDetail = () => {
     setLoadingExercises(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .order('name', { ascending: true });
     const exercises = (data || []).map((e: any) => ({
       ...e,
@@ -829,7 +831,7 @@ const CustomPlanDetail = () => {
     setViewExerciseDrawerOpen(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
@@ -1062,6 +1064,8 @@ const CustomPlanDetail = () => {
                     machineName={detailExercise.machine_name}
                     primaryMuscles={detailExercise.primary_muscles}
                     secondaryMuscles={detailExercise.secondary_muscles}
+                    primaryMusclesEn={detailExercise.primary_muscles_en}
+                    secondaryMusclesEn={detailExercise.secondary_muscles_en}
                     description={detailExercise.description}
                     descriptionEn={detailExercise.description_en}
                     setupInstructions={detailExercise.setup_instructions}
@@ -1336,6 +1340,8 @@ const CustomPlanDetail = () => {
                   machineName={viewExerciseData.machine_name}
                   primaryMuscles={viewExerciseData.primary_muscles}
                   secondaryMuscles={viewExerciseData.secondary_muscles}
+                  primaryMusclesEn={viewExerciseData.primary_muscles_en}
+                  secondaryMusclesEn={viewExerciseData.secondary_muscles_en}
                   description={viewExerciseData.description}
                   descriptionEn={viewExerciseData.description_en}
                   setupInstructions={viewExerciseData.setup_instructions}
