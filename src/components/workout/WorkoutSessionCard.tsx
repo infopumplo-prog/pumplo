@@ -34,9 +34,11 @@ interface WorkoutSessionCardProps {
     total_weight_kg: number | null;
   };
   variant?: 'compact' | 'full';
+  titleOverride?: string;
+  hideStatsWhenCollapsed?: boolean;
 }
 
-export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSessionCardProps) => {
+export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, hideStatsWhenCollapsed = false }: WorkoutSessionCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
@@ -131,7 +133,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
               </span>
             </div>
             <div>
-              <p className="font-semibold text-foreground">{displayTitle}</p>
+              <p className="font-semibold text-foreground">{titleOverride ?? displayTitle}</p>
               <p className="text-sm text-muted-foreground">
                 {format(new Date(session.started_at), variant === 'compact' ? 'd.M.' : (isEn ? 'EEEE, MMMM d' : 'EEEE d. MMMM'), { locale: dateLocale })}
                 {variant === 'full' && ` • ${format(new Date(session.started_at), 'HH:mm')}`}
@@ -155,7 +157,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
         </div>
 
         {/* Stats Row - compact version */}
-        {variant === 'compact' && (
+        {variant === 'compact' && !hideStatsWhenCollapsed && (
           <div className="grid grid-cols-3 gap-2 text-sm mt-3">
             <div className="text-center">
               <p className="font-semibold text-foreground">{durationMinutes} min</p>

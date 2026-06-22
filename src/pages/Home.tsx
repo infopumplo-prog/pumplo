@@ -513,9 +513,24 @@ const Home = () => {
                               {t('home.see_all')} <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
-                          {historyExpanded && (
-                            <WorkoutSessionCard session={recentSessions[0]} variant="compact" />
-                          )}
+                          {historyExpanded && (() => {
+                            const last = recentSessions[0];
+                            const letter = last.day_letter.replace('_EXT', '');
+                            const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
+                            const nameMap: Record<string, string> = {
+                              'Horní tělo': t('workout.day_upper_body'),
+                              'Dolní tělo': t('workout.day_lower_body'),
+                              'Celotělový': t('workout.day_full_body'),
+                              'Celé tělo': t('workout.day_full_body'),
+                              'Celé tělo A': `${t('workout.day_full_body')} A`,
+                              'Celé tělo B': `${t('workout.day_full_body')} B`,
+                              'Nožní den': t('workout.day_leg_day'),
+                              'Nohy': t('workout.day_leg_day'),
+                              'Push': 'Push', 'Pull': 'Pull', 'Tlak': 'Push', 'Tah': 'Pull',
+                            };
+                            const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
+                            return <WorkoutSessionCard session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                          })()}
                         </div>
                       )}
                     </div>
