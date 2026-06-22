@@ -8,6 +8,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
+import { useWorkoutHistory } from '@/hooks/useWorkoutHistoryDetails';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
@@ -69,6 +70,7 @@ const Home = () => {
     refetch: refetchStats
   } = useWorkoutStats();
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
+  const { sessions: recentSessions } = useWorkoutHistory();
   const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
@@ -525,6 +527,22 @@ const Home = () => {
 
                 </>) : null}
             </>}
+
+            {recentSessions.length > 0 && (
+              <motion.div variants={itemVariants} className="mt-2">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <h2 className="font-bold text-[#1F2937]">{t('home.recent_history')}</h2>
+                  <Link to="/profile/history" className="text-sm text-[#5BC8F5] font-medium flex items-center gap-0.5">
+                    {t('home.see_all')} <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {recentSessions.slice(0, 3).map((s) => (
+                    <WorkoutSessionCard key={s.id} session={s} variant="compact" />
+                  ))}
+                </div>
+              </motion.div>
+            )}
         </motion.div>
 
         {/* Onboarding Drawer */}

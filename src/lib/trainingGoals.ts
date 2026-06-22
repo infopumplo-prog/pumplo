@@ -268,8 +268,8 @@ export const RIR_BY_WEEK: Record<number, { rir: number; label: string; descripti
   4: { rir: 2, label: 'RIR 2', description: 'Náročné - mohli byste udělat ještě 2 opakování' },
   5: { rir: 1, label: 'RIR 1', description: 'Velmi těžké - mohli byste udělat ještě 1 opakování' },
   6: { rir: 1, label: 'RIR 1', description: 'Velmi těžké - mohli byste udělat ještě 1 opakování' },
-  7: { rir: 3, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
-  8: { rir: 3, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
+  7: { rir: 5, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
+  8: { rir: 5, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
 };
 
 export const getRIRGuidance = (weekNumber: number): { rir: number; label: string; description: string } => {

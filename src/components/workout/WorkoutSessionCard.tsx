@@ -64,7 +64,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
           .from('workout_session_sets')
           .select('*')
           .eq('session_id', session.id)
-          .order('exercise_name', { ascending: true })
+          .order('created_at', { ascending: true })
           .order('set_number', { ascending: true });
 
         if (!error && data) {
