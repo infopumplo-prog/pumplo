@@ -31,6 +31,7 @@ import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
+import { localizeDayName } from '@/lib/dayNames';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
 import { getTrainingFocus, selectWarmupExercises, selectCooldownExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
@@ -1343,7 +1344,7 @@ const Training = () => {
       <WorkoutPreview
         exercises={generatedExercises}
         dayLetter={plan?.currentDayLetter || 'A'}
-        dayName={getTodayDayName()}
+        dayName={localizeDayName(getTodayDayName(), t)}
         estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
         gymId={selectedWorkoutGymId || plan?.gymId}
         planId={plan?.id}

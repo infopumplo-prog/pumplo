@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { estimateCalories } from '@/lib/calorieEstimation';
+import { localizeDayName } from '@/lib/dayNames';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
@@ -417,7 +418,7 @@ export const WorkoutShareCard = ({
   }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
-  const title = isBonus ? t('workout_share.bonus_workout') : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
+  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || `Den ${dayLetter.replace('_EXT', '+')}`);
   const today = new Date();
   const dateStr = format(today, 'd. MMMM yyyy', { locale: isEn ? enUS : cs });
 
