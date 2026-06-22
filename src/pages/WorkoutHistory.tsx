@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Dumbbell, Clock, Flame, TrendingUp, Calendar } from 'lucide-react';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
@@ -21,7 +21,9 @@ const WorkoutHistory = () => {
   const navigate = useNavigate();
   const { stats, isLoading } = useWorkoutStats();
   const { sessions, exerciseStats, isLoading: historyLoading } = useWorkoutHistory();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') ?? 'overview';
+  const [activeTab, setActiveTab] = useState(['overview', 'exercises', 'sessions'].includes(initialTab) ? initialTab : 'overview');
 
   // Prepare chart data for last 7 days
   const last7Days = eachDayOfInterval({

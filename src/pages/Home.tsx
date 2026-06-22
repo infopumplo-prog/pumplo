@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
+import { Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
 import pumploWordmark from '@/assets/pumplo-wordmark.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -71,6 +71,7 @@ const Home = () => {
   } = useWorkoutStats();
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
   const { sessions: recentSessions } = useWorkoutHistory();
+  const [historyExpanded, setHistoryExpanded] = useState(true);
   const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
@@ -502,6 +503,29 @@ const Home = () => {
                     </div>
                   </motion.div>
 
+                  {/* Recent workouts — directly under today's card, collapsible */}
+                  {recentSessions.length > 0 && (
+                    <motion.div variants={itemVariants}>
+                      <button
+                        onClick={() => setHistoryExpanded(v => !v)}
+                        className="w-full flex items-center justify-between mb-2 px-1"
+                      >
+                        <h2 className="font-bold text-[#1F2937]">{t('home.recent_history')}</h2>
+                        <ChevronDown className={cn('w-5 h-5 text-[#6B7280] transition-transform', historyExpanded && 'rotate-180')} />
+                      </button>
+                      {historyExpanded && (
+                        <div className="space-y-3">
+                          {recentSessions.slice(0, 3).map((s) => (
+                            <WorkoutSessionCard key={s.id} session={s} variant="compact" />
+                          ))}
+                          <Link to="/profile/history?tab=sessions" className="flex items-center justify-center gap-0.5 text-sm text-[#5BC8F5] font-medium py-1">
+                            {t('home.see_all')} <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
                   {/* Paused Workout Card */}
                   {pausedWorkout && pausedWorkout.planId === plan?.id && (
                     <motion.div variants={itemVariants}>
@@ -527,22 +551,6 @@ const Home = () => {
 
                 </>) : null}
             </>}
-
-            {recentSessions.length > 0 && (
-              <motion.div variants={itemVariants} className="mt-2">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="font-bold text-[#1F2937]">{t('home.recent_history')}</h2>
-                  <Link to="/profile/history" className="text-sm text-[#5BC8F5] font-medium flex items-center gap-0.5">
-                    {t('home.see_all')} <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {recentSessions.slice(0, 3).map((s) => (
-                    <WorkoutSessionCard key={s.id} session={s} variant="compact" />
-                  ))}
-                </div>
-              </motion.div>
-            )}
         </motion.div>
 
         {/* Onboarding Drawer */}
