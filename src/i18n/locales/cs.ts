@@ -76,6 +76,7 @@ const cs = {
   'home.create_plan_desc': 'Vyber si tréninkový cíl a začni cvičit podle personalizovaného plánu',
   'home.create_plan_btn': 'Vytvořit plán',
   'home.week': 'Blok',
+  'home.last_workout': 'Poslední trénink',
   'home.recent_history': 'Poslední tréninky',
   'home.see_all': 'Zobrazit vše',
   'home.total_progress': 'Celkový progress',

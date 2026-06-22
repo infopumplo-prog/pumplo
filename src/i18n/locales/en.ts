@@ -76,6 +76,7 @@ const en = {
   'home.create_plan_desc': 'Choose your training goal and start working out with a personalized plan',
   'home.create_plan_btn': 'Create plan',
   'home.week': 'Block',
+  'home.last_workout': 'Last workout',
   'home.recent_history': 'Recent workouts',
   'home.see_all': 'See all',
   'home.total_progress': 'Total progress',

@@ -500,31 +500,26 @@ const Home = () => {
                           );
                         })()}
                       </div>
-                    </div>
-                  </motion.div>
 
-                  {/* Recent workouts — directly under today's card, collapsible */}
-                  {recentSessions.length > 0 && (
-                    <motion.div variants={itemVariants}>
-                      <button
-                        onClick={() => setHistoryExpanded(v => !v)}
-                        className="w-full flex items-center justify-between mb-2 px-1"
-                      >
-                        <h2 className="font-bold text-[#1F2937]">{t('home.recent_history')}</h2>
-                        <ChevronDown className={cn('w-5 h-5 text-[#6B7280] transition-transform', historyExpanded && 'rotate-180')} />
-                      </button>
-                      {historyExpanded && (
-                        <div className="space-y-3">
-                          {recentSessions.slice(0, 3).map((s) => (
-                            <WorkoutSessionCard key={s.id} session={s} variant="compact" />
-                          ))}
-                          <Link to="/profile/history?tab=sessions" className="flex items-center justify-center gap-0.5 text-sm text-[#5BC8F5] font-medium py-1">
-                            {t('home.see_all')} <ChevronRight className="w-4 h-4" />
-                          </Link>
+                      {/* Last workout — inside the blue box, collapsible */}
+                      {recentSessions.length > 0 && (
+                        <div className="mx-3 mb-3">
+                          <div className="flex items-center gap-3 mb-2 px-1">
+                            <button onClick={() => setHistoryExpanded(v => !v)} className="flex items-center gap-1.5 text-white font-semibold text-sm">
+                              {t('home.last_workout')}
+                              <ChevronDown className={cn('w-4 h-4 transition-transform', historyExpanded && 'rotate-180')} />
+                            </button>
+                            <Link to="/profile/history?tab=sessions" className="text-white/80 text-xs font-medium flex items-center gap-0.5">
+                              {t('home.see_all')} <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                          {historyExpanded && (
+                            <WorkoutSessionCard session={recentSessions[0]} variant="compact" />
+                          )}
                         </div>
                       )}
-                    </motion.div>
-                  )}
+                    </div>
+                  </motion.div>
 
                   {/* Paused Workout Card */}
                   {pausedWorkout && pausedWorkout.planId === plan?.id && (
