@@ -25,6 +25,59 @@ function safeErrorResponse(message: string, status: number, internalError?: unkn
   );
 }
 
+const RESEND_FROM = "Pumplo <zpravy@pumplo.com>";
+
+function escapeHtml(s: string): string {
+  return (s || "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Sends the gym owner their "set password" link via Resend. Returns true on success.
+async function sendOwnerInviteEmail(to: string, gymName: string, actionLink: string): Promise<boolean> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    console.error("RESEND_API_KEY not set — cannot send invite email");
+    return false;
+  }
+  const safeGym = escapeHtml(gymName);
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">
+      <h2 style="margin:0 0 16px">Vítejte v Pumplu</h2>
+      <p style="margin:0 0 16px;line-height:1.5">
+        Byl vám vytvořen účet majitele pro posilovnu <strong>${safeGym}</strong>.
+        Klikněte na tlačítko níže, nastavte si heslo a přihlaste se do svého administrátorského rozhraní.
+      </p>
+      <p style="margin:0 0 24px">
+        <a href="${actionLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">
+          Nastavit heslo
+        </a>
+      </p>
+      <p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.5">
+        Pokud tlačítko nefunguje, zkopírujte do prohlížeče tento odkaz:
+      </p>
+      <p style="margin:0 0 24px;font-size:12px;color:#2563eb;word-break:break-all">${actionLink}</p>
+      <p style="margin:0;font-size:12px;color:#888">
+        Pokud jste o tento účet nežádali, tento e-mail ignorujte.
+      </p>
+    </div>`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to,
+      subject: "Pumplo – nastavte si heslo k účtu majitele",
+      html,
+    }),
+  });
+  if (!res.ok) {
+    console.error("Resend error", res.status, await res.text().catch(() => ""));
+    return false;
+  }
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -77,6 +130,8 @@ Deno.serve(async (req) => {
 
     const { gym_id, email, redirect_to } = parsed.data;
     const normalizedEmail = email.trim().toLowerCase();
+    // Fallback redirect if the caller didn't pass one.
+    const redirectTo = redirect_to ?? "https://admin.pumplo.com/reset-password";
 
     // Admin client with service role
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -94,43 +149,51 @@ Deno.serve(async (req) => {
       return safeErrorResponse("Posilovna nenalezena", 404, gymError);
     }
 
-    // --- Find or create the owner auth user ------------------------------
+    // --- Generate the set-password link ----------------------------------
+    // We DON'T rely on Supabase's built-in auth mailer (rate-limited, dev-only).
+    // Instead we generate the action link ourselves and deliver it via Resend
+    // (verified pumplo.com domain), so delivery is reliable for both brand-new
+    // and already-existing accounts.
     let ownerId: string | null = null;
     let invited = false;
+    let actionLink: string | null = null;
 
-    // Send an invite (creates the user if it doesn't exist yet) with a link
-    // that lands on the admin app where the owner sets their password.
+    // Try an invite link first (creates the user if it doesn't exist yet).
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin
-      .inviteUserByEmail(normalizedEmail, redirect_to ? { redirectTo: redirect_to } : undefined);
+      .generateLink({
+        type: "invite",
+        email: normalizedEmail,
+        options: { redirectTo },
+      });
 
     if (inviteError) {
-      // User probably already exists — look them up and (re)send a recovery link
-      // so an existing account can still be promoted to gym owner.
-      const { data: list } = await adminClient.auth.admin.listUsers();
-      const existing = list?.users?.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail,
-      );
-      if (!existing) {
-        return safeErrorResponse("Nepodařilo se odeslat pozvánku", 500, inviteError);
+      // User already exists — generate a recovery link instead so the existing
+      // account can (re)set a password and be promoted to gym owner.
+      const { data: recoveryData, error: recoveryError } = await adminClient.auth.admin
+        .generateLink({
+          type: "recovery",
+          email: normalizedEmail,
+          options: { redirectTo },
+        });
+      if (recoveryError || !recoveryData) {
+        return safeErrorResponse("Nepodařilo se vytvořit odkaz pro nastavení hesla", 500, recoveryError ?? inviteError);
       }
-      ownerId = existing.id;
-
-      // Generate a recovery link so the existing user can (re)set a password.
-      const { error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email: normalizedEmail,
-        options: redirect_to ? { redirectTo: redirect_to } : undefined,
-      });
-      if (linkError) {
-        console.error("generateLink error:", linkError);
-      }
+      ownerId = recoveryData.user?.id ?? null;
+      actionLink = recoveryData.properties?.action_link ?? null;
     } else {
       ownerId = inviteData.user?.id ?? null;
+      actionLink = inviteData.properties?.action_link ?? null;
       invited = true;
     }
 
-    if (!ownerId) {
+    if (!ownerId || !actionLink) {
       return safeErrorResponse("Nepodařilo se získat ID majitele", 500);
+    }
+
+    // --- Deliver the link via Resend -------------------------------------
+    const emailSent = await sendOwnerInviteEmail(normalizedEmail, gym.name, actionLink);
+    if (!emailSent) {
+      return safeErrorResponse("Účet byl vytvořen, ale e-mail s odkazem se nepodařilo odeslat", 502);
     }
 
     // --- Set the 'business' (gym owner) role -----------------------------
