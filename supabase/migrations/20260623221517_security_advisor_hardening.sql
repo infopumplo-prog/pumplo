@@ -188,15 +188,23 @@ CREATE POLICY "no client access" ON public.content_drafts             FOR ALL TO
 CREATE POLICY "no client access" ON public.remote_fix_requests        FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);
 
 -- =====================================================================
+-- 7) WARN: public_bucket_allows_listing -> remove anon listing (storage)
+--    Public buckets serve objects via the public CDN path (no RLS), so the
+--    broad SELECT policies only enabled anon LISTING. Reads use getPublicUrl.
+--    exercise-videos previously used createSignedUrl (needed SELECT); the app
+--    was switched to getPublicUrl (commit) so its policy can go too.
+-- =====================================================================
+DROP POLICY IF EXISTS "Avatars are publicly accessible"   ON storage.objects; -- avatars
+DROP POLICY IF EXISTS "Auth upload gym-assets 14bemdx_1"  ON storage.objects; -- gym-assets (SELECT)
+DROP POLICY IF EXISTS "Anyone can read exercise videos"   ON storage.objects; -- exercise-videos
+
+-- =====================================================================
 -- Auth (applied via Management API, recorded here for reference):
 --   password_hibp_enabled = true   (leaked-password protection)
 --
--- Remaining 10 advisor warnings are intentional/by-design:
+-- Remaining 7 advisor warnings are intentional/by-design:
 --  * has_role / gym_active_plan / check_gym_limit / get_user_emails /
 --    get_users_with_email — SECURITY DEFINER helpers required by RLS, the
 --    public_gyms view, or the admin app; email functions are admin-guarded,
 --    the rest expose only a boolean/plan id. anon execute removed where unused.
---  * public_bucket_allows_listing (avatars, exercise-videos, gym-assets) —
---    public media buckets served by URL; left as-is to avoid breaking media
---    delivery. Can be hardened (drop the broad list policy) with testing.
 -- =====================================================================
