@@ -8,8 +8,11 @@ import { Capacitor } from '@capacitor/core';
  */
 
 // Paths that stay fully accessible in a plain browser tab (teasers + legal +
-// auth callbacks). Everything else is gated.
-const PUBLIC_PREFIXES = ['/s/', '/plan/'];
+// auth callbacks). Everything else — including the sticker (/s/) and shared
+// plan (/plan/) — is gated and funnels to the app/store. Only legal pages
+// (required public for App Store / Play review) and the password-reset auth
+// callback stay reachable in a plain browser.
+const PUBLIC_PREFIXES: string[] = [];
 const PUBLIC_EXACT = ['/privacy', '/terms', '/reset-password'];
 
 /** True when running inside the native (Capacitor) shell. */
