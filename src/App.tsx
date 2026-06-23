@@ -55,6 +55,7 @@ import SharedPlan from "@/pages/SharedPlan";
 import ResetPassword from "@/pages/ResetPassword";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
+import WebGate from "@/components/WebGate";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
 
@@ -187,6 +188,7 @@ const AppRoutes = () => {
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+  <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/reset-password" element={<ResetPassword />} />
@@ -227,6 +229,7 @@ const AppRoutes = () => {
     {/* Fallback */}
     <Route path="*" element={<NotFound />} />
   </Routes>
+  </WebGate>
   </>
   );
 };
