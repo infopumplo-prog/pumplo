@@ -7,7 +7,8 @@ Usage: python3 scripts/translate_names.py [--dry-run]
 import subprocess, json, argparse
 
 SUPABASE_URL = "https://api.supabase.com/v1/projects/udqwjqgdsjobdufdxbpn/database/query"
-SUPABASE_TOKEN = "sbp_fde8b65400f5786eb9cfd525875a39eda274d741"
+import os
+SUPABASE_TOKEN = os.environ.get("SUPABASE_TOKEN", "")
 
 def db_query(sql):
     result = subprocess.run(
