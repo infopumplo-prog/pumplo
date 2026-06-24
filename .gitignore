@@ -24,6 +24,14 @@ dist-ssr
 *.sw?
 .vercel
 
+# Env files. NOTE: .env is currently tracked and contains ONLY public values
+# (Supabase URL + anon/publishable key). Real secrets must NEVER go here — they
+# live in Vercel/Supabase project env. This guard stops a future secret-bearing
+# .env (or .env.local etc.) from being committed.
+.env.local
+.env.*.local
+.env.production
+
 # claude-remote — bridge env is in ~/.claude-remote.env, never in repo.
 # This line is defensive in case someone ever drops one into the project.
 .claude-remote.env

@@ -39,9 +39,6 @@ verify_jwt = false
 [functions.import-machines]
 verify_jwt = false
 
-[functions.generate-vapid-keys]
-verify_jwt = false
-
 [functions.send-push-notifications]
 verify_jwt = false
 
