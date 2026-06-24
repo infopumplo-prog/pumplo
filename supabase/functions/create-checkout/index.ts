@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.6.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 
 const IMPLEMENTATION_FEE_PRICE_ID = 'price_1TLJJrEvdp2FxnFOcOEOOcAI';
 
@@ -19,14 +20,51 @@ serve(async (req) => {
   }
 
   try {
-    const { price_id, user_id, gym_name, address, phone, machine_ids, success_url, cancel_url } =
-      await req.json();
+    // --- Require an authenticated caller; trust the JWT, not the body ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Chybí autorizace" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Neplatná autorizace" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    if (!price_id || !user_id || !gym_name) {
+    const { price_id, gym_name, address, phone, machine_ids, success_url, cancel_url } =
+      await req.json();
+    const user_id = user.id; // verified identity, never trust a body-supplied user_id
+
+    if (!price_id || !gym_name) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // --- Only allow Stripe price IDs that belong to an active plan ---
+    // (stops a client from passing an arbitrary/cheaper price_id).
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } },
+    );
+    const { data: plans } = await adminClient
+      .from("subscription_plans")
+      .select("stripe_price_monthly_id, stripe_price_annual_id")
+      .eq("is_active", true);
+    const allowedPrices = new Set<string>();
+    for (const p of plans ?? []) {
+      if (p.stripe_price_monthly_id) allowedPrices.add(p.stripe_price_monthly_id);
+      if (p.stripe_price_annual_id) allowedPrices.add(p.stripe_price_annual_id);
+    }
+    if (!allowedPrices.has(price_id)) {
+      return new Response(JSON.stringify({ error: "Neplatný plán" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Create Stripe customer first (required for Accounts V2 in test mode)
