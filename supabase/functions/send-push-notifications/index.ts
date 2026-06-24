@@ -987,12 +987,16 @@ async function processComebackNotifications(
 ): Promise<{ sent: number; skipped: number; errors: number }> {
   const stats = { sent: 0, skipped: 0, errors: 0 };
   const { hour, dateKey } = getPragueTime();
-  const timeToHour: Record<string, number> = { morning: 6, late_morning: 10, afternoon: 14, evening: 18 };
+  // Comeback (win-back) goes out at the user's preferred hour, EXCEPT the
+  // 'morning' (6:00) slot — a "come back and train" nudge at 6am is unread
+  // (everyone's asleep), so morning users get it in the evening (18:00) like
+  // the evening slot. Daily morning workout reminders keep their 6:00 time.
+  const timeToHour: Record<string, number> = { morning: 18, late_morning: 10, afternoon: 14, evening: 18 };
 
-  // Comeback sends at the user's preferred hour (null -> 10:00). Bail otherwise.
+  // Comeback only runs at the comeback hours (null preferred_time -> 10:00).
   // `force` (test only) bypasses the hour gate, per-day dedup and logging;
   // testDays overrides the computed absence; testUserId limits to one user.
-  if (!force && ![6, 10, 14, 18].includes(hour)) return stats;
+  if (!force && ![10, 14, 18].includes(hour)) return stats;
 
   let query = supabase
     .from('user_profiles')
