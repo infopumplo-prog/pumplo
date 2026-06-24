@@ -137,9 +137,11 @@ const ExercisesManagement = () => {
     tips: '',
   });
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    
+  const fetchData = async (showLoading = true) => {
+    // Background refreshes (after save/delete) skip the full-page spinner so the
+    // list isn't unmounted — preserves the admin's scroll position.
+    if (showLoading) setIsLoading(true);
+
     // Fetch all exercises (bypassing 1000 limit with range)
     let allExercises: Exercise[] = [];
     let from = 0;
@@ -309,7 +311,7 @@ const ExercisesManagement = () => {
     }
 
     setDrawerOpen(false);
-    fetchData();
+    fetchData(false);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -322,7 +324,7 @@ const ExercisesManagement = () => {
     }
 
     toast.success(t('admin.exercise_deleted'));
-    fetchData();
+    fetchData(false);
   };
 
   const toggleMuscle = (muscle: string, type: 'primary' | 'secondary') => {
