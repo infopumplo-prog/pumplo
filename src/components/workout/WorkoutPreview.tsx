@@ -31,6 +31,14 @@ interface ExerciseDetail {
   primary_muscles_en: string[] | null;
   secondary_muscles_en: string[] | null;
   difficulty: number | null;
+  description: string | null;
+  description_en: string | null;
+  setup_instructions: string | null;
+  setup_instructions_en: string | null;
+  common_mistakes: string | null;
+  common_mistakes_en: string | null;
+  tips: string | null;
+  tips_en: string | null;
 }
 
 interface WorkoutPreviewProps {
@@ -85,7 +93,7 @@ export const WorkoutPreview = ({
     setSignedDetailVideoUrl(null);
     supabase
       .from('exercises')
-      .select('video_path, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, difficulty')
+      .select('video_path, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, difficulty, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
       .eq('id', selectedExercise.exerciseId)
       .single()
       .then(({ data }) => {
@@ -408,6 +416,46 @@ export const WorkoutPreview = ({
                           <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                         ))}
                       </div>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const desc = isEn && exerciseDetail?.description_en ? exerciseDetail.description_en : exerciseDetail?.description;
+                  return desc ? (
+                    <div className="p-3 bg-muted/50 rounded-xl">
+                      <p className="text-xs font-semibold text-foreground mb-1">{t('workout.description_technique')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{desc}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const setup = isEn && exerciseDetail?.setup_instructions_en ? exerciseDetail.setup_instructions_en : exerciseDetail?.setup_instructions;
+                  return setup ? (
+                    <div>
+                      <p className="text-xs font-semibold text-foreground mb-1">{t('workout.setup')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{setup}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const mistakes = isEn && exerciseDetail?.common_mistakes_en ? exerciseDetail.common_mistakes_en : exerciseDetail?.common_mistakes;
+                  return mistakes ? (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-600 mb-1">{t('workout.common_mistakes')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{mistakes}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const tipsText = isEn && exerciseDetail?.tips_en ? exerciseDetail.tips_en : exerciseDetail?.tips;
+                  return tipsText ? (
+                    <div>
+                      <p className="text-xs font-semibold text-green-600 mb-1">{t('workout.tips')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tipsText}</p>
                     </div>
                   ) : null;
                 })()}
