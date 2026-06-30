@@ -627,6 +627,8 @@ export const WorkoutSession = ({
           setCurrentSetIndex(setIdx);
           setCurrentExerciseSets(sets);
         }}
+        nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
+        nextVideoUrl={nextVideoUrl}
       />
 
       {/* Skip Dialog */}
@@ -682,6 +684,8 @@ const ExercisePlayerWithVideo = ({
   initialSetIndex = 0,
   initialSetsData,
   onSetChange,
+  nextExerciseName,
+  nextVideoUrl,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -703,6 +707,8 @@ const ExercisePlayerWithVideo = ({
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
+  nextExerciseName?: string;
+  nextVideoUrl?: string | null;
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -826,6 +832,8 @@ const ExercisePlayerWithVideo = ({
       initialSetIndex={initialSetIndex}
       initialSetsData={initialSetsData}
       onSetChange={onSetChange}
+      nextExerciseName={nextExerciseName}
+      nextVideoUrl={nextVideoUrl}
     />
   );
 };

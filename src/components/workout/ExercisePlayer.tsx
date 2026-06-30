@@ -58,6 +58,8 @@ interface ExercisePlayerProps {
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
+  nextExerciseName?: string;
+  nextVideoUrl?: string | null;
 }
 
 export const ExercisePlayer = ({
@@ -97,7 +99,9 @@ export const ExercisePlayer = ({
   rirMax,
   initialSetIndex = 0,
   initialSetsData,
-  onSetChange
+  onSetChange,
+  nextExerciseName,
+  nextVideoUrl
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -378,6 +382,26 @@ export const ExercisePlayer = ({
 
           {/* Bottom overlay: cardio timer OR strength inputs */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
+            {/* On the last set, preview the next exercise so the user can plan
+                ahead / walk to the next machine. Hidden on the final exercise. */}
+            {currentSet + 1 === totalSets && nextExerciseName && (
+              <div className="flex items-center gap-2 mb-3 w-fit max-w-[80vw] bg-black/40 backdrop-blur-sm rounded-xl p-1.5 pr-3">
+                {nextVideoUrl ? (
+                  <video
+                    src={nextVideoUrl}
+                    autoPlay loop muted playsInline preload="auto"
+                    className="w-11 h-11 rounded-lg object-cover shrink-0"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-lg bg-white/10 shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[#5BC8F5] text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">{t('workout.next_label')}</p>
+                  <p className="text-white text-sm font-semibold truncate leading-tight">{nextExerciseName}</p>
+                </div>
+              </div>
+            )}
             {isCardio ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
