@@ -12,23 +12,26 @@ Předchozí batch: `2026-06-08-feedback-backlog.md` (A–E, vše app-side hotov�
 
 ## 🔴 F-kritické (bugy co štvou uživatele)
 
-- **F1. Trénink se neuložil** (David, 4. 7.: „Neuložil se mi trénink a jsem z toho nasranej jako uživatel"). Najít root cause ukládání dokončeného tréninku — retry/offline queue, error stav, cokoliv. Souvisí s D1 (advanceToNextDay fix z června) — možná jiná cesta, kterou se uložení přeskočí.
-- **F2. Ztráta stavu workoutu po návratu do appky** (Simona, 6. 7.: vyjela na plochu, po ~5 min se vrátila a byla na úvodní „začít workout" obrazovce). Rozjetý workout musí přežít backgrounding — persistovat session state + resume.
-- **F3. Videa se na Androidu načítají moc dlouho** (22. 6.). Část možná vyřešena přenahráním na komprimovaná videa (0,3–0,9 MB); ověřit na Motorole, případně preload/cache.
-- **F4. Info drawer cviku: konec textu je dole uříznutý a nejde doscrollovat** (Benda, 5. 7., screenshot „Stahování lopatek" — poslední řádek „bez pohybu paží" zapadá pod okraj). Scroll/bottom-padding bug v drawer komponentě.
+- **F1. ✅ DONE (b9c10a8).** Root cause: `saveWorkoutSession` selhání jen zalogovalo (`console.error`) a autoSave stejně nastavil `workoutSaved=true` — trénink se tiše ztratil. Fix: offline fronta `pumplo_unsaved_sessions` (localStorage), flush při startu appky / native resume / návratu online (`SaveQueueFlusher` v App.tsx, `src/lib/workoutSaveQueue.ts`), info toast `workout.save_queued`.
+- **F2. ✅ DONE (b9c10a8).** Rozjetý workout se průběžně snapshotuje do `pumplo_paused_workout` (každá dokončená série / změna cviku) — OS-killnutá appka nabídne resume od poslední série přes existující PausedWorkoutCard flow. Snapshot se maže při dokončení i ukončení.
+- **F3. Videa se na Androidu načítají moc dlouho** (22. 6.). Část možná vyřešena přenahráním na komprimovaná videa (0,3–0,9 MB); **ověřit na Motorole** při device testu.
+- **F4. ✅ DONE (b9c10a8).** Root cause: scroll div v draweru bez `flex-1 min-h-0` uvnitř `max-h-[85vh]` flex column → overflow se nezapnul a text se ořízl. + safe-area bottom padding. Opraveno v ExercisePlayer i WorkoutPreview.
 
 ## 🟡 F-lokalizace
 
-- **F5. Názvy cviků v historii tréninku jsou česky i při EN** (4. 7.). Pozn.: v červnu (D4) označeno „saved name snapshots — acceptable", David teď říká, že NE. Historie musí resolvovat name_en.
-- **F6. Admin panel: všechny cviky ve dvou jazycích** (22. 6.) — v adminu musí být viditelná/editovatelná CZ i EN verze všude.
+- **F5. ✅ DONE (b9c10a8).** `WorkoutSessionCard` (Home + History sessions tab) teď resolvuje `name_en` přes exercise_id (sety ukládají CZ snapshot). Training day-detail už to uměl.
+- **F6. Admin panel: všechny cviky ve dvou jazycích** (22. 6.) — **OTEVŘENÉ, admin repo není lokálně** (admin.pumplo.com ≠ tento repo; src/pages/admin tady je mrtvý kód bez _en polí). Zjistit od Davida, kde admin žije (Lovable?).
 
 ## 🟡 F-homescreen & historie & plán
 
-- **F7. Historie tréninku hned na homescreen** (22. 6.) — stejně jak vypadá v sekci historie.
-- **F8. Tréninky/cviky vždy chronologicky za sebou** (22. 6. + 4. 7.: „cviky z minulého tréninku nejdou chronologicky na homescreenu").
-- **F9. Po dokončení tréninku musí být z homescreenu poznat, že je dokončený** (4. 7.).
-- **F10. Místo „týdnů" psát „bloky"** (22. 6.) — aby to nevyznělo špatně.
-- **F11. RIR u deload týdnů = RIR 5** (22. 6.).
+- **F7. ✅ DONE (b9c10a8).** Homescreen ukazuje poslední 3 sese (WorkoutSessionCard) jako v historii.
+- **F8. ✅ DONE (b9c10a8).** Root cause ①: bulk insert setů = stejný created_at pro všechny řádky → řazení nedeterministické; teď insert dávka per cvik (created_at odlišuje cviky). Root cause ②: Training day-detail řadil abecedně (`order('exercise_name')`). Obě čtení teď řadí created_at → exercise_name → set_number. Staré sese zůstanou seskupené abecedně (data pro chronologii nemají).
+- **F9. ✅ DONE (b9c10a8).** Root cause: zelená „dokončeno" karta vyžadovala shodu `completedTodayDayLetter === nextDay.dayLetter`, jenže self-heal posune den hned po uložení → karta se nikdy neukázala. Teď stačí existence dnešní dokončené sese.
+- **F10. ✅ DONE (b9c10a8).** `myplan.week`/`history.week` už „Blok" byly; dopřeloženy zbývající training.* stringy (goal_types_weeks, weeks_frequency, bonus_from_first_week, plan_completed_desc, cancel_plan_desc) v cs i en.
+- **F11. ✅ DONE (b9c10a8).** MyPlan deload badge RIR 5 už fungoval (RIR_BY_WEEK); v playeru se ale ukazoval slot RIR z day_templates — teď se v deload týdnu (týden = dokončené sese / dny v týdnu, 8týdenní cyklus) přepíše rirMin/rirMax na 5 v useWorkoutPlan.
+
+## 🗄️ Datové opravy
+- **✅ „Rotace trupu" (1041cbb8…)** — description/setup_instructions (CZ+EN) přepsány z kabelové kladky na selektorizovaný rotační stroj (PATCH 6. 7.).
 
 ## 🔵 F-vlastní trénink — REDESIGN PODLE HEVY
 
