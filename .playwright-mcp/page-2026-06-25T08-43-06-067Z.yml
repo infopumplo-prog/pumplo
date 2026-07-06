@@ -1,0 +1,13 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]: MámOkno
+    - navigation [ref=e6]:
+      - link "Dashboard" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e8] [cursor=pointer]:
+        - /url: /groups
+      - generic [ref=e9]:
+        - text: Tasky
+        - generic [ref=e10]: brzy
+  - main [ref=e11]:
+    - paragraph [ref=e13]: Načítání…

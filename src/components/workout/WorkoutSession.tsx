@@ -13,6 +13,7 @@ import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
+import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { CompactWorkoutView } from './CompactWorkoutView';
@@ -401,7 +402,7 @@ export const WorkoutSession = ({
         const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))
           .filter((r): r is ExerciseResult => r !== undefined);
 
-        await saveWorkoutSession({
+        const sessionId = await saveWorkoutSession({
           planId,
           gymId,
           dayLetter,
@@ -411,11 +412,43 @@ export const WorkoutSession = ({
           isBonus
         });
 
+        if (!sessionId) {
+          // Save failed → it's queued for retry (workoutSaveQueue); tell the user
+          toast.info(t('workout.save_queued'), { duration: 6000 });
+        }
+
         setWorkoutSaved(true);
+        // Workout is finished (saved or queued) — drop the in-progress snapshot
+        clearPausedWorkoutStorage();
       };
       autoSave();
     }
   }, [showSummary, workoutSaved]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // F2: continuously snapshot the in-progress workout. If the OS kills the app
+  // (or the user swipes it away), Home offers resume from the last completed set.
+  useEffect(() => {
+    if (showSummary || showCooldown || workoutSaved || !planId) return;
+    const completedSets: Record<string, SetData[]> = {};
+    resultsByIndex.forEach(r => {
+      if (r.exerciseId) completedSets[r.exerciseId] = r.sets;
+    });
+    writePausedWorkoutSnapshot({
+      planId,
+      gymId,
+      dayLetter,
+      goalId,
+      exercises: liveExercises,
+      currentExerciseIndex,
+      currentSetIndex,
+      currentExerciseSets,
+      completedSets,
+      startedAt: workoutStartTime.toISOString(),
+      pausedAt: new Date().toISOString(),
+      isInWarmup: false,
+    });
+  }, [currentExerciseIndex, currentSetIndex, currentExerciseSets, resultsByIndex, liveExercises,
+      showSummary, showCooldown, workoutSaved, planId, gymId, dayLetter, goalId, workoutStartTime]);
 
   const handleFinishWorkout = useCallback(() => {
     const orderedResults = Array.from({ length: liveExercises.length }, (_, i) => resultsByIndex.get(i))

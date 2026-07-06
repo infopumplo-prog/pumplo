@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Pumplo" [ref=e8]
+        - link "Zpět na hlavní stránku" [ref=e9] [cursor=pointer]:
+          - /url: /
+          - button "Zpět na hlavní stránku" [ref=e10]:
+            - img
+            - text: Zpět na hlavní stránku
+    - generic [ref=e13]:
+      - heading "Kontaktujte nás" [level=1] [ref=e14]
+      - paragraph [ref=e15]: Máte dotazy ohledně Pumplo? Rádi vám pomůžeme.
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - img [ref=e22]
+        - generic [ref=e25]:
+          - heading "Napište nám" [level=3] [ref=e26]
+          - paragraph [ref=e27]: Odpovíme vám co nejdříve
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - text: Jméno
+          - textbox "Jméno" [ref=e30]:
+            - /placeholder: Vaše jméno
+            - text: TEST – Claude ověření formuláře
+        - generic [ref=e31]:
+          - text: Email
+          - textbox "Email" [ref=e32]:
+            - /placeholder: vas@email.cz
+            - text: test@pumplo.com
+        - generic [ref=e33]:
+          - text: Zpráva
+          - textbox "Zpráva" [ref=e34]:
+            - /placeholder: Vaše zpráva...
+            - text: Toto je testovací zpráva z kontaktního formuláře (ověření doručení e-mailu). Můžeš ignorovat.
+        - button "Odesílání..." [disabled]:
+          - img
+          - text: Odesílání...
+      - paragraph [ref=e36]:
+        - text: Nebo nám napište přímo na
+        - link "novotny@pumplo.com" [ref=e37] [cursor=pointer]:
+          - /url: mailto:novotny@pumplo.com
+    - contentinfo [ref=e38]:
+      - paragraph [ref=e40]: © 2025 Pumplo. Váš digitální trenér v kapse.

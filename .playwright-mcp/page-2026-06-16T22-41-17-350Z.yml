@@ -1,0 +1,270 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Pumplo" [ref=e8]
+        - link "Back for gym-goers" [ref=e9] [cursor=pointer]:
+          - /url: /client
+          - button "Back for gym-goers" [ref=e10]:
+            - img
+            - text: Back for gym-goers
+    - generic [ref=e11]:
+      - img "Modern fitness center" [ref=e13]
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - generic [ref=e21]: Retention platform for independent gyms
+        - heading "Stop losing members. Keep more members, with less effort." [level=1] [ref=e22]
+        - paragraph [ref=e23]: Every member who leaves is revenue that won't come back. Pumplo turns confused beginners into regulars — and shows you in real time who trains and who's about to leave.
+        - generic [ref=e24]:
+          - button "Launch Pumplo →" [ref=e25] [cursor=pointer]
+          - button "How it works" [ref=e26] [cursor=pointer]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - heading "A gym without retention is a gym that is dying" [level=2] [ref=e30]
+        - generic [ref=e31]:
+          - generic [ref=e32]: 30–50%
+          - paragraph [ref=e33]: of new members leave within the first 6 months
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - img [ref=e37]
+          - heading "You pay for a system that shows nothing" [level=3] [ref=e39]
+          - paragraph [ref=e40]: A booking system tells you who came in. It doesn't tell you who's actually training, who's struggling with machines, who's about to leave.
+        - generic [ref=e41]:
+          - img [ref=e43]
+          - heading "Members lose motivation" [level=3] [ref=e48]
+          - paragraph [ref=e49]: Without a clear plan and visible results most people stop coming after a few months. They don't know what to do, so they do nothing.
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - heading "You have no way to react" [level=3] [ref=e54]
+          - paragraph [ref=e55]: Until someone cancels their membership you have no way to know they're about to leave. By then it's too late.
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - heading "One system. Three pillars." [level=2] [ref=e59]
+        - paragraph [ref=e60]: Pumplo isn't just an app. It's a complete system for turning a visitor into a loyal member — while you see in real time who trains, who's at risk of leaving and how retention grows.
+      - generic [ref=e61]:
+        - generic [ref=e63]:
+          - img [ref=e65]
+          - generic [ref=e68]: Acquisition
+          - heading "Found before they walk in." [level=3] [ref=e69]
+          - list [ref=e70]:
+            - listitem [ref=e71]:
+              - img [ref=e72]
+              - generic [ref=e74]: Your gym on the map inside the Pumplo app
+            - listitem [ref=e75]:
+              - img [ref=e76]
+              - generic [ref=e78]: Members see your equipment and hours upfront
+            - listitem [ref=e79]:
+              - img [ref=e80]
+              - generic [ref=e82]: QR code for instant app download
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - generic [ref=e92]: Retention
+          - heading "No more wandering between machines." [level=3] [ref=e93]
+          - list [ref=e94]:
+            - listitem [ref=e95]:
+              - img [ref=e96]
+              - generic [ref=e98]: A QR code on every machine — scan and instantly know how to train
+            - listitem [ref=e99]:
+              - img [ref=e100]
+              - generic [ref=e102]: Video and animation for every exercise
+            - listitem [ref=e103]:
+              - img [ref=e104]
+              - generic [ref=e106]: A plan tailored to your equipment — beginners need no trainer
+        - generic [ref=e108]:
+          - img [ref=e110]
+          - generic [ref=e112]: Engagement
+          - heading "They come back because they see results." [level=3] [ref=e113]
+          - list [ref=e114]:
+            - listitem [ref=e115]:
+              - img [ref=e116]
+              - generic [ref=e118]: Progress tracking and daily streaks
+            - listitem [ref=e119]:
+              - img [ref=e120]
+              - generic [ref=e122]: Gamification and daily goals
+            - listitem [ref=e123]:
+              - img [ref=e124]
+              - generic [ref=e126]: The whole workout in their pocket, anytime
+    - generic [ref=e128]:
+      - heading "What it looks like" [level=2] [ref=e130]
+      - generic [ref=e131]:
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - img [ref=e136]
+            - heading "What members see" [level=3] [ref=e138]
+          - paragraph [ref=e139]: "Mobile app: onboarding → workout plan → progress tracking. All adapted to your equipment."
+          - generic [ref=e140]:
+            - img "Pumplo app — member home, week and next workout" [ref=e144]
+            - img "Pumplo app — guided workout in the gym" [ref=e148]
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - img [ref=e153]
+            - heading "What you see" [level=3] [ref=e155]
+          - paragraph [ref=e156]: "Gym management: see at a glance who actually shows up, who's at risk of leaving and how your retention grows. All in one place."
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e166]: Gym management
+                - generic [ref=e167]: Overview · today
+              - generic [ref=e168]: EG
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: Active members
+                - generic [ref=e172]: "312"
+                - generic [ref=e173]:
+                  - img [ref=e174]
+                  - text: +8%
+              - generic [ref=e177]:
+                - generic [ref=e178]: Workouts this week
+                - generic [ref=e179]: 1,248
+                - generic [ref=e180]:
+                  - img [ref=e181]
+                  - text: +12%
+              - generic [ref=e184]:
+                - generic [ref=e185]: Retention (90 days)
+                - generic [ref=e186]: 84%
+                - generic [ref=e187]:
+                  - img [ref=e188]
+                  - text: +5%
+              - generic [ref=e191]:
+                - generic [ref=e192]: At risk of leaving
+                - generic [ref=e193]: "18"
+                - generic [ref=e194]:
+                  - img [ref=e195]
+                  - text: needs action
+            - generic [ref=e197]:
+              - generic [ref=e198]:
+                - generic [ref=e199]: Workouts per week
+                - generic [ref=e208]:
+                  - generic [ref=e209]: Mo
+                  - generic [ref=e210]: Tu
+                  - generic [ref=e211]: We
+                  - generic [ref=e212]: Th
+                  - generic [ref=e213]: Fr
+                  - generic [ref=e214]: Sa
+                  - generic [ref=e215]: Su
+              - generic [ref=e216]:
+                - generic [ref=e217]: Who's at risk
+                - generic [ref=e218]:
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: Jana N.
+                    - generic [ref=e223]: 12 days without a workout
+                  - generic [ref=e226]:
+                    - generic [ref=e227]: Petr K.
+                    - generic [ref=e228]: 9 days without a workout
+                  - generic [ref=e231]:
+                    - generic [ref=e232]: Tomáš R.
+                    - generic [ref=e233]: 8 days without a workout
+    - generic [ref=e235]:
+      - heading "What does churn cost you?" [level=2] [ref=e237]
+      - generic [ref=e239]:
+        - paragraph [ref=e240]: How many members would Pumplo keep for you each month?
+        - generic [ref=e241]:
+          - generic [ref=e242]: "1"
+          - generic "How many members would Pumplo keep for you each month?" [ref=e243]:
+            - slider [active] [ref=e247]
+          - generic [ref=e248]:
+            - generic [ref=e249]: "1"
+            - generic [ref=e250]: "20"
+        - generic [ref=e251]:
+          - paragraph [ref=e252]: Keep just 1 members and Pumplo earns you
+          - generic [ref=e371]: 18,000 Kč
+          - paragraph [ref=e254]: per year
+        - paragraph [ref=e255]: Stop leaving money on the table.
+    - generic [ref=e257]:
+      - generic [ref=e258]:
+        - heading "How it will work for you?" [level=2] [ref=e259]
+        - paragraph [ref=e260]: From first contact to active members — we set the whole thing up for you
+      - generic [ref=e262]:
+        - generic [ref=e264]:
+          - img [ref=e266]
+          - generic [ref=e268]:
+            - img [ref=e269]
+            - text: Step 1
+          - heading "Get in touch" [level=3] [ref=e272]
+          - paragraph [ref=e273]: A free, no-obligation consultation. We go through your gym and what it needs. No pressure, no haggling.
+        - generic [ref=e274]:
+          - img [ref=e276]
+          - generic [ref=e280]:
+            - img [ref=e281]
+            - text: We do it
+          - heading "We come and set up your gym" [level=3] [ref=e284]
+          - paragraph [ref=e285]: We photograph your machines, load the exercises, build plans tailored to your equipment and put a QR code on every machine. Fully done-for-you.
+        - generic [ref=e286]:
+          - img [ref=e288]
+          - generic [ref=e290]:
+            - img [ref=e291]
+            - text: Right after
+          - heading "Members start training with the app" [level=3] [ref=e294]
+          - paragraph [ref=e295]: They get a QR code to download Pumplo, pick your gym and start training towards their goals — confident at every machine.
+        - generic [ref=e296]:
+          - img [ref=e298]
+          - generic [ref=e301]:
+            - img [ref=e302]
+            - text: Ongoing
+          - heading "You gain data and keep members longer" [level=3] [ref=e305]
+          - paragraph [ref=e306]: In gym management you see who actually shows up, who's at risk of leaving and who to reach out to before they go.
+      - generic [ref=e307]:
+        - paragraph [ref=e308]: Zero work on your side — we handle the entire setup
+        - button "Get a free consultation →" [ref=e309] [cursor=pointer]
+    - generic [ref=e312]:
+      - heading "Pricing tailored to your gym" [level=2] [ref=e313]
+      - paragraph [ref=e314]: It depends on the size of your gym and what you need. We will prepare a concrete quote — fast and with no commitment.
+      - paragraph [ref=e315]: No setup fee • No commitments • Cancel anytime
+      - button "Get a free quote" [ref=e316] [cursor=pointer]
+      - paragraph [ref=e317]: We reply within 24 hours. Free demo included.
+    - generic [ref=e319]:
+      - generic [ref=e320]:
+        - generic [ref=e321]:
+          - img [ref=e322]
+          - generic [ref=e325]: FAQ
+        - heading "Answers to your questions" [level=2] [ref=e326]
+      - generic [ref=e327]:
+        - generic [ref=e328]:
+          - heading "Is it expensive" [level=3] [ref=e329]
+          - paragraph [ref=e330]: The question isn't how much Pumplo costs, but how much every person who leaves for the competition costs you because they didn't get results.
+        - generic [ref=e331]:
+          - heading "We have trainers for that" [level=3] [ref=e332]
+          - paragraph [ref=e333]: Exactly. Pumplo handles the basic plan for the masses so your trainers can focus on premium services.
+        - generic [ref=e334]:
+          - heading "We use another system" [level=3] [ref=e335]
+          - paragraph [ref=e336]: A booking system tells you who came in. Pumplo tells you who's actually training and who's dropping off.
+        - generic [ref=e337]:
+          - heading "Your know-how must belong to you" [level=3] [ref=e338]
+          - paragraph [ref=e339]: If your system relies only on trainers, you risk losing clients when they leave. Pumplo digitises the gym's know-how.
+        - generic [ref=e340]:
+          - heading "How long does setup take?" [level=3] [ref=e341]
+          - paragraph [ref=e342]: 5 minutes online registration + 30 minutes to upload photos, machines and opening hours. 35 minutes total and you can onboard your first members.
+        - generic [ref=e343]:
+          - heading "Can I cancel anytime?" [level=3] [ref=e344]
+          - paragraph [ref=e345]: Yes. Subscription is monthly or annual, cancel anytime directly in subscription management. No lock-in.
+        - generic [ref=e346]:
+          - heading "What if it doesn't work?" [level=3] [ref=e347]
+          - paragraph [ref=e348]: You'll see first results in the dashboard within a week. If it's not right for you, cancel — you only lose a monthly subscription.
+    - generic [ref=e351]:
+      - heading "Start today. First results in a week." [level=2] [ref=e352]
+      - paragraph [ref=e353]: Online registration in 5 minutes. The fastest path from a retention problem to real data about your members.
+      - button "Launch Pumplo →" [ref=e354] [cursor=pointer]
+      - paragraph [ref=e355]:
+        - text: or first
+        - button "book a free consultation" [ref=e356] [cursor=pointer]
+      - paragraph [ref=e357]: No commitments • No setup fee • Cancel anytime
+    - generic [ref=e360]:
+      - heading "Contact us" [level=2] [ref=e361]
+      - paragraph [ref=e362]: ‌
+      - link "Book a free consultation" [ref=e363] [cursor=pointer]:
+        - /url: /contact
+        - button "Book a free consultation" [ref=e364]:
+          - img
+          - text: Book a free consultation
+    - contentinfo [ref=e365]:
+      - generic [ref=e366]:
+        - generic [ref=e367]:
+          - img "Pumplo" [ref=e368]
+          - paragraph [ref=e369]: © 2025 Pumplo. Your digital trainer in your pocket.
+        - paragraph [ref=e370]: Pumplo is a product of GynTools CZ s.r.o., Registration No. 27804461, registered in the Czech Republic.

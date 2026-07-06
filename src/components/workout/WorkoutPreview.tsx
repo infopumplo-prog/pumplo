@@ -358,7 +358,7 @@ export const WorkoutPreview = ({
           <DrawerHeader>
             <DrawerTitle>{((isEn && selectedExercise?.exerciseNameEn) ? selectedExercise.exerciseNameEn : selectedExercise?.exerciseName) || t('workout.exercise_label')}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             {signedDetailVideoUrl ? (
               <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                 <video

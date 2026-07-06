@@ -1,0 +1,89 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]: MámOkno
+    - navigation [ref=e6]:
+      - link "Dashboard" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e8] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e9] [cursor=pointer]:
+        - /url: /tasks
+      - paragraph [ref=e13]: Admin
+      - link "Uživatelé" [ref=e14] [cursor=pointer]:
+        - /url: /admin/users
+      - link "Skupiny" [ref=e15] [cursor=pointer]:
+        - /url: /admin/groups
+  - main [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e16]:
+        - button "Zpět na skupiny" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - heading "Servisní technici" [level=1] [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e24]: 10:34
+          - paragraph [ref=e26]: Ahoj, test zprávy z prohlížeče 👋
+          - button "+ úkol" [ref=e28] [cursor=pointer]
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: Jaroslav Chmelář
+            - generic [ref=e32]: 10:35
+          - paragraph [ref=e34]: Realtime zpráva od Jaroslava ✅
+          - button "+ úkol" [active] [ref=e36] [cursor=pointer]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Vytvořit úkol" [level=2] [ref=e49]
+          - button "Zavřít" [ref=e50] [cursor=pointer]: ✕
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - generic [ref=e53]: Název *
+            - textbox "Název *" [ref=e54]:
+              - /placeholder: Název úkolu
+              - text: Realtime zpráva od Jaroslava ✅
+          - generic [ref=e55]:
+            - generic [ref=e56]: Popis
+            - textbox "Popis" [ref=e57]:
+              - /placeholder: Volitelný popis úkolu
+              - text: Realtime zpráva od Jaroslava ✅
+          - generic [ref=e58]:
+            - generic [ref=e59]: Druh
+            - combobox "Druh" [ref=e60]:
+              - option "— bez druhu —" [selected]
+              - option "reklamace"
+              - option "presun termínu"
+              - option "storno"
+              - option "sklad"
+              - option "problém"
+          - generic [ref=e61]:
+            - generic [ref=e62]: Zodpovědná osoba
+            - combobox "Zodpovědná osoba" [ref=e63]:
+              - option "— nepřiřazeno —" [selected]
+              - option "Jaroslav Chmelář"
+              - option "David Novotný"
+          - generic [ref=e64]:
+            - generic [ref=e65]: Priorita
+            - combobox "Priorita" [ref=e66]:
+              - option "Nízká"
+              - option "Normální" [selected]
+              - option "Vysoká"
+              - option "Urgentní"
+          - generic [ref=e67]:
+            - generic [ref=e68]: Termín
+            - textbox "Termín" [ref=e69]
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e72]: Klient
+              - textbox "Klient" [ref=e73]:
+                - /placeholder: Jméno klienta
+            - generic [ref=e74]:
+              - generic [ref=e75]: Kód zakázky
+              - textbox "Kód zakázky" [ref=e76]
+          - generic [ref=e77]:
+            - button "Zrušit" [ref=e78] [cursor=pointer]
+            - button "Vytvořit úkol" [ref=e79] [cursor=pointer]
+      - generic [ref=e38]:
+        - button "Přiložit soubor" [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+        - textbox "Napište zprávu…" [ref=e42]
+        - button "Odeslat zprávu" [disabled] [ref=e43]:
+          - img [ref=e44]

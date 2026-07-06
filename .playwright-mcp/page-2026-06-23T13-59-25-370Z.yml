@@ -1,0 +1,112 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - button [ref=e5] [cursor=pointer]:
+        - img
+      - generic [ref=e6]:
+        - img [ref=e7]
+        - generic [ref=e9]: Zásady ochrany osobních údajů
+    - generic [ref=e10]:
+      - paragraph [ref=e12]: "Poslední aktualizace: 2. května 2026"
+      - generic [ref=e13]:
+        - heading "1. Správce osobních údajů" [level=2] [ref=e14]
+        - paragraph [ref=e15]:
+          - text: Správcem vašich osobních údajů je společnost
+          - strong [ref=e16]: GynTools CZ s.r.o.
+          - text: ", IČ: 278 04 461, provozující aplikaci Pumplo."
+        - paragraph [ref=e17]:
+          - text: "Kontakt:"
+          - link "info.pumplo@gmail.com" [ref=e18] [cursor=pointer]:
+            - /url: mailto:info.pumplo@gmail.com
+      - generic [ref=e19]:
+        - heading "2. Jaké údaje zpracováváme" [level=2] [ref=e20]
+        - list [ref=e21]:
+          - listitem [ref=e22]:
+            - text: •
+            - strong [ref=e23]: "Identifikační údaje:"
+            - text: jméno, příjmení, e-mailová adresa
+          - listitem [ref=e24]:
+            - text: •
+            - strong [ref=e25]: "Fyzické parametry:"
+            - text: věk, výška, váha, pohlaví (zadané dobrovolně při onboardingu)
+          - listitem [ref=e26]:
+            - text: •
+            - strong [ref=e27]: "Zdravotní omezení:"
+            - text: zranění a omezení pohybu (zadané dobrovolně)
+          - listitem [ref=e28]:
+            - text: •
+            - strong [ref=e29]: "Tréninkové preference:"
+            - text: cíl, úroveň, frekvence tréninků, preference vybavení
+          - listitem [ref=e30]:
+            - text: •
+            - strong [ref=e31]: "Tréninkové záznamy:"
+            - text: provedené cviky, váhy, časy, série
+          - listitem [ref=e32]:
+            - text: •
+            - strong [ref=e33]: "Technické údaje:"
+            - text: typ zařízení, verze aplikace (pro diagnostiku chyb)
+      - generic [ref=e34]:
+        - heading "3. Účel a právní základ zpracování" [level=2] [ref=e35]
+        - list [ref=e36]:
+          - listitem [ref=e37]:
+            - text: •
+            - strong [ref=e38]: Poskytování služby
+            - text: — personalizované tréninkové plány a sledování pokroku (splnění smlouvy, čl. 6 odst. 1 písm. b) GDPR)
+          - listitem [ref=e39]:
+            - text: •
+            - strong [ref=e40]: Zlepšování aplikace
+            - text: — anonymizovaná analytika využití (oprávněný zájem, čl. 6 odst. 1 písm. f) GDPR)
+          - listitem [ref=e41]:
+            - text: •
+            - strong [ref=e42]: Zasílání notifikací
+            - text: — připomínky tréninků a motivační zprávy (souhlas, čl. 6 odst. 1 písm. a) GDPR)
+      - generic [ref=e43]:
+        - heading "4. Příjemci a zpracovatelé" [level=2] [ref=e44]
+        - paragraph [ref=e45]:
+          - text: Vaše data jsou uložena na servery společnosti
+          - strong [ref=e46]: Supabase Inc.
+          - text: (USA), která je naším zpracovatelem dat na základě standardních smluvních doložek (SCCs) dle čl. 46 GDPR. Data nejsou sdílena s třetími stranami za marketingovými účely.
+      - generic [ref=e47]:
+        - heading "5. Doba uchovávání" [level=2] [ref=e48]
+        - paragraph [ref=e49]: Vaše osobní údaje uchováváme po dobu trvání vašeho účtu. Po smazání účtu jsou všechna data trvale odstraněna do 30 dnů. Zálohy jsou odstraněny do 90 dnů.
+      - generic [ref=e50]:
+        - heading "6. Vaše práva" [level=2] [ref=e51]
+        - list [ref=e52]:
+          - listitem [ref=e53]:
+            - text: •
+            - strong [ref=e54]: Právo na přístup
+            - text: — můžete požádat o kopii vašich dat
+          - listitem [ref=e55]:
+            - text: •
+            - strong [ref=e56]: Právo na opravu
+            - text: — nepřesné údaje lze opravit v nastavení aplikace
+          - listitem [ref=e57]:
+            - text: •
+            - strong [ref=e58]: Právo na výmaz
+            - text: — účet a všechna data lze smazat v Nastavení → Smazat účet
+          - listitem [ref=e59]:
+            - text: •
+            - strong [ref=e60]: Právo na přenositelnost
+            - text: — export vašich dat je dostupný v Nastavení
+          - listitem [ref=e61]:
+            - text: •
+            - strong [ref=e62]: Právo vznést námitku
+            - text: — kontaktujte nás na info.pumplo@gmail.com
+          - listitem [ref=e63]:
+            - text: •
+            - strong [ref=e64]: Právo podat stížnost
+            - text: — u Úřadu pro ochranu osobních údajů (uoou.cz)
+      - generic [ref=e65]:
+        - heading "7. Cookies a sledování" [level=2] [ref=e66]
+        - paragraph [ref=e67]: Aplikace nepoužívá marketingové cookies ani sledovací nástroje třetích stran. Technické cookies jsou nezbytné pro fungování přihlášení a relace.
+      - generic [ref=e68]:
+        - heading "8. Kontakt" [level=2] [ref=e69]
+        - paragraph [ref=e70]:
+          - text: Pro uplatnění práv nebo dotazy ohledně zpracování osobních údajů nás kontaktujte na
+          - link "info.pumplo@gmail.com" [ref=e71] [cursor=pointer]:
+            - /url: mailto:info.pumplo@gmail.com
+          - text: .
+      - button "Zpět do aplikace" [ref=e73] [cursor=pointer]

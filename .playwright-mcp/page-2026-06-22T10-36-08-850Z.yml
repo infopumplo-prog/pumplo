@@ -1,0 +1,2046 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]: mámokno
+    - generic [ref=e6]:
+      - generic [ref=e7]: David Novotny
+      - button "Dnes v kalendáři" [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+      - button "Odhlásit" [ref=e12] [cursor=pointer]
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - heading "Zakázky" [level=1] [ref=e15]
+      - searchbox "Hledat klienta, OP, adresu…" [ref=e16]
+      - paragraph [ref=e17]: Hledej podle jména klienta, OP čísla nebo adresy
+      - generic [ref=e18]:
+        - heading "Dnes" [level=2] [ref=e19]
+        - list [ref=e20]:
+          - listitem [ref=e21]:
+            - link "Miroslav Hovorka 2026-06-22 Trojská 593/140, 171 00 Praha-Troja-Libeň, Česko OP-26-00838 24 388 Kč" [ref=e22] [cursor=pointer]:
+              - /url: /zakazka/b3e1d5b1-8f31-4e9e-a5f2-efcd72a35bf1
+              - generic [ref=e23]:
+                - generic [ref=e24]: Miroslav Hovorka
+                - generic [ref=e25]: 2026-06-22
+              - generic [ref=e26]: Trojská 593/140, 171 00 Praha-Troja-Libeň, Česko
+              - generic [ref=e27]:
+                - generic [ref=e28]: OP-26-00838
+                - generic [ref=e29]: 24 388 Kč
+          - listitem [ref=e30]:
+            - link "Novotná 2026-06-22 U Lipové aleje 717/25, Dubeč OP-26-01378 12 354 Kč" [ref=e31] [cursor=pointer]:
+              - /url: /zakazka/7f41315b-c9bb-4e01-8a78-01e2b4b7bb39
+              - generic [ref=e32]:
+                - generic [ref=e33]: Novotná
+                - generic [ref=e34]: 2026-06-22
+              - generic [ref=e35]: U Lipové aleje 717/25, Dubeč
+              - generic [ref=e36]:
+                - generic [ref=e37]: OP-26-01378
+                - generic [ref=e38]: 12 354 Kč
+          - listitem [ref=e39]:
+            - link "Luděk Svoboda 2026-06-22 Dobrá 394, 739 51 Dobrá, Česko OP-26-01043 27 596 Kč" [ref=e40] [cursor=pointer]:
+              - /url: /zakazka/2b3aae62-7ed0-4e7c-b110-44917f8c1776
+              - generic [ref=e41]:
+                - generic [ref=e42]: Luděk Svoboda
+                - generic [ref=e43]: 2026-06-22
+              - generic [ref=e44]: Dobrá 394, 739 51 Dobrá, Česko
+              - generic [ref=e45]:
+                - generic [ref=e46]: OP-26-01043
+                - generic [ref=e47]: 27 596 Kč
+          - listitem [ref=e48]:
+            - link "Halina Františáková 22. 6. 2026 Fibichova 226/19, Město, 736 01 Havířov-Havířov 1, Česko OP-26-01590 0 Kč" [ref=e49] [cursor=pointer]:
+              - /url: /zakazka/8b9ef61c-3175-4b49-a0d4-1d31d1e1ecf9
+              - generic [ref=e50]:
+                - generic [ref=e51]: Halina Františáková
+                - generic [ref=e52]: 22. 6. 2026
+              - generic [ref=e53]: Fibichova 226/19, Město, 736 01 Havířov-Havířov 1, Česko
+              - generic [ref=e54]:
+                - generic [ref=e55]: OP-26-01590
+                - generic [ref=e56]: 0 Kč
+          - listitem [ref=e57]:
+            - link "Ondrej Zupko 22. 6. 2026 Sobotín 65, 788 16 Sobotín OP-26-01865 0 Kč" [ref=e58] [cursor=pointer]:
+              - /url: /zakazka/c3fe5726-60c9-44b8-b8cb-7b0c79e13177
+              - generic [ref=e59]:
+                - generic [ref=e60]: Ondrej Zupko
+                - generic [ref=e61]: 22. 6. 2026
+              - generic [ref=e62]: Sobotín 65, 788 16 Sobotín
+              - generic [ref=e63]:
+                - generic [ref=e64]: OP-26-01865
+                - generic [ref=e65]: 0 Kč
+          - listitem [ref=e66]:
+            - link "Boris Keka 22. 6. 2026 Hálkova 762/21, Hodolany, 779 00 Olomouc-Olomouc 9, Česko OP-26-01471 0 Kč" [ref=e67] [cursor=pointer]:
+              - /url: /zakazka/ef1c2e26-3ca6-414d-b390-59f1816adf32
+              - generic [ref=e68]:
+                - generic [ref=e69]: Boris Keka
+                - generic [ref=e70]: 22. 6. 2026
+              - generic [ref=e71]: Hálkova 762/21, Hodolany, 779 00 Olomouc-Olomouc 9, Česko
+              - generic [ref=e72]:
+                - generic [ref=e73]: OP-26-01471
+                - generic [ref=e74]: 0 Kč
+          - listitem [ref=e75]:
+            - link "Dana Pazderová 22. 6. 2026 Bořivoje 2213, 276 01 Mělník-Mělník 1 OP-26-01893 0 Kč" [ref=e76] [cursor=pointer]:
+              - /url: /zakazka/380925cd-b626-4554-942a-8c31231fc30b
+              - generic [ref=e77]:
+                - generic [ref=e78]: Dana Pazderová
+                - generic [ref=e79]: 22. 6. 2026
+              - generic [ref=e80]: Bořivoje 2213, 276 01 Mělník-Mělník 1
+              - generic [ref=e81]:
+                - generic [ref=e82]: OP-26-01893
+                - generic [ref=e83]: 0 Kč
+          - listitem [ref=e84]:
+            - link "Verka Sniegoňová 22. 6. 2026 Hrabinská 1536/23B, 737 01 Český Těšín-Český Těšín 1, Česko OP-26-01409 0 Kč" [ref=e85] [cursor=pointer]:
+              - /url: /zakazka/28a15b58-08fd-40bc-91fc-f2aa25875273
+              - generic [ref=e86]:
+                - generic [ref=e87]: Verka Sniegoňová
+                - generic [ref=e88]: 22. 6. 2026
+              - generic [ref=e89]: Hrabinská 1536/23B, 737 01 Český Těšín-Český Těšín 1, Česko
+              - generic [ref=e90]:
+                - generic [ref=e91]: OP-26-01409
+                - generic [ref=e92]: 0 Kč
+          - listitem [ref=e93]:
+            - link "Sylva Kuzdřalová 22. 6. 2026 B. Němcové 992/17, 790 01 Jeseník-Jeseník 1 OP-26-01931 0 Kč" [ref=e94] [cursor=pointer]:
+              - /url: /zakazka/a07ebdf1-6871-47f6-b08d-da632940818e
+              - generic [ref=e95]:
+                - generic [ref=e96]: Sylva Kuzdřalová
+                - generic [ref=e97]: 22. 6. 2026
+              - generic [ref=e98]: B. Němcové 992/17, 790 01 Jeseník-Jeseník 1
+              - generic [ref=e99]:
+                - generic [ref=e100]: OP-26-01931
+                - generic [ref=e101]: 0 Kč
+          - listitem [ref=e102]:
+            - link "Marián Mergeščík 22. 6. 2026 Dlouhá, 277 11 Libiš-Neratovice OP-26-01696 0 Kč" [ref=e103] [cursor=pointer]:
+              - /url: /zakazka/3e123445-895a-4fa0-83c5-65f480dbd57d
+              - generic [ref=e104]:
+                - generic [ref=e105]: Marián Mergeščík
+                - generic [ref=e106]: 22. 6. 2026
+              - generic [ref=e107]: Dlouhá, 277 11 Libiš-Neratovice
+              - generic [ref=e108]:
+                - generic [ref=e109]: OP-26-01696
+                - generic [ref=e110]: 0 Kč
+          - listitem [ref=e111]:
+            - link "Marek Havlín 22. 6. 2026 Libušská 539/27, Praha 4, Libuš OP-26-01645 0 Kč" [ref=e112] [cursor=pointer]:
+              - /url: /zakazka/255d4e44-2bd7-46d6-9123-bfffdc125998
+              - generic [ref=e113]:
+                - generic [ref=e114]: Marek Havlín
+                - generic [ref=e115]: 22. 6. 2026
+              - generic [ref=e116]: Libušská 539/27, Praha 4, Libuš
+              - generic [ref=e117]:
+                - generic [ref=e118]: OP-26-01645
+                - generic [ref=e119]: 0 Kč
+      - generic [ref=e120]:
+        - heading "Tento týden" [level=2] [ref=e121]
+        - list [ref=e122]:
+          - listitem [ref=e123]:
+            - link "zbynek klimsa 2026-06-23 Lidická 103, 742 58 Příbor, Česko OP-26-01058 13 528 Kč" [ref=e124] [cursor=pointer]:
+              - /url: /zakazka/30c93799-f8b4-4284-b1d2-b0ede615fa02
+              - generic [ref=e125]:
+                - generic [ref=e126]: zbynek klimsa
+                - generic [ref=e127]: 2026-06-23
+              - generic [ref=e128]: Lidická 103, 742 58 Příbor, Česko
+              - generic [ref=e129]:
+                - generic [ref=e130]: OP-26-01058
+                - generic [ref=e131]: 13 528 Kč
+          - listitem [ref=e132]:
+            - link "Filip Rohan 23. 6. 2026 K Maliňáku 898/36a, 713 00 Ostrava-Slezská Ostrava OP-26-01633 0 Kč" [ref=e133] [cursor=pointer]:
+              - /url: /zakazka/daa2228c-3fe0-496a-8216-cf2eec459a3a
+              - generic [ref=e134]:
+                - generic [ref=e135]: Filip Rohan
+                - generic [ref=e136]: 23. 6. 2026
+              - generic [ref=e137]: K Maliňáku 898/36a, 713 00 Ostrava-Slezská Ostrava
+              - generic [ref=e138]:
+                - generic [ref=e139]: OP-26-01633
+                - generic [ref=e140]: 0 Kč
+          - listitem [ref=e141]:
+            - link "Petra Pospíšilová 23. 6. 2026 Na Jezírkách 207, 500 11 Hradec Králové 11 OP-26-01629 0 Kč" [ref=e142] [cursor=pointer]:
+              - /url: /zakazka/066f9edc-52c6-413c-9222-90db46521af6
+              - generic [ref=e143]:
+                - generic [ref=e144]: Petra Pospíšilová
+                - generic [ref=e145]: 23. 6. 2026
+              - generic [ref=e146]: Na Jezírkách 207, 500 11 Hradec Králové 11
+              - generic [ref=e147]:
+                - generic [ref=e148]: OP-26-01629
+                - generic [ref=e149]: 0 Kč
+          - listitem [ref=e150]:
+            - link "Jaromíra Michnová 23. 6. 2026 Baška 290, 739 01 Baška OP-26-02084 0 Kč" [ref=e151] [cursor=pointer]:
+              - /url: /zakazka/a4805e01-07f2-4c57-b8b5-eb851edae4ab
+              - generic [ref=e152]:
+                - generic [ref=e153]: Jaromíra Michnová
+                - generic [ref=e154]: 23. 6. 2026
+              - generic [ref=e155]: Baška 290, 739 01 Baška
+              - generic [ref=e156]:
+                - generic [ref=e157]: OP-26-02084
+                - generic [ref=e158]: 0 Kč
+          - listitem [ref=e159]:
+            - link "Petra Čermáková 23. 6. 2026 Svatopluka Čecha 350, 537 01 Chrudim 1 OP-26-01799 0 Kč" [ref=e160] [cursor=pointer]:
+              - /url: /zakazka/8c70b9b4-68ec-40a3-ac67-a9a73c56b275
+              - generic [ref=e161]:
+                - generic [ref=e162]: Petra Čermáková
+                - generic [ref=e163]: 23. 6. 2026
+              - generic [ref=e164]: Svatopluka Čecha 350, 537 01 Chrudim 1
+              - generic [ref=e165]:
+                - generic [ref=e166]: OP-26-01799
+                - generic [ref=e167]: 0 Kč
+          - listitem [ref=e168]:
+            - link "Zubní ordinace Mudr Paroulek 23. 6. 2026 Horní lán 43, 779 00 Olomouc-Olomouc 9, Česko OP-26-01639 0 Kč" [ref=e169] [cursor=pointer]:
+              - /url: /zakazka/cd5cc0d3-f937-4385-822b-a85d682d7385
+              - generic [ref=e170]:
+                - generic [ref=e171]: Zubní ordinace Mudr Paroulek
+                - generic [ref=e172]: 23. 6. 2026
+              - generic [ref=e173]: Horní lán 43, 779 00 Olomouc-Olomouc 9, Česko
+              - generic [ref=e174]:
+                - generic [ref=e175]: OP-26-01639
+                - generic [ref=e176]: 0 Kč
+          - listitem [ref=e177]:
+            - link "Irena Bucharová 23. 6. 2026 Tyršova 50, Beroun 26601 OP-26-01574 0 Kč" [ref=e178] [cursor=pointer]:
+              - /url: /zakazka/f2c52c6f-15b5-4cfc-b250-9d9d6635ab7c
+              - generic [ref=e179]:
+                - generic [ref=e180]: Irena Bucharová
+                - generic [ref=e181]: 23. 6. 2026
+              - generic [ref=e182]: Tyršova 50, Beroun 26601
+              - generic [ref=e183]:
+                - generic [ref=e184]: OP-26-01574
+                - generic [ref=e185]: 0 Kč
+          - listitem [ref=e186]:
+            - link "Aleš Baránek 23. 6. 2026 Nad stadionem 349; 26701Králúv Dvúr OP-26-01898 0 Kč" [ref=e187] [cursor=pointer]:
+              - /url: /zakazka/a06169df-3046-4570-8008-d39cad42ceec
+              - generic [ref=e188]:
+                - generic [ref=e189]: Aleš Baránek
+                - generic [ref=e190]: 23. 6. 2026
+              - generic [ref=e191]: Nad stadionem 349; 26701Králúv Dvúr
+              - generic [ref=e192]:
+                - generic [ref=e193]: OP-26-01898
+                - generic [ref=e194]: 0 Kč
+          - listitem [ref=e195]:
+            - link "Michaela Havlová 23. 6. 2026 Zahradní 1455/19 Karvina OP-26-01929 0 Kč" [ref=e196] [cursor=pointer]:
+              - /url: /zakazka/6757cce6-ac23-4cdd-a7fc-a4f6557550b6
+              - generic [ref=e197]:
+                - generic [ref=e198]: Michaela Havlová
+                - generic [ref=e199]: 23. 6. 2026
+              - generic [ref=e200]: Zahradní 1455/19 Karvina
+              - generic [ref=e201]:
+                - generic [ref=e202]: OP-26-01929
+                - generic [ref=e203]: 0 Kč
+          - listitem [ref=e204]:
+            - link "Jitka Borovanova 23. 6. 2026 U Valu 844/1, 161 00 Praha 6-Ruzyně, Česko OP-26-01975 0 Kč" [ref=e205] [cursor=pointer]:
+              - /url: /zakazka/c36f143f-61a1-47af-8222-ef274e146d72
+              - generic [ref=e206]:
+                - generic [ref=e207]: Jitka Borovanova
+                - generic [ref=e208]: 23. 6. 2026
+              - generic [ref=e209]: U Valu 844/1, 161 00 Praha 6-Ruzyně, Česko
+              - generic [ref=e210]:
+                - generic [ref=e211]: OP-26-01975
+                - generic [ref=e212]: 0 Kč
+          - listitem [ref=e213]:
+            - link "Miroslav Mráz 23. 6. 2026 Starý Mateřov 316/2, 530 02 Starý Mateřov OP-26-01841 0 Kč" [ref=e214] [cursor=pointer]:
+              - /url: /zakazka/3664985f-8fd3-4b19-b842-cd63bae1cc05
+              - generic [ref=e215]:
+                - generic [ref=e216]: Miroslav Mráz
+                - generic [ref=e217]: 23. 6. 2026
+              - generic [ref=e218]: Starý Mateřov 316/2, 530 02 Starý Mateřov
+              - generic [ref=e219]:
+                - generic [ref=e220]: OP-26-01841
+                - generic [ref=e221]: 0 Kč
+          - listitem [ref=e222]:
+            - link "Miroslav Košnovský 23. 6. 2026 Svazácká 2190/23, 700 30 Ostrava-jih-Zábřeh, Česko OP-26-02043 0 Kč" [ref=e223] [cursor=pointer]:
+              - /url: /zakazka/542cd2a2-ebf5-43b9-84f6-ec19963e39d8
+              - generic [ref=e224]:
+                - generic [ref=e225]: Miroslav Košnovský
+                - generic [ref=e226]: 23. 6. 2026
+              - generic [ref=e227]: Svazácká 2190/23, 700 30 Ostrava-jih-Zábřeh, Česko
+              - generic [ref=e228]:
+                - generic [ref=e229]: OP-26-02043
+                - generic [ref=e230]: 0 Kč
+          - listitem [ref=e231]:
+            - link "Jana Ondrová 23. 6. 2026 K. H. Máchy 1, 792 01 Bruntál-Bruntál 1 OP-26-01928 0 Kč" [ref=e232] [cursor=pointer]:
+              - /url: /zakazka/b02a6143-a80f-4ad6-9014-b9711aba00bf
+              - generic [ref=e233]:
+                - generic [ref=e234]: Jana Ondrová
+                - generic [ref=e235]: 23. 6. 2026
+              - generic [ref=e236]: K. H. Máchy 1, 792 01 Bruntál-Bruntál 1
+              - generic [ref=e237]:
+                - generic [ref=e238]: OP-26-01928
+                - generic [ref=e239]: 0 Kč
+          - listitem [ref=e240]:
+            - link "Ludmila Voglová 23. 6. 2026 Národní gardy 1439, 503 46 Třebechovice pod Orebem, Česko OP-26-01953 0 Kč" [ref=e241] [cursor=pointer]:
+              - /url: /zakazka/7b971329-1e2e-4eb1-b59c-76adcda9846e
+              - generic [ref=e242]:
+                - generic [ref=e243]: Ludmila Voglová
+                - generic [ref=e244]: 23. 6. 2026
+              - generic [ref=e245]: Národní gardy 1439, 503 46 Třebechovice pod Orebem, Česko
+              - generic [ref=e246]:
+                - generic [ref=e247]: OP-26-01953
+                - generic [ref=e248]: 0 Kč
+          - listitem [ref=e249]:
+            - link "Romana Maláčová 23. 6. 2026 K lučinách 2462/5, Praha 3 OP-26-01923 0 Kč" [ref=e250] [cursor=pointer]:
+              - /url: /zakazka/977c3757-c0ed-4de0-a9bc-68accdfaa68c
+              - generic [ref=e251]:
+                - generic [ref=e252]: Romana Maláčová
+                - generic [ref=e253]: 23. 6. 2026
+              - generic [ref=e254]: K lučinách 2462/5, Praha 3
+              - generic [ref=e255]:
+                - generic [ref=e256]: OP-26-01923
+                - generic [ref=e257]: 0 Kč
+          - listitem [ref=e258]:
+            - link "Milada Menšíková 23. 6. 2026 Belgická 4164/4, Prostějov 79604 OP-26-01730 0 Kč" [ref=e259] [cursor=pointer]:
+              - /url: /zakazka/7362c19e-a5c0-4007-aed9-2b7b1cfbc193
+              - generic [ref=e260]:
+                - generic [ref=e261]: Milada Menšíková
+                - generic [ref=e262]: 23. 6. 2026
+              - generic [ref=e263]: Belgická 4164/4, Prostějov 79604
+              - generic [ref=e264]:
+                - generic [ref=e265]: OP-26-01730
+                - generic [ref=e266]: 0 Kč
+          - listitem [ref=e267]:
+            - link "Oli Golová 23. 6. 2026 Ahepjukova 2795/6, 702 00 Moravská Ostrava a Přívoz OP-26-01896 0 Kč" [ref=e268] [cursor=pointer]:
+              - /url: /zakazka/59b27a86-ea8d-419f-8e02-8c33c2fa7562
+              - generic [ref=e269]:
+                - generic [ref=e270]: Oli Golová
+                - generic [ref=e271]: 23. 6. 2026
+              - generic [ref=e272]: Ahepjukova 2795/6, 702 00 Moravská Ostrava a Přívoz
+              - generic [ref=e273]:
+                - generic [ref=e274]: OP-26-01896
+                - generic [ref=e275]: 0 Kč
+          - listitem [ref=e276]:
+            - link "Aleš Skřivánek 23. 6. 2026 Hněvotín 397, Hněvotín OP-26-01636 0 Kč" [ref=e277] [cursor=pointer]:
+              - /url: /zakazka/e9d6a11a-1c68-4210-bcdc-4c3c0b75be04
+              - generic [ref=e278]:
+                - generic [ref=e279]: Aleš Skřivánek
+                - generic [ref=e280]: 23. 6. 2026
+              - generic [ref=e281]: Hněvotín 397, Hněvotín
+              - generic [ref=e282]:
+                - generic [ref=e283]: OP-26-01636
+                - generic [ref=e284]: 0 Kč
+          - listitem [ref=e285]:
+            - link "Dan Uhrin 2026-06-24 Hornická 665, 735 43 Albrechtice-Albrechtice u Českého Těšína, Česko OP-26-01405 13 951 Kč" [ref=e286] [cursor=pointer]:
+              - /url: /zakazka/e0fae484-66de-4606-929c-0aee0925fef3
+              - generic [ref=e287]:
+                - generic [ref=e288]: Dan Uhrin
+                - generic [ref=e289]: 2026-06-24
+              - generic [ref=e290]: Hornická 665, 735 43 Albrechtice-Albrechtice u Českého Těšína, Česko
+              - generic [ref=e291]:
+                - generic [ref=e292]: OP-26-01405
+                - generic [ref=e293]: 13 951 Kč
+          - listitem [ref=e294]:
+            - link "Miroslav Bednář 24. 6. 2026 Lidická 808/8, Šternberk, 78501 OP-26-01704 0 Kč" [ref=e295] [cursor=pointer]:
+              - /url: /zakazka/fdc6516e-05c9-457c-a375-67cfa438da07
+              - generic [ref=e296]:
+                - generic [ref=e297]: Miroslav Bednář
+                - generic [ref=e298]: 24. 6. 2026
+              - generic [ref=e299]: Lidická 808/8, Šternberk, 78501
+              - generic [ref=e300]:
+                - generic [ref=e301]: OP-26-01704
+                - generic [ref=e302]: 0 Kč
+          - listitem [ref=e303]:
+            - link "Miroslav Mička 24. 6. 2026 Na Vrchách 1089, 735 53 Dolní Lutyně OP-26-01844 0 Kč" [ref=e304] [cursor=pointer]:
+              - /url: /zakazka/240b40c9-41e3-4884-94ad-ba86718f9891
+              - generic [ref=e305]:
+                - generic [ref=e306]: Miroslav Mička
+                - generic [ref=e307]: 24. 6. 2026
+              - generic [ref=e308]: Na Vrchách 1089, 735 53 Dolní Lutyně
+              - generic [ref=e309]:
+                - generic [ref=e310]: OP-26-01844
+                - generic [ref=e311]: 0 Kč
+          - listitem [ref=e312]:
+            - link "Lukáš Straka 24. 6. 2026 Domašov 502/502, Domašov, 790 01 Bělá pod Pradědem-Jeseník 1 OP-26-01681 0 Kč" [ref=e313] [cursor=pointer]:
+              - /url: /zakazka/45c0206e-4701-4688-9b99-1e1330759e6c
+              - generic [ref=e314]:
+                - generic [ref=e315]: Lukáš Straka
+                - generic [ref=e316]: 24. 6. 2026
+              - generic [ref=e317]: Domašov 502/502, Domašov, 790 01 Bělá pod Pradědem-Jeseník 1
+              - generic [ref=e318]:
+                - generic [ref=e319]: OP-26-01681
+                - generic [ref=e320]: 0 Kč
+          - listitem [ref=e321]:
+            - link "Jaroslav Hubáček 24. 6. 2026 Nová dědina 14, 789 61 Bludov OP-26-01911 0 Kč" [ref=e322] [cursor=pointer]:
+              - /url: /zakazka/fdc9d199-79ca-4086-9cea-ff734008e0e0
+              - generic [ref=e323]:
+                - generic [ref=e324]: Jaroslav Hubáček
+                - generic [ref=e325]: 24. 6. 2026
+              - generic [ref=e326]: Nová dědina 14, 789 61 Bludov
+              - generic [ref=e327]:
+                - generic [ref=e328]: OP-26-01911
+                - generic [ref=e329]: 0 Kč
+          - listitem [ref=e330]:
+            - link "Anke Glut 24. 6. 2026 Na Kaplance 775; Beroun 26601 OP-26-01644 0 Kč" [ref=e331] [cursor=pointer]:
+              - /url: /zakazka/6269f164-98d5-4eac-bfe8-158884cc27ed
+              - generic [ref=e332]:
+                - generic [ref=e333]: Anke Glut
+                - generic [ref=e334]: 24. 6. 2026
+              - generic [ref=e335]: Na Kaplance 775; Beroun 26601
+              - generic [ref=e336]:
+                - generic [ref=e337]: OP-26-01644
+                - generic [ref=e338]: 0 Kč
+          - listitem [ref=e339]:
+            - link "Zuzana Truplova 24. 6. 2026 Nádražní 370/102, 702 00 Moravská Ostrava a Přívoz OP-26-01992 0 Kč" [ref=e340] [cursor=pointer]:
+              - /url: /zakazka/b1ae2405-5149-4c5c-828f-445ba8171d37
+              - generic [ref=e341]:
+                - generic [ref=e342]: Zuzana Truplova
+                - generic [ref=e343]: 24. 6. 2026
+              - generic [ref=e344]: Nádražní 370/102, 702 00 Moravská Ostrava a Přívoz
+              - generic [ref=e345]:
+                - generic [ref=e346]: OP-26-01992
+                - generic [ref=e347]: 0 Kč
+          - listitem [ref=e348]:
+            - link "Jarmila Michalíková 24. 6. 2026 Hřbitovní 2143/6, Pod Bezručovým vrchem, 794 01 Krnov-Krnov 1 OP-26-02005 0 Kč" [ref=e349] [cursor=pointer]:
+              - /url: /zakazka/76f1d012-9fad-44da-b35e-262f21d598d5
+              - generic [ref=e350]:
+                - generic [ref=e351]: Jarmila Michalíková
+                - generic [ref=e352]: 24. 6. 2026
+              - generic [ref=e353]: Hřbitovní 2143/6, Pod Bezručovým vrchem, 794 01 Krnov-Krnov 1
+              - generic [ref=e354]:
+                - generic [ref=e355]: OP-26-02005
+                - generic [ref=e356]: 0 Kč
+          - listitem [ref=e357]:
+            - link "Zuzana Nová 24. 6. 2026 K Přívozu 3612, 276 01 Mělník-Mělník 1 OP-26-01891 0 Kč" [ref=e358] [cursor=pointer]:
+              - /url: /zakazka/25787c1e-4312-4f6d-8ab7-8d40ee2eae96
+              - generic [ref=e359]:
+                - generic [ref=e360]: Zuzana Nová
+                - generic [ref=e361]: 24. 6. 2026
+              - generic [ref=e362]: K Přívozu 3612, 276 01 Mělník-Mělník 1
+              - generic [ref=e363]:
+                - generic [ref=e364]: OP-26-01891
+                - generic [ref=e365]: 0 Kč
+          - listitem [ref=e366]:
+            - link "Alena Kučerová 24. 6. 2026 Rejvízská 173, Bukovice, 790 01 Jeseník-Jeseník 1 OP-26-01623 0 Kč" [ref=e367] [cursor=pointer]:
+              - /url: /zakazka/7fd4871a-3d27-4f68-a672-8abf2d6b3ec2
+              - generic [ref=e368]:
+                - generic [ref=e369]: Alena Kučerová
+                - generic [ref=e370]: 24. 6. 2026
+              - generic [ref=e371]: Rejvízská 173, Bukovice, 790 01 Jeseník-Jeseník 1
+              - generic [ref=e372]:
+                - generic [ref=e373]: OP-26-01623
+                - generic [ref=e374]: 0 Kč
+          - listitem [ref=e375]:
+            - link "Jan Brejcha 24. 6. 2026 Březová 127; 26751 Březová OP-26-01872 0 Kč" [ref=e376] [cursor=pointer]:
+              - /url: /zakazka/b47d7b58-0afd-452e-846a-d88d709ae3fc
+              - generic [ref=e377]:
+                - generic [ref=e378]: Jan Brejcha
+                - generic [ref=e379]: 24. 6. 2026
+              - generic [ref=e380]: Březová 127; 26751 Březová
+              - generic [ref=e381]:
+                - generic [ref=e382]: OP-26-01872
+                - generic [ref=e383]: 0 Kč
+          - listitem [ref=e384]:
+            - link "Mikuláš Balogh 24. 6. 2026 Metylovice 79, 739 49 Metylovice, Česko OP-26-01917 0 Kč" [ref=e385] [cursor=pointer]:
+              - /url: /zakazka/553f0253-5c67-41e8-9f2b-96c468ce342e
+              - generic [ref=e386]:
+                - generic [ref=e387]: Mikuláš Balogh
+                - generic [ref=e388]: 24. 6. 2026
+              - generic [ref=e389]: Metylovice 79, 739 49 Metylovice, Česko
+              - generic [ref=e390]:
+                - generic [ref=e391]: OP-26-01917
+                - generic [ref=e392]: 0 Kč
+          - listitem [ref=e393]:
+            - link "Zuzana Kopková 24. 6. 2026 Kaštanová 7, Olomouc OP-26-01788 0 Kč" [ref=e394] [cursor=pointer]:
+              - /url: /zakazka/d5bd8643-d55a-42a5-b279-b69cefac2cc1
+              - generic [ref=e395]:
+                - generic [ref=e396]: Zuzana Kopková
+                - generic [ref=e397]: 24. 6. 2026
+              - generic [ref=e398]: Kaštanová 7, Olomouc
+              - generic [ref=e399]:
+                - generic [ref=e400]: OP-26-01788
+                - generic [ref=e401]: 0 Kč
+          - listitem [ref=e402]:
+            - link "Martina Miková 24. 6. 2026 Kollárova 1276/7, Podlesí, 736 01 Havířov-Havířov 1, Česko OP-26-01739 0 Kč" [ref=e403] [cursor=pointer]:
+              - /url: /zakazka/f6144ddd-0227-4b70-9c37-6e2e73d70dc1
+              - generic [ref=e404]:
+                - generic [ref=e405]: Martina Miková
+                - generic [ref=e406]: 24. 6. 2026
+              - generic [ref=e407]: Kollárova 1276/7, Podlesí, 736 01 Havířov-Havířov 1, Česko
+              - generic [ref=e408]:
+                - generic [ref=e409]: OP-26-01739
+                - generic [ref=e410]: 0 Kč
+          - listitem [ref=e411]:
+            - link "Helena Lupšaková 24. 6. 2026 Na Ráji 1466/28, 276 01 Mělník-Mělník 1 OP-26-01964 0 Kč" [ref=e412] [cursor=pointer]:
+              - /url: /zakazka/02d2755b-d8b6-4d5f-ad24-9699980dabef
+              - generic [ref=e413]:
+                - generic [ref=e414]: Helena Lupšaková
+                - generic [ref=e415]: 24. 6. 2026
+              - generic [ref=e416]: Na Ráji 1466/28, 276 01 Mělník-Mělník 1
+              - generic [ref=e417]:
+                - generic [ref=e418]: OP-26-01964
+                - generic [ref=e419]: 0 Kč
+          - listitem [ref=e420]:
+            - link "Radka Mayerová 24. 6. 2026 tř. Hrdinů 683/31, 795 01 Rýmařov OP-26-01812 0 Kč" [ref=e421] [cursor=pointer]:
+              - /url: /zakazka/63f84eac-1f71-4031-8c8a-306a20ca6d73
+              - generic [ref=e422]:
+                - generic [ref=e423]: Radka Mayerová
+                - generic [ref=e424]: 24. 6. 2026
+              - generic [ref=e425]: tř. Hrdinů 683/31, 795 01 Rýmařov
+              - generic [ref=e426]:
+                - generic [ref=e427]: OP-26-01812
+                - generic [ref=e428]: 0 Kč
+          - listitem [ref=e429]:
+            - link "Radek Nyč 24. 6. 2026 Butoves 95, 506 01 Butoves OP-26-01667 0 Kč" [ref=e430] [cursor=pointer]:
+              - /url: /zakazka/3bc09787-d513-4434-b59a-a74573bf589a
+              - generic [ref=e431]:
+                - generic [ref=e432]: Radek Nyč
+                - generic [ref=e433]: 24. 6. 2026
+              - generic [ref=e434]: Butoves 95, 506 01 Butoves
+              - generic [ref=e435]:
+                - generic [ref=e436]: OP-26-01667
+                - generic [ref=e437]: 0 Kč
+          - listitem [ref=e438]:
+            - link "Milan Keprt 24. 6. 2026 Drozdov 120, 789 01 Drozdov OP-26-01900 0 Kč" [ref=e439] [cursor=pointer]:
+              - /url: /zakazka/56bc4714-e095-4fae-a02a-eadad56040eb
+              - generic [ref=e440]:
+                - generic [ref=e441]: Milan Keprt
+                - generic [ref=e442]: 24. 6. 2026
+              - generic [ref=e443]: Drozdov 120, 789 01 Drozdov
+              - generic [ref=e444]:
+                - generic [ref=e445]: OP-26-01900
+                - generic [ref=e446]: 0 Kč
+          - listitem [ref=e447]:
+            - link "Marcela Schwarzová 25. 6. 2026 Stonava 1163, 735 34 Stonava, Česko OP-26-01782 0 Kč" [ref=e448] [cursor=pointer]:
+              - /url: /zakazka/ee57d3ac-f8a5-4dfd-9cda-831575599fd2
+              - generic [ref=e449]:
+                - generic [ref=e450]: Marcela Schwarzová
+                - generic [ref=e451]: 25. 6. 2026
+              - generic [ref=e452]: Stonava 1163, 735 34 Stonava, Česko
+              - generic [ref=e453]:
+                - generic [ref=e454]: OP-26-01782
+                - generic [ref=e455]: 0 Kč
+          - listitem [ref=e456]:
+            - link "Eva Drozdová 25. 6. 2026 Zámecká 427, 783 86 Dlouhá Loučka OP-26-01880 0 Kč" [ref=e457] [cursor=pointer]:
+              - /url: /zakazka/a07d24ec-67e4-4bc0-9110-766da15af620
+              - generic [ref=e458]:
+                - generic [ref=e459]: Eva Drozdová
+                - generic [ref=e460]: 25. 6. 2026
+              - generic [ref=e461]: Zámecká 427, 783 86 Dlouhá Loučka
+              - generic [ref=e462]:
+                - generic [ref=e463]: OP-26-01880
+                - generic [ref=e464]: 0 Kč
+          - listitem [ref=e465]:
+            - link "Lenka Čermáková 25. 6. 2026 Zahradní 23, Šumperk OP-26-01551 0 Kč" [ref=e466] [cursor=pointer]:
+              - /url: /zakazka/dbeea929-ec62-4065-bf8f-200e7870a8b9
+              - generic [ref=e467]:
+                - generic [ref=e468]: Lenka Čermáková
+                - generic [ref=e469]: 25. 6. 2026
+              - generic [ref=e470]: Zahradní 23, Šumperk
+              - generic [ref=e471]:
+                - generic [ref=e472]: OP-26-01551
+                - generic [ref=e473]: 0 Kč
+          - listitem [ref=e474]:
+            - link "Petra Šustová 25. 6. 2026 V Koutech 1287, 500 02 Hradec Králové 2 OP-26-01496 0 Kč" [ref=e475] [cursor=pointer]:
+              - /url: /zakazka/46d5ec82-1f7f-47b9-ae48-11fdafbe2658
+              - generic [ref=e476]:
+                - generic [ref=e477]: Petra Šustová
+                - generic [ref=e478]: 25. 6. 2026
+              - generic [ref=e479]: V Koutech 1287, 500 02 Hradec Králové 2
+              - generic [ref=e480]:
+                - generic [ref=e481]: OP-26-01496
+                - generic [ref=e482]: 0 Kč
+          - listitem [ref=e483]:
+            - link "Radim Klus 25. 6. 2026 Čsl. armády 2952/21A, Hranice, 733 01 Karviná-Karviná 1, Česko OP-26-02012 0 Kč" [ref=e484] [cursor=pointer]:
+              - /url: /zakazka/14e99bbb-f36c-42ed-b2b5-0176d30c1e6b
+              - generic [ref=e485]:
+                - generic [ref=e486]: Radim Klus
+                - generic [ref=e487]: 25. 6. 2026
+              - generic [ref=e488]: Čsl. armády 2952/21A, Hranice, 733 01 Karviná-Karviná 1, Česko
+              - generic [ref=e489]:
+                - generic [ref=e490]: OP-26-02012
+                - generic [ref=e491]: 0 Kč
+          - listitem [ref=e492]:
+            - link "Ivana Heraltová 25. 6. 2026 Jedličkova 1356/6 ostrava OP-26-01882 0 Kč" [ref=e493] [cursor=pointer]:
+              - /url: /zakazka/6b750774-8303-4447-a442-aff93c22f256
+              - generic [ref=e494]:
+                - generic [ref=e495]: Ivana Heraltová
+                - generic [ref=e496]: 25. 6. 2026
+              - generic [ref=e497]: Jedličkova 1356/6 ostrava
+              - generic [ref=e498]:
+                - generic [ref=e499]: OP-26-01882
+                - generic [ref=e500]: 0 Kč
+          - listitem [ref=e501]:
+            - link "Milada Milošová 25. 6. 2026 Matúškova 784/6, 149 00 Praha 11-Háje, Česko OP-26-01993 0 Kč" [ref=e502] [cursor=pointer]:
+              - /url: /zakazka/b50629fb-f04e-4816-be9b-f58725582a69
+              - generic [ref=e503]:
+                - generic [ref=e504]: Milada Milošová
+                - generic [ref=e505]: 25. 6. 2026
+              - generic [ref=e506]: Matúškova 784/6, 149 00 Praha 11-Háje, Česko
+              - generic [ref=e507]:
+                - generic [ref=e508]: OP-26-01993
+                - generic [ref=e509]: 0 Kč
+          - listitem [ref=e510]:
+            - link "David Doležal 25. 6. 2026 Petřvaldská 850/190, 715 00 Ostrava-Michálkovice OP-26-01935 0 Kč" [ref=e511] [cursor=pointer]:
+              - /url: /zakazka/64eb25cb-1384-4923-8349-51c43e036408
+              - generic [ref=e512]:
+                - generic [ref=e513]: David Doležal
+                - generic [ref=e514]: 25. 6. 2026
+              - generic [ref=e515]: Petřvaldská 850/190, 715 00 Ostrava-Michálkovice
+              - generic [ref=e516]:
+                - generic [ref=e517]: OP-26-01935
+                - generic [ref=e518]: 0 Kč
+          - listitem [ref=e519]:
+            - link "Hana Doudová 25. 6. 2026 Březovická 1354/9, 19300, Praha OP-26-01875 0 Kč" [ref=e520] [cursor=pointer]:
+              - /url: /zakazka/0367f4ae-35a3-4d6c-9ffd-b5feab5ce21c
+              - generic [ref=e521]:
+                - generic [ref=e522]: Hana Doudová
+                - generic [ref=e523]: 25. 6. 2026
+              - generic [ref=e524]: Březovická 1354/9, 19300, Praha
+              - generic [ref=e525]:
+                - generic [ref=e526]: OP-26-01875
+                - generic [ref=e527]: 0 Kč
+          - listitem [ref=e528]:
+            - link "Monika Muroňová 25. 6. 2026 Gen. Janka 1158/5, 709 00 Ostrava-Mariánské Hory a Hulváky OP-26-01982 0 Kč" [ref=e529] [cursor=pointer]:
+              - /url: /zakazka/74918b3f-9a43-428b-809c-d69daf2f31eb
+              - generic [ref=e530]:
+                - generic [ref=e531]: Monika Muroňová
+                - generic [ref=e532]: 25. 6. 2026
+              - generic [ref=e533]: Gen. Janka 1158/5, 709 00 Ostrava-Mariánské Hory a Hulváky
+              - generic [ref=e534]:
+                - generic [ref=e535]: OP-26-01982
+                - generic [ref=e536]: 0 Kč
+          - listitem [ref=e537]:
+            - link "Radim Štebel 25. 6. 2026 U Chodníčku 495, 738 01 Staré Město-Frýdek-Místek 1, Česko OP-26-02045 0 Kč" [ref=e538] [cursor=pointer]:
+              - /url: /zakazka/2e9b5e70-e440-45be-ae1f-a96ed84e0460
+              - generic [ref=e539]:
+                - generic [ref=e540]: Radim Štebel
+                - generic [ref=e541]: 25. 6. 2026
+              - generic [ref=e542]: U Chodníčku 495, 738 01 Staré Město-Frýdek-Místek 1, Česko
+              - generic [ref=e543]:
+                - generic [ref=e544]: OP-26-02045
+                - generic [ref=e545]: 0 Kč
+          - listitem [ref=e546]:
+            - link "Jiřina Skalníková 25. 6. 2026 Žulová 94, 79065 OP-26-01819 0 Kč" [ref=e547] [cursor=pointer]:
+              - /url: /zakazka/4ad592c7-b215-46fb-8bbd-d0b494b90b03
+              - generic [ref=e548]:
+                - generic [ref=e549]: Jiřina Skalníková
+                - generic [ref=e550]: 25. 6. 2026
+              - generic [ref=e551]: Žulová 94, 79065
+              - generic [ref=e552]:
+                - generic [ref=e553]: OP-26-01819
+                - generic [ref=e554]: 0 Kč
+          - listitem [ref=e555]:
+            - link "Lada Jarolímová 25. 6. 2026 Kadlín 51, 277 35 Kadlín, Česko OP-26-02107 0 Kč" [ref=e556] [cursor=pointer]:
+              - /url: /zakazka/c4d8d9a2-8965-4a91-a5e3-523bc83a15c6
+              - generic [ref=e557]:
+                - generic [ref=e558]: Lada Jarolímová
+                - generic [ref=e559]: 25. 6. 2026
+              - generic [ref=e560]: Kadlín 51, 277 35 Kadlín, Česko
+              - generic [ref=e561]:
+                - generic [ref=e562]: OP-26-02107
+                - generic [ref=e563]: 0 Kč
+          - listitem [ref=e564]:
+            - link "Gabriela Jurečková 25. 6. 2026 Náměstí Svobody 8, 75002 Přerov OP-26-01796 0 Kč" [ref=e565] [cursor=pointer]:
+              - /url: /zakazka/b3f066d7-0f30-4455-9184-02b1fcb51c6e
+              - generic [ref=e566]:
+                - generic [ref=e567]: Gabriela Jurečková
+                - generic [ref=e568]: 25. 6. 2026
+              - generic [ref=e569]: Náměstí Svobody 8, 75002 Přerov
+              - generic [ref=e570]:
+                - generic [ref=e571]: OP-26-01796
+                - generic [ref=e572]: 0 Kč
+          - listitem [ref=e573]:
+            - link "Bohuslava Patočková 25. 6. 2026 Haškova 749/35, Ráj, 734 01 Karviná-Karviná 4, Česko OP-26-01851 0 Kč" [ref=e574] [cursor=pointer]:
+              - /url: /zakazka/b4f5c7a6-7ea6-4859-ad3c-f1af375e35cb
+              - generic [ref=e575]:
+                - generic [ref=e576]: Bohuslava Patočková
+                - generic [ref=e577]: 25. 6. 2026
+              - generic [ref=e578]: Haškova 749/35, Ráj, 734 01 Karviná-Karviná 4, Česko
+              - generic [ref=e579]:
+                - generic [ref=e580]: OP-26-01851
+                - generic [ref=e581]: 0 Kč
+          - listitem [ref=e582]:
+            - link "Hana Foldinová 25. 6. 2026 Zeyerova 659/4, 79001 Jeseník OP-26-01837 0 Kč" [ref=e583] [cursor=pointer]:
+              - /url: /zakazka/4f56aab1-90cd-4860-932b-02aaff0ac84f
+              - generic [ref=e584]:
+                - generic [ref=e585]: Hana Foldinová
+                - generic [ref=e586]: 25. 6. 2026
+              - generic [ref=e587]: Zeyerova 659/4, 79001 Jeseník
+              - generic [ref=e588]:
+                - generic [ref=e589]: OP-26-01837
+                - generic [ref=e590]: 0 Kč
+          - listitem [ref=e591]:
+            - link "Miroslava Pokorna 26. 6. 2026 Vepřkova 1013/9; Slaný 27401 OP-26-01942 0 Kč" [ref=e592] [cursor=pointer]:
+              - /url: /zakazka/a232ea7b-77af-463f-bbda-5c417c23b2ae
+              - generic [ref=e593]:
+                - generic [ref=e594]: Miroslava Pokorna
+                - generic [ref=e595]: 26. 6. 2026
+              - generic [ref=e596]: Vepřkova 1013/9; Slaný 27401
+              - generic [ref=e597]:
+                - generic [ref=e598]: OP-26-01942
+                - generic [ref=e599]: 0 Kč
+          - listitem [ref=e600]:
+            - link "Olga Dlabajová 26. 6. 2026 Jeseník nad Odrou 94, 742 33 Jeseník nad Odrou, Česko OP-26-01708 0 Kč" [ref=e601] [cursor=pointer]:
+              - /url: /zakazka/8de276b8-0cb7-42d5-9fc3-6195c22d2099
+              - generic [ref=e602]:
+                - generic [ref=e603]: Olga Dlabajová
+                - generic [ref=e604]: 26. 6. 2026
+              - generic [ref=e605]: Jeseník nad Odrou 94, 742 33 Jeseník nad Odrou, Česko
+              - generic [ref=e606]:
+                - generic [ref=e607]: OP-26-01708
+                - generic [ref=e608]: 0 Kč
+          - listitem [ref=e609]:
+            - link "Martin Krejčí 26. 6. 2026 Havlíčkova 76, Kroměříž OP-26-01734 0 Kč" [ref=e610] [cursor=pointer]:
+              - /url: /zakazka/b26700ca-affb-416b-9509-98731c55613f
+              - generic [ref=e611]:
+                - generic [ref=e612]: Martin Krejčí
+                - generic [ref=e613]: 26. 6. 2026
+              - generic [ref=e614]: Havlíčkova 76, Kroměříž
+              - generic [ref=e615]:
+                - generic [ref=e616]: OP-26-01734
+                - generic [ref=e617]: 0 Kč
+          - listitem [ref=e618]:
+            - link "Ondřej Němec 26. 6. 2026 Palackého tř. 1949, 530 02 Pardubice I OP-26-01840 0 Kč" [ref=e619] [cursor=pointer]:
+              - /url: /zakazka/221564bc-5327-44dc-bfc8-56a162315425
+              - generic [ref=e620]:
+                - generic [ref=e621]: Ondřej Němec
+                - generic [ref=e622]: 26. 6. 2026
+              - generic [ref=e623]: Palackého tř. 1949, 530 02 Pardubice I
+              - generic [ref=e624]:
+                - generic [ref=e625]: OP-26-01840
+                - generic [ref=e626]: 0 Kč
+          - listitem [ref=e627]:
+            - link "Emília Pátíková 26. 6. 2026 Lipová Lázně 620, 79061 OP-26-01721 0 Kč" [ref=e628] [cursor=pointer]:
+              - /url: /zakazka/bb8af0ae-d59c-4a44-9cfa-540b47c73de0
+              - generic [ref=e629]:
+                - generic [ref=e630]: Emília Pátíková
+                - generic [ref=e631]: 26. 6. 2026
+              - generic [ref=e632]: Lipová Lázně 620, 79061
+              - generic [ref=e633]:
+                - generic [ref=e634]: OP-26-01721
+                - generic [ref=e635]: 0 Kč
+          - listitem [ref=e636]:
+            - link "REHABILITACE Hana Pokorná,s.r.o. 26. 6. 2026 Vepřkova 1013/9; Slaný 27401 OP-26-01996 0 Kč" [ref=e637] [cursor=pointer]:
+              - /url: /zakazka/4176aa29-9548-4182-be02-8620b1e5d0aa
+              - generic [ref=e638]:
+                - generic [ref=e639]: REHABILITACE Hana Pokorná,s.r.o.
+                - generic [ref=e640]: 26. 6. 2026
+              - generic [ref=e641]: Vepřkova 1013/9; Slaný 27401
+              - generic [ref=e642]:
+                - generic [ref=e643]: OP-26-01996
+                - generic [ref=e644]: 0 Kč
+          - listitem [ref=e645]:
+            - link "Martin Tonhauser 26. 6. 2026 Nádražní 184, Javorník OP-26-01724 0 Kč" [ref=e646] [cursor=pointer]:
+              - /url: /zakazka/4c09c9fc-61bf-4a9c-834d-3940ad035bd0
+              - generic [ref=e647]:
+                - generic [ref=e648]: Martin Tonhauser
+                - generic [ref=e649]: 26. 6. 2026
+              - generic [ref=e650]: Nádražní 184, Javorník
+              - generic [ref=e651]:
+                - generic [ref=e652]: OP-26-01724
+                - generic [ref=e653]: 0 Kč
+          - listitem [ref=e654]:
+            - link "Danuta Kantorová 26. 6. 2026 Jaroslava Vrchlického 2449, Karviná OP-26-01885 0 Kč" [ref=e655] [cursor=pointer]:
+              - /url: /zakazka/9ae17032-82d1-4e99-8538-8c9935454b44
+              - generic [ref=e656]:
+                - generic [ref=e657]: Danuta Kantorová
+                - generic [ref=e658]: 26. 6. 2026
+              - generic [ref=e659]: Jaroslava Vrchlického 2449, Karviná
+              - generic [ref=e660]:
+                - generic [ref=e661]: OP-26-01885
+                - generic [ref=e662]: 0 Kč
+          - listitem [ref=e663]:
+            - link "Martin Gajdošík 26. 6. 2026 Vřesová 1022, 250 82 Květnice-Úvaly OP-26-02167 0 Kč" [ref=e664] [cursor=pointer]:
+              - /url: /zakazka/edb70c2c-ec9a-4969-b5a5-0f60b0565967
+              - generic [ref=e665]:
+                - generic [ref=e666]: Martin Gajdošík
+                - generic [ref=e667]: 26. 6. 2026
+              - generic [ref=e668]: Vřesová 1022, 250 82 Květnice-Úvaly
+              - generic [ref=e669]:
+                - generic [ref=e670]: OP-26-02167
+                - generic [ref=e671]: 0 Kč
+          - listitem [ref=e672]:
+            - link "Martin Mazanek 26. 6. 2026 Obvodová 3, 767 01 Kroměříž-Kroměříž 1, Česko OP-26-01735 0 Kč" [ref=e673] [cursor=pointer]:
+              - /url: /zakazka/059aaef2-70d5-4f8c-985b-c97ffeb38478
+              - generic [ref=e674]:
+                - generic [ref=e675]: Martin Mazanek
+                - generic [ref=e676]: 26. 6. 2026
+              - generic [ref=e677]: Obvodová 3, 767 01 Kroměříž-Kroměříž 1, Česko
+              - generic [ref=e678]:
+                - generic [ref=e679]: OP-26-01735
+                - generic [ref=e680]: 0 Kč
+          - listitem [ref=e681]:
+            - link "Zdenka Burešová 26. 6. 2026 Nerudova 1189/24, Jeseník, 79001 OP-26-01723 0 Kč" [ref=e682] [cursor=pointer]:
+              - /url: /zakazka/81e1be6a-99a4-4987-afc3-cd30172b9ad2
+              - generic [ref=e683]:
+                - generic [ref=e684]: Zdenka Burešová
+                - generic [ref=e685]: 26. 6. 2026
+              - generic [ref=e686]: Nerudova 1189/24, Jeseník, 79001
+              - generic [ref=e687]:
+                - generic [ref=e688]: OP-26-01723
+                - generic [ref=e689]: 0 Kč
+          - listitem [ref=e690]:
+            - link "Ladislav Bednář 26. 6. 2026 Pod skalkou 88/9, Předmostí, 751 24 Přerov-Přerov 4 OP-26-01998 0 Kč" [ref=e691] [cursor=pointer]:
+              - /url: /zakazka/8d3ff1a6-976f-44f3-93f2-27e5b461684e
+              - generic [ref=e692]:
+                - generic [ref=e693]: Ladislav Bednář
+                - generic [ref=e694]: 26. 6. 2026
+              - generic [ref=e695]: Pod skalkou 88/9, Předmostí, 751 24 Přerov-Přerov 4
+              - generic [ref=e696]:
+                - generic [ref=e697]: OP-26-01998
+                - generic [ref=e698]: 0 Kč
+      - generic [ref=e699]:
+        - heading "Později" [level=2] [ref=e700]
+        - list [ref=e701]:
+          - listitem [ref=e702]:
+            - link "Miloš Novotný 2026-06-29 Bohuslava Martinů 2117, 741 01 Nový Jičín-Nový Jičín 1, Česko OP-26-01081 6 274 Kč" [ref=e703] [cursor=pointer]:
+              - /url: /zakazka/cd21b7aa-32ad-42aa-b918-821f49ab4761
+              - generic [ref=e704]:
+                - generic [ref=e705]: Miloš Novotný
+                - generic [ref=e706]: 2026-06-29
+              - generic [ref=e707]: Bohuslava Martinů 2117, 741 01 Nový Jičín-Nový Jičín 1, Česko
+              - generic [ref=e708]:
+                - generic [ref=e709]: OP-26-01081
+                - generic [ref=e710]: 6 274 Kč
+          - listitem [ref=e711]:
+            - link "David Mrázek 2026-06-29 Brichtova 819/8, 152 00 Praha 5-Barrandov, Česko OP-26-01068 19 811 Kč" [ref=e712] [cursor=pointer]:
+              - /url: /zakazka/e59f5b88-b349-49fe-bd4b-507a5feafff6
+              - generic [ref=e713]:
+                - generic [ref=e714]: David Mrázek
+                - generic [ref=e715]: 2026-06-29
+              - generic [ref=e716]: Brichtova 819/8, 152 00 Praha 5-Barrandov, Česko
+              - generic [ref=e717]:
+                - generic [ref=e718]: OP-26-01068
+                - generic [ref=e719]: 19 811 Kč
+          - listitem [ref=e720]:
+            - link "Vlasta Marešová 2026-06-29 Rubensova 2182/14, Strašnice, 100 00 Praha-Praha 10 OP-26-01341 15 313 Kč" [ref=e721] [cursor=pointer]:
+              - /url: /zakazka/1e2b1cca-1195-4f8f-a315-4efad3cc862a
+              - generic [ref=e722]:
+                - generic [ref=e723]: Vlasta Marešová
+                - generic [ref=e724]: 2026-06-29
+              - generic [ref=e725]: Rubensova 2182/14, Strašnice, 100 00 Praha-Praha 10
+              - generic [ref=e726]:
+                - generic [ref=e727]: OP-26-01341
+                - generic [ref=e728]: 15 313 Kč
+          - listitem [ref=e729]:
+            - link "Lenka Müllerová 2026-06-29 Karvinská 1271/45, 736 01 Havířov-Havířov 1, Česko OP-26-01420 22 251 Kč" [ref=e730] [cursor=pointer]:
+              - /url: /zakazka/3289cf4a-5c36-4c9d-a595-3d0b0c31ad6e
+              - generic [ref=e731]:
+                - generic [ref=e732]: Lenka Müllerová
+                - generic [ref=e733]: 2026-06-29
+              - generic [ref=e734]: Karvinská 1271/45, 736 01 Havířov-Havířov 1, Česko
+              - generic [ref=e735]:
+                - generic [ref=e736]: OP-26-01420
+                - generic [ref=e737]: 22 251 Kč
+          - listitem [ref=e738]:
+            - link "Libor Kutra 29. 6. 2026 Oborná 143, 792 01 Oborná OP-26-01853 0 Kč" [ref=e739] [cursor=pointer]:
+              - /url: /zakazka/8a075397-5b23-443b-9431-7438bf991254
+              - generic [ref=e740]:
+                - generic [ref=e741]: Libor Kutra
+                - generic [ref=e742]: 29. 6. 2026
+              - generic [ref=e743]: Oborná 143, 792 01 Oborná
+              - generic [ref=e744]:
+                - generic [ref=e745]: OP-26-01853
+                - generic [ref=e746]: 0 Kč
+          - listitem [ref=e747]:
+            - link "Andrea Krejčová 29. 6. 2026 9. května 254, 735 81 Bohumín-Bohumín 1, Česko OP-26-01780 0 Kč" [ref=e748] [cursor=pointer]:
+              - /url: /zakazka/67897984-74d9-4e85-b9f1-c2b9321a0817
+              - generic [ref=e749]:
+                - generic [ref=e750]: Andrea Krejčová
+                - generic [ref=e751]: 29. 6. 2026
+              - generic [ref=e752]: 9. května 254, 735 81 Bohumín-Bohumín 1, Česko
+              - generic [ref=e753]:
+                - generic [ref=e754]: OP-26-01780
+                - generic [ref=e755]: 0 Kč
+          - listitem [ref=e756]:
+            - link "Dagmar Merklová 29. 6. 2026 U Lesa 768/18, Ráj, 734 01 Karviná-Karviná 4, Česko OP-26-01939 0 Kč" [ref=e757] [cursor=pointer]:
+              - /url: /zakazka/81c4773a-e17c-4947-9af0-21f2ca1d9716
+              - generic [ref=e758]:
+                - generic [ref=e759]: Dagmar Merklová
+                - generic [ref=e760]: 29. 6. 2026
+              - generic [ref=e761]: U Lesa 768/18, Ráj, 734 01 Karviná-Karviná 4, Česko
+              - generic [ref=e762]:
+                - generic [ref=e763]: OP-26-01939
+                - generic [ref=e764]: 0 Kč
+          - listitem [ref=e765]:
+            - link "Radek Lukáš 29. 6. 2026 V humnech 1418, 68604, Kunovice OP-26-01670 0 Kč" [ref=e766] [cursor=pointer]:
+              - /url: /zakazka/119be89b-da1d-415e-b010-a16bf0a7fed4
+              - generic [ref=e767]:
+                - generic [ref=e768]: Radek Lukáš
+                - generic [ref=e769]: 29. 6. 2026
+              - generic [ref=e770]: V humnech 1418, 68604, Kunovice
+              - generic [ref=e771]:
+                - generic [ref=e772]: OP-26-01670
+                - generic [ref=e773]: 0 Kč
+          - listitem [ref=e774]:
+            - link "Ladislav Závorka 29. 6. 2026 Nerudova 263/3 Nový Jíčín OP-26-01878 0 Kč" [ref=e775] [cursor=pointer]:
+              - /url: /zakazka/0b1d603b-0c80-4f22-be07-9723d955b3e4
+              - generic [ref=e776]:
+                - generic [ref=e777]: Ladislav Závorka
+                - generic [ref=e778]: 29. 6. 2026
+              - generic [ref=e779]: Nerudova 263/3 Nový Jíčín
+              - generic [ref=e780]:
+                - generic [ref=e781]: OP-26-01878
+                - generic [ref=e782]: 0 Kč
+          - listitem [ref=e783]:
+            - link "Zdeňka Hlobilova 29. 6. 2026 U Stavu I 1112, Hulín, 76824 OP-26-01743 0 Kč" [ref=e784] [cursor=pointer]:
+              - /url: /zakazka/a907afc1-9bb1-417f-8ef1-e986f4e2f94d
+              - generic [ref=e785]:
+                - generic [ref=e786]: Zdeňka Hlobilova
+                - generic [ref=e787]: 29. 6. 2026
+              - generic [ref=e788]: U Stavu I 1112, Hulín, 76824
+              - generic [ref=e789]:
+                - generic [ref=e790]: OP-26-01743
+                - generic [ref=e791]: 0 Kč
+          - listitem [ref=e792]:
+            - link "Stanislav Žoch 29. 6. 2026 Moravská 616, 76811 Chropyně OP-26-01747 0 Kč" [ref=e793] [cursor=pointer]:
+              - /url: /zakazka/69404a5c-6539-43bf-904b-32c56661f3ce
+              - generic [ref=e794]:
+                - generic [ref=e795]: Stanislav Žoch
+                - generic [ref=e796]: 29. 6. 2026
+              - generic [ref=e797]: Moravská 616, 76811 Chropyně
+              - generic [ref=e798]:
+                - generic [ref=e799]: OP-26-01747
+                - generic [ref=e800]: 0 Kč
+          - listitem [ref=e801]:
+            - link "ALexandra Vrťová 29. 6. 2026 Petrovická 2027/23, Pod Bezručovým vrchem, 794 01 Krnov-Krnov 1 OP-26-02123 0 Kč" [ref=e802] [cursor=pointer]:
+              - /url: /zakazka/84065c4c-5b89-46f6-8f72-7bb8c312fdd2
+              - generic [ref=e803]:
+                - generic [ref=e804]: ALexandra Vrťová
+                - generic [ref=e805]: 29. 6. 2026
+              - generic [ref=e806]: Petrovická 2027/23, Pod Bezručovým vrchem, 794 01 Krnov-Krnov 1
+              - generic [ref=e807]:
+                - generic [ref=e808]: OP-26-02123
+                - generic [ref=e809]: 0 Kč
+          - listitem [ref=e810]:
+            - link "Pavel Rosenberg 29. 6. 2026 Kostelecká 290/28, 796 01 Prostějov-Prostějov 1 OP-26-02003 0 Kč" [ref=e811] [cursor=pointer]:
+              - /url: /zakazka/9700b7d1-668c-40c4-9cae-2a0039d98da3
+              - generic [ref=e812]:
+                - generic [ref=e813]: Pavel Rosenberg
+                - generic [ref=e814]: 29. 6. 2026
+              - generic [ref=e815]: Kostelecká 290/28, 796 01 Prostějov-Prostějov 1
+              - generic [ref=e816]:
+                - generic [ref=e817]: OP-26-02003
+                - generic [ref=e818]: 0 Kč
+          - listitem [ref=e819]:
+            - link "Jitka Obdržalkova 29. 6. 2026 Skaštice 52, Kroměříž OP-26-01741 0 Kč" [ref=e820] [cursor=pointer]:
+              - /url: /zakazka/3e0cca3a-bc6c-41da-ae2a-18e00ab32ed9
+              - generic [ref=e821]:
+                - generic [ref=e822]: Jitka Obdržalkova
+                - generic [ref=e823]: 29. 6. 2026
+              - generic [ref=e824]: Skaštice 52, Kroměříž
+              - generic [ref=e825]:
+                - generic [ref=e826]: OP-26-01741
+                - generic [ref=e827]: 0 Kč
+          - listitem [ref=e828]:
+            - link "Marcela Kuzníková 30. 6. 2026 Opavská 69/33, Skrochovice, 747 71 Brumovice-Neplachovice OP-26-02052 0 Kč" [ref=e829] [cursor=pointer]:
+              - /url: /zakazka/4031d56f-4af9-43b9-9d4f-5f2f01762ced
+              - generic [ref=e830]:
+                - generic [ref=e831]: Marcela Kuzníková
+                - generic [ref=e832]: 30. 6. 2026
+              - generic [ref=e833]: Opavská 69/33, Skrochovice, 747 71 Brumovice-Neplachovice
+              - generic [ref=e834]:
+                - generic [ref=e835]: OP-26-02052
+                - generic [ref=e836]: 0 Kč
+          - listitem [ref=e837]:
+            - link "Josef Juráš 30. 6. 2026 Jeronýmova 246/7, Nové Sady, 779 00 Olomouc-Olomouc 9, Česko OP-26-01511 0 Kč" [ref=e838] [cursor=pointer]:
+              - /url: /zakazka/f7090174-3635-45f2-8dba-6bbd6db4d5ea
+              - generic [ref=e839]:
+                - generic [ref=e840]: Josef Juráš
+                - generic [ref=e841]: 30. 6. 2026
+              - generic [ref=e842]: Jeronýmova 246/7, Nové Sady, 779 00 Olomouc-Olomouc 9, Česko
+              - generic [ref=e843]:
+                - generic [ref=e844]: OP-26-01511
+                - generic [ref=e845]: 0 Kč
+          - listitem [ref=e846]:
+            - link "Milan Dvorský 30. 6. 2026 Přemyslovice 168, 798 51 Přemyslovice OP-26-01874 0 Kč" [ref=e847] [cursor=pointer]:
+              - /url: /zakazka/e0b303d4-32d7-454b-bfcc-d0f6aa068bd3
+              - generic [ref=e848]:
+                - generic [ref=e849]: Milan Dvorský
+                - generic [ref=e850]: 30. 6. 2026
+              - generic [ref=e851]: Přemyslovice 168, 798 51 Přemyslovice
+              - generic [ref=e852]:
+                - generic [ref=e853]: OP-26-01874
+                - generic [ref=e854]: 0 Kč
+          - listitem [ref=e855]:
+            - link "Monika Šlechtová 30. 6. 2026 Veská 105, 533 04 Sezemice OP-26-01688 0 Kč" [ref=e856] [cursor=pointer]:
+              - /url: /zakazka/7080d951-60a7-4025-a7e5-c911391c427e
+              - generic [ref=e857]:
+                - generic [ref=e858]: Monika Šlechtová
+                - generic [ref=e859]: 30. 6. 2026
+              - generic [ref=e860]: Veská 105, 533 04 Sezemice
+              - generic [ref=e861]:
+                - generic [ref=e862]: OP-26-01688
+                - generic [ref=e863]: 0 Kč
+          - listitem [ref=e864]:
+            - link "Marcela Vaculíková 30. 6. 2026 Skopalova 1048/2, 75002, Přerov OP-26-01839 0 Kč" [ref=e865] [cursor=pointer]:
+              - /url: /zakazka/71a515be-d415-4af2-ba98-3573a380cefe
+              - generic [ref=e866]:
+                - generic [ref=e867]: Marcela Vaculíková
+                - generic [ref=e868]: 30. 6. 2026
+              - generic [ref=e869]: Skopalova 1048/2, 75002, Přerov
+              - generic [ref=e870]:
+                - generic [ref=e871]: OP-26-01839
+                - generic [ref=e872]: 0 Kč
+          - listitem [ref=e873]:
+            - link "Pavel Holub 30. 6. 2026 Božetická 3399/2, 143 00 Praha 12-Modřany, Česko OP-26-01971 0 Kč" [ref=e874] [cursor=pointer]:
+              - /url: /zakazka/42d337b6-6976-4c54-a935-8d89a9e759e0
+              - generic [ref=e875]:
+                - generic [ref=e876]: Pavel Holub
+                - generic [ref=e877]: 30. 6. 2026
+              - generic [ref=e878]: Božetická 3399/2, 143 00 Praha 12-Modřany, Česko
+              - generic [ref=e879]:
+                - generic [ref=e880]: OP-26-01971
+                - generic [ref=e881]: 0 Kč
+          - listitem [ref=e882]:
+            - link "Tomáš Sojka 30. 6. 2026 Matěchova 1033/4, Praha 4 OP-26-01966 0 Kč" [ref=e883] [cursor=pointer]:
+              - /url: /zakazka/554cccc0-cec4-4f15-b2a4-e7f2369969ab
+              - generic [ref=e884]:
+                - generic [ref=e885]: Tomáš Sojka
+                - generic [ref=e886]: 30. 6. 2026
+              - generic [ref=e887]: Matěchova 1033/4, Praha 4
+              - generic [ref=e888]:
+                - generic [ref=e889]: OP-26-01966
+                - generic [ref=e890]: 0 Kč
+          - listitem [ref=e891]:
+            - link "Věra Csudaiová 30. 6. 2026 Hrubínova 824, 277 11 Neratovice OP-26-01816 0 Kč" [ref=e892] [cursor=pointer]:
+              - /url: /zakazka/e5bfca56-0ac1-42c8-8eb2-48e02d457d78
+              - generic [ref=e893]:
+                - generic [ref=e894]: Věra Csudaiová
+                - generic [ref=e895]: 30. 6. 2026
+              - generic [ref=e896]: Hrubínova 824, 277 11 Neratovice
+              - generic [ref=e897]:
+                - generic [ref=e898]: OP-26-01816
+                - generic [ref=e899]: 0 Kč
+          - listitem [ref=e900]:
+            - link "SVJ Matěchova 1033/4 30. 6. 2026 Matěchova 1033/4, Praha 4 OP-26-02063 0 Kč" [ref=e901] [cursor=pointer]:
+              - /url: /zakazka/3538483c-2017-442b-b15e-3549bef8d2ee
+              - generic [ref=e902]:
+                - generic [ref=e903]: SVJ Matěchova 1033/4
+                - generic [ref=e904]: 30. 6. 2026
+              - generic [ref=e905]: Matěchova 1033/4, Praha 4
+              - generic [ref=e906]:
+                - generic [ref=e907]: OP-26-02063
+                - generic [ref=e908]: 0 Kč
+          - listitem [ref=e909]:
+            - link "Marta Valentová 30. 6. 2026 Roveňsko 2, 534 01 Holice-Holice v Čechách OP-26-01675 0 Kč" [ref=e910] [cursor=pointer]:
+              - /url: /zakazka/1811b341-6e9f-4a24-a6c9-cfda03ac684e
+              - generic [ref=e911]:
+                - generic [ref=e912]: Marta Valentová
+                - generic [ref=e913]: 30. 6. 2026
+              - generic [ref=e914]: Roveňsko 2, 534 01 Holice-Holice v Čechách
+              - generic [ref=e915]:
+                - generic [ref=e916]: OP-26-01675
+                - generic [ref=e917]: 0 Kč
+          - listitem [ref=e918]:
+            - link "Richterová 30. 6. 2026 Matěchova 1033/4, Praha 4 OP-26-02062 0 Kč" [ref=e919] [cursor=pointer]:
+              - /url: /zakazka/215609ba-57de-414b-94f3-93e06178e67b
+              - generic [ref=e920]:
+                - generic [ref=e921]: Richterová
+                - generic [ref=e922]: 30. 6. 2026
+              - generic [ref=e923]: Matěchova 1033/4, Praha 4
+              - generic [ref=e924]:
+                - generic [ref=e925]: OP-26-02062
+                - generic [ref=e926]: 0 Kč
+          - listitem [ref=e927]:
+            - link "Marek Doležel 30. 6. 2026 Pivín 86, 798 24 Pivín, Česko OP-26-01512 0 Kč" [ref=e928] [cursor=pointer]:
+              - /url: /zakazka/732d94e0-35aa-4b8b-a87d-5d26efb4f95d
+              - generic [ref=e929]:
+                - generic [ref=e930]: Marek Doležel
+                - generic [ref=e931]: 30. 6. 2026
+              - generic [ref=e932]: Pivín 86, 798 24 Pivín, Česko
+              - generic [ref=e933]:
+                - generic [ref=e934]: OP-26-01512
+                - generic [ref=e935]: 0 Kč
+          - listitem [ref=e936]:
+            - link "David Mikulášek 30. 6. 2026 M.Majerové 43, 79811 Prostějov - Vrahovice OP-26-01798 0 Kč" [ref=e937] [cursor=pointer]:
+              - /url: /zakazka/a2c12c1d-eac0-4ab2-8f1c-8f7df8804176
+              - generic [ref=e938]:
+                - generic [ref=e939]: David Mikulášek
+                - generic [ref=e940]: 30. 6. 2026
+              - generic [ref=e941]: M.Majerové 43, 79811 Prostějov - Vrahovice
+              - generic [ref=e942]:
+                - generic [ref=e943]: OP-26-01798
+                - generic [ref=e944]: 0 Kč
+          - listitem [ref=e945]:
+            - link "identity branding solutions s.r.o. 7. 7. 2026 U Potoka 387/42, 792 01 Bruntál-Bruntál 1 OP-26-02112 0 Kč" [ref=e946] [cursor=pointer]:
+              - /url: /zakazka/b9e70844-7b13-4e33-ad09-34b06382bf04
+              - generic [ref=e947]:
+                - generic [ref=e948]: identity branding solutions s.r.o.
+                - generic [ref=e949]: 7. 7. 2026
+              - generic [ref=e950]: U Potoka 387/42, 792 01 Bruntál-Bruntál 1
+              - generic [ref=e951]:
+                - generic [ref=e952]: OP-26-02112
+                - generic [ref=e953]: 0 Kč
+          - listitem [ref=e954]:
+            - link "Barbora Testová 7. 7. 2026 Pardubická, 537 01 Chrudim 1, Česko OP-26-00535 0 Kč" [ref=e955] [cursor=pointer]:
+              - /url: /zakazka/78b77c4b-17e3-41fe-ad89-a6b5f01d0c7b
+              - generic [ref=e956]:
+                - generic [ref=e957]: Barbora Testová
+                - generic [ref=e958]: 7. 7. 2026
+              - generic [ref=e959]: Pardubická, 537 01 Chrudim 1, Česko
+              - generic [ref=e960]:
+                - generic [ref=e961]: OP-26-00535
+                - generic [ref=e962]: 0 Kč
+          - listitem [ref=e963]:
+            - link "Jaromír Šedý 7. 7. 2026 Obránců Míru 269/62, 742 21 Kopřivnice-Kopřivnice 1 OP-26-01870 0 Kč" [ref=e964] [cursor=pointer]:
+              - /url: /zakazka/bb6b85b1-2276-43c0-84e1-6fd1688514e4
+              - generic [ref=e965]:
+                - generic [ref=e966]: Jaromír Šedý
+                - generic [ref=e967]: 7. 7. 2026
+              - generic [ref=e968]: Obránců Míru 269/62, 742 21 Kopřivnice-Kopřivnice 1
+              - generic [ref=e969]:
+                - generic [ref=e970]: OP-26-01870
+                - generic [ref=e971]: 0 Kč
+          - listitem [ref=e972]:
+            - link "Petr Vaněk 7. 7. 2026 Generala Gonorova 557, Smiřice OP-26-01802 0 Kč" [ref=e973] [cursor=pointer]:
+              - /url: /zakazka/7db6f802-694f-47a5-8dd3-aad3785e3395
+              - generic [ref=e974]:
+                - generic [ref=e975]: Petr Vaněk
+                - generic [ref=e976]: 7. 7. 2026
+              - generic [ref=e977]: Generala Gonorova 557, Smiřice
+              - generic [ref=e978]:
+                - generic [ref=e979]: OP-26-01802
+                - generic [ref=e980]: 0 Kč
+          - listitem [ref=e981]:
+            - link "Kristina Malachtová 7. 7. 2026 Sportovní 184, 79081 Česká Ves OP-26-01834 0 Kč" [ref=e982] [cursor=pointer]:
+              - /url: /zakazka/0af9e1ac-3451-4923-b066-7b8320c203d1
+              - generic [ref=e983]:
+                - generic [ref=e984]: Kristina Malachtová
+                - generic [ref=e985]: 7. 7. 2026
+              - generic [ref=e986]: Sportovní 184, 79081 Česká Ves
+              - generic [ref=e987]:
+                - generic [ref=e988]: OP-26-01834
+                - generic [ref=e989]: 0 Kč
+          - listitem [ref=e990]:
+            - link "Luboš Černíček 7. 7. 2026 Lipová lázně 508, 79061 OP-26-01767 0 Kč" [ref=e991] [cursor=pointer]:
+              - /url: /zakazka/3dcc862c-719b-4134-a5c0-5d06adffaaa5
+              - generic [ref=e992]:
+                - generic [ref=e993]: Luboš Černíček
+                - generic [ref=e994]: 7. 7. 2026
+              - generic [ref=e995]: Lipová lázně 508, 79061
+              - generic [ref=e996]:
+                - generic [ref=e997]: OP-26-01767
+                - generic [ref=e998]: 0 Kč
+          - listitem [ref=e999]:
+            - link "Andrea Kaderková 7. 7. 2026 Lipovská 1165/48, 790 01 Jeseník-Jeseník 1 OP-26-01573 0 Kč" [ref=e1000] [cursor=pointer]:
+              - /url: /zakazka/6d721492-b231-4dd7-9fdb-a00f6c02e6ab
+              - generic [ref=e1001]:
+                - generic [ref=e1002]: Andrea Kaderková
+                - generic [ref=e1003]: 7. 7. 2026
+              - generic [ref=e1004]: Lipovská 1165/48, 790 01 Jeseník-Jeseník 1
+              - generic [ref=e1005]:
+                - generic [ref=e1006]: OP-26-01573
+                - generic [ref=e1007]: 0 Kč
+          - listitem [ref=e1008]:
+            - link "Pavel Renner 8. 7. 2026 Malostranská 910/10 Ostrava OP-26-01751 0 Kč" [ref=e1009] [cursor=pointer]:
+              - /url: /zakazka/72df41ad-e044-4c44-ba37-df91ab3a9e1f
+              - generic [ref=e1010]:
+                - generic [ref=e1011]: Pavel Renner
+                - generic [ref=e1012]: 8. 7. 2026
+              - generic [ref=e1013]: Malostranská 910/10 Ostrava
+              - generic [ref=e1014]:
+                - generic [ref=e1015]: OP-26-01751
+                - generic [ref=e1016]: 0 Kč
+          - listitem [ref=e1017]:
+            - link "Jiří MILEK 8. 7. 2026 Československé armády 8, Zabreh OP-26-01687 0 Kč" [ref=e1018] [cursor=pointer]:
+              - /url: /zakazka/30ee006c-2a60-446e-a775-333c24f7360b
+              - generic [ref=e1019]:
+                - generic [ref=e1020]: Jiří MILEK
+                - generic [ref=e1021]: 8. 7. 2026
+              - generic [ref=e1022]: Československé armády 8, Zabreh
+              - generic [ref=e1023]:
+                - generic [ref=e1024]: OP-26-01687
+                - generic [ref=e1025]: 0 Kč
+          - listitem [ref=e1026]:
+            - link "Vladislava Oličová 8. 7. 2026 Fr. Černého 64; Lhota 27301 OP-26-01873 0 Kč" [ref=e1027] [cursor=pointer]:
+              - /url: /zakazka/c33ba88e-3a85-4b69-8ee3-4f75556f3491
+              - generic [ref=e1028]:
+                - generic [ref=e1029]: Vladislava Oličová
+                - generic [ref=e1030]: 8. 7. 2026
+              - generic [ref=e1031]: Fr. Černého 64; Lhota 27301
+              - generic [ref=e1032]:
+                - generic [ref=e1033]: OP-26-01873
+                - generic [ref=e1034]: 0 Kč
+          - listitem [ref=e1035]:
+            - link "Martina Krátká 8. 7. 2026 Štrosova 119, 270 01 Kněževes-Kněževes u Rakovníka OP-26-02093 0 Kč" [ref=e1036] [cursor=pointer]:
+              - /url: /zakazka/4f4c59bd-c72b-4630-afd5-32b839989a30
+              - generic [ref=e1037]:
+                - generic [ref=e1038]: Martina Krátká
+                - generic [ref=e1039]: 8. 7. 2026
+              - generic [ref=e1040]: Štrosova 119, 270 01 Kněževes-Kněževes u Rakovníka
+              - generic [ref=e1041]:
+                - generic [ref=e1042]: OP-26-02093
+                - generic [ref=e1043]: 0 Kč
+          - listitem [ref=e1044]:
+            - link "Miroslav Grunt 9. 7. 2026 Florykova 166/4, Lazce, 779 00 Olomouc-Olomouc 9 OP-26-01803 0 Kč" [ref=e1045] [cursor=pointer]:
+              - /url: /zakazka/d8a1e211-3c7e-42e8-a4ef-c24a6a83cd17
+              - generic [ref=e1046]:
+                - generic [ref=e1047]: Miroslav Grunt
+                - generic [ref=e1048]: 9. 7. 2026
+              - generic [ref=e1049]: Florykova 166/4, Lazce, 779 00 Olomouc-Olomouc 9
+              - generic [ref=e1050]:
+                - generic [ref=e1051]: OP-26-01803
+                - generic [ref=e1052]: 0 Kč
+          - listitem [ref=e1053]:
+            - link "Pavel Kozák 9. 7. 2026 Na Zadní cestě 726, 507 43 Sobotka OP-26-01773 0 Kč" [ref=e1054] [cursor=pointer]:
+              - /url: /zakazka/b230439e-bb76-4b77-9411-49899fea4cef
+              - generic [ref=e1055]:
+                - generic [ref=e1056]: Pavel Kozák
+                - generic [ref=e1057]: 9. 7. 2026
+              - generic [ref=e1058]: Na Zadní cestě 726, 507 43 Sobotka
+              - generic [ref=e1059]:
+                - generic [ref=e1060]: OP-26-01773
+                - generic [ref=e1061]: 0 Kč
+          - listitem [ref=e1062]:
+            - link "Zuzana Neoralová 9. 7. 2026 Jiráskova 2234/44, 785 01 Šternberk-Šternberk 1 OP-26-02056 0 Kč" [ref=e1063] [cursor=pointer]:
+              - /url: /zakazka/e11ae5cd-d205-45cb-aff6-a08934063b2c
+              - generic [ref=e1064]:
+                - generic [ref=e1065]: Zuzana Neoralová
+                - generic [ref=e1066]: 9. 7. 2026
+              - generic [ref=e1067]: Jiráskova 2234/44, 785 01 Šternberk-Šternberk 1
+              - generic [ref=e1068]:
+                - generic [ref=e1069]: OP-26-02056
+                - generic [ref=e1070]: 0 Kč
+          - listitem [ref=e1071]:
+            - link "Iveta Zbelová 10. 7. 2026 Petrov nad Desnou 83, 788 16 Petrov nad Desnou, Česko OP-26-01673 0 Kč" [ref=e1072] [cursor=pointer]:
+              - /url: /zakazka/2c82199a-2d96-4d93-89fc-8aa1e6ac2ea5
+              - generic [ref=e1073]:
+                - generic [ref=e1074]: Iveta Zbelová
+                - generic [ref=e1075]: 10. 7. 2026
+              - generic [ref=e1076]: Petrov nad Desnou 83, 788 16 Petrov nad Desnou, Česko
+              - generic [ref=e1077]:
+                - generic [ref=e1078]: OP-26-01673
+                - generic [ref=e1079]: 0 Kč
+          - listitem [ref=e1080]:
+            - link "Michaela Paczková 2026-07-13 Topolová 646, 289 24 Milovice-Milovice nad Labem 1, Česko OP-26-00973 9 576 Kč" [ref=e1081] [cursor=pointer]:
+              - /url: /zakazka/1ee99a6c-9e2c-4b9c-b016-8ca6a3ab4bf6
+              - generic [ref=e1082]:
+                - generic [ref=e1083]: Michaela Paczková
+                - generic [ref=e1084]: 2026-07-13
+              - generic [ref=e1085]: Topolová 646, 289 24 Milovice-Milovice nad Labem 1, Česko
+              - generic [ref=e1086]:
+                - generic [ref=e1087]: OP-26-00973
+                - generic [ref=e1088]: 9 576 Kč
+          - listitem [ref=e1089]:
+            - link "Soňa Adamcová 13. 7. 2026 V Jordáně 242, 277 45 Úžice-Úžice u Kralup nad Vltavou, Česko OP-26-01375 0 Kč" [ref=e1090] [cursor=pointer]:
+              - /url: /zakazka/8fcb78de-bffd-4f0e-b994-60566f057a49
+              - generic [ref=e1091]:
+                - generic [ref=e1092]: Soňa Adamcová
+                - generic [ref=e1093]: 13. 7. 2026
+              - generic [ref=e1094]: V Jordáně 242, 277 45 Úžice-Úžice u Kralup nad Vltavou, Česko
+              - generic [ref=e1095]:
+                - generic [ref=e1096]: OP-26-01375
+                - generic [ref=e1097]: 0 Kč
+          - listitem [ref=e1098]:
+            - link "Pavel Michalíček 13. 7. 2026 Chlum ev.č. 6; Pavlíkov 27021 OP-26-01370 0 Kč" [ref=e1099] [cursor=pointer]:
+              - /url: /zakazka/4d2ee099-bf36-4da2-a019-7464d43119b4
+              - generic [ref=e1100]:
+                - generic [ref=e1101]: Pavel Michalíček
+                - generic [ref=e1102]: 13. 7. 2026
+              - generic [ref=e1103]: Chlum ev.č. 6; Pavlíkov 27021
+              - generic [ref=e1104]:
+                - generic [ref=e1105]: OP-26-01370
+                - generic [ref=e1106]: 0 Kč
+          - listitem [ref=e1107]:
+            - link "Ivana Popilková 14. 7. 2026 Dvakačovice 90, 538 62 Dvakačovice OP-26-01469 0 Kč" [ref=e1108] [cursor=pointer]:
+              - /url: /zakazka/14c89caf-2d1f-4ec9-bc98-97a6ca033416
+              - generic [ref=e1109]:
+                - generic [ref=e1110]: Ivana Popilková
+                - generic [ref=e1111]: 14. 7. 2026
+              - generic [ref=e1112]: Dvakačovice 90, 538 62 Dvakačovice
+              - generic [ref=e1113]:
+                - generic [ref=e1114]: OP-26-01469
+                - generic [ref=e1115]: 0 Kč
+          - listitem [ref=e1116]:
+            - link "Michaela Látalová 15. 7. 2026 Potoční 343, 790 84 Mikulovice-Mikulovice u Jeseníku 1 OP-26-01913 0 Kč" [ref=e1117] [cursor=pointer]:
+              - /url: /zakazka/d241ee09-bb16-40cf-ad5f-212ab6e1907c
+              - generic [ref=e1118]:
+                - generic [ref=e1119]: Michaela Látalová
+                - generic [ref=e1120]: 15. 7. 2026
+              - generic [ref=e1121]: Potoční 343, 790 84 Mikulovice-Mikulovice u Jeseníku 1
+              - generic [ref=e1122]:
+                - generic [ref=e1123]: OP-26-01913
+                - generic [ref=e1124]: 0 Kč
+          - listitem [ref=e1125]:
+            - link "Marek Sič 15. 7. 2026 Brněnská 492, 779 00 Olomouc-Olomouc 9 OP-26-01868 0 Kč" [ref=e1126] [cursor=pointer]:
+              - /url: /zakazka/6bf0fb3d-b484-424a-917b-a44759308505
+              - generic [ref=e1127]:
+                - generic [ref=e1128]: Marek Sič
+                - generic [ref=e1129]: 15. 7. 2026
+              - generic [ref=e1130]: Brněnská 492, 779 00 Olomouc-Olomouc 9
+              - generic [ref=e1131]:
+                - generic [ref=e1132]: OP-26-01868
+                - generic [ref=e1133]: 0 Kč
+          - listitem [ref=e1134]:
+            - link "Roman Soukup 16. 7. 2026 Vilémova 780, 533 41 Lázně Bohdaneč OP-26-01963 0 Kč" [ref=e1135] [cursor=pointer]:
+              - /url: /zakazka/485906c5-8843-416e-804a-aea53f7eda31
+              - generic [ref=e1136]:
+                - generic [ref=e1137]: Roman Soukup
+                - generic [ref=e1138]: 16. 7. 2026
+              - generic [ref=e1139]: Vilémova 780, 533 41 Lázně Bohdaneč
+              - generic [ref=e1140]:
+                - generic [ref=e1141]: OP-26-01963
+                - generic [ref=e1142]: 0 Kč
+          - listitem [ref=e1143]:
+            - link "Jana Podzimkova 16. 7. 2026 Zd. Štěpánka, 708 00 Ostrava 8 OP-26-01478 0 Kč" [ref=e1144] [cursor=pointer]:
+              - /url: /zakazka/85b54ab6-bfe0-4eb6-bcd1-11b7c728e07e
+              - generic [ref=e1145]:
+                - generic [ref=e1146]: Jana Podzimkova
+                - generic [ref=e1147]: 16. 7. 2026
+              - generic [ref=e1148]: Zd. Štěpánka, 708 00 Ostrava 8
+              - generic [ref=e1149]:
+                - generic [ref=e1150]: OP-26-01478
+                - generic [ref=e1151]: 0 Kč
+          - listitem [ref=e1152]:
+            - link "Martin Barvík 16. 7. 2026 Životická 605, 735 43 Albrechtice-Albrechtice u Českého Těšína, Česko OP-26-01847 0 Kč" [ref=e1153] [cursor=pointer]:
+              - /url: /zakazka/933913b8-10de-43e4-bfda-00e26df3a4e6
+              - generic [ref=e1154]:
+                - generic [ref=e1155]: Martin Barvík
+                - generic [ref=e1156]: 16. 7. 2026
+              - generic [ref=e1157]: Životická 605, 735 43 Albrechtice-Albrechtice u Českého Těšína, Česko
+              - generic [ref=e1158]:
+                - generic [ref=e1159]: OP-26-01847
+                - generic [ref=e1160]: 0 Kč
+          - listitem [ref=e1161]:
+            - link "Eva Havrlantova 16. 7. 2026 Vojanova 767, Kladno - Kročehlavy 27201 OP-26-01368 0 Kč" [ref=e1162] [cursor=pointer]:
+              - /url: /zakazka/be313e3c-3aaa-421e-8eab-84d9de400189
+              - generic [ref=e1163]:
+                - generic [ref=e1164]: Eva Havrlantova
+                - generic [ref=e1165]: 16. 7. 2026
+              - generic [ref=e1166]: Vojanova 767, Kladno - Kročehlavy 27201
+              - generic [ref=e1167]:
+                - generic [ref=e1168]: OP-26-01368
+                - generic [ref=e1169]: 0 Kč
+          - listitem [ref=e1170]:
+            - link "Pavel Urbanec 17. 7. 2026 Dříteč 170, 533 05 Dříteč, Česko OP-26-01311 0 Kč" [ref=e1171] [cursor=pointer]:
+              - /url: /zakazka/70d8f482-a22e-4afb-bcb6-d2b2334cb642
+              - generic [ref=e1172]:
+                - generic [ref=e1173]: Pavel Urbanec
+                - generic [ref=e1174]: 17. 7. 2026
+              - generic [ref=e1175]: Dříteč 170, 533 05 Dříteč, Česko
+              - generic [ref=e1176]:
+                - generic [ref=e1177]: OP-26-01311
+                - generic [ref=e1178]: 0 Kč
+          - listitem [ref=e1179]:
+            - link "Blanka Skotnicová 22. 7. 2026 Komorní 1271/17, 737 01 Český Těšín-Český Těšín 1, Česko OP-26-01949 0 Kč" [ref=e1180] [cursor=pointer]:
+              - /url: /zakazka/f9e840cd-9cc2-434e-a227-21b30fecc163
+              - generic [ref=e1181]:
+                - generic [ref=e1182]: Blanka Skotnicová
+                - generic [ref=e1183]: 22. 7. 2026
+              - generic [ref=e1184]: Komorní 1271/17, 737 01 Český Těšín-Český Těšín 1, Česko
+              - generic [ref=e1185]:
+                - generic [ref=e1186]: OP-26-01949
+                - generic [ref=e1187]: 0 Kč
+          - listitem [ref=e1188]:
+            - link "Zdeněk Vrtala 24. 7. 2026 Hlavní 2038/12, 500 08 Hradec Králové-Hradec Králové 8 OP-26-01821 0 Kč" [ref=e1189] [cursor=pointer]:
+              - /url: /zakazka/f01672df-022a-4b33-9101-4484ab0c0855
+              - generic [ref=e1190]:
+                - generic [ref=e1191]: Zdeněk Vrtala
+                - generic [ref=e1192]: 24. 7. 2026
+              - generic [ref=e1193]: Hlavní 2038/12, 500 08 Hradec Králové-Hradec Králové 8
+              - generic [ref=e1194]:
+                - generic [ref=e1195]: OP-26-01821
+                - generic [ref=e1196]: 0 Kč
+          - listitem [ref=e1197]:
+            - link "Radomír Buigl 27. 7. 2026 Kosmákova 54, 750 02 Přerov 2 OP-26-01997 0 Kč" [ref=e1198] [cursor=pointer]:
+              - /url: /zakazka/16267624-a500-48b5-8619-7119e8259649
+              - generic [ref=e1199]:
+                - generic [ref=e1200]: Radomír Buigl
+                - generic [ref=e1201]: 27. 7. 2026
+              - generic [ref=e1202]: Kosmákova 54, 750 02 Přerov 2
+              - generic [ref=e1203]:
+                - generic [ref=e1204]: OP-26-01997
+                - generic [ref=e1205]: 0 Kč
+          - listitem [ref=e1206]:
+            - link "Josef Horák 29. 7. 2026 Čechy 28, 751 15 Čechy OP-26-01905 0 Kč" [ref=e1207] [cursor=pointer]:
+              - /url: /zakazka/eb82094e-6685-4191-b5a1-7d2339734b3f
+              - generic [ref=e1208]:
+                - generic [ref=e1209]: Josef Horák
+                - generic [ref=e1210]: 29. 7. 2026
+              - generic [ref=e1211]: Čechy 28, 751 15 Čechy
+              - generic [ref=e1212]:
+                - generic [ref=e1213]: OP-26-01905
+                - generic [ref=e1214]: 0 Kč
+          - listitem [ref=e1215]:
+            - link "Miroslav Matejčík 13. 8. 2026 Dětmarovice 1523, 735 71 Dětmarovice, Česko OP-26-01850 0 Kč" [ref=e1216] [cursor=pointer]:
+              - /url: /zakazka/49ee9081-c531-4022-9c7c-9c43f46aaabc
+              - generic [ref=e1217]:
+                - generic [ref=e1218]: Miroslav Matejčík
+                - generic [ref=e1219]: 13. 8. 2026
+              - generic [ref=e1220]: Dětmarovice 1523, 735 71 Dětmarovice, Česko
+              - generic [ref=e1221]:
+                - generic [ref=e1222]: OP-26-01850
+                - generic [ref=e1223]: 0 Kč
+          - listitem [ref=e1224]:
+            - link "Olga Zozuljová 13. 8. 2026 Košťálkova 1357/13; Beroun 26601 OP-26-01385 0 Kč" [ref=e1225] [cursor=pointer]:
+              - /url: /zakazka/a11bb2dc-6259-4edd-a428-67983e81700a
+              - generic [ref=e1226]:
+                - generic [ref=e1227]: Olga Zozuljová
+                - generic [ref=e1228]: 13. 8. 2026
+              - generic [ref=e1229]: Košťálkova 1357/13; Beroun 26601
+              - generic [ref=e1230]:
+                - generic [ref=e1231]: OP-26-01385
+                - generic [ref=e1232]: 0 Kč
+          - listitem [ref=e1233]:
+            - link "Tomas Neubauer 19. 8. 2026 Souběžná 244, 277 15 Tišice OP-26-01815 0 Kč" [ref=e1234] [cursor=pointer]:
+              - /url: /zakazka/a25eb097-b860-4044-8dfe-e50d9c05e380
+              - generic [ref=e1235]:
+                - generic [ref=e1236]: Tomas Neubauer
+                - generic [ref=e1237]: 19. 8. 2026
+              - generic [ref=e1238]: Souběžná 244, 277 15 Tišice
+              - generic [ref=e1239]:
+                - generic [ref=e1240]: OP-26-01815
+                - generic [ref=e1241]: 0 Kč
+          - listitem [ref=e1242]:
+            - link "Pavlína Kéry 21. 8. 2026 Dačického 584/6, Ráj, 734 01 Karviná-Karviná 4, Česko OP-26-02006 0 Kč" [ref=e1243] [cursor=pointer]:
+              - /url: /zakazka/b9f4d69e-de81-4032-8e0a-8422df783310
+              - generic [ref=e1244]:
+                - generic [ref=e1245]: Pavlína Kéry
+                - generic [ref=e1246]: 21. 8. 2026
+              - generic [ref=e1247]: Dačického 584/6, Ráj, 734 01 Karviná-Karviná 4, Česko
+              - generic [ref=e1248]:
+                - generic [ref=e1249]: OP-26-02006
+                - generic [ref=e1250]: 0 Kč
+          - listitem [ref=e1251]:
+            - link "Marta Pavelková 25. 8. 2026 22, Bezručova 422/24, 741 01 Nový Jičín-Nový Jičín 1, Česko OP-26-02072 0 Kč" [ref=e1252] [cursor=pointer]:
+              - /url: /zakazka/bd9cecec-26c4-4903-b13e-9532db74578e
+              - generic [ref=e1253]:
+                - generic [ref=e1254]: Marta Pavelková
+                - generic [ref=e1255]: 25. 8. 2026
+              - generic [ref=e1256]: 22, Bezručova 422/24, 741 01 Nový Jičín-Nový Jičín 1, Česko
+              - generic [ref=e1257]:
+                - generic [ref=e1258]: OP-26-02072
+                - generic [ref=e1259]: 0 Kč
+      - generic [ref=e1260]:
+        - heading "Dříve" [level=2] [ref=e1261]
+        - list [ref=e1262]:
+          - listitem [ref=e1263]:
+            - link "Vladimír Lochner 19. 6. 2026 Rudé Armády 97; Svinařov 27305 OP-26-01737 5 232 Kč" [ref=e1264] [cursor=pointer]:
+              - /url: /zakazka/153482e6-1cad-4d12-aeb7-329e2b257c22
+              - generic [ref=e1265]:
+                - generic [ref=e1266]: Vladimír Lochner
+                - generic [ref=e1267]: 19. 6. 2026
+              - generic [ref=e1268]: Rudé Armády 97; Svinařov 27305
+              - generic [ref=e1269]:
+                - generic [ref=e1270]: OP-26-01737
+                - generic [ref=e1271]: 5 232 Kč
+          - listitem [ref=e1272]:
+            - link "Filip Šimon 19. 6. 2026 Kobylnice 68, 294 46 Kobylnice OP-26-01951 4 377 Kč" [ref=e1273] [cursor=pointer]:
+              - /url: /zakazka/781aace6-9036-47fc-b1f5-07f65427bc11
+              - generic [ref=e1274]:
+                - generic [ref=e1275]: Filip Šimon
+                - generic [ref=e1276]: 19. 6. 2026
+              - generic [ref=e1277]: Kobylnice 68, 294 46 Kobylnice
+              - generic [ref=e1278]:
+                - generic [ref=e1279]: OP-26-01951
+                - generic [ref=e1280]: 4 377 Kč
+          - listitem [ref=e1281]:
+            - link "Tomáš Ježek 19. 6. 2026 Malíkovice 49, Malíkovice 27377 OP-26-01369 20 768 Kč" [ref=e1282] [cursor=pointer]:
+              - /url: /zakazka/4c79a14c-81a9-4edb-95da-f7cd49d4d3d1
+              - generic [ref=e1283]:
+                - generic [ref=e1284]: Tomáš Ježek
+                - generic [ref=e1285]: 19. 6. 2026
+              - generic [ref=e1286]: Malíkovice 49, Malíkovice 27377
+              - generic [ref=e1287]:
+                - generic [ref=e1288]: OP-26-01369
+                - generic [ref=e1289]: 20 768 Kč
+          - listitem [ref=e1290]:
+            - link "Alena Štěpánková 19. 6. 2026 Hrnčířská 389, 751 31 Lipník nad Bečvou OP-26-01858 0 Kč" [ref=e1291] [cursor=pointer]:
+              - /url: /zakazka/5f5bb88d-a023-431b-8a5c-91f4e291c739
+              - generic [ref=e1292]:
+                - generic [ref=e1293]: Alena Štěpánková
+                - generic [ref=e1294]: 19. 6. 2026
+              - generic [ref=e1295]: Hrnčířská 389, 751 31 Lipník nad Bečvou
+              - generic [ref=e1296]:
+                - generic [ref=e1297]: OP-26-01858
+                - generic [ref=e1298]: 0 Kč
+          - listitem [ref=e1299]:
+            - link "Jan Jonáš 19. 6. 2026 U Přejezdu 680, 111 01 Praha-Dolní Měcholupy, Česko OP-26-01915 5 345 Kč" [ref=e1300] [cursor=pointer]:
+              - /url: /zakazka/a4a33e74-ab4c-42df-9f7c-074a418b58de
+              - generic [ref=e1301]:
+                - generic [ref=e1302]: Jan Jonáš
+                - generic [ref=e1303]: 19. 6. 2026
+              - generic [ref=e1304]: U Přejezdu 680, 111 01 Praha-Dolní Měcholupy, Česko
+              - generic [ref=e1305]:
+                - generic [ref=e1306]: OP-26-01915
+                - generic [ref=e1307]: 5 345 Kč
+          - listitem [ref=e1308]:
+            - link "Alžběta Krejčová 19. 6. 2026 Čimická 1002/7, Praha 8 OP-26-01775 0 Kč" [ref=e1309] [cursor=pointer]:
+              - /url: /zakazka/7ef17179-933a-43e2-b73a-583acaac41a8
+              - generic [ref=e1310]:
+                - generic [ref=e1311]: Alžběta Krejčová
+                - generic [ref=e1312]: 19. 6. 2026
+              - generic [ref=e1313]: Čimická 1002/7, Praha 8
+              - generic [ref=e1314]:
+                - generic [ref=e1315]: OP-26-01775
+                - generic [ref=e1316]: 0 Kč
+          - listitem [ref=e1317]:
+            - link "Miroslav Kocúr 19. 6. 2026 Domašov 435, 790 01 Bělá pod Pradědem-Jeseník 1 OP-26-01381 25 853 Kč" [ref=e1318] [cursor=pointer]:
+              - /url: /zakazka/5f35c8d4-6ecb-426d-962c-7d3568942e82
+              - generic [ref=e1319]:
+                - generic [ref=e1320]: Miroslav Kocúr
+                - generic [ref=e1321]: 19. 6. 2026
+              - generic [ref=e1322]: Domašov 435, 790 01 Bělá pod Pradědem-Jeseník 1
+              - generic [ref=e1323]:
+                - generic [ref=e1324]: OP-26-01381
+                - generic [ref=e1325]: 25 853 Kč
+          - listitem [ref=e1326]:
+            - link "Stanislav Motal 19. 6. 2026 Hradisko 77, 76701 OP-26-01758 0 Kč" [ref=e1327] [cursor=pointer]:
+              - /url: /zakazka/1c78b25b-77d5-431c-9fd0-10ed3f8886a8
+              - generic [ref=e1328]:
+                - generic [ref=e1329]: Stanislav Motal
+                - generic [ref=e1330]: 19. 6. 2026
+              - generic [ref=e1331]: Hradisko 77, 76701
+              - generic [ref=e1332]:
+                - generic [ref=e1333]: OP-26-01758
+                - generic [ref=e1334]: 0 Kč
+          - listitem [ref=e1335]:
+            - link "Dana Beníšková 19. 6. 2026 Pod Haldou 64; Beroun 3 OP-26-01473 16 999 Kč" [ref=e1336] [cursor=pointer]:
+              - /url: /zakazka/b3e26800-7f96-4c52-830f-bd6fadb84d96
+              - generic [ref=e1337]:
+                - generic [ref=e1338]: Dana Beníšková
+                - generic [ref=e1339]: 19. 6. 2026
+              - generic [ref=e1340]: Pod Haldou 64; Beroun 3
+              - generic [ref=e1341]:
+                - generic [ref=e1342]: OP-26-01473
+                - generic [ref=e1343]: 16 999 Kč
+          - listitem [ref=e1344]:
+            - link "Jan Štefek 2026-06-19 Leoše Janáčka, 742 13 Studénka 3, Česko OP-26-01325 20 235 Kč" [ref=e1345] [cursor=pointer]:
+              - /url: /zakazka/03c37191-d193-444e-a27b-19633bab0c5d
+              - generic [ref=e1346]:
+                - generic [ref=e1347]: Jan Štefek
+                - generic [ref=e1348]: 2026-06-19
+              - generic [ref=e1349]: Leoše Janáčka, 742 13 Studénka 3, Česko
+              - generic [ref=e1350]:
+                - generic [ref=e1351]: OP-26-01325
+                - generic [ref=e1352]: 20 235 Kč
+          - listitem [ref=e1353]:
+            - link "A-Z THERM s.r.o. 18. 6. 2026 Vazová 3214/2, Praha 12 OP-26-01831 0 Kč" [ref=e1354] [cursor=pointer]:
+              - /url: /zakazka/28afb2b8-435d-4ce0-a7de-4f513424b168
+              - generic [ref=e1355]:
+                - generic [ref=e1356]: A-Z THERM s.r.o.
+                - generic [ref=e1357]: 18. 6. 2026
+              - generic [ref=e1358]: Vazová 3214/2, Praha 12
+              - generic [ref=e1359]:
+                - generic [ref=e1360]: OP-26-01831
+                - generic [ref=e1361]: 0 Kč
+          - listitem [ref=e1362]:
+            - link "Jiří Černoch 18. 6. 2026 K Olšinám 400, 533 72 Moravany-Moravany u Holic OP-26-01750 4 478 Kč" [ref=e1363] [cursor=pointer]:
+              - /url: /zakazka/5794a031-733e-4631-8774-64f37ffa713b
+              - generic [ref=e1364]:
+                - generic [ref=e1365]: Jiří Černoch
+                - generic [ref=e1366]: 18. 6. 2026
+              - generic [ref=e1367]: K Olšinám 400, 533 72 Moravany-Moravany u Holic
+              - generic [ref=e1368]:
+                - generic [ref=e1369]: OP-26-01750
+                - generic [ref=e1370]: 4 478 Kč
+          - listitem [ref=e1371]:
+            - link "Marian Paukovič 18. 6. 2026 Československé armády 12, 792 01 Bruntál-Bruntál 1 OP-26-01925 9 032 Kč" [ref=e1372] [cursor=pointer]:
+              - /url: /zakazka/575750a3-593c-4daf-8e32-c5ac55f8de4d
+              - generic [ref=e1373]:
+                - generic [ref=e1374]: Marian Paukovič
+                - generic [ref=e1375]: 18. 6. 2026
+              - generic [ref=e1376]: Československé armády 12, 792 01 Bruntál-Bruntál 1
+              - generic [ref=e1377]:
+                - generic [ref=e1378]: OP-26-01925
+                - generic [ref=e1379]: 9 032 Kč
+          - listitem [ref=e1380]:
+            - link "Ivana Molíková 18. 6. 2026 Kramperová 1012/12, Praha 4 OP-26-02077 6 995 Kč" [ref=e1381] [cursor=pointer]:
+              - /url: /zakazka/738c93d7-d8cd-44e6-8df2-058130a23af7
+              - generic [ref=e1382]:
+                - generic [ref=e1383]: Ivana Molíková
+                - generic [ref=e1384]: 18. 6. 2026
+              - generic [ref=e1385]: Kramperová 1012/12, Praha 4
+              - generic [ref=e1386]:
+                - generic [ref=e1387]: OP-26-02077
+                - generic [ref=e1388]: 6 995 Kč
+          - listitem [ref=e1389]:
+            - link "Blanka Kedziorova 18. 6. 2026 Osvobození 618, 742 83 Klimkovice, Česko OP-26-01779 0 Kč" [ref=e1390] [cursor=pointer]:
+              - /url: /zakazka/b0b0d6e7-3c6f-4546-8b9e-ee2593a7b40b
+              - generic [ref=e1391]:
+                - generic [ref=e1392]: Blanka Kedziorova
+                - generic [ref=e1393]: 18. 6. 2026
+              - generic [ref=e1394]: Osvobození 618, 742 83 Klimkovice, Česko
+              - generic [ref=e1395]:
+                - generic [ref=e1396]: OP-26-01779
+                - generic [ref=e1397]: 0 Kč
+          - listitem [ref=e1398]:
+            - link "Lucie Kubešová 18. 6. 2026 Labská louka 656/7, 500 11 Hradec Králové-Hradec Králové 11 OP-26-01580 0 Kč" [ref=e1399] [cursor=pointer]:
+              - /url: /zakazka/c38a1df6-7a39-40c9-af11-eed82b7dd247
+              - generic [ref=e1400]:
+                - generic [ref=e1401]: Lucie Kubešová
+                - generic [ref=e1402]: 18. 6. 2026
+              - generic [ref=e1403]: Labská louka 656/7, 500 11 Hradec Králové-Hradec Králové 11
+              - generic [ref=e1404]:
+                - generic [ref=e1405]: OP-26-01580
+                - generic [ref=e1406]: 0 Kč
+          - listitem [ref=e1407]:
+            - link "Lukáš Macek 18. 6. 2026 Rybova 1904/23, 500 09 Hradec Králové-Hradec OP-26-01693 4 087 Kč" [ref=e1408] [cursor=pointer]:
+              - /url: /zakazka/6ba434d7-5a9c-4b01-b360-4bd0b9596f7d
+              - generic [ref=e1409]:
+                - generic [ref=e1410]: Lukáš Macek
+                - generic [ref=e1411]: 18. 6. 2026
+              - generic [ref=e1412]: Rybova 1904/23, 500 09 Hradec Králové-Hradec
+              - generic [ref=e1413]:
+                - generic [ref=e1414]: OP-26-01693
+                - generic [ref=e1415]: 4 087 Kč
+          - listitem [ref=e1416]:
+            - link "Eva Vančurová 18. 6. 2026 Malá Víska 52; Malá Víska 26762 OP-26-01456 21 311 Kč" [ref=e1417] [cursor=pointer]:
+              - /url: /zakazka/fd44b35c-6bdb-4835-9263-a6789c891e9c
+              - generic [ref=e1418]:
+                - generic [ref=e1419]: Eva Vančurová
+                - generic [ref=e1420]: 18. 6. 2026
+              - generic [ref=e1421]: Malá Víska 52; Malá Víska 26762
+              - generic [ref=e1422]:
+                - generic [ref=e1423]: OP-26-01456
+                - generic [ref=e1424]: 21 311 Kč
+          - listitem [ref=e1425]:
+            - link "Pavla Pazicka 18. 6. 2026 Polská 248, Butovice, 742 13 Studénka-Studénka 3, Česko OP-26-01472 24 499 Kč" [ref=e1426] [cursor=pointer]:
+              - /url: /zakazka/24767db0-9ce5-47e3-b4ea-45f5ee4fc3d3
+              - generic [ref=e1427]:
+                - generic [ref=e1428]: Pavla Pazicka
+                - generic [ref=e1429]: 18. 6. 2026
+              - generic [ref=e1430]: Polská 248, Butovice, 742 13 Studénka-Studénka 3, Česko
+              - generic [ref=e1431]:
+                - generic [ref=e1432]: OP-26-01472
+                - generic [ref=e1433]: 24 499 Kč
+          - listitem [ref=e1434]:
+            - link "Adam Kuzma 18. 6. 2026 Nad Schody 676/6, 155 00 Praha-Řeporyje OP-26-01710 28 680 Kč" [ref=e1435] [cursor=pointer]:
+              - /url: /zakazka/8712ebad-9e05-4cc1-8472-67466a3ca86f
+              - generic [ref=e1436]:
+                - generic [ref=e1437]: Adam Kuzma
+                - generic [ref=e1438]: 18. 6. 2026
+              - generic [ref=e1439]: Nad Schody 676/6, 155 00 Praha-Řeporyje
+              - generic [ref=e1440]:
+                - generic [ref=e1441]: OP-26-01710
+                - generic [ref=e1442]: 28 680 Kč
+          - listitem [ref=e1443]:
+            - link "Jarek Frydl 18. 6. 2026 SPC S 429/70, Pod Cvilínem, 794 01 Krnov-Krnov 1 OP-26-01941 14 928 Kč" [ref=e1444] [cursor=pointer]:
+              - /url: /zakazka/b65e5ae7-e45d-41b6-a76c-7651ad7ce5a6
+              - generic [ref=e1445]:
+                - generic [ref=e1446]: Jarek Frydl
+                - generic [ref=e1447]: 18. 6. 2026
+              - generic [ref=e1448]: SPC S 429/70, Pod Cvilínem, 794 01 Krnov-Krnov 1
+              - generic [ref=e1449]:
+                - generic [ref=e1450]: OP-26-01941
+                - generic [ref=e1451]: 14 928 Kč
+          - listitem [ref=e1452]:
+            - link "Daniel Kubínek 18. 6. 2026 Loučky 119, 742 36 Odry-Jakubčovice nad Odrou, Česko OP-26-01391 19 729 Kč" [ref=e1453] [cursor=pointer]:
+              - /url: /zakazka/f7c734e6-0cbc-442e-8f86-555fdb822f65
+              - generic [ref=e1454]:
+                - generic [ref=e1455]: Daniel Kubínek
+                - generic [ref=e1456]: 18. 6. 2026
+              - generic [ref=e1457]: Loučky 119, 742 36 Odry-Jakubčovice nad Odrou, Česko
+              - generic [ref=e1458]:
+                - generic [ref=e1459]: OP-26-01391
+                - generic [ref=e1460]: 19 729 Kč
+          - listitem [ref=e1461]:
+            - link "Zdeňka Fléglová 18. 6. 2026 Komenského 484, 533 04 Sezemice OP-26-01490 0 Kč" [ref=e1462] [cursor=pointer]:
+              - /url: /zakazka/7fa200f1-b2e5-4070-bd6f-f87f6110f3ca
+              - generic [ref=e1463]:
+                - generic [ref=e1464]: Zdeňka Fléglová
+                - generic [ref=e1465]: 18. 6. 2026
+              - generic [ref=e1466]: Komenského 484, 533 04 Sezemice
+              - generic [ref=e1467]:
+                - generic [ref=e1468]: OP-26-01490
+                - generic [ref=e1469]: 0 Kč
+          - listitem [ref=e1470]:
+            - link "Miroslav Krampol 17. 6. 2026 Pivín 286, 798 24 Pivín, Česko OP-26-01754 4 688 Kč" [ref=e1471] [cursor=pointer]:
+              - /url: /zakazka/d714a440-2435-40da-b11c-77b0dea27529
+              - generic [ref=e1472]:
+                - generic [ref=e1473]: Miroslav Krampol
+                - generic [ref=e1474]: 17. 6. 2026
+              - generic [ref=e1475]: Pivín 286, 798 24 Pivín, Česko
+              - generic [ref=e1476]:
+                - generic [ref=e1477]: OP-26-01754
+                - generic [ref=e1478]: 4 688 Kč
+          - listitem [ref=e1479]:
+            - link "Petra Kotalová 17. 6. 2026 Svojsíkova 1591/5, 708 00 Ostrava-Poruba OP-26-01937 6 756 Kč" [ref=e1480] [cursor=pointer]:
+              - /url: /zakazka/fbf81ee0-8059-432a-bae9-ac5e8d31769a
+              - generic [ref=e1481]:
+                - generic [ref=e1482]: Petra Kotalová
+                - generic [ref=e1483]: 17. 6. 2026
+              - generic [ref=e1484]: Svojsíkova 1591/5, 708 00 Ostrava-Poruba
+              - generic [ref=e1485]:
+                - generic [ref=e1486]: OP-26-01937
+                - generic [ref=e1487]: 6 756 Kč
+          - listitem [ref=e1488]:
+            - link "Jiri Landsinger 17. 6. 2026 Mládežnická 1274, Mladá Boleslav OP-26-01956 0 Kč" [ref=e1489] [cursor=pointer]:
+              - /url: /zakazka/6ca4adaf-8c69-405b-a87f-84dff3896afd
+              - generic [ref=e1490]:
+                - generic [ref=e1491]: Jiri Landsinger
+                - generic [ref=e1492]: 17. 6. 2026
+              - generic [ref=e1493]: Mládežnická 1274, Mladá Boleslav
+              - generic [ref=e1494]:
+                - generic [ref=e1495]: OP-26-01956
+                - generic [ref=e1496]: 0 Kč
+          - listitem [ref=e1497]:
+            - link "Petra Šonská 17. 6. 2026 Čáslavská 1148, 537 01 Chrudim-Chrudim 1 OP-26-01736 11 072 Kč" [ref=e1498] [cursor=pointer]:
+              - /url: /zakazka/b18678c3-04db-49d4-b49b-9aa14629e60c
+              - generic [ref=e1499]:
+                - generic [ref=e1500]: Petra Šonská
+                - generic [ref=e1501]: 17. 6. 2026
+              - generic [ref=e1502]: Čáslavská 1148, 537 01 Chrudim-Chrudim 1
+              - generic [ref=e1503]:
+                - generic [ref=e1504]: OP-26-01736
+                - generic [ref=e1505]: 11 072 Kč
+          - listitem [ref=e1506]:
+            - link "Martin Troch 17. 6. 2026 1. Ulice 335, 27307 Vinarice OP-26-01224 25 375 Kč" [ref=e1507] [cursor=pointer]:
+              - /url: /zakazka/d884bc5a-57ad-4e6c-8198-ac674f209f4a
+              - generic [ref=e1508]:
+                - generic [ref=e1509]: Martin Troch
+                - generic [ref=e1510]: 17. 6. 2026
+              - generic [ref=e1511]: 1. Ulice 335, 27307 Vinarice
+              - generic [ref=e1512]:
+                - generic [ref=e1513]: OP-26-01224
+                - generic [ref=e1514]: 25 375 Kč
+          - listitem [ref=e1515]:
+            - link "Marta Vahalíková 17. 6. 2026 Jičina 18, 741 01 Starý Jičín-Nový Jičín 1 OP-26-01504 19 308 Kč" [ref=e1516] [cursor=pointer]:
+              - /url: /zakazka/381abb32-5a39-41e1-ab40-904d5605cd51
+              - generic [ref=e1517]:
+                - generic [ref=e1518]: Marta Vahalíková
+                - generic [ref=e1519]: 17. 6. 2026
+              - generic [ref=e1520]: Jičina 18, 741 01 Starý Jičín-Nový Jičín 1
+              - generic [ref=e1521]:
+                - generic [ref=e1522]: OP-26-01504
+                - generic [ref=e1523]: 19 308 Kč
+          - listitem [ref=e1524]:
+            - link "Marek Křibík 17. 6. 2026 Křenická 2253/11, Strašnice, 100 00 Praha-Praha 10 OP-26-01763 12 679 Kč" [ref=e1525] [cursor=pointer]:
+              - /url: /zakazka/68621f73-079b-4cb8-a7ea-84eb9e08b6ec
+              - generic [ref=e1526]:
+                - generic [ref=e1527]: Marek Křibík
+                - generic [ref=e1528]: 17. 6. 2026
+              - generic [ref=e1529]: Křenická 2253/11, Strašnice, 100 00 Praha-Praha 10
+              - generic [ref=e1530]:
+                - generic [ref=e1531]: OP-26-01763
+                - generic [ref=e1532]: 12 679 Kč
+          - listitem [ref=e1533]:
+            - link "Josef Kop 17. 6. 2026 Drahelka 339, 294 73 Brodce-Brodce nad Jizerou OP-26-01947 14 463 Kč" [ref=e1534] [cursor=pointer]:
+              - /url: /zakazka/81c46546-91a7-4aac-b53a-6436c7ed46d9
+              - generic [ref=e1535]:
+                - generic [ref=e1536]: Josef Kop
+                - generic [ref=e1537]: 17. 6. 2026
+              - generic [ref=e1538]: Drahelka 339, 294 73 Brodce-Brodce nad Jizerou
+              - generic [ref=e1539]:
+                - generic [ref=e1540]: OP-26-01947
+                - generic [ref=e1541]: 14 463 Kč
+          - listitem [ref=e1542]:
+            - link "Rostislav Lepař 17. 6. 2026 Lipňany 4, Tršice OP-26-01701 0 Kč" [ref=e1543] [cursor=pointer]:
+              - /url: /zakazka/ac21e69c-b1ff-4801-a29a-06c76955f3cd
+              - generic [ref=e1544]:
+                - generic [ref=e1545]: Rostislav Lepař
+                - generic [ref=e1546]: 17. 6. 2026
+              - generic [ref=e1547]: Lipňany 4, Tršice
+              - generic [ref=e1548]:
+                - generic [ref=e1549]: OP-26-01701
+                - generic [ref=e1550]: 0 Kč
+          - listitem [ref=e1551]:
+            - link "Lubomír Sadílek 17. 6. 2026 Družstevní 385, 798 07 Brodek u Prostějova, Česko OP-26-01234 14 029 Kč" [ref=e1552] [cursor=pointer]:
+              - /url: /zakazka/575fe03f-4527-44bc-ac95-3de4df74de3d
+              - generic [ref=e1553]:
+                - generic [ref=e1554]: Lubomír Sadílek
+                - generic [ref=e1555]: 17. 6. 2026
+              - generic [ref=e1556]: Družstevní 385, 798 07 Brodek u Prostějova, Česko
+              - generic [ref=e1557]:
+                - generic [ref=e1558]: OP-26-01234
+                - generic [ref=e1559]: 14 029 Kč
+          - listitem [ref=e1560]:
+            - link "Lukáš Hůlka 17. 6. 2026 K Beranovu 13, 184 00 Praha-Praha-Dolní Chabry OP-26-01608 4 659 Kč" [ref=e1561] [cursor=pointer]:
+              - /url: /zakazka/28634373-6146-47ca-afa9-ae6f5ed30092
+              - generic [ref=e1562]:
+                - generic [ref=e1563]: Lukáš Hůlka
+                - generic [ref=e1564]: 17. 6. 2026
+              - generic [ref=e1565]: K Beranovu 13, 184 00 Praha-Praha-Dolní Chabry
+              - generic [ref=e1566]:
+                - generic [ref=e1567]: OP-26-01608
+                - generic [ref=e1568]: 4 659 Kč
+          - listitem [ref=e1569]:
+            - link "Zdeněk Erdos 17. 6. 2026 Bezručova 705, 739 21 Paskov, Česko OP-26-01059 32 118 Kč" [ref=e1570] [cursor=pointer]:
+              - /url: /zakazka/82a8da10-5fc8-47ec-baf5-6e1a1ee28ce1
+              - generic [ref=e1571]:
+                - generic [ref=e1572]: Zdeněk Erdos
+                - generic [ref=e1573]: 17. 6. 2026
+              - generic [ref=e1574]: Bezručova 705, 739 21 Paskov, Česko
+              - generic [ref=e1575]:
+                - generic [ref=e1576]: OP-26-01059
+                - generic [ref=e1577]: 32 118 Kč
+          - listitem [ref=e1578]:
+            - link "Částka Miloš 17. 6. 2026 Mořinka 19, 26718 Karlštejn OP-26-01386 19 902 Kč" [ref=e1579] [cursor=pointer]:
+              - /url: /zakazka/a5cf2695-eb91-4d31-9817-ee9060bb3586
+              - generic [ref=e1580]:
+                - generic [ref=e1581]: Částka Miloš
+                - generic [ref=e1582]: 17. 6. 2026
+              - generic [ref=e1583]: Mořinka 19, 26718 Karlštejn
+              - generic [ref=e1584]:
+                - generic [ref=e1585]: OP-26-01386
+                - generic [ref=e1586]: 19 902 Kč
+          - listitem [ref=e1587]:
+            - link "Karel Šust 2026-06-17 Nývltova 271, 503 03 Smiřice OP-26-00927 25 361 Kč" [ref=e1588] [cursor=pointer]:
+              - /url: /zakazka/5e2aecc6-7c76-483b-872d-d08234158270
+              - generic [ref=e1589]:
+                - generic [ref=e1590]: Karel Šust
+                - generic [ref=e1591]: 2026-06-17
+              - generic [ref=e1592]: Nývltova 271, 503 03 Smiřice
+              - generic [ref=e1593]:
+                - generic [ref=e1594]: OP-26-00927
+                - generic [ref=e1595]: 25 361 Kč
+          - listitem [ref=e1596]:
+            - link "Luděk Guziur 16. 6. 2026 Lučina 113, 739 39 Lučina OP-26-01632 4 989 Kč" [ref=e1597] [cursor=pointer]:
+              - /url: /zakazka/86ad2817-2f22-4e13-b81d-146fcb729558
+              - generic [ref=e1598]:
+                - generic [ref=e1599]: Luděk Guziur
+                - generic [ref=e1600]: 16. 6. 2026
+              - generic [ref=e1601]: Lučina 113, 739 39 Lučina
+              - generic [ref=e1602]:
+                - generic [ref=e1603]: OP-26-01632
+                - generic [ref=e1604]: 4 989 Kč
+          - listitem [ref=e1605]:
+            - link "Zbyněk Jankot 16. 6. 2026 Purkyňova 800, 79001 Jeseník OP-26-01772 9 185 Kč" [ref=e1606] [cursor=pointer]:
+              - /url: /zakazka/186e2a1a-5419-4528-a2a3-7d7278f13a0e
+              - generic [ref=e1607]:
+                - generic [ref=e1608]: Zbyněk Jankot
+                - generic [ref=e1609]: 16. 6. 2026
+              - generic [ref=e1610]: Purkyňova 800, 79001 Jeseník
+              - generic [ref=e1611]:
+                - generic [ref=e1612]: OP-26-01772
+                - generic [ref=e1613]: 9 185 Kč
+          - listitem [ref=e1614]:
+            - link "Pavel Baier 16. 6. 2026 U Zvoničky 61, 533 52 Srch-Staré Hradiště u Pardubic OP-26-01344 13 092 Kč" [ref=e1615] [cursor=pointer]:
+              - /url: /zakazka/3b5e9f9a-1dd9-4da5-b7be-f49da995e847
+              - generic [ref=e1616]:
+                - generic [ref=e1617]: Pavel Baier
+                - generic [ref=e1618]: 16. 6. 2026
+              - generic [ref=e1619]: U Zvoničky 61, 533 52 Srch-Staré Hradiště u Pardubic
+              - generic [ref=e1620]:
+                - generic [ref=e1621]: OP-26-01344
+                - generic [ref=e1622]: 13 092 Kč
+          - listitem [ref=e1623]:
+            - link "Lukáš Oprchalský 16. 6. 2026 Revoluční 2184, 735 32 Rychvald, Česko OP-26-01612 8 956 Kč" [ref=e1624] [cursor=pointer]:
+              - /url: /zakazka/25b6aab0-e54a-420d-91f7-5a30b41b37f5
+              - generic [ref=e1625]:
+                - generic [ref=e1626]: Lukáš Oprchalský
+                - generic [ref=e1627]: 16. 6. 2026
+              - generic [ref=e1628]: Revoluční 2184, 735 32 Rychvald, Česko
+              - generic [ref=e1629]:
+                - generic [ref=e1630]: OP-26-01612
+                - generic [ref=e1631]: 8 956 Kč
+          - listitem [ref=e1632]:
+            - link "Marcela Opltová 16. 6. 2026 Čapkova 88, 533 54 Rybitví OP-26-01683 3 629 Kč" [ref=e1633] [cursor=pointer]:
+              - /url: /zakazka/e240f206-80b1-48b8-a216-c60b07a8502b
+              - generic [ref=e1634]:
+                - generic [ref=e1635]: Marcela Opltová
+                - generic [ref=e1636]: 16. 6. 2026
+              - generic [ref=e1637]: Čapkova 88, 533 54 Rybitví
+              - generic [ref=e1638]:
+                - generic [ref=e1639]: OP-26-01683
+                - generic [ref=e1640]: 3 629 Kč
+          - listitem [ref=e1641]:
+            - link "Petra Knesplová 16. 6. 2026 Lesní 570, Zelená, 294 42 Luštěnice OP-26-01946 11 644 Kč" [ref=e1642] [cursor=pointer]:
+              - /url: /zakazka/3a95803e-4a43-4d0a-b324-36ac96134182
+              - generic [ref=e1643]:
+                - generic [ref=e1644]: Petra Knesplová
+                - generic [ref=e1645]: 16. 6. 2026
+              - generic [ref=e1646]: Lesní 570, Zelená, 294 42 Luštěnice
+              - generic [ref=e1647]:
+                - generic [ref=e1648]: OP-26-01946
+                - generic [ref=e1649]: 11 644 Kč
+          - listitem [ref=e1650]:
+            - link "Služby města Rychvald, spol. s r. o. 16. 6. 2026 Bohumínská 1875, 735 32 Rychvald, Česko OP-26-01613 0 Kč" [ref=e1651] [cursor=pointer]:
+              - /url: /zakazka/59195d8e-1eb7-4e4a-93e0-190105da628b
+              - generic [ref=e1652]:
+                - generic [ref=e1653]: Služby města Rychvald, spol. s r. o.
+                - generic [ref=e1654]: 16. 6. 2026
+              - generic [ref=e1655]: Bohumínská 1875, 735 32 Rychvald, Česko
+              - generic [ref=e1656]:
+                - generic [ref=e1657]: OP-26-01613
+                - generic [ref=e1658]: 0 Kč
+          - listitem [ref=e1659]:
+            - link "Jiří Děrda 16. 6. 2026 U Kasáren 1135/15, 790 01 Jeseník-Jeseník 1 OP-26-01497 14 346 Kč" [ref=e1660] [cursor=pointer]:
+              - /url: /zakazka/a50b5376-7bad-4e5d-bdc2-7dadfbef6e88
+              - generic [ref=e1661]:
+                - generic [ref=e1662]: Jiří Děrda
+                - generic [ref=e1663]: 16. 6. 2026
+              - generic [ref=e1664]: U Kasáren 1135/15, 790 01 Jeseník-Jeseník 1
+              - generic [ref=e1665]:
+                - generic [ref=e1666]: OP-26-01497
+                - generic [ref=e1667]: 14 346 Kč
+          - listitem [ref=e1668]:
+            - link "Lucie Krejci 2026-06-16 Kunčice 123, 503 15 Kunčice OP-26-01362 19 322 Kč" [ref=e1669] [cursor=pointer]:
+              - /url: /zakazka/08e773bf-0c48-4dc5-a105-9f14d415b0cc
+              - generic [ref=e1670]:
+                - generic [ref=e1671]: Lucie Krejci
+                - generic [ref=e1672]: 2026-06-16
+              - generic [ref=e1673]: Kunčice 123, 503 15 Kunčice
+              - generic [ref=e1674]:
+                - generic [ref=e1675]: OP-26-01362
+                - generic [ref=e1676]: 19 322 Kč
+          - listitem [ref=e1677]:
+            - link "Petra Gronichova 2026-06-16 Jánského 81, 790 81 Česká Ves OP-26-01470 10 287 Kč" [ref=e1678] [cursor=pointer]:
+              - /url: /zakazka/4b4b50d0-8d91-41f8-bf0e-4583197fd75d
+              - generic [ref=e1679]:
+                - generic [ref=e1680]: Petra Gronichova
+                - generic [ref=e1681]: 2026-06-16
+              - generic [ref=e1682]: Jánského 81, 790 81 Česká Ves
+              - generic [ref=e1683]:
+                - generic [ref=e1684]: OP-26-01470
+                - generic [ref=e1685]: 10 287 Kč
+          - listitem [ref=e1686]:
+            - link "Lenka Rečková 2026-06-16 Na Valše 780, Příbor OP-26-01045 20 508 Kč" [ref=e1687] [cursor=pointer]:
+              - /url: /zakazka/f01f6310-9566-4beb-a155-dc3d65348321
+              - generic [ref=e1688]:
+                - generic [ref=e1689]: Lenka Rečková
+                - generic [ref=e1690]: 2026-06-16
+              - generic [ref=e1691]: Na Valše 780, Příbor
+              - generic [ref=e1692]:
+                - generic [ref=e1693]: OP-26-01045
+                - generic [ref=e1694]: 20 508 Kč
+          - listitem [ref=e1695]:
+            - link "Naděžda Silliková 2026-06-16 Životice u Nového Jičína 28, 742 72 Životice u Nového Jičína, Česko OP-26-01138 26 470 Kč" [ref=e1696] [cursor=pointer]:
+              - /url: /zakazka/a7cc20fe-b406-4861-b007-ff8b9ea50ca4
+              - generic [ref=e1697]:
+                - generic [ref=e1698]: Naděžda Silliková
+                - generic [ref=e1699]: 2026-06-16
+              - generic [ref=e1700]: Životice u Nového Jičína 28, 742 72 Životice u Nového Jičína, Česko
+              - generic [ref=e1701]:
+                - generic [ref=e1702]: OP-26-01138
+                - generic [ref=e1703]: 26 470 Kč
+          - listitem [ref=e1704]:
+            - link "Kateřina Kofránková 2026-06-16 Jetřichovická 746/16, 190 00 Praha 9-Prosek, Česko OP-26-00745 7 308 Kč" [ref=e1705] [cursor=pointer]:
+              - /url: /zakazka/b8ed43ed-e129-4fbb-a0ed-0431bd2b4884
+              - generic [ref=e1706]:
+                - generic [ref=e1707]: Kateřina Kofránková
+                - generic [ref=e1708]: 2026-06-16
+              - generic [ref=e1709]: Jetřichovická 746/16, 190 00 Praha 9-Prosek, Česko
+              - generic [ref=e1710]:
+                - generic [ref=e1711]: OP-26-00745
+                - generic [ref=e1712]: 7 308 Kč
+          - listitem [ref=e1713]:
+            - link "Zdeňka Brudná 15. 6. 2026 Československé armády 176/2, Město, 736 01 Havířov-Havířov 1, Česko OP-26-01634 0 Kč" [ref=e1714] [cursor=pointer]:
+              - /url: /zakazka/6fe30570-f20f-4bc6-a9b3-9e28ecfd4780
+              - generic [ref=e1715]:
+                - generic [ref=e1716]: Zdeňka Brudná
+                - generic [ref=e1717]: 15. 6. 2026
+              - generic [ref=e1718]: Československé armády 176/2, Město, 736 01 Havířov-Havířov 1, Česko
+              - generic [ref=e1719]:
+                - generic [ref=e1720]: OP-26-01634
+                - generic [ref=e1721]: 0 Kč
+          - listitem [ref=e1722]:
+            - link "Jindra Šmolíková 15. 6. 2026 Svatopluka Čecha 381; Libušín 27306 OP-26-01621 18 401 Kč" [ref=e1723] [cursor=pointer]:
+              - /url: /zakazka/f344cfef-2f41-4eb9-9d9d-0375399ca3a4
+              - generic [ref=e1724]:
+                - generic [ref=e1725]: Jindra Šmolíková
+                - generic [ref=e1726]: 15. 6. 2026
+              - generic [ref=e1727]: Svatopluka Čecha 381; Libušín 27306
+              - generic [ref=e1728]:
+                - generic [ref=e1729]: OP-26-01621
+                - generic [ref=e1730]: 18 401 Kč
+          - listitem [ref=e1731]:
+            - link "Šàrka Dudovà 15. 6. 2026 Ukrajinská 2587 Kladno 27201 OP-26-01961 4 157 Kč" [ref=e1732] [cursor=pointer]:
+              - /url: /zakazka/91311b22-049b-4849-8236-5bf23aade72c
+              - generic [ref=e1733]:
+                - generic [ref=e1734]: Šàrka Dudovà
+                - generic [ref=e1735]: 15. 6. 2026
+              - generic [ref=e1736]: Ukrajinská 2587 Kladno 27201
+              - generic [ref=e1737]:
+                - generic [ref=e1738]: OP-26-01961
+                - generic [ref=e1739]: 4 157 Kč
+          - listitem [ref=e1740]:
+            - link "Petr Spinar 15. 6. 2026 Rodvinovská 1351/8, 140 00 Praha 4-Krč OP-26-01778 25 997 Kč" [ref=e1741] [cursor=pointer]:
+              - /url: /zakazka/fe587635-4ba0-43c4-b836-3f1f89b59ee5
+              - generic [ref=e1742]:
+                - generic [ref=e1743]: Petr Spinar
+                - generic [ref=e1744]: 15. 6. 2026
+              - generic [ref=e1745]: Rodvinovská 1351/8, 140 00 Praha 4-Krč
+              - generic [ref=e1746]:
+                - generic [ref=e1747]: OP-26-01778
+                - generic [ref=e1748]: 25 997 Kč
+          - listitem [ref=e1749]:
+            - link "Libuše Mižikárová 15. 6. 2026 Školní 134, 790 65 Žulová OP-26-01664 17 911 Kč" [ref=e1750] [cursor=pointer]:
+              - /url: /zakazka/33f4ba52-2cec-4639-b978-b14f91194923
+              - generic [ref=e1751]:
+                - generic [ref=e1752]: Libuše Mižikárová
+                - generic [ref=e1753]: 15. 6. 2026
+              - generic [ref=e1754]: Školní 134, 790 65 Žulová
+              - generic [ref=e1755]:
+                - generic [ref=e1756]: OP-26-01664
+                - generic [ref=e1757]: 17 911 Kč
+          - listitem [ref=e1758]:
+            - link "Veronika Grossmanová 15. 6. 2026 1. máje 1835, 738 01 Frýdek-Místek-Frýdek-Místek 1, Česko OP-26-01631 16 304 Kč" [ref=e1759] [cursor=pointer]:
+              - /url: /zakazka/6d6f44c8-0c9e-4ad9-ae8a-9a47c0b2c9ee
+              - generic [ref=e1760]:
+                - generic [ref=e1761]: Veronika Grossmanová
+                - generic [ref=e1762]: 15. 6. 2026
+              - generic [ref=e1763]: 1. máje 1835, 738 01 Frýdek-Místek-Frýdek-Místek 1, Česko
+              - generic [ref=e1764]:
+                - generic [ref=e1765]: OP-26-01631
+                - generic [ref=e1766]: 16 304 Kč
+          - listitem [ref=e1767]:
+            - link "Jiří Špaček 11. 6. 2026 Dvořákova 1094/2, 742 21 Kopřivnice-Kopřivnice 1, Česko OP-26-01564 4 100 Kč" [ref=e1768] [cursor=pointer]:
+              - /url: /zakazka/3ca993a2-d991-4053-a506-65923325ad15
+              - generic [ref=e1769]:
+                - generic [ref=e1770]: Jiří Špaček
+                - generic [ref=e1771]: 11. 6. 2026
+              - generic [ref=e1772]: Dvořákova 1094/2, 742 21 Kopřivnice-Kopřivnice 1, Česko
+              - generic [ref=e1773]:
+                - generic [ref=e1774]: OP-26-01564
+                - generic [ref=e1775]: 4 100 Kč
+          - listitem [ref=e1776]:
+            - link "Ladislav Hlaváč 10. 6. 2026 Wolkerova 656; Zdíce 26751 OP-26-01214 6 698 Kč" [ref=e1777] [cursor=pointer]:
+              - /url: /zakazka/a67dea73-44c0-418d-8c9c-56b9d70b9378
+              - generic [ref=e1778]:
+                - generic [ref=e1779]: Ladislav Hlaváč
+                - generic [ref=e1780]: 10. 6. 2026
+              - generic [ref=e1781]: Wolkerova 656; Zdíce 26751
+              - generic [ref=e1782]:
+                - generic [ref=e1783]: OP-26-01214
+                - generic [ref=e1784]: 6 698 Kč
+          - listitem [ref=e1785]:
+            - link "Stanislav Ludvík 10. 6. 2026 Orel 66, 538 21 Orel OP-26-01587 25 768 Kč" [ref=e1786] [cursor=pointer]:
+              - /url: /zakazka/45fea6e8-e48a-40fd-9cb6-896f4f1b61db
+              - generic [ref=e1787]:
+                - generic [ref=e1788]: Stanislav Ludvík
+                - generic [ref=e1789]: 10. 6. 2026
+              - generic [ref=e1790]: Orel 66, 538 21 Orel
+              - generic [ref=e1791]:
+                - generic [ref=e1792]: OP-26-01587
+                - generic [ref=e1793]: 25 768 Kč
+          - listitem [ref=e1794]:
+            - link "Petr Aster 10. 6. 2026 Říčanská 589, 252 43 Průhonice OP-26-01540 34 788 Kč" [ref=e1795] [cursor=pointer]:
+              - /url: /zakazka/ffd551f6-c045-4561-8bbf-8a966d76db47
+              - generic [ref=e1796]:
+                - generic [ref=e1797]: Petr Aster
+                - generic [ref=e1798]: 10. 6. 2026
+              - generic [ref=e1799]: Říčanská 589, 252 43 Průhonice
+              - generic [ref=e1800]:
+                - generic [ref=e1801]: OP-26-01540
+                - generic [ref=e1802]: 34 788 Kč
+          - listitem [ref=e1803]:
+            - link "Anna Korcová 9. 6. 2026 Na Valech 581, 537 01 Chrudim-Chrudim 1, Česko OP-26-01672 0 Kč" [ref=e1804] [cursor=pointer]:
+              - /url: /zakazka/a82cb37b-414b-4984-b9b0-300a1a9629cb
+              - generic [ref=e1805]:
+                - generic [ref=e1806]: Anna Korcová
+                - generic [ref=e1807]: 9. 6. 2026
+              - generic [ref=e1808]: Na Valech 581, 537 01 Chrudim-Chrudim 1, Česko
+              - generic [ref=e1809]:
+                - generic [ref=e1810]: OP-26-01672
+                - generic [ref=e1811]: 0 Kč
+          - listitem [ref=e1812]:
+            - link "Jana Benešová 9. 6. 2026 Karlická 85, 252 28 Vonoklasy-Černošice OP-26-01453 30 419 Kč" [ref=e1813] [cursor=pointer]:
+              - /url: /zakazka/ae06a4f1-4ac3-4a45-b711-f9691b77bead
+              - generic [ref=e1814]:
+                - generic [ref=e1815]: Jana Benešová
+                - generic [ref=e1816]: 9. 6. 2026
+              - generic [ref=e1817]: Karlická 85, 252 28 Vonoklasy-Černošice
+              - generic [ref=e1818]:
+                - generic [ref=e1819]: OP-26-01453
+                - generic [ref=e1820]: 30 419 Kč
+          - listitem [ref=e1821]:
+            - link "Tomas Wadowski 8. 6. 2026 5. května 1720, 739 11 Frýdlant nad Ostravicí, Česko OP-26-01389 11 747 Kč" [ref=e1822] [cursor=pointer]:
+              - /url: /zakazka/ce244307-8299-424f-bfe5-f693f1c1d199
+              - generic [ref=e1823]:
+                - generic [ref=e1824]: Tomas Wadowski
+                - generic [ref=e1825]: 8. 6. 2026
+              - generic [ref=e1826]: 5. května 1720, 739 11 Frýdlant nad Ostravicí, Česko
+              - generic [ref=e1827]:
+                - generic [ref=e1828]: OP-26-01389
+                - generic [ref=e1829]: 11 747 Kč
+  - navigation [ref=e1830]:
+    - link "Zakázky" [ref=e1831] [cursor=pointer]:
+      - /url: /
+      - img [ref=e1832]
+      - generic [ref=e1834]: Zakázky
+    - link "Výdaj" [ref=e1835] [cursor=pointer]:
+      - /url: /vydaj
+      - img [ref=e1836]
+      - generic [ref=e1839]: Výdaj
+    - link "Příjem" [ref=e1840] [cursor=pointer]:
+      - /url: /prijem
+      - img [ref=e1841]
+      - generic [ref=e1843]: Příjem
+    - link "Přesklad" [ref=e1844] [cursor=pointer]:
+      - /url: /presklad
+      - img [ref=e1845]
+      - generic [ref=e1850]: Přesklad
+    - link "Sklad" [ref=e1851] [cursor=pointer]:
+      - /url: /sklad
+      - img [ref=e1852]
+      - generic [ref=e1854]: Sklad

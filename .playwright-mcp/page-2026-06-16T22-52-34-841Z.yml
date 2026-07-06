@@ -1,0 +1,202 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo Logo Pumplo Logo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e8]:
+            - img "Pumplo Logo" [ref=e9]
+            - img "Pumplo Logo" [ref=e10]
+        - generic [ref=e11]:
+          - button "Problem" [ref=e12] [cursor=pointer]
+          - button "Solution" [ref=e13] [cursor=pointer]
+          - link "Blog" [ref=e14] [cursor=pointer]:
+            - /url: /blog
+          - link "Contact" [ref=e15] [cursor=pointer]:
+            - /url: /contact
+          - link "For gyms" [ref=e16] [cursor=pointer]:
+            - /url: /business
+            - button "For gyms" [ref=e17]:
+              - img
+              - text: For gyms
+          - generic [ref=e18]:
+            - button "🇨🇿 CS" [ref=e19] [cursor=pointer]
+            - button "🇬🇧 EN" [ref=e20] [cursor=pointer]
+    - generic [ref=e21]:
+      - img [ref=e23]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e29]: Tvůj digitální trenér v kapse
+          - heading "Not sure how to train?" [level=1] [ref=e31]:
+            - generic [ref=e33]: Not sure how to train?
+          - paragraph [ref=e35]: No more wandering between machines. Pumplo creates a workout tailored to your gym. Train smart, track your progress and start feeling great in your body.
+          - generic [ref=e38]:
+            - link "App Store" [ref=e39] [cursor=pointer]:
+              - /url: https://apps.apple.com/app/id6768619318
+              - img [ref=e40]
+              - generic [ref=e42]:
+                - generic [ref=e43]: Download on the
+                - generic [ref=e44]: App Store
+            - link "Google Play" [ref=e45] [cursor=pointer]:
+              - /url: https://play.google.com/store/apps/details?id=com.pumplo.app
+              - img [ref=e46]
+              - generic [ref=e48]:
+                - generic [ref=e49]: Get it on
+                - generic [ref=e50]: Google Play
+        - generic [ref=e51]:
+          - img "Pumplo guiding a real set in the gym" [ref=e55]
+          - img "Pumplo home — your week and next workout" [ref=e59]
+          - img "Pumplo — today's workout, exercise by exercise" [ref=e63]
+          - img "Pumplo — finished workout summary" [ref=e67]
+          - img "Pumplo — find your gym on the map" [ref=e71]
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - heading "How does it work?" [level=2] [ref=e75]
+        - paragraph [ref=e76]: From download to your first workout in 2 minutes
+      - generic [ref=e77]:
+        - generic [ref=e79]:
+          - generic [ref=e80]: "1"
+          - img [ref=e82]
+          - heading "Download the app" [level=3] [ref=e84]
+          - paragraph [ref=e85]: Find Pumplo in the store and download it to your phone. Free. No email registration.
+        - generic [ref=e87]:
+          - generic [ref=e88]: "2"
+          - img [ref=e90]
+          - heading "Tell us about yourself" [level=3] [ref=e94]
+          - paragraph [ref=e95]: Choose your gym and tell us what you want — lose weight, build muscle, get stronger. Done in a minute.
+        - generic [ref=e97]:
+          - generic [ref=e98]: "3"
+          - img [ref=e100]
+          - heading "Start working out" [level=3] [ref=e102]
+          - paragraph [ref=e103]: Pumplo creates a plan tailored to your gym and its equipment. Videos, tips, set counting — all in one place.
+      - heading "What do you get out of it?" [level=3] [ref=e105]
+      - generic [ref=e106]:
+        - generic [ref=e108]:
+          - img [ref=e110]
+          - generic [ref=e113]:
+            - heading "Never be lost again" [level=4] [ref=e114]
+            - paragraph [ref=e115]: You know exactly what to do, how many sets, how many reps. No looking around.
+        - generic [ref=e117]:
+          - img [ref=e119]
+          - generic [ref=e122]:
+            - heading "See your progress" [level=4] [ref=e123]
+            - paragraph [ref=e124]: Weights, reps, streaks. Pumplo remembers every workout.
+        - generic [ref=e126]:
+          - img [ref=e128]
+          - generic [ref=e131]:
+            - heading "Workouts right in your gym" [level=4] [ref=e132]
+            - paragraph [ref=e133]: Exercises are chosen based on the equipment your gym has. No more 'we don't have that here'.
+        - generic [ref=e135]:
+          - img [ref=e137]
+          - generic [ref=e143]:
+            - heading "Warm-up, workout, cool-down" [level=4] [ref=e144]
+            - paragraph [ref=e145]: All in one app. Just hit start and go.
+    - generic [ref=e147]:
+      - heading "Why do you need it?" [level=2] [ref=e149]
+      - generic [ref=e150]:
+        - generic [ref=e152]:
+          - img [ref=e154]
+          - heading "No more embarrassment" [level=3] [ref=e157]
+          - paragraph [ref=e158]: No need to fumble with machine settings. Our videos guide you through every movement.
+        - generic [ref=e160]:
+          - img [ref=e162]
+          - heading "A plan that fits you" [level=3] [ref=e166]
+          - paragraph [ref=e167]: Answer a few questions and get a ready workout. Everything is prepared, just start.
+        - generic [ref=e169]:
+          - img [ref=e171]
+          - heading "Results you can see" [level=3] [ref=e174]
+          - paragraph [ref=e175]: Every workout moves you forward. Watch yourself get stronger and see your body change in real time.
+    - generic [ref=e178]:
+      - paragraph [ref=e179]: On average up to
+      - generic [ref=e180]: 50%
+      - paragraph [ref=e181]: of new gym members leave within the first 6 months
+    - generic [ref=e184]:
+      - generic [ref=e185]:
+        - img [ref=e187]
+        - heading "Lack of guidance" [level=3] [ref=e190]
+        - paragraph [ref=e191]: Without a clear plan it's hard to see results. Most people improvise and stay stuck in place.
+      - generic [ref=e192]:
+        - img [ref=e194]
+        - heading "Poor technique" [level=3] [ref=e196]
+        - paragraph [ref=e197]: Working out "by feel" often leads to bad technique. Progress never comes.
+      - generic [ref=e198]:
+        - img [ref=e200]
+        - heading "Loss of motivation" [level=3] [ref=e203]
+        - paragraph [ref=e204]: When you don't see results, motivation quickly disappears. That's why most people quit after a few months.
+    - generic [ref=e206]:
+      - generic [ref=e207]:
+        - heading "Our solution" [level=2] [ref=e208]
+        - paragraph [ref=e209]: Your digital trainer always at hand
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - img [ref=e216]
+              - generic [ref=e219]: "1"
+            - heading "Questionnaire" [level=3] [ref=e220]
+            - paragraph [ref=e221]: Answer a few questions about your goal and experience. This helps Pumplo understand how you train.
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - img [ref=e226]
+              - generic [ref=e230]: "2"
+            - heading "Personalised plan" [level=3] [ref=e231]
+            - paragraph [ref=e232]: AI builds your workout based on your gym's equipment. The plan adapts to your progress every week.
+          - generic [ref=e234]:
+            - generic [ref=e235]:
+              - img [ref=e237]
+              - generic [ref=e240]: "3"
+            - heading "Clear guidance" [level=3] [ref=e241]
+            - paragraph [ref=e242]: At every machine you immediately know how to use it — with animations, tips and proper technique.
+        - generic [ref=e243]:
+          - img "Pumplo home — your week, total progress and next workout" [ref=e249]
+          - img "Pumplo guiding a real workout set in the gym" [ref=e255]
+    - generic [ref=e257]:
+      - heading "Training that delivers results" [level=2] [ref=e258]
+      - generic [ref=e259]:
+        - generic [ref=e260]:
+          - img [ref=e262]
+          - heading "A clear plan for every workout at last" [level=3] [ref=e265]
+          - paragraph [ref=e266]: No wandering around the gym. Open the app → go.
+        - generic [ref=e267]:
+          - img [ref=e269]
+          - heading "You train correctly" [level=3] [ref=e272]
+          - paragraph [ref=e273]: Animations and clear instructions show you how to perform every exercise safely and effectively.
+        - generic [ref=e274]:
+          - img [ref=e276]
+          - heading "You stay motivated" [level=3] [ref=e278]
+          - paragraph [ref=e279]: Gamification, challenges and rewards help you keep the pace and not give up.
+        - generic [ref=e280]:
+          - img [ref=e282]
+          - heading "You see your progress" [level=3] [ref=e285]
+          - paragraph [ref=e286]: Charts and statistics show that your progress is real.
+    - generic [ref=e289]:
+      - generic [ref=e290]:
+        - img [ref=e291]
+        - generic [ref=e293]: Coming soon
+      - heading "Be among the first" [level=2] [ref=e294]
+      - paragraph [ref=e295]: Leave your email and we'll let you know as soon as we launch
+      - generic [ref=e296]:
+        - generic [ref=e297]:
+          - img [ref=e298]
+          - textbox "your@email.com" [ref=e301]
+        - button "I want to know first" [ref=e302] [cursor=pointer]
+    - contentinfo [ref=e303]:
+      - generic [ref=e305]:
+        - img "Pumplo" [ref=e306]
+        - generic [ref=e307]:
+          - button "For gym-goers" [ref=e308] [cursor=pointer]
+          - link "For gyms" [ref=e309] [cursor=pointer]:
+            - /url: /business
+          - link "Contact" [ref=e310] [cursor=pointer]:
+            - /url: /contact
+        - paragraph [ref=e311]: © 2025 Pumplo. Your digital trainer in your pocket.
+        - generic [ref=e312]:
+          - link "Zásady ochrany osobních údajů" [ref=e313] [cursor=pointer]:
+            - /url: /privacy
+          - generic [ref=e314]: ·
+          - link "Všeobecné obchodní podmínky" [ref=e315] [cursor=pointer]:
+            - /url: /terms
+        - paragraph [ref=e316]: Pumplo is a product of GynTools CZ s.r.o., Registration No. 27804461, registered in the Czech Republic.

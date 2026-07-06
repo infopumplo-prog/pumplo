@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e119]:
+      - generic [ref=e121]:
+        - link "MámOkno" [ref=e122] [cursor=pointer]:
+          - /url: /
+        - button "Přepnout organizaci" [ref=e123] [cursor=pointer]:
+          - img [ref=e124]
+      - button "Upozornění" [ref=e127] [cursor=pointer]:
+        - img [ref=e128]
+    - main [ref=e17]:
+      - generic [ref=e132]:
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - heading "Ahoj, David 👋" [level=1] [ref=e135]
+            - paragraph [ref=e136]: MámOkno · admin
+          - button "Odhlásit" [ref=e137] [cursor=pointer]
+        - generic [ref=e138]:
+          - link "1 Otevřené" [ref=e139] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e140]: "1"
+            - paragraph [ref=e141]: Otevřené
+          - link "0 Urgentní" [ref=e142] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e143]: "0"
+            - paragraph [ref=e144]: Urgentní
+          - link "0 Po termínu" [ref=e145] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e146]: "0"
+            - paragraph [ref=e147]: Po termínu
+        - generic [ref=e149]:
+          - heading "Upozornění" [level=2] [ref=e150]
+          - paragraph [ref=e151]: Push upozornění na přiřazené, urgentní a po termínu úkoly.
+          - button "Zapnout upozornění" [ref=e154] [cursor=pointer]
+        - generic [ref=e155]:
+          - heading "Chaty" [level=2] [ref=e156]
+          - link "Úkoly →" [ref=e157] [cursor=pointer]:
+            - /url: /tasks
+        - 'button "S Servisní technici 22:28 Jaroslav: Druhá nepřečtená" [ref=e159] [cursor=pointer]':
+          - generic [ref=e160]: S
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - generic [ref=e163]: Servisní technici
+              - generic [ref=e164]: 22:28
+            - paragraph [ref=e166]: "Jaroslav: Druhá nepřečtená"
+  - navigation [ref=e167]:
+    - link "Chaty" [ref=e168] [cursor=pointer]:
+      - /url: /
+      - img [ref=e169]
+      - generic [ref=e171]: Chaty
+    - link "Úkoly" [ref=e172] [cursor=pointer]:
+      - /url: /tasks
+      - img [ref=e173]
+      - generic [ref=e175]: Úkoly
+    - link "Admin" [ref=e176] [cursor=pointer]:
+      - /url: /admin/users
+      - img [ref=e177]
+      - generic [ref=e180]: Admin

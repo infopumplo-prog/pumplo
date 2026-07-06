@@ -1,0 +1,189 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo Logo Pumplo Logo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e8]:
+            - img "Pumplo Logo" [ref=e9]
+            - img "Pumplo Logo" [ref=e10]
+        - button "Otevřít menu" [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+    - generic [ref=e13]:
+      - img [ref=e15]
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e21]: Tvůj digitální trenér v kapse
+          - heading "Nevíš, jak správně cvičit?" [level=1] [ref=e23]:
+            - generic [ref=e25]: Nevíš, jak správně cvičit?
+          - paragraph [ref=e27]: Už žádné bloudění mezi stroji. Pumplo ti vytvoří trénink na míru tvému fitku. Cvič chytře, sleduj své pokroky a začni se ve svém těle cítit skvěle.
+          - generic [ref=e30]:
+            - link "App Store" [ref=e31] [cursor=pointer]:
+              - /url: https://apps.apple.com/app/id6768619318
+              - img [ref=e32]
+              - generic [ref=e34]:
+                - generic [ref=e35]: Stáhnout v
+                - generic [ref=e36]: App Store
+            - link "Google Play" [ref=e37] [cursor=pointer]:
+              - /url: https://play.google.com/store/apps/details?id=com.pumplo.app
+              - img [ref=e38]
+              - generic [ref=e40]:
+                - generic [ref=e41]: Získat na
+                - generic [ref=e42]: Google Play
+        - generic [ref=e43]:
+          - img "Pumplo guiding a real set in the gym" [ref=e47]
+          - img "Pumplo home — your week and next workout" [ref=e51]
+          - img "Pumplo — today's workout, exercise by exercise" [ref=e55]
+          - img "Pumplo — finished workout summary" [ref=e59]
+          - img "Pumplo — find your gym on the map" [ref=e63]
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - heading "Jak to funguje?" [level=2] [ref=e67]
+        - paragraph [ref=e68]: Od stažení k prvnímu tréninku za 2 minuty
+      - generic [ref=e69]:
+        - generic [ref=e71]:
+          - generic [ref=e72]: "1"
+          - img [ref=e74]
+          - heading "Stáhni appku" [level=3] [ref=e76]
+          - paragraph [ref=e77]: Najdi Pumplo v obchodě a stáhni do telefonu. Zdarma. Bez registrací přes e-mail.
+        - generic [ref=e79]:
+          - generic [ref=e80]: "2"
+          - img [ref=e82]
+          - heading "Řekni nám o sobě" [level=3] [ref=e86]
+          - paragraph [ref=e87]: Vyber si fitko, kam chodíš, a řekni nám co chceš — zhubnout, nabrat svaly, zesílit. Za minutu hotovo.
+        - generic [ref=e89]:
+          - generic [ref=e90]: "3"
+          - img [ref=e92]
+          - heading "Začni cvičit" [level=3] [ref=e94]
+          - paragraph [ref=e95]: Pumplo ti vytvoří plán na míru tvému fitku a strojům co tam jsou. Videa, tipy, počítání serií — vše na jednom místě.
+      - heading "Co z toho budeš mít?" [level=3] [ref=e97]
+      - generic [ref=e98]:
+        - generic [ref=e100]:
+          - img [ref=e102]
+          - generic [ref=e105]:
+            - heading "Už nikdy nebudeš tápat" [level=4] [ref=e106]
+            - paragraph [ref=e107]: Víš přesně co dělat, kolik sérií, kolik opakování. Žádné koukání kolem sebe.
+        - generic [ref=e109]:
+          - img [ref=e111]
+          - generic [ref=e114]:
+            - heading "Vidíš svůj pokrok" [level=4] [ref=e115]
+            - paragraph [ref=e116]: Váhy, opakování, streaky. Pumplo si pamatuje každý tvůj trénink.
+        - generic [ref=e118]:
+          - img [ref=e120]
+          - generic [ref=e123]:
+            - heading "Tréninky přímo ve tvém fitku" [level=4] [ref=e124]
+            - paragraph [ref=e125]: Cviky jsou vybrané podle strojů co tvoje fitko má. Žádné 'tohle tu nemáme'.
+        - generic [ref=e127]:
+          - img [ref=e129]
+          - generic [ref=e135]:
+            - heading "Rozcvička, trénink, protažení" [level=4] [ref=e136]
+            - paragraph [ref=e137]: Vše v jedné appce. Jen zmáčkneš start a jedeš.
+    - generic [ref=e139]:
+      - heading "Proč to potřebuješ?" [level=2] [ref=e141]
+      - generic [ref=e142]:
+        - generic [ref=e144]:
+          - img [ref=e146]
+          - heading "Konec pocitu trapnosti" [level=3] [ref=e149]
+          - paragraph [ref=e150]: Už nemusíš tápat, jak nastavit stroj. Naše videa tě provedou každým pohybem.
+        - generic [ref=e152]:
+          - img [ref=e154]
+          - heading "Plán, co ti sedne" [level=3] [ref=e158]
+          - paragraph [ref=e159]: Odpovíš na pár otázek a máš hotový trénink. Všechno je připravené, stačí jen začít.
+        - generic [ref=e161]:
+          - img [ref=e163]
+          - heading "Výsledky, které vidíš" [level=3] [ref=e166]
+          - paragraph [ref=e167]: Každý trénink tě posouvá. Sleduj, jak sílíš a jak se tvé tělo mění v reálném čase.
+    - generic [ref=e170]:
+      - paragraph [ref=e171]: Průměrně až
+      - generic [ref=e172]: 50%
+      - paragraph [ref=e173]: nových členů posilovny odchází během prvních 6 měsíců
+    - generic [ref=e176]:
+      - generic [ref=e177]:
+        - img [ref=e179]
+        - heading "Nedostatek vedení" [level=3] [ref=e182]
+        - paragraph [ref=e183]: Bez jasného plánu je těžké vidět výsledky. Většina lidí improvizuje a zůstane stát na místě.
+      - generic [ref=e184]:
+        - img [ref=e186]
+        - heading "Špatná technika" [level=3] [ref=e188]
+        - paragraph [ref=e189]: Cvičit "podle pocitu" často vede ke špatné technice. Ve výsledku pak nepřichází ani pokrok.
+      - generic [ref=e190]:
+        - img [ref=e192]
+        - heading "Ztráta motivace" [level=3] [ref=e195]
+        - paragraph [ref=e196]: Když nevidíš výsledky, motivace rychle zmizí. Proto většina lidí po pár měsících končí.
+    - generic [ref=e198]:
+      - generic [ref=e199]:
+        - heading "Naše řešení" [level=2] [ref=e200]
+        - paragraph [ref=e201]: Váš digitální trenér vždy po ruce
+      - generic [ref=e202]:
+        - generic [ref=e203]:
+          - generic [ref=e205]:
+            - generic [ref=e206]:
+              - img [ref=e208]
+              - generic [ref=e211]: "1"
+            - heading "Dotazník" [level=3] [ref=e212]
+            - paragraph [ref=e213]: Odpověz na pár otázek o svém cíli a zkušenostech. Díky nim Pumplo pochopí, jak trénuješ.
+          - generic [ref=e215]:
+            - generic [ref=e216]:
+              - img [ref=e218]
+              - generic [ref=e222]: "2"
+            - heading "Individuální plán" [level=3] [ref=e223]
+            - paragraph [ref=e224]: AI ti sestaví trénink podle vybavení tvého fitka. Plán se každý týden přizpůsobí tvému progresu.
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - img [ref=e229]
+              - generic [ref=e232]: "3"
+            - heading "Jasné vedení" [level=3] [ref=e233]
+            - paragraph [ref=e234]: U každého stroje hned víš, jak ho použít — s animacemi, tipy i správnou technikou.
+        - generic [ref=e235]:
+          - img "Pumplo home — your week, total progress and next workout" [ref=e241]
+          - img "Pumplo guiding a real workout set in the gym" [ref=e247]
+    - generic [ref=e249]:
+      - heading "Cvičení, které přináší výsledky" [level=2] [ref=e250]
+      - generic [ref=e251]:
+        - generic [ref=e252]:
+          - img [ref=e254]
+          - heading "Konečně jasný plán na každý trénink" [level=3] [ref=e257]
+          - paragraph [ref=e258]: Žádné bloudění po fitku. Otevřeš appku → jedeš.
+        - generic [ref=e259]:
+          - img [ref=e261]
+          - heading "Cvičíš správně" [level=3] [ref=e264]
+          - paragraph [ref=e265]: Animace a jasné instrukce ti ukážou, jak provést každý cvik bezpečně a efektivně.
+        - generic [ref=e266]:
+          - img [ref=e268]
+          - heading "Zůstaneš motivovaný" [level=3] [ref=e270]
+          - paragraph [ref=e271]: Gamifikace, výzvy a odměny ti pomůžou držet tempo a nepolevit.
+        - generic [ref=e272]:
+          - img [ref=e274]
+          - heading "Vidíš svůj progres" [level=3] [ref=e277]
+          - paragraph [ref=e278]: Grafy a statistiky ti ukážou, že tvůj progres je skutečný.
+    - generic [ref=e281]:
+      - generic [ref=e282]:
+        - img [ref=e283]
+        - generic [ref=e285]: Již brzy ke stažení
+      - heading "Buď mezi prvními" [level=2] [ref=e286]
+      - paragraph [ref=e287]: Zanech e-mail a my ti dáme vědět, jakmile spustíme aplikaci
+      - generic [ref=e288]:
+        - generic [ref=e289]:
+          - img [ref=e290]
+          - textbox "tvuj@email.cz" [ref=e293]
+        - button "Chci vědět první" [ref=e294] [cursor=pointer]
+    - contentinfo [ref=e295]:
+      - generic [ref=e297]:
+        - img "Pumplo" [ref=e298]
+        - generic [ref=e299]:
+          - button "Pro cvičící" [ref=e300] [cursor=pointer]
+          - link "Pro fitness centra" [ref=e301] [cursor=pointer]:
+            - /url: /business
+          - link "Kontakt" [ref=e302] [cursor=pointer]:
+            - /url: /contact
+        - paragraph [ref=e303]: © 2025 Pumplo. Váš digitální trenér v kapse.
+        - generic [ref=e304]:
+          - link "Zásady ochrany osobních údajů" [ref=e305] [cursor=pointer]:
+            - /url: /privacy
+          - generic [ref=e306]: ·
+          - link "Všeobecné obchodní podmínky" [ref=e307] [cursor=pointer]:
+            - /url: /terms
+        - paragraph [ref=e308]: "GynTools CZ s.r.o., IČ: 278 04 461 · info.pumplo@gmail.com"

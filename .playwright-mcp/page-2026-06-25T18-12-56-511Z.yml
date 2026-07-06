@@ -1,0 +1,17 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - button "Otevřít menu" [ref=e6] [cursor=pointer]:
+      - img [ref=e7]
+    - button "Organizace" [ref=e10] [cursor=pointer]:
+      - generic [ref=e11]: Organizace
+      - img [ref=e12]
+    - button "Upozornění" [ref=e15] [cursor=pointer]:
+      - img [ref=e16]
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - complementary [ref=e21]:
+        - button "Moje úlohy" [ref=e22] [cursor=pointer]
+        - button "Vše" [ref=e23] [cursor=pointer]
+      - main [ref=e24]:
+        - heading "Úkoly" [level=1] [ref=e25]
+        - paragraph [ref=e26]: Žádné úkoly.

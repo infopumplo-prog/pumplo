@@ -1,0 +1,13 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - generic [ref=e5]: P
+    - heading "Pokračujte v aplikaci Pumplo" [level=1] [ref=e6]
+    - paragraph [ref=e7]: "Pumplo používejte v mobilní aplikaci. Stáhněte si ji zdarma:"
+    - generic [ref=e8]:
+      - link "App Store (iOS)" [ref=e9] [cursor=pointer]:
+        - /url: https://apps.apple.com/app/pumplo/id6768619318
+      - link "Google Play (Android)" [ref=e10] [cursor=pointer]:
+        - /url: https://play.google.com/store/apps/details?id=com.pumplo.app

@@ -55,6 +55,7 @@ import SharedPlan from "@/pages/SharedPlan";
 import ResetPassword from "@/pages/ResetPassword";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
+import { flushWorkoutSaveQueue } from "@/lib/workoutSaveQueue";
 import WebGate from "@/components/WebGate";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
@@ -181,6 +182,27 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Retries workout saves that failed offline (F1): on app start, on native
+// resume, and when the network comes back.
+const SaveQueueFlusher = () => {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    flushWorkoutSaveQueue();
+    const retry = () => { flushWorkoutSaveQueue(); };
+    window.addEventListener('online', retry);
+    let listener: Promise<{ remove: () => void }> | null = null;
+    if (Capacitor.isNativePlatform()) {
+      listener = CapApp.addListener('resume', retry);
+    }
+    return () => {
+      window.removeEventListener('online', retry);
+      listener?.then(h => h.remove());
+    };
+  }, [user]);
+  return null;
+};
+
 const AppRoutes = () => {
   usePushRegistration();
   usePushNavigation();
@@ -188,6 +210,7 @@ const AppRoutes = () => {
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+    <SaveQueueFlusher />
   <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />

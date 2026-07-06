@@ -512,7 +512,7 @@ export const ExercisePlayer = ({
           <DrawerHeader>
             <DrawerTitle>{exerciseName}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <ExerciseInfoContent
               category={category}
               equipmentType={equipmentType}

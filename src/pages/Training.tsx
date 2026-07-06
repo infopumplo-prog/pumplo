@@ -1281,6 +1281,9 @@ const Training = () => {
         .from('workout_session_sets')
         .select('exercise_id, exercise_name, set_number, reps, weight_kg')
         .eq('session_id', sessionId)
+        // created_at is distinct per exercise (batched inserts) → chronological
+        // workout order; exercise_name keeps legacy same-timestamp rows grouped
+        .order('created_at')
         .order('exercise_name')
         .order('set_number');
 

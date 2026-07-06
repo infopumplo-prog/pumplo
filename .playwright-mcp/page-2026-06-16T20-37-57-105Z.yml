@@ -1,0 +1,25 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - generic [ref=e8]:
+      - button "🇨🇿 CS" [ref=e9] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e10] [cursor=pointer]
+    - generic [ref=e11]:
+      - img "Pumplo Logo" [ref=e13]
+      - heading "The future of fitness is in results. For you and for your gym." [level=1] [ref=e14]:
+        - text: The future of fitness is in results.
+        - generic [ref=e15]: For you and for your gym.
+      - paragraph [ref=e16]: "Choose your path to better results:"
+      - generic [ref=e17]:
+        - link "I want to start working out" [ref=e18] [cursor=pointer]:
+          - /url: /client
+          - button "I want to start working out" [ref=e19]:
+            - img
+            - text: I want to start working out
+        - link "I want Pumplo for my gym" [ref=e20] [cursor=pointer]:
+          - /url: /business
+          - button "I want Pumplo for my gym" [ref=e21]:
+            - img
+            - text: I want Pumplo for my gym

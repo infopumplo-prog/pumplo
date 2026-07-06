@@ -37,8 +37,14 @@ Captured from David's training-session notes + 4 screenshots. Big update before 
 - **C4. Plakát na recepci** — design the reception poster (QR + value prop).
 - **C5. Polepit vše** — physical stickers/QR at the gym, ASAP.
 
+## E. Launch-prep batch (2026-06-12, David)
+- **E1. Web redesign (pumplo.com / repo pumplo-redesign-vibe):** apka musí být jasně vidět (screenshoty, store badges s reálnými odkazy — App Store id 6768619318, Play com.pumplo.app) + **odstranit ceny** z webu.
+- **E2. Materiály pro Eurogym:** plakát na recepci (=C4) + materiály do šaten, polepy/QR (=C5). Print-ready podklady.
+- **E3. Eurogym admin přístupy (=C3):** změnit e-mail + heslo účtu eurogym@pumplo.com na reálné údaje; v Pumplo Adminu možnost změny hesla (self-service reset).
+- **E4. Gym-admin e-maily:** aby Eurogymu jako správci posilovny chodily e-maily (feedback→admin, týdenní report, churn alerty) — navazuje na pozastavený gym-owner-reporting projekt.
+
 ## Status
-Triage done 2026-06-08. Order/priority pending David's confirmation.
+Triage done 2026-06-08. Order/priority pending David's confirmation. E-batch added 2026-06-12.
 
 ## D. Second feedback batch (2026-06-10, David's training notes)
 - **D1. ✅ DONE (2cfa7db).** Root cause: advanceToNextDay only ran on the Finish tap; closing the app on the summary/share screen skipped it (David's data proved it: completed A on Jun 9, index stayed 0→A). Fix: fetchActivePlan self-heals — if last completed non-bonus session letter == counter letter, advance & persist. Original: trained on a rest day; workout started as LOWER (same as last completed) instead of UPPER (next in sequence). Day-progression (current_day_index) doesn't advance / off-schedule start picks wrong day.

@@ -421,8 +421,12 @@ const Home = () => {
                           const nextDay = schedule[0];
                           if (!nextDay) return null;
                           const isCurrentDay = nextDay.dayOfWeek === today;
-                          const isCompletedToday = isCurrentDay && completedTodayDayLetter === nextDay.dayLetter;
-                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === nextDay.dayLetter);
+                          // F9: a session completed today for this plan always shows the green
+                          // card — the day counter advances right after finishing, so nextDay
+                          // already points past the completed workout and must not gate this.
+                          const isCompletedToday = wasCompletedToday;
+                          const completedLetter = (completedTodayDayLetter || '').replace('_EXT', '');
+                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === (isCompletedToday ? completedLetter : nextDay.dayLetter));
                           const dayNameMap: Record<string, string> = {
                             'Horní tělo': t('workout.day_upper_body'),
                             'Dolní tělo': t('workout.day_lower_body'),
@@ -456,7 +460,7 @@ const Home = () => {
                                       {t('home.workout_completed')}
                                     </p>
                                     <p className="text-white/70 text-xs">
-                                      {dayNamesCz[nextDay.dayOfWeek] || nextDay.dayOfWeek}
+                                      {dayNamesCz[today] || today}
                                       {dayTypeName && ` – ${dayTypeName}`}
                                     </p>
                                   </div>
@@ -514,9 +518,6 @@ const Home = () => {
                             </Link>
                           </div>
                           {historyExpanded && (() => {
-                            const last = recentSessions[0];
-                            const letter = last.day_letter.replace('_EXT', '');
-                            const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
                             const nameMap: Record<string, string> = {
                               'Horní tělo': t('workout.day_upper_body'),
                               'Dolní tělo': t('workout.day_lower_body'),
@@ -528,8 +529,17 @@ const Home = () => {
                               'Nohy': t('workout.day_leg_day'),
                               'Push': 'Push', 'Pull': 'Pull', 'Tlak': 'Push', 'Tah': 'Pull',
                             };
-                            const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
-                            return <WorkoutSessionCard session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                            // F7: same list as the history section — newest first
+                            return (
+                              <div className="space-y-2">
+                                {recentSessions.slice(0, 3).map(s => {
+                                  const letter = s.day_letter.replace('_EXT', '');
+                                  const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
+                                  const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
+                                  return <WorkoutSessionCard key={s.id} session={s} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                                })}
+                              </div>
+                            );
                           })()}
                         </div>
                       )}

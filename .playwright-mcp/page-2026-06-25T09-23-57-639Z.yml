@@ -1,0 +1,21 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: MámOkno
+    - heading "Vítejte zpět" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Přihlaste se do svého účtu
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: E-mail
+      - textbox "E-mail" [ref=e12]:
+        - /placeholder: vas@email.cz
+        - text: info.pumplo@gmail.com
+    - generic [ref=e13]:
+      - generic [ref=e14]: Heslo
+      - textbox "Heslo" [ref=e15]:
+        - /placeholder: ••••••••
+        - text: Taskchat-1404Mo!
+    - button "Přihlásit se" [ref=e16] [cursor=pointer]
+  - generic [ref=e19]: NEBO
+  - button "Pokračovat přes Google" [ref=e21] [cursor=pointer]:
+    - img [ref=e22]
+    - text: Pokračovat přes Google

@@ -1,0 +1,557 @@
+- generic [ref=e1]:
+  - region "Vážime si vaše súkromie" [ref=e2]:
+    - generic [ref=e4]:
+      - heading "Vážime si vaše súkromie" [level=2] [ref=e5]
+      - generic [ref=e6]:
+        - paragraph [ref=e8]: Súbory cookie používame na zlepšenie vášho zážitku z prehliadania, poskytovanie prispôsobených reklám alebo obsahu a analýzu našej návštevnosti. Kliknutím na „Prijať všetko“ súhlasíte s naším používaním súborov cookie.
+        - generic [ref=e9]:
+          - button "Prispôsobiť" [ref=e10] [cursor=pointer]
+          - button "Odmietnuť" [ref=e11] [cursor=pointer]
+          - button "Prijať všetko" [ref=e12] [cursor=pointer]
+  - generic [ref=e13]:
+    - banner [ref=e14]:
+      - generic [ref=e17]:
+        - link "grantexpert logo" [ref=e19] [cursor=pointer]:
+          - /url: https://www.grantexpert.sk/
+          - img "grantexpert logo" [ref=e20]
+        - generic [ref=e24]: Grantexpert.sk
+    - main [ref=e31]:
+      - heading "Všetky granty na jednom mieste" [level=1] [ref=e33]
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - heading "Filter" [level=3] [ref=e41]
+          - textbox "Zadajte hľadaný kód výzvy alebo programu" [ref=e44]
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e49] [cursor=pointer]:
+                - generic [ref=e50]: "361"
+                - generic [ref=e51]: Aktuálnych výziev
+              - generic [ref=e53] [cursor=pointer]: Organizácia
+            - generic [ref=e54]:
+              - generic [ref=e56] [cursor=pointer]: Oblasti záujmu
+              - generic [ref=e58] [cursor=pointer]: Lokalita
+          - generic [ref=e59]:
+            - generic [ref=e65]: Zobraziť iba nové
+            - generic [ref=e71]: Zobraziť obľúbené
+        - heading "Vyhľadávané kategórie" [level=3] [ref=e73]
+      - generic [ref=e81]:
+        - img [ref=e83]
+        - generic [ref=e84]:
+          - generic [ref=e89]: 361 výziev
+          - generic [ref=e91]:
+            - link "TOP star-blank Nová výzva Vzorový projekt Grant na inkluzívne opatrenia proti diskriminácii a segregácii Rómov (2026) Výzva podporuje projekty mimovládnych a cirkevných organizácií zamerané na osobnostný rozvoj, aktivizáciu mladých ľudí a rómskych dievčat vo vzdelávaní, zamestnaní a komunitnom živote. Výška dotácie 300 000 € Miera dotácie 92 % Ostáva dní 39 Od 4.6.2026 Do 14.7.2026" [ref=e92] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-na-inkluzivne-opatrenia-proti-diskriminacii-a-segregacii-romov-2026
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - text: TOP
+                  - generic [ref=e96]:
+                    - img "star-blank" [ref=e97]
+                    - text: Nová výzva
+                  - text: Vzorový projekt
+                - generic [ref=e98]:
+                  - generic [ref=e99]:
+                    - paragraph
+                    - heading "Grant na inkluzívne opatrenia proti diskriminácii a segregácii Rómov (2026)" [level=2] [ref=e100]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e101]: Výzva podporuje projekty mimovládnych a cirkevných organizácií zamerané na osobnostný rozvoj, aktivizáciu mladých ľudí a rómskych dievčat vo vzdelávaní, zamestnaní a komunitnom živote.
+                    - paragraph
+                  - generic [ref=e103]:
+                    - generic [ref=e105]:
+                      - generic [ref=e106]:
+                        - generic [ref=e107]: Výška dotácie
+                        - generic [ref=e108]: 300 000 €
+                      - generic [ref=e109]:
+                        - generic [ref=e110]: Miera dotácie
+                        - generic [ref=e111]: 92 %
+                    - generic [ref=e113]:
+                      - generic [ref=e114]:
+                        - generic [ref=e115]: Ostáva dní
+                        - generic [ref=e116]: "39"
+                      - generic [ref=e118]:
+                        - generic [ref=e119]: Od 4.6.2026
+                        - generic [ref=e120]: Do 14.7.2026
+            - button "Pridať medzi obľúbené" [ref=e121] [cursor=pointer]:
+              - img [ref=e122]
+          - generic [ref=e124]:
+            - link "TOP star-blank Nová výzva Vzorový projekt Grant na rozvoj komplexnej starostlivosti o deti zo znevýhodneného prostredia (2026) Táto výzva financuje nadnárodné projekty, ktoré testujú a škálujú integrované modely poskytovania služieb pre deti v núdzi, ako je mapovanie bariér prístupu a pilotné projekty koordinovaného poskytovania vzdelávacích, zdravotn… Výška dotácie 2 000 000 € Miera dotácie 80 % Ostáva dní 117 Od 3.6.2026 Do 30.9.2026" [ref=e125] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-na-rozvoj-komplexnej-starostlivosti-o-deti-zo-znevyhodneneho-prostredia-2026
+              - generic [ref=e127]:
+                - generic [ref=e128]:
+                  - text: TOP
+                  - generic [ref=e129]:
+                    - img "star-blank" [ref=e130]
+                    - text: Nová výzva
+                  - text: Vzorový projekt
+                - generic [ref=e131]:
+                  - generic [ref=e132]:
+                    - paragraph
+                    - heading "Grant na rozvoj komplexnej starostlivosti o deti zo znevýhodneného prostredia (2026)" [level=2] [ref=e133]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e134]: Táto výzva financuje nadnárodné projekty, ktoré testujú a škálujú integrované modely poskytovania služieb pre deti v núdzi, ako je mapovanie bariér prístupu a pilotné projekty koordinovaného poskytovania vzdelávacích, zdravotn…
+                  - generic [ref=e136]:
+                    - generic [ref=e138]:
+                      - generic [ref=e139]:
+                        - generic [ref=e140]: Výška dotácie
+                        - generic [ref=e141]: 2 000 000 €
+                      - generic [ref=e142]:
+                        - generic [ref=e143]: Miera dotácie
+                        - generic [ref=e144]: 80 %
+                    - generic [ref=e146]:
+                      - generic [ref=e147]:
+                        - generic [ref=e148]: Ostáva dní
+                        - generic [ref=e149]: "117"
+                      - generic [ref=e151]:
+                        - generic [ref=e152]: Od 3.6.2026
+                        - generic [ref=e153]: Do 30.9.2026
+            - button "Pridať medzi obľúbené" [ref=e154] [cursor=pointer]:
+              - img [ref=e155]
+          - generic [ref=e157]:
+            - link "TOP star-blank Nová výzva Podpora pre zaujímavé enviro projekty v cestovnom ruchu (2026) Podpora pre organizácie z celého sveta, ktoré uprednostňujú sociálny, environmentálny alebo etický dopad. Využite túto príležitosť na prezentáciu svojej iniciatívy alebo programu a získajte medzinárodnú viditeľnosť. Výška dotácie 10 000 $ Miera dotácie 100 % Ostáva dní 71 Od 3.6.2026 Do 15.8.2026" [ref=e158] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/podpora-pre-zaujimave-enviro-projekty-v-cestovnom-ruchu-2026
+              - generic [ref=e160]:
+                - generic [ref=e161]:
+                  - text: TOP
+                  - generic [ref=e162]:
+                    - img "star-blank" [ref=e163]
+                    - text: Nová výzva
+                - generic [ref=e164]:
+                  - generic [ref=e165]:
+                    - paragraph
+                    - heading "Podpora pre zaujímavé enviro projekty v cestovnom ruchu (2026)" [level=2] [ref=e166]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e167]: Podpora pre organizácie z celého sveta, ktoré uprednostňujú sociálny, environmentálny alebo etický dopad. Využite túto príležitosť na prezentáciu svojej iniciatívy alebo programu a získajte medzinárodnú viditeľnosť.
+                    - paragraph
+                  - generic [ref=e169]:
+                    - generic [ref=e171]:
+                      - generic [ref=e172]:
+                        - generic [ref=e173]: Výška dotácie
+                        - generic [ref=e174]: 10 000 $
+                      - generic [ref=e175]:
+                        - generic [ref=e176]: Miera dotácie
+                        - generic [ref=e177]: 100 %
+                    - generic [ref=e179]:
+                      - generic [ref=e180]:
+                        - generic [ref=e181]: Ostáva dní
+                        - generic [ref=e182]: "71"
+                      - generic [ref=e184]:
+                        - generic [ref=e185]: Od 3.6.2026
+                        - generic [ref=e186]: Do 15.8.2026
+            - button "Pridať medzi obľúbené" [ref=e187] [cursor=pointer]:
+              - img [ref=e188]
+          - generic [ref=e190]:
+            - link "TOP star-blank Nová výzva Dotácia na zateplenie a komplexnú obnovu existujúcich verejných budov, škôl a kultúrnych objektov (2026) Výzva podporuje zateplenie a komplexnú obnovu existujúcich verejných budov škôl a kultúrnych objektov, vrátane modernizácie technických zariadení budov s cieľom znížiť spotrebu energie a emisie a zlepšiť kvalitu ovzdušia. Výška dotácie 5 000 000 € Miera dotácie 95 % Ostáva dní 87 Od 28.5.2026 Do 31.8.2026" [ref=e191] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/dotacia-na-zateplenie-a-komplexnu-obnovu-existujucich-verejnych-budov-skol-a-kulturnych-objektov-2026
+              - generic [ref=e193]:
+                - generic [ref=e194]:
+                  - text: TOP
+                  - generic [ref=e195]:
+                    - img "star-blank" [ref=e196]
+                    - text: Nová výzva
+                - generic [ref=e197]:
+                  - generic [ref=e198]:
+                    - paragraph
+                    - heading "Dotácia na zateplenie a komplexnú obnovu existujúcich verejných budov, škôl a kultúrnych objektov (2026)" [level=2] [ref=e199]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e200]: Výzva podporuje zateplenie a komplexnú obnovu existujúcich verejných budov škôl a kultúrnych objektov, vrátane modernizácie technických zariadení budov s cieľom znížiť spotrebu energie a emisie a zlepšiť kvalitu ovzdušia.
+                    - paragraph
+                  - generic [ref=e202]:
+                    - generic [ref=e204]:
+                      - generic [ref=e205]:
+                        - generic [ref=e206]: Výška dotácie
+                        - generic [ref=e207]: 5 000 000 €
+                      - generic [ref=e208]:
+                        - generic [ref=e209]: Miera dotácie
+                        - generic [ref=e210]: 95 %
+                    - generic [ref=e212]:
+                      - generic [ref=e213]:
+                        - generic [ref=e214]: Ostáva dní
+                        - generic [ref=e215]: "87"
+                      - generic [ref=e217]:
+                        - generic [ref=e218]: Od 28.5.2026
+                        - generic [ref=e219]: Do 31.8.2026
+            - button "Pridať medzi obľúbené" [ref=e220] [cursor=pointer]:
+              - img [ref=e221]
+          - generic [ref=e223]:
+            - link "TOP star-blank Nová výzva Grant na podporu kvalitných a udržateľných projektov mimovládnych organizácií (2026) Výzva podporí projekty mimovládnych organizácií. Získať môžete financie na rozvoj športu, podporu a ochranu zdravia, sociálnu pomoc, vzdelávanie či ochranu životného prostredia. Výška dotácie 5 000 € Miera dotácie nie je určená Ostáva dní 21 Od 27.5.2026 Do 26.6.2026" [ref=e224] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-na-podporu-kvalitnych-a-udrzatelnych-projektov-mimovladnych-organizacii-2026
+              - generic [ref=e226]:
+                - generic [ref=e227]:
+                  - text: TOP
+                  - generic [ref=e228]:
+                    - img "star-blank" [ref=e229]
+                    - text: Nová výzva
+                - generic [ref=e230]:
+                  - generic [ref=e231]:
+                    - paragraph
+                    - heading "Grant na podporu kvalitných a udržateľných projektov mimovládnych organizácií (2026)" [level=2] [ref=e232]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e233]: Výzva podporí projekty mimovládnych organizácií. Získať môžete financie na rozvoj športu, podporu a ochranu zdravia, sociálnu pomoc, vzdelávanie či ochranu životného prostredia.
+                    - paragraph
+                  - generic [ref=e235]:
+                    - generic [ref=e237]:
+                      - generic [ref=e238]:
+                        - generic [ref=e239]: Výška dotácie
+                        - generic [ref=e240]: 5 000 €
+                      - generic [ref=e241]:
+                        - generic [ref=e242]: Miera dotácie
+                        - generic [ref=e243]: nie je určená
+                    - generic [ref=e245]:
+                      - generic [ref=e246]:
+                        - generic [ref=e247]: Ostáva dní
+                        - generic [ref=e248]: "21"
+                      - generic [ref=e250]:
+                        - generic [ref=e251]: Od 27.5.2026
+                        - generic [ref=e252]: Do 26.6.2026
+            - button "Pridať medzi obľúbené" [ref=e253] [cursor=pointer]:
+              - img [ref=e254]
+          - generic [ref=e256]:
+            - link "TOP star-blank Nová výzva Vzorový projekt Grant na kultúrnu spoluprácu a miestny rozvoj (2026) Výzva podporuje projekty, ktoré cez umeleckú tvorbu a kultúrnu výmenu posilnia slobodu prejavu, sociálnu inklúziu a odolnosť voči dezinformáciám. Financovať môžete kvalitnú umeleckú a kultúrnu tvorbu a bezpečné priestory pre dialóg a kult… Výška dotácie 700 000 € Miera dotácie 100 % Ostáva dní 61 Od 26.5.2026 Do 5.8.2026" [ref=e257] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-na-kulturnu-spolupracu-a-miestny-rozvoj-2026
+              - generic [ref=e259]:
+                - generic [ref=e260]:
+                  - text: TOP
+                  - generic [ref=e261]:
+                    - img "star-blank" [ref=e262]
+                    - text: Nová výzva
+                  - text: Vzorový projekt
+                - generic [ref=e263]:
+                  - generic [ref=e264]:
+                    - paragraph
+                    - heading "Grant na kultúrnu spoluprácu a miestny rozvoj (2026)" [level=2] [ref=e265]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e266]: Výzva podporuje projekty, ktoré cez umeleckú tvorbu a kultúrnu výmenu posilnia slobodu prejavu, sociálnu inklúziu a odolnosť voči dezinformáciám. Financovať môžete kvalitnú umeleckú a kultúrnu tvorbu a bezpečné priestory pre dialóg a kult…
+                  - generic [ref=e268]:
+                    - generic [ref=e270]:
+                      - generic [ref=e271]:
+                        - generic [ref=e272]: Výška dotácie
+                        - generic [ref=e273]: 700 000 €
+                      - generic [ref=e274]:
+                        - generic [ref=e275]: Miera dotácie
+                        - generic [ref=e276]: 100 %
+                    - generic [ref=e278]:
+                      - generic [ref=e279]:
+                        - generic [ref=e280]: Ostáva dní
+                        - generic [ref=e281]: "61"
+                      - generic [ref=e283]:
+                        - generic [ref=e284]: Od 26.5.2026
+                        - generic [ref=e285]: Do 5.8.2026
+            - button "Pridať medzi obľúbené" [ref=e286] [cursor=pointer]:
+              - img [ref=e287]
+          - generic [ref=e289]:
+            - link "TOP star-blank Nová výzva Vzorový projekt Grant na udržateľnú obnovu a využitie kultúrnych pamiatok na Slovensku (2026) Výzva podporuje environmentálne zodpovednú obnovu a opätovné využitie národných kultúrnych pamiatok, vrátane lokalít UNESCO, spojené s komunitným oživením a zapojením miestnych obyvateľov. Výška dotácie 5 000 000 € Miera dotácie 100 % Ostáva dní 122 Od 26.5.2026 Do 5.10.2026" [ref=e290] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-na-udrzatelnu-obnovu-a-vyuzitie-kulturnych-pamiatok-na-slovensku-2026
+              - generic [ref=e292]:
+                - generic [ref=e293]:
+                  - text: TOP
+                  - generic [ref=e294]:
+                    - img "star-blank" [ref=e295]
+                    - text: Nová výzva
+                  - text: Vzorový projekt
+                - generic [ref=e296]:
+                  - generic [ref=e297]:
+                    - paragraph
+                    - heading "Grant na udržateľnú obnovu a využitie kultúrnych pamiatok na Slovensku (2026)" [level=2] [ref=e298]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e299]: Výzva podporuje environmentálne zodpovednú obnovu a opätovné využitie národných kultúrnych pamiatok, vrátane lokalít UNESCO, spojené s komunitným oživením a zapojením miestnych obyvateľov.
+                    - paragraph
+                  - generic [ref=e301]:
+                    - generic [ref=e303]:
+                      - generic [ref=e304]:
+                        - generic [ref=e305]: Výška dotácie
+                        - generic [ref=e306]: 5 000 000 €
+                      - generic [ref=e307]:
+                        - generic [ref=e308]: Miera dotácie
+                        - generic [ref=e309]: 100 %
+                    - generic [ref=e311]:
+                      - generic [ref=e312]:
+                        - generic [ref=e313]: Ostáva dní
+                        - generic [ref=e314]: "122"
+                      - generic [ref=e316]:
+                        - generic [ref=e317]: Od 26.5.2026
+                        - generic [ref=e318]: Do 5.10.2026
+            - button "Pridať medzi obľúbené" [ref=e319] [cursor=pointer]:
+              - img [ref=e320]
+          - generic [ref=e322]:
+            - link "TOP star-blank Nová výzva Vzorový projekt Grant až do 150 000 € na riešenia v oblasti umelej inteligencie a dát pre energetický sektor (2026) Výzva poskytuje financovanie na vývoj, testovanie a overovanie riešení založených na umelej inteligencii a dátach, ktoré optimalizujú energetické zdroje a zlepšujú digitálne energetické služby. Výška dotácie 150 000 € Miera dotácie nie je určená Ostáva dní 45 Od 22.5.2026 Do 20.7.2026" [ref=e323] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/grant-az-do-150-000-eur-na-riesenia-v-oblasti-umelej-inteligencie-a-dat-pre-energeticky-sektor-2026
+              - generic [ref=e325]:
+                - generic [ref=e326]:
+                  - text: TOP
+                  - generic [ref=e327]:
+                    - img "star-blank" [ref=e328]
+                    - text: Nová výzva
+                  - text: Vzorový projekt
+                - generic [ref=e329]:
+                  - generic [ref=e330]:
+                    - paragraph
+                    - heading "Grant až do 150 000 € na riešenia v oblasti umelej inteligencie a dát pre energetický sektor (2026)" [level=2] [ref=e331]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e332]: Výzva poskytuje financovanie na vývoj, testovanie a overovanie riešení založených na umelej inteligencii a dátach, ktoré optimalizujú energetické zdroje a zlepšujú digitálne energetické služby.
+                    - paragraph
+                  - generic [ref=e334]:
+                    - generic [ref=e336]:
+                      - generic [ref=e337]:
+                        - generic [ref=e338]: Výška dotácie
+                        - generic [ref=e339]: 150 000 €
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: Miera dotácie
+                        - generic [ref=e342]: nie je určená
+                    - generic [ref=e344]:
+                      - generic [ref=e345]:
+                        - generic [ref=e346]: Ostáva dní
+                        - generic [ref=e347]: "45"
+                      - generic [ref=e349]:
+                        - generic [ref=e350]: Od 22.5.2026
+                        - generic [ref=e351]: Do 20.7.2026
+            - button "Pridať medzi obľúbené" [ref=e352] [cursor=pointer]:
+              - img [ref=e353]
+          - generic [ref=e355]:
+            - link "TOP Vzorový projekt Získajte grant na produktovú inováciu v automotive (2026) Financovanie pre oblasti mobility, dopravy a automobilového priemyslu na vývoj inovatívnych produktov/služieb a zlepšenie priemyselných procesov s cieľom dosiahnuť výrobu s nulovými emisiami, cirkuláciu kritických surovín a digitálne riešenia v oblasti mobility.… Výška dotácie 30 000 € Miera dotácie 90 % Ostáva dní 38 Od 18.5.2026 Do 13.7.2026" [ref=e356] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/ziskajte-grant-na-produktovu-inovaciu-v-automotive-2026
+              - generic [ref=e358]:
+                - generic [ref=e359]: TOP Vzorový projekt
+                - generic [ref=e360]:
+                  - generic [ref=e361]:
+                    - paragraph
+                    - heading "Získajte grant na produktovú inováciu v automotive (2026)" [level=2] [ref=e362]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e363]: Financovanie pre oblasti mobility, dopravy a automobilového priemyslu na vývoj inovatívnych produktov/služieb a zlepšenie priemyselných procesov s cieľom dosiahnuť výrobu s nulovými emisiami, cirkuláciu kritických surovín a digitálne riešenia v oblasti mobility.…
+                  - generic [ref=e365]:
+                    - generic [ref=e367]:
+                      - generic [ref=e368]:
+                        - generic [ref=e369]: Výška dotácie
+                        - generic [ref=e370]: 30 000 €
+                      - generic [ref=e371]:
+                        - generic [ref=e372]: Miera dotácie
+                        - generic [ref=e373]: 90 %
+                    - generic [ref=e375]:
+                      - generic [ref=e376]:
+                        - generic [ref=e377]: Ostáva dní
+                        - generic [ref=e378]: "38"
+                      - generic [ref=e380]:
+                        - generic [ref=e381]: Od 18.5.2026
+                        - generic [ref=e382]: Do 13.7.2026
+            - button "Pridať medzi obľúbené" [ref=e383] [cursor=pointer]:
+              - img [ref=e384]
+          - generic [ref=e386]:
+            - link "TOP Vzorový projekt Získajte až 1 000 € na zaujímavý program vo vašom letnom tábore (2026) Z výzvy môžete získať až 1 000 € na honorár lektora, vstupné do vedeckých centier či materiál na pokusy a bádateľské aktivity. Výška dotácie 1 000 € Miera dotácie nie je určená Ostáva dní 5 Od 15.5.2026 Do 10.6.2026" [ref=e387] [cursor=pointer]:
+              - /url: https://app.grantexpert.sk/vyzva/ziskajte-az-1-000-eur-na-zaujimavy-program-vo-vasom-letnom-tabore-2026
+              - generic [ref=e389]:
+                - generic [ref=e390]: TOP Vzorový projekt
+                - generic [ref=e391]:
+                  - generic [ref=e392]:
+                    - paragraph
+                    - heading "Získajte až 1 000 € na zaujímavý program vo vašom letnom tábore (2026)" [level=2] [ref=e393]
+                    - paragraph
+                    - paragraph
+                    - paragraph [ref=e394]: Z výzvy môžete získať až 1 000 € na honorár lektora, vstupné do vedeckých centier či materiál na pokusy a bádateľské aktivity.
+                    - paragraph
+                  - generic [ref=e396]:
+                    - generic [ref=e398]:
+                      - generic [ref=e399]:
+                        - generic [ref=e400]: Výška dotácie
+                        - generic [ref=e401]: 1 000 €
+                      - generic [ref=e402]:
+                        - generic [ref=e403]: Miera dotácie
+                        - generic [ref=e404]: nie je určená
+                    - generic [ref=e406]:
+                      - generic [ref=e407]:
+                        - generic [ref=e408]: Ostáva dní
+                        - generic [ref=e409]: "5"
+                      - generic [ref=e411]:
+                        - generic [ref=e412]: Od 15.5.2026
+                        - generic [ref=e413]: Do 10.6.2026
+            - button "Pridať medzi obľúbené" [ref=e414] [cursor=pointer]:
+              - img [ref=e415]
+          - generic [ref=e418]:
+            - navigation [ref=e419]:
+              - list [ref=e420]:
+                - listitem [ref=e421]:
+                  - link "1" [ref=e422] [cursor=pointer]:
+                    - /url: "#strankatop"
+                - listitem [ref=e423]:
+                  - link "2" [ref=e424] [cursor=pointer]:
+                    - /url: "#strankatop"
+                - listitem [ref=e425]:
+                  - link "3" [ref=e426] [cursor=pointer]:
+                    - /url: "#strankatop"
+                - listitem [ref=e427]:
+                  - link "4" [ref=e428] [cursor=pointer]:
+                    - /url: "#strankatop"
+                - listitem [ref=e429]:
+                  - link "5" [ref=e430] [cursor=pointer]:
+                    - /url: "#strankatop"
+                - listitem [ref=e431]
+                - listitem [ref=e432]:
+                  - link "37" [ref=e433] [cursor=pointer]:
+                    - /url: "#strankatop"
+            - link [ref=e434] [cursor=pointer]:
+              - /url: "#strankatop"
+      - generic [ref=e438]:
+        - button [ref=e439] [cursor=pointer]
+        - generic [ref=e441]:
+          - img "grant radar" [ref=e443]
+          - generic [ref=e444]:
+            - heading "Grantový radar" [level=3] [ref=e445]
+            - paragraph [ref=e446]: Chcem dostávať vždy pravidelné informácie o možnostiach financovania svojich projektov.
+          - link "Aktivovať radar" [ref=e448] [cursor=pointer]:
+            - /url: "#"
+    - contentinfo [ref=e449]:
+      - 'dialog "Close Grantový radar cena s DPH Zadarmo Nezmeškajte žiadnu novú grantovú výzvu Bezplatne za Vás sledujeme granty a dotácie. Stačí zadať Váš email. Krok: 1/2 Súhlasím so spracovaním osobných údajov v súlade so zásadami ochrany osobných údajov POKRAČOVAŤ" [active] [ref=e552]':
+        - generic [ref=e553]:
+          - button "Close" [ref=e554] [cursor=pointer]
+          - generic [ref=e557]:
+            - generic [ref=e559]:
+              - heading "Grantový radar" [level=3] [ref=e561]
+              - generic [ref=e562]:
+                - generic [ref=e563]: cena s DPH
+                - generic [ref=e564]: Zadarmo
+            - generic [ref=e566]:
+              - paragraph
+              - paragraph [ref=e567]: Nezmeškajte žiadnu novú grantovú výzvu
+              - text: Bezplatne za Vás sledujeme granty a dotácie. Stačí zadať Váš email.
+              - paragraph
+              - generic [ref=e568]: "Krok: 1/2"
+              - generic [ref=e569]:
+                - textbox "Váš email" [ref=e570]
+                - checkbox [ref=e571]
+                - text: Súhlasím so spracovaním osobných údajov v súlade so
+                - link "zásadami ochrany osobných údajov" [ref=e572] [cursor=pointer]:
+                  - /url: https://www.grantexpert.sk/zasady-ochrany-osobnych-udajov/
+                - button "POKRAČOVAŤ" [ref=e574] [cursor=pointer]: POKRAČOVAŤ
+      - generic [ref=e450]:
+        - button [ref=e451] [cursor=pointer]
+        - generic [ref=e455]:
+          - link "facebook" [ref=e456] [cursor=pointer]:
+            - /url: https://www.facebook.com/GrantExpert.sk/
+            - img "facebook" [ref=e457]
+          - link "linkedin" [ref=e458] [cursor=pointer]:
+            - /url: https://www.linkedin.com/company/grantexpertsk/
+            - img "linkedin" [ref=e459]
+          - link "instagram" [ref=e460] [cursor=pointer]:
+            - /url: https://www.instagram.com/grantexpert.sk/?fbclid=IwAR1N-Z9BEAQiwArgr93FFITfwDSnIz335B4VuTrt-nhh2TF3j0L8fmDBO_4
+            - img "instagram" [ref=e461]
+          - link "youtube" [ref=e462] [cursor=pointer]:
+            - /url: https://www.youtube.com/channel/UCXAuH-BxCc1VwyZjqDJ11Kw?view_as=subscriber
+            - img "youtube" [ref=e463]
+        - generic [ref=e465]:
+          - generic [ref=e466]:
+            - strong [ref=e467]: Naše služby
+            - navigation [ref=e468]:
+              - list [ref=e469]:
+                - listitem [ref=e470]:
+                  - link "Všetky služby" [ref=e471] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/vsetky-sluzby/
+                - listitem [ref=e472]:
+                  - link "Balíky predplatného" [ref=e473] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/baliky-predplatneho/
+                - listitem [ref=e474]:
+                  - link "Konzultácia" [ref=e475] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/konzultacia-s-grantexpertom/
+                - listitem [ref=e476]:
+                  - link "Vypracovanie projektu" [ref=e477] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/vypracovanie-projektu
+                - listitem [ref=e478]:
+                  - link "Privátny grantový konzultant" [ref=e479] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/privatny-grantovy-konzultant/
+          - generic [ref=e480]:
+            - strong [ref=e481]: Grantové vzdelávanie
+            - navigation [ref=e482]:
+              - list [ref=e483]:
+                - listitem [ref=e484]:
+                  - link "E-Learning" [ref=e485] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/e-learning/
+                - listitem [ref=e486]:
+                  - link "Webináre a školenia" [ref=e487] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/webinare/
+                - listitem [ref=e488]:
+                  - link "Školenie na mieru" [ref=e489] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/skolenie-na-mieru/
+                - listitem [ref=e490]:
+                  - link "Videoslovník" [ref=e491] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/videoslovnik/
+                - listitem [ref=e492]:
+                  - link "Grantové zdroje" [ref=e493] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/grantove-zdroje/
+                - listitem [ref=e494]:
+                  - link "Blog" [ref=e495] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/blog/
+          - generic [ref=e496]:
+            - strong [ref=e497]: Podporované odvetvia
+            - navigation [ref=e498]:
+              - list [ref=e499]:
+                - listitem [ref=e500]:
+                  - link "Podnikatelia" [ref=e501] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/pre-podnikatelov/
+                - listitem [ref=e502]:
+                  - link "Mestá a obce" [ref=e503] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/pre-mesta-a-obce/
+                - listitem [ref=e504]:
+                  - link "Školy" [ref=e505] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/pre-skoly/
+                - listitem [ref=e506]:
+                  - link "Mimovládne organizácie" [ref=e507] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/pre-mimovladne-organizacie/
+                - listitem [ref=e508]:
+                  - link "Jednotlivci" [ref=e509] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/pre-jednotlivcov/
+          - generic [ref=e510]:
+            - strong [ref=e511]: Grant AI
+            - navigation [ref=e512]:
+              - list [ref=e513]:
+                - listitem [ref=e514]:
+                  - link "Čo je Grant AI?" [ref=e515] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/grantai/
+                - listitem [ref=e516]:
+                  - link "Ako funguje Grant AI?" [ref=e517] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/ako-funguje-grantai/
+          - generic [ref=e518]:
+            - strong [ref=e519]: O nás
+            - navigation [ref=e520]:
+              - list [ref=e521]:
+                - listitem [ref=e522]:
+                  - link "Kto sme" [ref=e523] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/kto-sme/
+                - listitem [ref=e524]:
+                  - link "Ako fungujeme" [ref=e525] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/ako-fungujeme/
+                - listitem [ref=e526]:
+                  - link "FAQ" [ref=e527] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/faq/
+                - listitem [ref=e528]:
+                  - link "Referencie" [ref=e529] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/referencie/
+                - listitem [ref=e530]:
+                  - link "Partneri" [ref=e531] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/partneri/
+                - listitem [ref=e532]:
+                  - link "Kontakt" [ref=e533] [cursor=pointer]:
+                    - /url: https://www.grantexpert.sk/kontakt/
+        - generic [ref=e535]:
+          - navigation [ref=e537]:
+            - list [ref=e538]:
+              - listitem [ref=e539]:
+                - link "Zásady ochrany osobných údajov" [ref=e540] [cursor=pointer]:
+                  - /url: https://www.grantexpert.sk/zasady-ochrany-osobnych-udajov/
+              - listitem [ref=e541]:
+                - link "Všeobecné obchodné podmienky" [ref=e542] [cursor=pointer]:
+                  - /url: https://www.grantexpert.sk/vseobecne-obchodne-podmienky/
+              - listitem [ref=e543]:
+                - link "Mapa grantov" [ref=e544] [cursor=pointer]:
+                  - /url: https://www.grantexpert.sk/mapa-grantov/
+          - link "ahoj@grantexpert.sk" [ref=e546] [cursor=pointer]:
+            - /url: mailto:ahoj@grantexpert.sk
+          - generic [ref=e548]:
+            - text: Grantexpert s.r.o.
+            - text: Záhradnícka 72
+            - text: 821 08 Bratislava
+        - generic [ref=e551]: Všetky práva vyhradené © 2026 GrantExpert.sk

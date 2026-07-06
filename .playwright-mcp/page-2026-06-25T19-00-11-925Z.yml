@@ -1,0 +1,48 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - button "Otevřít menu" [ref=e6] [cursor=pointer]:
+      - img [ref=e7]
+    - generic [ref=e10]:
+      - link "MámOkno" [active] [ref=e24] [cursor=pointer]:
+        - /url: /
+      - button "Přepnout organizaci" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+    - button "Upozornění" [ref=e16] [cursor=pointer]:
+      - img [ref=e17]
+  - main [ref=e20]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - heading "Ahoj, David 👋" [level=1] [ref=e37]
+          - paragraph [ref=e38]: MámOkno · admin
+        - button "Odhlásit se" [ref=e39] [cursor=pointer]
+      - generic [ref=e40]:
+        - link "0 Moje otevřené" [ref=e41] [cursor=pointer]:
+          - /url: /tasks
+          - paragraph [ref=e42]: "0"
+          - paragraph [ref=e43]: Moje otevřené
+        - link "0 Urgentní" [ref=e44] [cursor=pointer]:
+          - /url: /tasks
+          - paragraph [ref=e45]: "0"
+          - paragraph [ref=e46]: Urgentní
+        - link "0 Po termínu" [ref=e47] [cursor=pointer]:
+          - /url: /tasks
+          - paragraph [ref=e48]: "0"
+          - paragraph [ref=e49]: Po termínu
+      - generic [ref=e50]:
+        - link "💬 Skupiny Chat týmu" [ref=e51] [cursor=pointer]:
+          - /url: /groups
+          - generic [ref=e52]: 💬
+          - generic [ref=e53]:
+            - paragraph [ref=e54]: Skupiny
+            - paragraph [ref=e55]: Chat týmu
+        - link "✅ Úkoly Kanban" [ref=e56] [cursor=pointer]:
+          - /url: /tasks
+          - generic [ref=e57]: ✅
+          - generic [ref=e58]:
+            - paragraph [ref=e59]: Úkoly
+            - paragraph [ref=e60]: Kanban
+      - generic [ref=e61]:
+        - heading "Upozornění" [level=2] [ref=e62]
+        - paragraph [ref=e63]: Push upozornění na přiřazené, urgentní a po termínu úkoly.
+        - button "Zapnout upozornění" [ref=e66] [cursor=pointer]

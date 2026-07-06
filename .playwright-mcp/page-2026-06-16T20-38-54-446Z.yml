@@ -1,0 +1,173 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Pumplo" [ref=e8]
+        - link "Back for gym-goers" [ref=e9] [cursor=pointer]:
+          - /url: /client
+          - button "Back for gym-goers" [ref=e10]:
+            - img
+            - text: Back for gym-goers
+    - generic [ref=e11]:
+      - img "Modern fitness center" [ref=e13]
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - generic [ref=e21]: Retention platform for independent gyms
+        - heading "Stop losing members. Keep more members, with less effort." [level=1] [ref=e22]
+        - paragraph [ref=e23]
+        - generic [ref=e24]:
+          - button "Launch Pumplo →" [ref=e25] [cursor=pointer]
+          - button "How it works" [ref=e26] [cursor=pointer]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - heading "A gym without retention is a gym that is dying" [level=2] [ref=e30]
+        - generic [ref=e31]:
+          - generic [ref=e32]: 30–50%
+          - paragraph [ref=e33]: of new members leave within the first 6 months
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - img [ref=e37]
+          - heading "You pay for a system that shows nothing" [level=3] [ref=e39]
+          - paragraph [ref=e40]: A booking system tells you who came in. It doesn't tell you who's actually training, who's struggling with machines, who's about to leave.
+        - generic [ref=e41]:
+          - img [ref=e43]
+          - heading "Members lose motivation" [level=3] [ref=e48]
+          - paragraph [ref=e49]: Without a clear plan and visible results most people stop coming after a few months. They don't know what to do, so they do nothing.
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - heading "You have no way to react" [level=3] [ref=e54]
+          - paragraph [ref=e55]: Until someone cancels their membership you have no way to know they're about to leave. By then it's too late.
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - heading "With Pumplo you'll see what's really happening at your gym" [level=2] [ref=e59]
+        - paragraph [ref=e60]: Not another fitness app. Owner dashboard + digital trainer for members — aligned in one system.
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - img [ref=e64]
+          - heading "You see reality" [level=3] [ref=e67]
+          - paragraph [ref=e68]: In the dashboard you track who's actually training, who's dropping off, how many workouts each person has. No guesswork.
+        - generic [ref=e69]:
+          - img [ref=e71]
+          - heading "You retain more members" [level=3] [ref=e76]
+          - paragraph [ref=e77]: Members get a plan tailored to your equipment. They see their progress. They come back tomorrow instead of going to the competition.
+        - generic [ref=e78]:
+          - img [ref=e80]
+          - heading "No extra work for your team" [level=3] [ref=e82]
+          - paragraph [ref=e83]: The system runs automatically. Staff don't need to configure anything. Members scan a QR code and start.
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - heading "Data for decision-making" [level=3] [ref=e88]
+          - paragraph [ref=e89]: You see which machines are used, which member categories are dropping off, and what to do about it.
+    - generic [ref=e91]:
+      - heading "What it looks like" [level=2] [ref=e93]
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - img [ref=e96]
+          - heading "What members see" [level=3] [ref=e98]
+          - paragraph [ref=e99]: "Mobile app: onboarding → workout plan → progress tracking. All adapted to your equipment."
+          - generic [ref=e100]:
+            - generic [ref=e101]: Onboarding
+            - generic [ref=e102]: Workout
+            - generic [ref=e103]: Progress
+        - generic [ref=e104]:
+          - img [ref=e105]
+          - heading "What you see" [level=3] [ref=e107]
+          - paragraph [ref=e108]: "Admin dashboard: member overview, activity, retention, analytics. Everything in one place."
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - heading "How it will work for you?" [level=2] [ref=e120]
+        - paragraph [ref=e121]: From registration to your first active member in a week
+      - generic [ref=e123]:
+        - generic [ref=e125]:
+          - img [ref=e127]
+          - generic [ref=e130]:
+            - img [ref=e131]
+            - text: 5 minutes
+          - heading "Register online" [level=3] [ref=e134]
+          - paragraph [ref=e135]: Fill in basic details about your gym, choose your machines, and pay. No sales rep, no negotiating.
+        - generic [ref=e136]:
+          - img [ref=e138]
+          - generic [ref=e142]:
+            - img [ref=e143]
+            - text: 30 minutes
+          - heading "We set up your gym" [level=3] [ref=e146]
+          - paragraph [ref=e147]: Upload your logo, photos, opening hours and pricing. Your gym appears on the map in the Pumplo app.
+        - generic [ref=e148]:
+          - img [ref=e150]
+          - generic [ref=e152]:
+            - img [ref=e153]
+            - text: Ongoing
+          - heading "Members start using the app" [level=3] [ref=e156]
+          - paragraph [ref=e157]: Give members a QR code to download Pumplo. After downloading they select your gym and start training towards their goals.
+        - generic [ref=e158]:
+          - img [ref=e160]
+          - generic [ref=e163]:
+            - img [ref=e164]
+            - text: From the first week
+          - heading "You see data you never had before" [level=3] [ref=e167]
+          - paragraph [ref=e168]: In the dashboard you track who's actually training, who's dropping off, how many sessions each person has completed. You know who to reach out to before they leave.
+      - generic [ref=e169]:
+        - paragraph [ref=e170]: Full setup done in 35 minutes
+        - button "Get started →" [ref=e171] [cursor=pointer]
+    - generic [ref=e174]:
+      - heading "Pricing tailored to your gym" [level=2] [ref=e175]
+      - paragraph [ref=e176]: It depends on the size of your gym and what you need. We will prepare a concrete quote — fast and with no commitment.
+      - paragraph [ref=e177]: No setup fee • No commitments • Cancel anytime
+      - button "Get a free quote" [ref=e178] [cursor=pointer]
+      - paragraph [ref=e179]: We reply within 24 hours. Free demo included.
+    - generic [ref=e181]:
+      - generic [ref=e182]:
+        - generic [ref=e183]:
+          - img [ref=e184]
+          - generic [ref=e187]: FAQ
+        - heading "Answers to your questions" [level=2] [ref=e188]
+      - generic [ref=e189]:
+        - generic [ref=e190]:
+          - heading "Is it expensive" [level=3] [ref=e191]
+          - paragraph [ref=e192]: The question isn't how much Pumplo costs, but how much every person who leaves for the competition costs you because they didn't get results.
+        - generic [ref=e193]:
+          - heading "We have trainers for that" [level=3] [ref=e194]
+          - paragraph [ref=e195]: Exactly. Pumplo handles the basic plan for the masses so your trainers can focus on premium services.
+        - generic [ref=e196]:
+          - heading "We use another system" [level=3] [ref=e197]
+          - paragraph [ref=e198]: A booking system tells you who came in. Pumplo tells you who's actually training and who's dropping off.
+        - generic [ref=e199]:
+          - heading "Your know-how must belong to you" [level=3] [ref=e200]
+          - paragraph [ref=e201]: If your system relies only on trainers, you risk losing clients when they leave. Pumplo digitises the gym's know-how.
+        - generic [ref=e202]:
+          - heading "How long does setup take?" [level=3] [ref=e203]
+          - paragraph [ref=e204]: 5 minutes online registration + 30 minutes to upload photos, machines and opening hours. 35 minutes total and you can onboard your first members.
+        - generic [ref=e205]:
+          - heading "Can I cancel anytime?" [level=3] [ref=e206]
+          - paragraph [ref=e207]: Yes. Subscription is monthly or annual, cancel anytime directly in subscription management. No lock-in.
+        - generic [ref=e208]:
+          - heading "What if it doesn't work?" [level=3] [ref=e209]
+          - paragraph [ref=e210]: You'll see first results in the dashboard within a week. If it's not right for you, cancel — you only lose a monthly subscription.
+    - generic [ref=e213]:
+      - heading "Start today. First results in a week." [level=2] [ref=e214]
+      - paragraph [ref=e215]: Online registration in 5 minutes. The fastest path from a retention problem to real data about your members.
+      - button "Launch Pumplo →" [ref=e216] [cursor=pointer]
+      - paragraph [ref=e217]:
+        - text: or first
+        - button "book a free consultation" [ref=e218] [cursor=pointer]
+      - paragraph [ref=e219]: No commitments • No setup fee • Cancel anytime
+    - generic [ref=e222]:
+      - heading "Contact us" [level=2] [ref=e223]
+      - paragraph [ref=e224]: ‌
+      - link "Book a free consultation" [ref=e225] [cursor=pointer]:
+        - /url: /contact
+        - button "Book a free consultation" [ref=e226]:
+          - img
+          - text: Book a free consultation
+    - contentinfo [ref=e227]:
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - img "Pumplo" [ref=e230]
+          - paragraph [ref=e231]: © 2025 Pumplo. Your digital trainer in your pocket.
+        - paragraph [ref=e232]: Pumplo is a product of GynTools CZ s.r.o., Registration No. 27804461, registered in the Czech Republic.

@@ -10,7 +10,8 @@ import {
   WorkoutPlanV2,
   SplitType,
   getSplitFromFrequency,
-  UserLevel
+  UserLevel,
+  getRIRGuidance
 } from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
@@ -191,6 +192,23 @@ export const useWorkoutPlan = () => {
         });
       }
 
+      // F11: during a deload week the in-session RIR must show 5 — the slot
+      // templates (day_templates.rir_min/max) don't know about deload cycling,
+      // so we override them. Week = completed non-bonus sessions / days per week.
+      let isDeloadWeek = false;
+      try {
+        const { count: completedCount } = await supabase
+          .from('workout_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('plan_id', planData.id)
+          .eq('is_bonus', false)
+          .not('completed_at', 'is', null);
+        const daysPerWeek = (planData.training_days as string[] | null)?.length || dayCount;
+        const weekNumber = Math.floor((completedCount || 0) / Math.max(daysPerWeek, 1)) + 1;
+        isDeloadWeek = getRIRGuidance(weekNumber).label === 'Deload';
+      } catch { /* keep template RIR if the count fails */ }
+
       // 7. Transform exercises (strictly from DB, no random selection)
       const exercises: WorkoutExercise[] = (exercisesData || []).map(ex => ({
         id: ex.id,
@@ -210,8 +228,8 @@ export const useWorkoutPlan = () => {
         fallbackReason: ex.fallback_reason,
         selectionScore: ex.selection_score,
         slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as WorkoutExercise['slotCategory'],
-        rirMin: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null,
-        rirMax: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null,
+        rirMin: isDeloadWeek ? 5 : (rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null),
+        rirMax: isDeloadWeek ? 5 : (rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null),
       }));
 
       // 6. Check if gym equipment has changed (needs_regeneration check)

@@ -1,0 +1,77 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]: MámOkno
+    - navigation [ref=e6]:
+      - link "Dashboard" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e8] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e9] [cursor=pointer]:
+        - /url: /tasks
+      - paragraph [ref=e18]: Admin
+      - link "Uživatelé" [ref=e19] [cursor=pointer]:
+        - /url: /admin/users
+      - link "Skupiny" [ref=e20] [cursor=pointer]:
+        - /url: /admin/groups
+      - link "Konektory" [ref=e21] [cursor=pointer]:
+        - /url: /admin/connectors
+  - main [ref=e10]:
+    - generic [ref=e11]:
+      - complementary [ref=e12]:
+        - button "Moje úlohy" [ref=e13] [cursor=pointer]
+        - button "Vše" [active] [ref=e14] [cursor=pointer]
+        - button "reklamace" [ref=e22] [cursor=pointer]: reklamace
+        - button "presun termínu" [ref=e24] [cursor=pointer]: presun termínu
+        - button "storno" [ref=e26] [cursor=pointer]: storno
+        - button "sklad" [ref=e28] [cursor=pointer]: sklad
+        - button "problém" [ref=e30] [cursor=pointer]: problém
+      - main [ref=e15]:
+        - heading "Úkoly" [level=1] [ref=e16]
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e75]: Nový
+              - generic [ref=e76]: "1"
+            - generic [ref=e78] [cursor=pointer]:
+              - paragraph [ref=e79]: Ahoj, test zprávy z prohlížeče 👋
+              - generic [ref=e80]:
+                - generic [ref=e81]: Normální
+                - generic [ref=e82]: reklamace
+              - paragraph [ref=e83]: Nepřiřazeno
+              - combobox [ref=e85]:
+                - option "Nový" [selected]
+                - option "V řešení"
+                - option "Čeká se"
+                - option "Hotovo"
+                - option "Zrušeno"
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: V řešení
+              - generic [ref=e89]: "1"
+            - generic [ref=e91] [cursor=pointer]:
+              - paragraph [ref=e92]: Realtime zpráva od Jaroslava ✅
+              - generic [ref=e93]:
+                - generic [ref=e94]: Vysoká
+                - generic [ref=e95]: reklamace
+              - paragraph [ref=e96]: David Novotný
+              - combobox [ref=e98]:
+                - option "Nový"
+                - option "V řešení" [selected]
+                - option "Čeká se"
+                - option "Hotovo"
+                - option "Zrušeno"
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - generic [ref=e101]: Čeká se
+              - generic [ref=e102]: "0"
+            - generic [ref=e104]: Žádné úkoly
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]: Hotovo
+              - generic [ref=e108]: "0"
+            - generic [ref=e110]: Žádné úkoly
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - generic [ref=e113]: Zrušeno
+              - generic [ref=e114]: "0"
+            - generic [ref=e116]: Žádné úkoly

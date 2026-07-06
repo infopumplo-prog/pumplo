@@ -1,0 +1,78 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: MámOkno
+      - button "Upozornění" [ref=e8] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e24]: "1"
+    - navigation [ref=e12]:
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e14] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e15] [cursor=pointer]:
+        - /url: /tasks
+      - paragraph [ref=e25]: Admin
+      - link "Uživatelé" [ref=e26] [cursor=pointer]:
+        - /url: /admin/users
+      - link "Skupiny" [ref=e27] [cursor=pointer]:
+        - /url: /admin/groups
+      - link "Konektory" [ref=e28] [cursor=pointer]:
+        - /url: /admin/connectors
+  - main [ref=e16]:
+    - generic [ref=e98]:
+      - link "← Zpět na úkoly" [ref=e99] [cursor=pointer]:
+        - /url: /tasks
+      - heading "Realtime zpráva od Jaroslava ✅" [level=1] [ref=e100]
+      - generic [ref=e101]:
+        - heading "Podrobnosti" [level=2] [ref=e102]
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - term [ref=e105]: Stav
+            - definition [ref=e106]:
+              - combobox [ref=e107]:
+                - option "Nový"
+                - option "V řešení" [selected]
+                - option "Čeká se"
+                - option "Hotovo"
+                - option "Zrušeno"
+          - generic [ref=e108]:
+            - term [ref=e109]: Priorita
+            - definition [ref=e110]:
+              - generic [ref=e111]: Vysoká
+          - generic [ref=e112]:
+            - term [ref=e113]: Zodpovědná osoba
+            - definition [ref=e114]: David Novotný
+          - generic [ref=e115]:
+            - term [ref=e116]: Vytvořil/a
+            - definition [ref=e117]: David Novotný
+          - generic [ref=e118]:
+            - term [ref=e119]: Vytvořeno
+            - definition [ref=e120]: 25.06.2026 11:34
+          - generic [ref=e121]:
+            - term [ref=e122]: Druh
+            - definition [ref=e123]:
+              - generic [ref=e124]: reklamace
+        - generic [ref=e125]:
+          - paragraph [ref=e126]: Popis
+          - paragraph [ref=e127]: Realtime zpráva od Jaroslava ✅
+      - generic [ref=e128]:
+        - heading "Původní zpráva" [level=2] [ref=e129]
+        - paragraph [ref=e130]: Jaroslav Chmelář · 25.06.2026 10:35
+        - paragraph [ref=e131]: Realtime zpráva od Jaroslava ✅
+        - button "Přejít na zprávu" [ref=e132] [cursor=pointer]
+      - generic [ref=e133]:
+        - heading "Komentáře" [level=2] [ref=e134]
+        - list [ref=e135]:
+          - listitem [ref=e136]:
+            - paragraph [ref=e137]: David Novotný · 25.06.2026 11:36
+            - paragraph [ref=e138]: Volal jsem klientovi, nový termín je 27.6.
+        - generic [ref=e139]:
+          - textbox "Napište komentář…" [ref=e140]
+          - button "Přidat komentář" [ref=e141] [cursor=pointer]
+      - generic [ref=e142]:
+        - heading "Historie" [level=2] [ref=e143]
+        - list [ref=e144]:
+          - listitem [ref=e145]:
+            - text: "Stav: Nový → V řešení"
+            - generic [ref=e146]: — David Novotný · 25.06.2026 11:36

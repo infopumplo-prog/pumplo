@@ -45,6 +45,8 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
   const [isExpanded, setIsExpanded] = useState(false);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [isLoadingSets, setIsLoadingSets] = useState(false);
+  // exercise_name in sets is a Czech snapshot — live-resolve name_en for EN UI
+  const [nameEnMap, setNameEnMap] = useState<Record<string, string>>({});
 
   // Format day letter for display
   const isExtension = session.day_letter.includes('_EXT');
@@ -52,7 +54,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
     ? `${session.day_letter.replace('_EXT', '')}+` 
     : session.day_letter;
   const displayTitle = isExtension
-    ? `${isEn ? 'Day' : 'Den'} ${session.day_letter.replace('_EXT', '')} (${isEn ? 'extension' : 'rozšírenie'})`
+    ? `${isEn ? 'Day' : 'Den'} ${session.day_letter.replace('_EXT', '')} (${isEn ? 'extension' : 'rozšíření'})`
     : `${isEn ? 'Day' : 'Den'} ${session.day_letter}`;
 
   // Fetch sets when expanded
@@ -66,11 +68,26 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
           .from('workout_session_sets')
           .select('*')
           .eq('session_id', session.id)
+          // created_at is distinct per exercise (batched inserts) → chronological
+          // workout order; exercise_name keeps legacy same-timestamp rows grouped
           .order('created_at', { ascending: true })
+          .order('exercise_name', { ascending: true })
           .order('set_number', { ascending: true });
 
         if (!error && data) {
           setSets(data);
+          const ids = [...new Set(data.map(s => s.exercise_id).filter((id): id is string => !!id))];
+          if (ids.length > 0) {
+            const { data: exs } = await supabase
+              .from('exercises')
+              .select('id, name_en')
+              .in('id', ids);
+            if (exs) {
+              const map: Record<string, string> = {};
+              exs.forEach(e => { if (e.name_en) map[e.id] = e.name_en; });
+              setNameEnMap(map);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching sets:', err);
@@ -237,7 +254,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
-                                <p className="font-medium text-sm">{group.exerciseName}</p>
+                                <p className="font-medium text-sm">{(isEn && group.exerciseId && nameEnMap[group.exerciseId]) || group.exerciseName}</p>
                                 <p className="text-xs text-muted-foreground">
                                   {completedSets.length} {t('workout.sets_count')} • {totalReps} {t('workout.reps_count')}
                                   {maxWeight > 0 && ` • max ${maxWeight} kg`}

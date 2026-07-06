@@ -1,0 +1,75 @@
+- generic [ref=e3]:
+  - complementary [ref=e74]:
+    - generic [ref=e75]:
+      - generic [ref=e76]: MámOkno
+      - button "Zavřít menu" [ref=e77] [cursor=pointer]: ✕
+    - navigation [ref=e78]:
+      - link "Dashboard" [ref=e79] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e80] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e81] [cursor=pointer]:
+        - /url: /tasks
+      - paragraph [ref=e82]: Admin
+      - link "Uživatelé" [ref=e83] [cursor=pointer]:
+        - /url: /admin/users
+      - link "Skupiny" [ref=e84] [cursor=pointer]:
+        - /url: /admin/groups
+      - link "Konektory" [ref=e85] [cursor=pointer]:
+        - /url: /admin/connectors
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - button "Otevřít menu" [active] [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - generic [ref=e9]: MámOkno
+      - button "Upozornění" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+    - main [ref=e15]:
+      - generic [ref=e16]:
+        - complementary [ref=e17]:
+          - button "Moje úlohy" [ref=e18] [cursor=pointer]
+          - button "Vše" [ref=e19] [cursor=pointer]
+          - button "reklamace" [ref=e23] [cursor=pointer]: reklamace
+          - button "presun termínu" [ref=e25] [cursor=pointer]: presun termínu
+          - button "storno" [ref=e27] [cursor=pointer]: storno
+          - button "sklad" [ref=e29] [cursor=pointer]: sklad
+          - button "problém" [ref=e31] [cursor=pointer]: problém
+        - main [ref=e20]:
+          - heading "Úkoly" [level=1] [ref=e21]
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]:
+                - generic [ref=e37]: Nový
+                - generic [ref=e38]: "0"
+              - generic [ref=e40]: Žádné úkoly
+            - generic [ref=e41]:
+              - generic [ref=e42]:
+                - generic [ref=e43]: V řešení
+                - generic [ref=e44]: "1"
+              - generic [ref=e46] [cursor=pointer]:
+                - paragraph [ref=e47]: Realtime zpráva od Jaroslava ✅
+                - generic [ref=e48]:
+                  - generic [ref=e49]: Vysoká
+                  - generic [ref=e50]: reklamace
+                - paragraph [ref=e51]: David Novotný
+                - combobox [ref=e53]:
+                  - option "Nový"
+                  - option "V řešení" [selected]
+                  - option "Čeká se"
+                  - option "Hotovo"
+                  - option "Zrušeno"
+            - generic [ref=e54]:
+              - generic [ref=e55]:
+                - generic [ref=e56]: Čeká se
+                - generic [ref=e57]: "0"
+              - generic [ref=e59]: Žádné úkoly
+            - generic [ref=e60]:
+              - generic [ref=e61]:
+                - generic [ref=e62]: Hotovo
+                - generic [ref=e63]: "0"
+              - generic [ref=e65]: Žádné úkoly
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - generic [ref=e68]: Zrušeno
+                - generic [ref=e69]: "0"
+              - generic [ref=e71]: Žádné úkoly

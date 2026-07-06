@@ -1,0 +1,24 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: MámOkno
+      - button "Upozornění" [ref=e8] [cursor=pointer]:
+        - img [ref=e9]
+    - navigation [ref=e12]:
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e14] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e15] [cursor=pointer]:
+        - /url: /tasks
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: MámOkno
+        - heading "Dashboard" [level=1] [ref=e20]
+        - paragraph [ref=e21]: Načítání…
+        - button "Odhlásit se" [ref=e22] [cursor=pointer]
+      - generic [ref=e23]:
+        - heading "Upozornění" [level=2] [ref=e24]
+        - paragraph [ref=e25]: Push upozornění na přiřazené, urgentní a po termínu úkoly.
+        - button "Zapnout upozornění" [ref=e28] [cursor=pointer]

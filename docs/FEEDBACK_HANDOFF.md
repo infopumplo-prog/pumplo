@@ -31,21 +31,29 @@ Verze 1.2.1 je připravená. Postup (nativně přes Xcode + Android Studio → A
 
 ---
 
-## ⛔ BLOKOVANÉ — Simonina videa (krok 1 plánu)
+## ✅ ODBLOKOVÁNO — Simonina NOVÁ videa dorazila (krok 1 plánu)
 
-- Chtěli jsme přenahrát cviky v lepší kvalitě z videí od Simony (stažené z Úschovny).
-- **Zjištěno: zásilka od Simony (Úschovna `VPDRTE33MK6VCBUP`, 15. 6., 1,0 GB, 29× .MOV) obsahuje STARÁ videa — všech 29 natočeno 26. 2. 2026** (ověřeno přes ffprobe `creation_time`).
-- Soubory jsou lokálně na disku: `~/Downloads/zasilka-VPDRTE33MK6VCBUP/` (rozbalené) + `.zip`. Úschovna link vypršel 29. 6. (chce platbu) — ale lokálně to máme, takže re-download netřeba.
-- **V celém Gmailu je tohle jediná videozásilka od Simony — novější (lepší kvalita) neexistuje v mailu.**
-- **Akce:** požádat Simonu, ať pošle SPRÁVNÁ nová videa (a ověří, že to nejsou ta z 26. 2.). Případně zkontrolovat, jestli je neposlala jinudy (WhatsApp / Google Drive).
+- **Nová zásilka od Simony: Úschovna `WAZHD5VV2JXIY63M` (30. 6., 6,2 GB) → `~/Downloads/zasilka-WAZHD5VV2JXIY63M/`** — 44 klipů .mov, natočeno **24.–25. 5. 2026** (ověřeno ffprobe `creation_time`), tj. skutečně nové záběry.
+- Klipy mají kamerové kódy `A001_05242058_C003.mov` … `A001_05251244_C053.mov` (řada C003–C053 s dírami — některé záběry vyřazeny). **Potřeba mapování klip → cvik** (vytáhnout náhledové framy).
+- Stará únorová zásilka `VPDRTE33MK6VCBUP` je bezpředmětná.
+
+## 🎬 HOTOVO 2.–3. 7. — Davidova nová videa cviků (28 ks)
+
+- 28 cviků přenahráno novými videi (`0702(N).mov`, N=0–29; (7) nepřiřazeno — spare, (21) přeskočeno, (30) leží v `~/Desktop/videa pro bendu na nahratí cviků/`).
+- Pipeline na video: ffmpeg komprese (720×1280, crf 28, faststart, ~0,3–0,9 MB) → kontrola smyčky přes první/poslední frame (příp. trim) → upload `exercise-videos/<uuid>/<název>_20260702.mp4` → PATCH `video_path` → vizuální kontrola v admin.pumplo.com. **Vždy ověřit UUID cviku proti ID ze screenshotu (jména nejsou unikátní!).** Stará videa zachována ve Storage pro revert.
+- Drobnost: cvik „Rotace trupu" (1041cbb8…) má v DB popis o kabelové kladce, ale je to selektorizovaný rotační stroj — text opravit.
+
+## ⏳ Bendovy landminy
+
+- Zásilka z Úschovny se na disku ani v Gmailu nenašla (link zřejmě expiroval). **Benda pošle znovu — zatím neřešit.**
 
 ---
 
 ## 📋 Pořadí práce (dle Davida)
 
-1. Přenahrát Simoniny videa v lepší kvalitě → **BLOKOVÁNO** (nemáme nová videa)
-2. Opravit video v rozcvičce
-3. Nachystat Bendovy landminy (nová videa) do smyčky
+1. Přenahrát Simoniny videa v lepší kvalitě → **odblokováno, mapovat klipy → cviky a nahrát**
+2. Opravit video v rozcvičce (boomerang Medvědí plank nachystán v `~/Desktop/pumplo-video-fixes/`, nenasazen)
+3. Nachystat Bendovy landminy do smyčky → **čeká na re-send od Bendy**
 4. **Až potom** update
 
 ## 🗂️ Backlog dalšího feedbacku (na později, velký redesign)
