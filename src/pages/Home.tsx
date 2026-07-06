@@ -368,7 +368,7 @@ const Home = () => {
                       <p className="text-muted-foreground mb-6">
                         {t('home.create_plan_desc')}
                       </p>
-                      <Button onClick={() => navigate('/my-plan')} size="lg" className="gap-2 rounded-xl">
+                      <Button onClick={() => navigate('/training?start=true')} size="lg" className="gap-2 rounded-xl">
                         <Target className="w-5 h-5" />
                         {t('home.create_plan_btn')}
                       </Button>

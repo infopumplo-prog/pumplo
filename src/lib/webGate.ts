@@ -27,8 +27,18 @@ export const isStandalonePWA = (): boolean => {
   return mql || iosStandalone;
 };
 
+/** Dev-only escape hatch so the app can be tested in a desktop browser:
+ * `localStorage.setItem('pumplo_dev_web', '1')` on a dev server build. */
+const isDevWebBypass = (): boolean => {
+  try {
+    return import.meta.env.DEV && localStorage.getItem('pumplo_dev_web') === '1';
+  } catch {
+    return false;
+  }
+};
+
 /** True only for an ordinary browser tab — the case the gate targets. */
-export const isPlainBrowser = (): boolean => !isNativeApp() && !isStandalonePWA();
+export const isPlainBrowser = (): boolean => !isNativeApp() && !isStandalonePWA() && !isDevWebBypass();
 
 /** True when the given path is allowed to render in a plain browser tab. */
 export const isPublicWebPath = (pathname: string): boolean => {

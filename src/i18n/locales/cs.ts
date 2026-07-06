@@ -590,6 +590,10 @@ const cs = {
   // WorkoutShareCard / WorkoutSession summary
   'workout_share.congrats': 'Trénink dokončen! 💪',
   'workout_share.total_sets': 'Série',
+  'workout_share.sets_unit': 'sérií',
+  'workout_share.completed': 'dokončeno!',
+  'workout_share.exercises_label': 'cviků',
+  'workout_share.reps_abbr': 'opak.',
   'workout_share.duration': 'Čas',
   'workout_share.weight': 'Váha',
   'workout_share.exercises': 'Cviky',
