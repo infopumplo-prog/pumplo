@@ -32,7 +32,7 @@ Testovat ideálně na OBOU platformách; co je platform-specific, je označeno.
 3. ✅ Názvy cviků anglicky (starší tréninky: v rozbalené kartě; úplně staré mohou mít CZ jen pokud cvik už neexistuje v DB).
 
 ## 🟡 F7/F8/F9 — Homescreen
-1. ✅ F7: Home → „Poslední trénink" rozbalí **až 3 poslední tréninky** (karty jako v historii).
+1. ✅ F7 (upraveno 7.7.): Home ukazuje JEDEN poslední trénink (Davidův feedback — 3 karty vypadaly divně), „Zobrazit vše" vede do historie.
 2. ✅ F8: v rozkliknutém tréninku (novém, odcvičeném po updatu) jsou cviky **v pořadí, jak jsi je cvičil** (ne abecedně). Pozn.: tréninky odcvičené PŘED updatem chronologii nemají — kontroluj na novém.
 3. ✅ F9: hned po dokončení tréninku je na Home **zelená karta „Trénink dokončen"** se statistikami (dřív se neukazovala). Druhý den zmizí a ukáže se další trénink.
 
