@@ -307,6 +307,7 @@ const en = {
   'workout.location_settings_blocked': 'Location is off in settings',
   'workout.location_settings_instructions': 'Open your phone Settings → Pumplo → Location → allow “While Using the App”. Then come back and tap Retry.',
   'workout.allow_location': 'Allow location',
+  'workout.open_settings': 'Open Settings',
   'workout.cancel': 'Cancel',
   'workout.not_in_gym': 'You are not at the gym',
   'workout.not_in_gym_desc': 'You must be physically at {{gymName}} to start a workout.',

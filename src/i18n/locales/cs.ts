@@ -307,6 +307,7 @@ const cs = {
   'workout.location_settings_blocked': 'Poloha je vypnutá v nastavení',
   'workout.location_settings_instructions': 'Otevři Nastavení telefonu → Pumplo → Poloha → povol „Při používání aplikace". Pak se vrať a klikni na Zkusit znovu.',
   'workout.allow_location': 'Povolit polohu',
+  'workout.open_settings': 'Otevřít nastavení',
   'workout.cancel': 'Zrušit',
   'workout.not_in_gym': 'Nejsi v posilovně',
   'workout.not_in_gym_desc': 'Pro spuštění tréninku musíš být fyzicky v {{gymName}}.',

@@ -5,6 +5,8 @@ import { MapPin, AlertTriangle, RefreshCw, X, ShieldAlert, Settings } from 'luci
 import { useGymLocation } from '@/hooks/useGymLocation';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Capacitor } from '@capacitor/core';
+import { AppLauncher } from '@capacitor/app-launcher';
+import { App as CapApp } from '@capacitor/app';
 
 interface GymLocationGateProps {
   gymLat: number;
@@ -79,6 +81,26 @@ const CheckingState = ({ gymName }: { gymName: string }) => {
 const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string; onRetry: () => void; onCancel: () => void }) => {
   const { t } = useTranslation();
   const isNative = Capacitor.isNativePlatform();
+  const isIOS = Capacitor.getPlatform() === 'ios';
+
+  // Returning from the Settings app re-runs the location check automatically
+  useEffect(() => {
+    if (!isNative) return;
+    const listener = CapApp.addListener('resume', onRetry);
+    return () => { listener.then(h => h.remove()); };
+  }, [isNative, onRetry]);
+
+  // iOS never re-shows the permission dialog once denied — the only way
+  // forward is the Settings app, so the primary button opens it directly.
+  const handlePrimary = async () => {
+    if (isIOS) {
+      try {
+        await AppLauncher.openUrl({ url: 'app-settings:' });
+        return;
+      } catch { /* fall back to retry below */ }
+    }
+    onRetry();
+  };
   return (
     <div className="text-center max-w-xs">
       <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
@@ -114,11 +136,11 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
         {t('workout.location_privacy')}
       </p>
       <button
-        onClick={onRetry}
+        onClick={handlePrimary}
         className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
       >
-        <MapPin className="w-4 h-4" />
-        {t('workout.allow_location')}
+        {isIOS ? <Settings className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+        {isIOS ? t('workout.open_settings') : t('workout.allow_location')}
       </button>
       <button onClick={onCancel} className="w-full text-muted-foreground text-sm py-2">
         {t('workout.cancel')}

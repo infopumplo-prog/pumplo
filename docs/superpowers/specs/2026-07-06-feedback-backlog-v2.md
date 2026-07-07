@@ -50,6 +50,19 @@ Předchozí batch: `2026-06-08-feedback-backlog.md` (A–E, vše app-side hotov�
 - Pauzy: zvuk/vibrace i na zamčené obrazovce (pumplo_rest kanál / timeSensitive)
 - Obrazovka se nikdy neotáčí na šířku (portrait lock)
 
+## 🆕 Feedback od Saši (7. 7., iPhone 15, store verze)
+
+- **F16. Tlačítko „Povolit polohu" nejde zmáčknout**, když je poloha vypnutá v nastavení telefonu (screen „Povolení polohy" s oranžovým boxem). Ověřit v aktuálním kódu (červnový fix A8 měl vést do Nastavení) — buď je button disabled, nebo handler na iOS nefunguje.
+- **F17. Obsah se nepřizpůsobuje výřezu (Dynamic Island)** — na plan-overview obrazovce titulek „Získat sílu" podlézá pod status bar. Safe-area inset chybí minimálně na téhle obrazovce; projít i další fullscreen obrazovky.
+- (Jeho „Týden 1/12" je stará store verze — v novém buildu už „Blok".)
+
+## 📱 Device test 7. 7. (David, iPhone 17 Pro Max)
+- ✅ Vibrace při pauze na tichém režimu + notifikace; se zvukem pípne
+- ✅ Portrait lock všude
+- ✅ „Další cvik" mini video u poslední série
+- ✅ Scroll ℹ️ textu (na cvicích v tréninku)
+- 🐛→✅ Kill test odhalil „Série 4/3" po zabití appky během pauzy mezi cviky — opraveno (cabc612): snapshot ukazuje na další cvik, resume normalizuje out-of-range index
+
 ## Otevřené z června (stále platí)
 - C1: dostupnost na Slovensku (App Store + Play)
 - D3: store screenshoty s čistým status barem
