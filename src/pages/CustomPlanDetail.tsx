@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
@@ -24,6 +24,7 @@ import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
+import { SET_TYPE_META, SELECTABLE_SET_TYPES, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import {
   DndContext,
   closestCenter,
@@ -205,104 +206,162 @@ const getEquipmentLabel = (key: string, t: (k: string) => string): string =>
      kettlebell: t('equipment.kettlebell'), machine: t('equipment.machine'), cable: t('equipment.cable'),
      plate_loaded: t('equipment.plate_loaded'), other: t('equipment.other') }[key] ?? key);
 
-// --- Per-set row input (local state, saves on blur) ---
-const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeightChange, onRestChange }: {
-  index: number; reps: number; weight: number | null; rest: number;
-  isCardio: boolean;
-  onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onRestChange: (v: number) => void;
+// Build a public CDN url synchronously (exercise-videos is a public bucket).
+const CARD_BUCKET = 'exercise-videos';
+const publicVideoUrl = (videoPath: string | null): string | null => {
+  if (!videoPath) return null;
+  const marker = `/${CARD_BUCKET}/`;
+  const idx = videoPath.indexOf(marker);
+  const path = idx !== -1 ? videoPath.substring(idx + marker.length) : videoPath;
+  return supabase.storage.from(CARD_BUCKET).getPublicUrl(path).data?.publicUrl ?? null;
+};
+
+// Small video thumbnail (preload=metadata) with dumbbell fallback for the card.
+const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
+  const [error, setError] = useState(false);
+  const url = useRef(publicVideoUrl(videoPath)).current;
+  if (!url || error) {
+    return (
+      <div className="shrink-0 w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
+        <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
+      </div>
+    );
+  }
+  return (
+    <div className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-black">
+      <video src={url} muted playsInline preload="metadata" className="w-full h-full object-cover" onError={() => setError(true)} />
+    </div>
+  );
+};
+
+// Rest-timer picker options: Off (0), then 5s..5min in 5s steps.
+export const REST_OPTIONS: number[] = [0, ...Array.from({ length: 60 }, (_, i) => (i + 1) * 5)];
+
+// "1 min 30 s" / "45 s" / "Vypnuto"
+export const formatRest = (sec: number, t: (k: string) => string): string => {
+  if (!sec || sec <= 0) return t('custom_plan.rest_off');
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  const min = t('custom_plan.rest_minutes_short');
+  const secL = t('custom_plan.rest_seconds_short');
+  if (m > 0 && s > 0) return `${m} ${min} ${s} ${secL}`;
+  if (m > 0) return `${m} ${min}`;
+  return `${s} ${secL}`;
+};
+
+// --- Per-set table row (SÉRIE | KG | OPAK.) — local state, saves on blur ---
+const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, onWeightChange, onOpenTypeSheet }: {
+  index: number; reps: number; weight: number | null;
+  isCardio: boolean; setTypes: (string | null)[] | null;
+  onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onOpenTypeSheet: (index: number) => void;
 }) => {
-  const { t } = useTranslation();
   const [r, setR] = useState(String(reps));
   const [w, setW] = useState(weight != null ? String(weight) : '');
-  const [restVal, setRestVal] = useState(String(rest));
   const [cardioMin, setCardioMin] = useState(String(Math.floor(reps / 60)));
   const [cardioSec, setCardioSec] = useState(String(reps % 60));
+
+  // Keep local inputs in sync when the underlying value changes (copy-down / add-set).
+  useEffect(() => { setR(String(reps)); setCardioMin(String(Math.floor(reps / 60))); setCardioSec(String(reps % 60)); }, [reps]);
+  useEffect(() => { setW(weight != null ? String(weight) : ''); }, [weight]);
 
   const saveCardio = (mStr: string, sStr: string) => {
     const m = Math.max(0, parseInt(mStr) || 0);
     const s = Math.max(0, Math.min(59, parseInt(sStr) || 0));
-    const total = m * 60 + s;
-    // Sync local state to exactly what gets stored (no hidden rounding surprises)
     setCardioMin(String(m));
     setCardioSec(String(s));
-    onRepsChange(total);
+    onRepsChange(m * 60 + s);
   };
 
   return (
-    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
-      <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{index + 1}</span>
+    <div className="flex items-center gap-2 py-1">
+      {/* SÉRIE — type badge, tap opens the "Typ série" sheet */}
+      <button
+        onClick={() => onOpenTypeSheet(index)}
+        className={cn('w-10 shrink-0 h-8 rounded-lg bg-muted/70 flex items-center justify-center text-sm font-bold active:scale-95 transition-transform', setBadgeColor(setTypes, index))}
+      >
+        {setBadgeLabel(setTypes, index)}
+      </button>
       {isCardio ? (
-        <>
+        <div className="flex-1 flex items-center gap-2">
           <div className="flex items-center gap-1">
             <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} />
+              className="w-14 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} />
             <span className="text-[10px] text-muted-foreground">min</span>
           </div>
           <div className="flex items-center gap-1">
             <input type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} max={59} />
-            <span className="text-[10px] text-muted-foreground">sek</span>
+              className="w-14 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} max={59} />
+            <span className="text-[10px] text-muted-foreground">s</span>
           </div>
-        </>
+        </div>
       ) : (
         <>
-          <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">{t('custom_plan.opak_label')}</label>
-            <input type="number" value={r} onChange={(e) => setR(e.target.value)}
-              onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
-          </div>
-          <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">kg:</label>
-            <input type="number" value={w} onChange={(e) => setW(e.target.value)}
-              onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
-              placeholder="–" className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} step={0.5} />
-          </div>
+          <input type="number" value={w} onChange={(e) => setW(e.target.value)}
+            onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
+            placeholder="–" className="flex-1 min-w-0 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} step={0.5} />
+          <input type="number" value={r} onChange={(e) => setR(e.target.value)}
+            onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
+            className="flex-1 min-w-0 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={1} />
         </>
       )}
-      <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">{t('custom_plan.pause_label')}</label>
-        <input type="number" value={restVal} onChange={(e) => setRestVal(e.target.value)}
-          onBlur={() => { const v = Math.max(10, parseInt(restVal) || 120); setRestVal(String(v)); onRestChange(v); }}
-          className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={10} step={5} />
-        <span className="text-[10px] text-muted-foreground">s</span>
-      </div>
     </div>
+  );
+};
+
+// --- Per-exercise note (local state, saves on blur) ---
+const NoteInput = ({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) => {
+  const { t } = useTranslation();
+  const [note, setNote] = useState(value ?? '');
+  useEffect(() => { setNote(value ?? ''); }, [value]);
+  return (
+    <input
+      type="text"
+      value={note}
+      onChange={(e) => setNote(e.target.value)}
+      onBlur={() => { const v = note.trim() || null; if (v !== (value ?? null)) onSave(v); }}
+      placeholder={t('custom_plan.note_placeholder')}
+      className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/70 py-1"
+    />
   );
 };
 
 // --- Sortable Exercise Item ---
 interface SortableExerciseProps {
   exercise: CustomPlanExercise;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
   onUpdate: (id: string, updates: Record<string, any>) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onShowDetail: (exerciseId: string) => void;
+  onOpenRestSheet: (exercise: CustomPlanExercise) => void;
+  onOpenTypeSheet: (exercise: CustomPlanExercise, setIndex: number) => void;
   isIncompatible?: boolean;
   alternatives?: AlternativeExercise[];
   onSwapExercise?: (oldExerciseId: string, newExercise: AlternativeExercise) => void;
 }
 
-const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
-  const [setsInput, setSetsInput] = useState(String(exercise.sets));
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+  const style = { transform: CSS.Transform.toString(transform), transition };
   const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
-  const formatDuration = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return s > 0 ? `${m}min ${s}s` : `${m} min`;
+
+  // Append a new set copying the last set's values (Hevy "+ Add set").
+  const handleAddSet = () => {
+    const n = exercise.sets;
+    const repsArr = exercise.reps_per_set || Array(n).fill(exercise.reps);
+    const weightArr = exercise.weight_per_set || Array(n).fill(exercise.weight_kg);
+    const typesArr = exercise.set_types || Array(n).fill('normal');
+    onUpdate(exercise.id, {
+      sets: n + 1,
+      reps_per_set: [...repsArr, repsArr[n - 1] ?? exercise.reps],
+      weight_per_set: [...weightArr, weightArr[n - 1] ?? exercise.weight_kg],
+      set_types: [...typesArr, 'normal'],
+    });
   };
 
   return (
@@ -310,140 +369,131 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
       ref={setNodeRef}
       style={style}
       className={cn(
-        "py-2 border-b border-border/50 last:border-0 bg-card",
+        "py-3 border-b border-border/50 last:border-0 bg-card",
         isDragging && "opacity-50 shadow-lg rounded-xl z-50",
         isIncompatible && "bg-destructive/5 border-l-2 border-l-destructive"
       )}
     >
+      {/* Header: thumbnail + name + ⋮ menu */}
       <div className="flex items-center gap-2">
-        {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0"
-        >
+        <button {...attributes} {...listeners} className="p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0">
           <GripVertical className="w-4 h-4" />
         </button>
-
-        <div className="flex-1 min-w-0">
-          {/* Clickable exercise name -> opens detail */}
-          <button
-            onClick={() => onShowDetail(exercise.exercise_id)}
-            className={cn(
-              "text-sm font-medium truncate text-left transition-colors block w-full",
-              isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
-            )}
-          >
-            {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
-            {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
+        <button onClick={() => onShowDetail(exercise.exercise_id)} className="shrink-0">
+          <CardThumb videoPath={exercise.video_path} />
+        </button>
+        <button
+          onClick={() => onShowDetail(exercise.exercise_id)}
+          className={cn(
+            "flex-1 min-w-0 text-sm font-semibold truncate text-left transition-colors",
+            isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
+          )}
+        >
+          {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
+          {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
+        </button>
+        <div className="relative shrink-0">
+          <button onClick={() => setMenuOpen(o => !o)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <MoreVertical className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-3 mt-1">
-            <button
-              onClick={onToggleExpand}
-              className={cn(
-                "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
-              )}
-            >
-              <span>{t('custom_plan.sets_count', { n: exercise.sets })}</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
-            </button>
-            {!isExpanded && (
-              isCardio ? (
-                <span className="text-xs text-muted-foreground">{formatDuration(exercise.reps)}</span>
-              ) : (
-                <>
-                  <span className="text-xs text-muted-foreground">{exercise.reps} {t('custom_plan.reps_label')}</span>
-                  <span className="text-xs text-muted-foreground">{exercise.weight_kg != null ? `${exercise.weight_kg} kg` : '–'}</span>
-                </>
-              )
-            )}
-          </div>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-card border border-border rounded-xl shadow-lg overflow-hidden py-1">
+                <button
+                  onClick={() => { setMenuOpen(false); onDuplicate(exercise.id); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                >
+                  <Copy className="w-4 h-4 text-muted-foreground" />
+                  {t('custom_plan.menu_duplicate')}
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); onRemove(exercise.id); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {t('custom_plan.menu_remove')}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* Action buttons */}
-        <button
-          onClick={() => onDuplicate(exercise.id)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-[#5BC8F5] hover:bg-[#5BC8F5]/10 transition-colors shrink-0"
-        >
-          <Copy className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => onRemove(exercise.id)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
       </div>
 
-      {/* Expandable per-set rows */}
-      {isExpanded && (
-        <div className="ml-7 mt-2 space-y-1.5">
-          {/* Sets count control */}
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-muted-foreground">{t('custom_plan.sets_label')}</label>
-            <input
-              type="number"
-              value={setsInput}
-              onChange={(e) => {
-                setSetsInput(e.target.value);
-                const parsed = parseInt(e.target.value);
-                if (parsed >= 1) onUpdate(exercise.id, { sets: parsed });
-              }}
-              onBlur={() => {
-                const val = Math.max(1, parseInt(setsInput) || 1);
-                setSetsInput(String(val));
-                onUpdate(exercise.id, { sets: val });
-              }}
-              className="w-14 bg-muted rounded-lg px-2 py-1 text-xs text-center outline-none"
-              min={1}
-            />
-          </div>
-          {/* Individual set rows — per-set reps, weight, rest */}
-          {Array.from({ length: exercise.sets }, (_, i) => {
-            const repsArr = exercise.reps_per_set || [];
-            const weightArr = exercise.weight_per_set || [];
-            const restArr = exercise.rest_per_set || [];
-            const setReps = repsArr[i] ?? exercise.reps;
-            const setWeight = weightArr[i] ?? exercise.weight_kg;
-            const setRest = restArr[i] ?? exercise.rest_seconds ?? 120;
-            return (
-              <SetRowInput
-                key={i}
-                index={i}
-                reps={setReps}
-                weight={setWeight}
-                rest={setRest}
-                isCardio={isCardio}
-                onRepsChange={(val) => {
-                  const base = exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps);
-                  const prevFirst = base[0] ?? exercise.reps;
-                  // Copy-down: editing set 1 pre-fills later sets that are still
-                  // empty or untouched (equal to the old set-1 value).
-                  const arr = i === 0
-                    ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
-                    : base.map((v: number | null, idx: number) => idx === i ? val : v);
-                  const updates: Record<string, any> = { reps_per_set: arr };
-                  if (isCardio) updates.reps = val;
-                  onUpdate(exercise.id, updates);
-                }}
-                onWeightChange={(val) => {
-                  const base = exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg);
-                  const prevFirst = base[0] ?? exercise.weight_kg;
-                  const arr = i === 0
-                    ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
-                    : base.map((v: number | null, idx: number) => idx === i ? val : v);
-                  onUpdate(exercise.id, { weight_per_set: arr });
-                }}
-                onRestChange={(val) => {
-                  const arr = [...(exercise.rest_per_set || Array(exercise.sets).fill(exercise.rest_seconds || 120))];
-                  arr[i] = val;
-                  onUpdate(exercise.id, { rest_per_set: arr });
-                }}
-              />
-            );
-          })}
+      {/* Note */}
+      <div className="ml-7 mt-1.5">
+        <NoteInput value={exercise.notes} onSave={(v) => onUpdate(exercise.id, { notes: v })} />
+      </div>
+
+      {/* Rest timer per exercise */}
+      <button
+        onClick={() => onOpenRestSheet(exercise)}
+        className="ml-7 mt-1 flex items-center gap-2 text-xs font-medium text-[#5BC8F5] hover:opacity-80 transition-opacity"
+      >
+        <Clock className="w-3.5 h-3.5" />
+        <span>{t('custom_plan.rest_row_label')}: {formatRest(exercise.rest_seconds, t)}</span>
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Sets table */}
+      <div className="ml-7 mt-2">
+        <div className="flex items-center gap-2 px-1 pb-1">
+          <span className="w-10 shrink-0 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_set')}</span>
+          {isCardio ? (
+            <span className="flex-1 text-[10px] font-semibold text-muted-foreground">{t('workout.category_cardio')}</span>
+          ) : (
+            <>
+              <span className="flex-1 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_kg')}</span>
+              <span className="flex-1 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_reps')}</span>
+            </>
+          )}
         </div>
-      )}
+        {Array.from({ length: exercise.sets }, (_, i) => {
+          const repsArr = exercise.reps_per_set || [];
+          const weightArr = exercise.weight_per_set || [];
+          const setReps = repsArr[i] ?? exercise.reps;
+          const setWeight = weightArr[i] ?? exercise.weight_kg;
+          return (
+            <SetRowInput
+              key={i}
+              index={i}
+              reps={setReps}
+              weight={setWeight}
+              isCardio={isCardio}
+              setTypes={exercise.set_types}
+              onOpenTypeSheet={(idx) => onOpenTypeSheet(exercise, idx)}
+              onRepsChange={(val) => {
+                const base = exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps);
+                const prevFirst = base[0] ?? exercise.reps;
+                // Copy-down: editing set 1 pre-fills later sets that are still
+                // empty or untouched (equal to the old set-1 value).
+                const arr = i === 0
+                  ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                  : base.map((v: number | null, idx: number) => idx === i ? val : v);
+                const updates: Record<string, any> = { reps_per_set: arr };
+                if (isCardio) updates.reps = val;
+                onUpdate(exercise.id, updates);
+              }}
+              onWeightChange={(val) => {
+                const base = exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg);
+                const prevFirst = base[0] ?? exercise.weight_kg;
+                const arr = i === 0
+                  ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                  : base.map((v: number | null, idx: number) => idx === i ? val : v);
+                onUpdate(exercise.id, { weight_per_set: arr });
+              }}
+            />
+          );
+        })}
+
+        <button
+          onClick={handleAddSet}
+          className="w-full flex items-center justify-center gap-1.5 mt-2 py-2 rounded-lg bg-muted/60 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {t('custom_plan.add_set')}
+        </button>
+      </div>
 
       {/* Incompatible alternatives */}
       {isIncompatible && alternatives && alternatives.length > 0 && (
@@ -601,6 +651,43 @@ const CustomPlanDetail = () => {
     }
   };
 
+  // --- P2 set-type / rest-timer handlers ---
+  const handleSelectSetType = (type: SetType) => {
+    if (!typeSheet) return;
+    const { exercise, setIndex } = typeSheet;
+    const types = [...(exercise.set_types || Array(exercise.sets).fill('normal'))];
+    while (types.length < exercise.sets) types.push('normal');
+    types[setIndex] = type;
+    updateExercise(exercise.id, { set_types: types });
+    setTypeSheet(null);
+  };
+
+  const handleRemoveSet = () => {
+    if (!typeSheet) return;
+    const { exercise, setIndex } = typeSheet;
+    // Removing the only set removes the whole exercise (Hevy behaviour).
+    if (exercise.sets <= 1) {
+      removeExercise(exercise.id);
+      setTypeSheet(null);
+      return;
+    }
+    const dropAt = <T,>(arr: T[] | null, fallback: T[]): T[] => (arr ?? fallback).filter((_, i) => i !== setIndex);
+    updateExercise(exercise.id, {
+      sets: exercise.sets - 1,
+      reps_per_set: dropAt(exercise.reps_per_set, Array(exercise.sets).fill(exercise.reps)),
+      weight_per_set: dropAt(exercise.weight_per_set, Array(exercise.sets).fill(exercise.weight_kg)),
+      set_types: dropAt(exercise.set_types, Array(exercise.sets).fill('normal')),
+    });
+    setTypeSheet(null);
+  };
+
+  const handleSelectRest = (seconds: number) => {
+    if (!restSheetExercise) return;
+    // Store rest at the exercise level; clear any legacy per-set rest so it applies.
+    updateExercise(restSheetExercise.id, { rest_seconds: seconds, rest_per_set: null });
+    setRestSheetExercise(null);
+  };
+
   useEffect(() => {
     if (!exerciseDrawerOpen) return;
     const update = () => {
@@ -629,7 +716,12 @@ const CustomPlanDetail = () => {
   const [detailExercise, setDetailExercise] = useState<ExerciseSearchResult | null>(null);
   const [videoError, setVideoError] = useState(false);
   const [signedDetailVideoUrl, setSignedDetailVideoUrl] = useState<string | null>(null);
-  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  // P2: rest-timer sheet, set-type sheet, set-type explanation dialog, title validation
+  const [restSheetExercise, setRestSheetExercise] = useState<CustomPlanExercise | null>(null);
+  const [typeSheet, setTypeSheet] = useState<{ exercise: CustomPlanExercise; setIndex: number } | null>(null);
+  const [explainType, setExplainType] = useState<SetType | null>(null);
+  const [showTitleDialog, setShowTitleDialog] = useState(false);
+  const [titleDialogName, setTitleDialogName] = useState('');
   const [viewExerciseDrawerOpen, setViewExerciseDrawerOpen] = useState(false);
   const [viewExerciseData, setViewExerciseData] = useState<ExerciseSearchResult | null>(null);
   const [viewVideoError, setViewVideoError] = useState(false);
@@ -1013,12 +1105,12 @@ const CustomPlanDetail = () => {
                           <SortableExerciseItem
                             key={exercise.id}
                             exercise={exercise}
-                            isExpanded={expandedExerciseId === exercise.id}
-                            onToggleExpand={() => setExpandedExerciseId(prev => prev === exercise.id ? null : exercise.id)}
                             onUpdate={updateExercise}
                             onRemove={removeExercise}
                             onDuplicate={duplicateExercise}
                             onShowDetail={handleShowExerciseDetail}
+                            onOpenRestSheet={setRestSheetExercise}
+                            onOpenTypeSheet={(ex, setIndex) => setTypeSheet({ exercise: ex, setIndex })}
                             isIncompatible={!!incompatInfo}
                             alternatives={incompatInfo?.alternatives}
                             onSwapExercise={handleSwapExercise}
@@ -1157,6 +1249,12 @@ const CustomPlanDetail = () => {
           ) : (
             <Button
               onClick={() => {
+                // Hevy-style title validation before committing the routine.
+                if (!plan.name.trim()) {
+                  setTitleDialogName(plan.name);
+                  setShowTitleDialog(true);
+                  return;
+                }
                 if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
                   setShowConflictDialog(true);
                 } else {
@@ -1230,6 +1328,130 @@ const CustomPlanDetail = () => {
           onCancel={() => setShowLocationGate(false)}
         />,
         document.body
+      )}
+
+      {/* Rest-timer picker sheet (per exercise) */}
+      <Drawer open={!!restSheetExercise} onOpenChange={(o) => { if (!o) setRestSheetExercise(null); }}>
+        <DrawerContent className="flex flex-col" style={{ maxHeight: '70dvh' }}>
+          <DrawerHeader className="shrink-0">
+            <DrawerTitle>{t('custom_plan.rest_sheet_title')}</DrawerTitle>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 pb-8">
+            {REST_OPTIONS.map((sec) => {
+              const selected = (restSheetExercise?.rest_seconds ?? 120) === sec;
+              return (
+                <button
+                  key={sec}
+                  onClick={() => handleSelectRest(sec)}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-muted transition-colors"
+                >
+                  <span className={cn('text-sm', selected ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{formatRest(sec, t)}</span>
+                  {selected && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+                </button>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Set-type picker sheet */}
+      <Drawer open={!!typeSheet} onOpenChange={(o) => { if (!o) setTypeSheet(null); }}>
+        <DrawerContent className="flex flex-col" style={{ maxHeight: '75dvh' }}>
+          <DrawerHeader className="shrink-0">
+            <DrawerTitle>{t('set_type.sheet_title')}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8">
+            {SELECTABLE_SET_TYPES.map((type) => {
+              const meta = SET_TYPE_META[type];
+              const isCurrent = !!typeSheet && getSetType(typeSheet.exercise.set_types, typeSheet.setIndex) === type;
+              return (
+                <div key={type} className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleSelectSetType(type)}
+                    className="flex-1 flex items-center gap-3 px-3 py-3.5 rounded-xl hover:bg-muted transition-colors text-left"
+                  >
+                    <span className={cn('w-7 text-center font-bold', meta.color)}>{type === 'normal' ? '1' : type}</span>
+                    <span className={cn('text-sm', isCurrent ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{t(meta.labelKey)}</span>
+                    {isCurrent && <Check className="w-4 h-4 text-[#5BC8F5] ml-auto" />}
+                  </button>
+                  <button onClick={() => setExplainType(type)} className="p-2.5 text-muted-foreground hover:text-foreground transition-colors">
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              onClick={handleRemoveSet}
+              className="w-full flex items-center gap-3 px-3 py-3.5 mt-1 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <X className="w-5 h-5 ml-0.5" />
+              <span className="text-sm font-medium">{t('set_type.remove')}</span>
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Set-type explanation dialog (?) — above the sheet */}
+      {explainType && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setExplainType(null)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className={cn('w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold', SET_TYPE_META[explainType].color)}>
+                {explainType === 'normal' ? '1' : explainType}
+              </span>
+              <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainType].labelKey)}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainType].explainKey)}</p>
+            <button onClick={() => setExplainType(null)} className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors">
+              {t('set_type.explain_ok')}
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Title-required validation dialog */}
+      {showTitleDialog && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setShowTitleDialog(false)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-center mb-1">{t('custom_plan.title_required_title')}</h2>
+            <p className="text-muted-foreground text-sm text-center mb-4">{t('custom_plan.title_required_desc')}</p>
+            <input
+              type="text"
+              value={titleDialogName}
+              onChange={(e) => setTitleDialogName(e.target.value)}
+              placeholder={t('custom_plan.name_placeholder')}
+              autoFocus
+              className="w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+            />
+            <button
+              disabled={!titleDialogName.trim()}
+              onClick={async () => {
+                const name = titleDialogName.trim();
+                if (!name) return;
+                await renamePlan(name);
+                setShowTitleDialog(false);
+                if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
+                  setShowConflictDialog(true);
+                } else {
+                  setShowGymSelector(true);
+                }
+              }}
+              className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors disabled:opacity-40"
+            >
+              {t('custom_plan.title_required_save')}
+            </button>
+          </motion.div>
+        </div>
       )}
     </>
   );

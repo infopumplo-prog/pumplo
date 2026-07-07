@@ -560,6 +560,36 @@ const en = {
   'custom_plan.role_cyclical_pull': 'Rowing',
   'custom_plan.role_cyclical_push': 'Air bike / Cycling',
 
+  // Hevy-style routine editor (P2): card, notes, rest timer, sets table
+  'custom_plan.note_placeholder': 'Add a note…',
+  'custom_plan.rest_row_label': 'Rest between sets',
+  'custom_plan.rest_off': 'Off',
+  'custom_plan.rest_sheet_title': 'Rest between sets',
+  'custom_plan.add_set': 'Add set',
+  'custom_plan.col_set': 'SET',
+  'custom_plan.col_kg': 'KG',
+  'custom_plan.col_reps': 'REPS',
+  'custom_plan.menu_duplicate': 'Duplicate exercise',
+  'custom_plan.menu_remove': 'Remove exercise',
+  'custom_plan.title_required_title': 'Your workout needs a name',
+  'custom_plan.title_required_desc': 'Name your workout before starting it.',
+  'custom_plan.title_required_save': 'Save and start',
+  'custom_plan.rest_minutes_short': 'min',
+  'custom_plan.rest_seconds_short': 's',
+
+  // Set types (shared editor + player)
+  'set_type.sheet_title': 'Set type',
+  'set_type.warmup_label': 'Warm-up',
+  'set_type.normal_label': 'Normal',
+  'set_type.failure_label': 'To failure',
+  'set_type.drop_label': 'Drop set',
+  'set_type.remove': 'Remove set',
+  'set_type.warmup_explain': 'A warm-up set prepares your body for heavier weights. It does not count toward working volume.',
+  'set_type.normal_explain': 'A working set — these build strength and muscle.',
+  'set_type.failure_explain': 'A set where you reached muscle failure and could not finish the last rep. If you fail on the 11th, log 10.',
+  'set_type.drop_explain': 'After reaching failure you immediately continue with lighter weight without resting.',
+  'set_type.explain_ok': 'Got it',
+
   // MyPlan extra
   'myplan.week_type_normal': 'Normal',
   'myplan.week_type_moderate': 'Intense',

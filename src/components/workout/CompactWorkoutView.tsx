@@ -5,6 +5,8 @@ import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 
 interface SetData {
   completed: boolean;
@@ -54,6 +56,9 @@ interface CompactWorkoutViewProps {
   currentSetReps?: string;
   onCurrentSetWeightChange?: (v: string) => void;
   onCurrentSetRepsChange?: (v: string) => void;
+  // Optional per-exercise set types (W/normal/F/D) for badges + ? explanations.
+  setTypesByExercise?: Map<number, (string | null)[]>;
+  onExplainSetType?: (type: string) => void;
 }
 
 export const CompactWorkoutView = ({
@@ -79,9 +84,19 @@ export const CompactWorkoutView = ({
   currentSetReps,
   onCurrentSetWeightChange,
   onCurrentSetRepsChange,
+  setTypesByExercise,
+  onExplainSetType,
 }: CompactWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
+
+  // SÉRIE-column label: a coloured W/F/D/number badge when set types exist,
+  // otherwise the plain "1." numbering used by the generated-plan player.
+  const renderSetLabel = (exIdx: number, si: number) => {
+    const types = setTypesByExercise?.get(exIdx);
+    if (!types) return `${si + 1}.`;
+    return <span className={cn('font-bold', setBadgeColor(types, si))}>{setBadgeLabel(types, si)}</span>;
+  };
 
   const slotCategoryLabels: Record<string, { label: string; color: string }> = {
     main: { label: t('slot.main'), color: 'bg-primary/15 text-primary border-primary/30' },
@@ -412,7 +427,7 @@ export const CompactWorkoutView = ({
                         {sets.map((s, si) =>
                           s.completed ? (
                             <tr key={si} className="border-t border-border/30">
-                              <td className="py-1.5 text-muted-foreground">{si + 1}.</td>
+                              <td className="py-1.5 text-muted-foreground">{renderSetLabel(idx, si)}</td>
                               <td className="py-1.5 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
                               <td className="py-1.5 text-center font-medium">{s.reps ?? '–'}</td>
                               {showTimer && (
@@ -432,11 +447,28 @@ export const CompactWorkoutView = ({
                 {isActive && !allSetsComplete && (
                   <div className="px-3 pb-3 pt-1 border-t border-border/50">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-muted-foreground">
-                        {isExCardio
-                          ? t('workout.compact_cardio_series', { n: currentSetIndex + 1, total: ex.sets, target: fmtExTarget })
-                          : t('workout.compact_series', { n: currentSetIndex + 1, total: ex.sets, min: ex.repMin, max: ex.repMax })}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {isExCardio
+                            ? t('workout.compact_cardio_series', { n: currentSetIndex + 1, total: ex.sets, target: fmtExTarget })
+                            : t('workout.compact_series', { n: currentSetIndex + 1, total: ex.sets, min: ex.repMin, max: ex.repMax })}
+                        </p>
+                        {(() => {
+                          const types = setTypesByExercise?.get(idx);
+                          if (!types || currentSetIndex < 0) return null;
+                          const type = getSetType(types, currentSetIndex);
+                          if (type === 'normal') return null;
+                          return (
+                            <button
+                              onClick={() => onExplainSetType?.(type)}
+                              className={cn('flex items-center gap-1 text-xs font-bold', setBadgeColor(types, currentSetIndex))}
+                            >
+                              {setBadgeLabel(types, currentSetIndex)}
+                              <Info className="w-3 h-3" />
+                            </button>
+                          );
+                        })()}
+                      </div>
                       {(timerRunning || externalCardioSecondsRemaining !== undefined) && (
                         <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${externalCardioPaused ? 'text-amber-500' : 'text-primary'}`}>
                           <Timer className="w-3.5 h-3.5" />
@@ -519,7 +551,7 @@ export const CompactWorkoutView = ({
                           {currentSets.map((s, si) =>
                             s.completed ? (
                               <tr key={si} className="border-t border-border/30">
-                                <td className="py-1 text-muted-foreground">{si + 1}.</td>
+                                <td className="py-1 text-muted-foreground">{renderSetLabel(currentExerciseIndex, si)}</td>
                                 <td className="py-1 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
                                 <td className="py-1 text-center font-medium">{s.reps ?? '–'}</td>
                                 {showTimer && (
@@ -582,7 +614,7 @@ export const CompactWorkoutView = ({
                           {sets.map((s, si) =>
                             s.completed ? (
                               <tr key={si} className="border-t border-border/30">
-                                <td className="py-1.5 text-muted-foreground">{si + 1}.</td>
+                                <td className="py-1.5 text-muted-foreground">{renderSetLabel(idx, si)}</td>
                                 <td className="py-1.5 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
                                 <td className="py-1.5 text-center font-medium">{s.reps ?? '–'}</td>
                                 {showTimer && (

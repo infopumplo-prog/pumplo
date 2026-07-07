@@ -560,6 +560,36 @@ const cs = {
   'custom_plan.role_cyclical_pull': 'Veslování',
   'custom_plan.role_cyclical_push': 'Air bike / Kolo',
 
+  // Hevy-style routine editor (P2): card, notes, rest timer, sets table
+  'custom_plan.note_placeholder': 'Přidej poznámku…',
+  'custom_plan.rest_row_label': 'Pauza mezi sériemi',
+  'custom_plan.rest_off': 'Vypnuto',
+  'custom_plan.rest_sheet_title': 'Pauza mezi sériemi',
+  'custom_plan.add_set': 'Přidat sérii',
+  'custom_plan.col_set': 'SÉRIE',
+  'custom_plan.col_kg': 'KG',
+  'custom_plan.col_reps': 'OPAK.',
+  'custom_plan.menu_duplicate': 'Duplikovat cvik',
+  'custom_plan.menu_remove': 'Odebrat cvik',
+  'custom_plan.title_required_title': 'Trénink potřebuje název',
+  'custom_plan.title_required_desc': 'Než trénink spustíš, pojmenuj ho.',
+  'custom_plan.title_required_save': 'Uložit a spustit',
+  'custom_plan.rest_minutes_short': 'min',
+  'custom_plan.rest_seconds_short': 's',
+
+  // Set types (shared editor + player)
+  'set_type.sheet_title': 'Typ série',
+  'set_type.warmup_label': 'Rozehřívací',
+  'set_type.normal_label': 'Normální',
+  'set_type.failure_label': 'Do selhání',
+  'set_type.drop_label': 'Drop set',
+  'set_type.remove': 'Odebrat sérii',
+  'set_type.warmup_explain': 'Rozehřívací série připraví tělo na těžší váhy. Nepočítá se do pracovního objemu.',
+  'set_type.normal_explain': 'Pracovní série — ty budují sílu a svaly.',
+  'set_type.failure_explain': 'Série, ve které jsi dosáhl svalového selhání a poslední opakování už jsi nedokončil. Když selžeš na 11., zapiš 10.',
+  'set_type.drop_explain': 'Po dosažení selhání hned pokračuješ s nižší váhou bez pauzy.',
+  'set_type.explain_ok': 'Rozumím',
+
   // MyPlan extra
   'myplan.week_type_normal': 'Normální',
   'myplan.week_type_moderate': 'Náročný',

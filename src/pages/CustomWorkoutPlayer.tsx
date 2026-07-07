@@ -17,6 +17,8 @@ import { CompactWorkoutView } from '@/components/workout/CompactWorkoutView';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { cn } from '@/lib/utils';
+import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
@@ -35,6 +37,7 @@ interface ExerciseWithVideo {
   weight_per_set: number[] | null;
   rest_seconds: number;
   rest_per_set: number[] | null;
+  set_types: (string | null)[] | null;
   video_path: string | null;
   machine_id: string | null;
   unit_type: string;
@@ -142,6 +145,7 @@ const CustomWorkoutPlayer = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'video' | 'list'>('list');
   const [addPickerOpen, setAddPickerOpen] = useState(false);
+  const [explainSetType, setExplainSetType] = useState<SetType | null>(null);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
@@ -459,8 +463,9 @@ const CustomWorkoutPlayer = () => {
       reps_per_set: e.reps_per_set || null,
       weight_kg: e.weight_kg,
       weight_per_set: e.weight_per_set || null,
-      rest_seconds: e.rest_seconds || 120,
+      rest_seconds: e.rest_seconds ?? 120,
       rest_per_set: e.rest_per_set || null,
+      set_types: e.set_types || null,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
       unit_type: dataMap.get(e.exercise_id)?.unit_type || 'reps',
@@ -665,12 +670,16 @@ const CustomWorkoutPlayer = () => {
       setReps('');
     }
 
-    // Start rest — use per-set rest duration
+    // Start rest — use per-set rest duration (0 = rest timer off → skip straight to next)
     const setIdx = currentSet - 1; // 0-based
     const restTime = currentExercise?.rest_per_set?.[setIdx] ?? currentExercise?.rest_seconds ?? 120;
-    setRestSeconds(restTime);
-    setCurrentRestTotal(restTime);
-    setPlayerState('rest');
+    if (restTime > 0) {
+      setRestSeconds(restTime);
+      setCurrentRestTotal(restTime);
+      setPlayerState('rest');
+    } else {
+      advanceAfterRest();
+    }
   };
 
   const handleCardioComplete = () => {
@@ -695,14 +704,18 @@ const CustomWorkoutPlayer = () => {
       return;
     }
 
-    setRestSeconds(restTime);
-    setCurrentRestTotal(restTime);
-    setPlayerState('rest');
-
     if (isLastSet) {
       pendingAdvanceRef.current = { type: 'next_exercise', exIdx: currentExerciseIndex + 1 };
     } else {
       pendingAdvanceRef.current = { type: 'next_set', exIdx: currentExerciseIndex, set: currentSet + 1 };
+    }
+
+    if (restTime > 0) {
+      setRestSeconds(restTime);
+      setCurrentRestTotal(restTime);
+      setPlayerState('rest');
+    } else {
+      advanceAfterRest();
     }
   };
 
@@ -756,6 +769,7 @@ const CustomWorkoutPlayer = () => {
         weight_per_set: null,
         rest_seconds: 120,
         rest_per_set: null,
+        set_types: null,
         video_path: p.video_path,
         machine_id: p.machine_id,
         unit_type: p.unit_type,
@@ -893,6 +907,29 @@ const CustomWorkoutPlayer = () => {
     clearPausedWorkout();
     navigate('/');
   };
+
+  // Shared set-type explanation dialog (opened via the ? in the compact list).
+  const setTypeExplainDialog = explainSetType && (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setExplainSetType(null)}>
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span className={cn('w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold', SET_TYPE_META[explainSetType].color)}>
+            {explainSetType === 'normal' ? '1' : explainSetType}
+          </span>
+          <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainSetType].labelKey)}</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainSetType].explainKey)}</p>
+        <button onClick={() => setExplainSetType(null)} className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors">
+          {t('set_type.explain_ok')}
+        </button>
+      </motion.div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -1163,6 +1200,10 @@ const CustomWorkoutPlayer = () => {
       category: ex.category,
     }));
 
+    // Per-exercise set types (W/normal/F/D) for badges in the compact list.
+    const compactSetTypes = new Map<number, (string | null)[]>();
+    exercises.forEach((ex, idx) => { if (ex.set_types) compactSetTypes.set(idx, ex.set_types); });
+
     const compactSetsMap = new Map<number, { completed: boolean; weight?: number; reps?: number; durationSeconds?: number }[]>();
     exercises.forEach((ex, idx) => {
       const completedSets = completedSetsMap.get(idx) || [];
@@ -1197,21 +1238,29 @@ const CustomWorkoutPlayer = () => {
       const exRestSec = exercise.rest_per_set?.[completedSetIdx] ?? exercise.rest_seconds ?? 120;
       if (setsForEx >= exercise.sets) {
         if (exIdx < exercises.length - 1) {
-          setRestSeconds(exRestSec);
-          setCurrentRestTotal(exRestSec);
-          setPlayerState('rest');
           pendingAdvanceRef.current = { type: 'next_exercise', exIdx: exIdx + 1 };
+          if (exRestSec > 0) {
+            setRestSeconds(exRestSec);
+            setCurrentRestTotal(exRestSec);
+            setPlayerState('rest');
+          } else {
+            advanceAfterRest();
+          }
         } else {
           setPlayerState('completed');
           announceWorkoutComplete();
         }
       } else {
-        setCurrentExerciseIndex(exIdx);
-        setCurrentSet(setsForEx + 1);
-        setRestSeconds(exRestSec);
-        setCurrentRestTotal(exRestSec);
-        setPlayerState('rest');
         pendingAdvanceRef.current = { type: 'next_set', exIdx, set: setsForEx + 1 };
+        if (exRestSec > 0) {
+          setCurrentExerciseIndex(exIdx);
+          setCurrentSet(setsForEx + 1);
+          setRestSeconds(exRestSec);
+          setCurrentRestTotal(exRestSec);
+          setPlayerState('rest');
+        } else {
+          advanceAfterRest();
+        }
       }
     };
 
@@ -1252,6 +1301,8 @@ const CustomWorkoutPlayer = () => {
           currentSetReps={reps}
           onCurrentSetWeightChange={setWeight}
           onCurrentSetRepsChange={setReps}
+          setTypesByExercise={compactSetTypes}
+          onExplainSetType={(type) => setExplainSetType(type as SetType)}
         />
 
         {/* Exit confirmation dialog */}
@@ -1411,6 +1462,8 @@ const CustomWorkoutPlayer = () => {
             )}
           </DrawerContent>
         </Drawer>
+
+        {setTypeExplainDialog}
       </div>
     );
   }
@@ -1488,9 +1541,20 @@ const CustomWorkoutPlayer = () => {
               >
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
                   <p className="text-white font-bold text-base leading-tight">{(isEn && currentExercise.exercise_name_en) ? currentExercise.exercise_name_en : currentExercise.exercise_name}</p>
-                  <p className="text-white/70 text-sm mt-0.5">
-                    {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-white/70 text-sm">
+                      {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
+                    </p>
+                    {currentExercise.set_types && setBadgeLabel(currentExercise.set_types, currentSet - 1).match(/[WFD]/) && (
+                      <button
+                        onClick={() => setExplainSetType(setBadgeLabel(currentExercise.set_types, currentSet - 1) as SetType)}
+                        className={cn('px-1.5 py-0.5 rounded bg-white/15 text-xs font-bold', setBadgeColor(currentExercise.set_types, currentSet - 1))}
+                        style={{ pointerEvents: 'auto' }}
+                      >
+                        {setBadgeLabel(currentExercise.set_types, currentSet - 1)}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => handleShowInfo(currentExercise.exercise_id)}
@@ -1773,6 +1837,8 @@ const CustomWorkoutPlayer = () => {
           exercise_id: currentExercise?.exercise_id,
         }}
       />
+
+      {setTypeExplainDialog}
     </div>
   );
 };
