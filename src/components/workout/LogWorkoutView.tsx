@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { cn } from '@/lib/utils';
 import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
-import { groupForMuscle } from '@/lib/muscleGroups';
+import { computeMuscleDistribution } from '@/lib/muscleDistribution';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
@@ -252,22 +252,15 @@ const LogWorkoutView = ({
 
   // --- Muscle distribution (primary=1, secondary=0.5 per completed set) ---
   const muscleDist = useMemo(() => {
-    const buckets = new Map<string, { label: string; value: number }>();
-    const add = (muscle: string, amount: number) => {
-      const gk = groupForMuscle(muscle);
-      const bucketKey = gk ? gk : 'raw:' + translateMuscle(muscle, isEn);
-      const label = gk ? t(`custom_plan.muscle_${gk}`) : translateMuscle(muscle, isEn);
-      const cur = buckets.get(bucketKey) || { label, value: 0 };
-      cur.value += amount;
-      buckets.set(bucketKey, cur);
-    };
-    exercises.forEach((ex, idx) => {
-      const done = (completedSetsMap.get(idx) || []).filter(s => s.completed).length;
-      if (!done) return;
-      ex.primary_muscles.forEach(m => add(m, done));
-      ex.secondary_muscles.forEach(m => add(m, done * 0.5));
-    });
-    return [...buckets.values()].filter(b => b.value > 0).sort((a, b) => b.value - a.value);
+    const dist = computeMuscleDistribution(exercises.map((ex, idx) => ({
+      primaryMuscles: ex.primary_muscles,
+      secondaryMuscles: ex.secondary_muscles,
+      completedSets: (completedSetsMap.get(idx) || []).filter(s => s.completed).length,
+    })));
+    return dist.map(d => ({
+      label: d.key ? t(`custom_plan.muscle_${d.key}`) : translateMuscle(d.raw, isEn),
+      value: d.value,
+    }));
   }, [exercises, completedSetsMap, isEn, t]);
   const muscleMax = muscleDist[0]?.value || 1;
 
