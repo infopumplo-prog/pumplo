@@ -63,6 +63,14 @@ Předchozí batch: `2026-06-08-feedback-backlog.md` (A–E, vše app-side hotov�
 - ✅ Scroll ℹ️ textu (na cvicích v tréninku)
 - 🐛→✅ Kill test odhalil „Série 4/3" po zabití appky během pauzy mezi cviky — opraveno (cabc612): snapshot ukazuje na další cvik, resume normalizuje out-of-range index
 
+## 🆕 David 7. 7. — onboarding & first-run UX
+
+- **F18. Výběr posilovny pryč z onboarding dotazníku.** Gym není potřeba do startu tréninku → vybírat až přímo před tréninkem (pokud profil gym nemá). Onboarding = jen cíl/úroveň/dny/demografie.
+- **F19. Uvítací tour po updatu (pro všechny, jednorázově) + průvodce prvním tréninkem.** Kamarád nevěděl, co které tlačítko dělá.
+  - Home tour: „tady vlastní plán", „tady najdeš posilovnu", „tady tvůj plán" — spotlight overlay, zobrazit každému 1× po updatu (klíč ve storage per verze).
+  - První trénink po updatu: coach marks v playeru — swap tlačítko (refresh cviku), rozmezí opakování („doporučený rozsah"), RIR lidsky u váhy: „Vyber váhu tak, aby ti na konci série zbývala ještě ~N opakování do selhání."
+- **F20. Long-press na swap → list alternativ.** Krátký tap = náhodný swap (jak teď), podržení = bottom sheet se seznamem dostupných cviků stejné role (s videem/názvem/strojem), uživatel si vybere sám (např. volný stroj).
+
 ## Otevřené z června (stále platí)
 - C1: dostupnost na Slovensku (App Store + Play)
 - D3: store screenshoty s čistým status barem
