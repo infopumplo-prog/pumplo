@@ -590,6 +590,28 @@ const en = {
   'set_type.drop_explain': 'After reaching failure you immediately continue with lighter weight without resting.',
   'set_type.explain_ok': 'Got it',
 
+  // Log Workout (Hevy) — custom workout logging
+  'log_workout.finish': 'Finish',
+  'log_workout.duration': 'Duration',
+  'log_workout.volume': 'Volume',
+  'log_workout.sets': 'Sets',
+  'log_workout.col_set': 'SET',
+  'log_workout.col_previous': 'PREVIOUS',
+  'log_workout.col_kg': 'KG',
+  'log_workout.col_reps': 'REPS',
+  'log_workout.col_time': 'TIME',
+  'log_workout.add_set': 'Add set',
+  'log_workout.note_placeholder': 'Add a note…',
+  'log_workout.rest': 'Rest',
+  'log_workout.rest_off': 'Off',
+  'log_workout.rest_skip': 'Skip',
+  'log_workout.minimize': 'Minimize',
+  'log_workout.rest_settings': 'Rest timer settings',
+  'log_workout.rest_timer': 'Rest timer',
+  'log_workout.sound': 'Sound',
+  'log_workout.muscle_sets': 'Sets',
+  'log_workout.muscle_empty': 'Complete your first set to see the muscle split.',
+
   // MyPlan extra
   'myplan.week_type_normal': 'Normal',
   'myplan.week_type_moderate': 'Intense',

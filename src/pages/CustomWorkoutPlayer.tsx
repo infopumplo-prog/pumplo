@@ -13,12 +13,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
-import { CompactWorkoutView } from '@/components/workout/CompactWorkoutView';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
+import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { cn } from '@/lib/utils';
-import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
+import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
@@ -42,6 +42,9 @@ interface ExerciseWithVideo {
   machine_id: string | null;
   unit_type: string;
   category: string;
+  primary_muscles: string[];
+  secondary_muscles: string[];
+  notes: string | null;
 }
 
 interface CompletedSetData {
@@ -239,9 +242,9 @@ const CustomWorkoutPlayer = () => {
         gymName,
         gymInstagram,
         totalDuration: durationMinutes,
-        totalSets: totalSetsCompleted,
-        totalWeight,
-        totalReps,
+        totalSets: workingTotals.sets,
+        totalWeight: workingTotals.volume,
+        totalReps: workingTotals.reps,
         exerciseCount: exercises.length,
         exerciseDetails: exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
@@ -350,6 +353,22 @@ const CustomWorkoutPlayer = () => {
   const totalReps = Array.from(completedSetsMap.values()).reduce((sum, sets) =>
     sum + sets.reduce((s, set) => s + (set.reps || 0), 0), 0);
 
+  // Working totals (warm-up "W" sets excluded) — used for the saved session
+  // totals and the completion summary, per the Hevy spec.
+  const workingTotals = (() => {
+    let sets = 0, volume = 0, reps = 0;
+    completedSetsMap.forEach((arr, exIdx) => {
+      arr.forEach((set, si) => {
+        if (!set.completed) return;
+        if (getSetType(exercises[exIdx]?.set_types, si) === 'W') return;
+        sets++;
+        reps += set.reps || 0;
+        volume += (set.weight || 0) * (set.reps || 0);
+      });
+    });
+    return { sets, volume, reps };
+  })();
+
   // Handle gym selection
   const handleGymSelected = async (gymId: string) => {
     // Starting a fresh workout — clear any stale completion cache
@@ -447,11 +466,11 @@ const CustomWorkoutPlayer = () => {
     const exerciseIds = day.exercises.map(e => e.exercise_id);
     const { data: exerciseData } = await supabase
       .from('exercises')
-      .select('id, name, name_en, video_path, machine_id, unit_type, category')
+      .select('id, name, name_en, video_path, machine_id, unit_type, category, primary_muscles, secondary_muscles')
       .in('id', exerciseIds);
 
-    const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string }>();
-    exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '' }));
+    const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string; primary_muscles: string[]; secondary_muscles: string[] }>();
+    exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '', primary_muscles: (e as any).primary_muscles || [], secondary_muscles: (e as any).secondary_muscles || [] }));
 
     const loaded: ExerciseWithVideo[] = day.exercises.map(e => ({
       id: e.id,
@@ -470,6 +489,9 @@ const CustomWorkoutPlayer = () => {
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
       unit_type: dataMap.get(e.exercise_id)?.unit_type || 'reps',
       category: dataMap.get(e.exercise_id)?.category || '',
+      primary_muscles: dataMap.get(e.exercise_id)?.primary_muscles || [],
+      secondary_muscles: dataMap.get(e.exercise_id)?.secondary_muscles || [],
+      notes: (e as any).notes ?? null,
     }));
 
     // Fetch last weights from history for all exercises
@@ -774,10 +796,46 @@ const CustomWorkoutPlayer = () => {
         machine_id: p.machine_id,
         unit_type: p.unit_type,
         category: p.category,
+        primary_muscles: p.primary_muscles || [],
+        secondary_muscles: [],
+        notes: null,
       })),
     ]);
     setAddPickerOpen(false);
   };
+
+  // --- Log Workout (Hevy) view handlers ---
+  // The Hevy view owns its own sticky rest bar, so these only mutate the shared
+  // completedSetsMap; playerState stays on 'exercise'.
+  const recountCompleted = (map: Map<number, CompletedSetData[]>) => {
+    let c = 0;
+    map.forEach(arr => arr.forEach(s => { if (s.completed) c++; }));
+    return c;
+  };
+  const handleLogSetComplete = (exIdx: number, setIdx: number, w: number | null, r: number | null, duration: number | null) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      while (arr.length <= setIdx) arr.push({ completed: false, weight: null, reps: null, durationSeconds: null });
+      arr[setIdx] = { completed: true, weight: w, reps: r, durationSeconds: duration };
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
+  const handleLogSetUncomplete = (exIdx: number, setIdx: number) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      if (arr[setIdx]) arr[setIdx] = { completed: false, weight: null, reps: null, durationSeconds: null };
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
+  // In Log mode sets can be toggled on/off, so keep the completed counter derived
+  // from the map (video mode manages it manually and is left untouched).
+  useEffect(() => {
+    if (viewMode === 'list') setTotalSetsCompleted(recountCompleted(completedSetsMap));
+  }, [completedSetsMap, viewMode]);
 
   // Go back to previous set
   const handleGoBack = () => {
@@ -866,9 +924,9 @@ const CustomWorkoutPlayer = () => {
             started_at: startTime.toISOString(),
             completed_at: completedAt.toISOString(),
             duration_seconds: durationSeconds,
-            total_sets: totalSetsCompleted,
-            total_reps: totalReps,
-            total_weight_kg: totalWeight,
+            total_sets: workingTotals.sets,
+            total_reps: workingTotals.reps,
+            total_weight_kg: workingTotals.volume,
             is_bonus: false,
           })
           .select()
@@ -1092,9 +1150,9 @@ const CustomWorkoutPlayer = () => {
         gymName={sc?.gymName ?? gymName}
         gymInstagram={sc?.gymInstagram ?? gymInstagram}
         totalDuration={sc?.totalDuration ?? durationMinutes}
-        totalSets={sc?.totalSets ?? totalSetsCompleted}
-        totalWeight={sc?.totalWeight ?? totalWeight}
-        totalReps={sc?.totalReps ?? totalReps}
+        totalSets={sc?.totalSets ?? workingTotals.sets}
+        totalWeight={sc?.totalWeight ?? workingTotals.volume}
+        totalReps={sc?.totalReps ?? workingTotals.reps}
         exerciseCount={sc?.exerciseCount ?? totalExercises}
         exerciseDetails={sc?.exerciseDetails ?? exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
@@ -1179,129 +1237,42 @@ const CustomWorkoutPlayer = () => {
     );
   }
 
-  // --- Compact List Mode ---
+  // --- Log Workout (Hevy) mode ---
   if (viewMode === 'list' && playerState === 'exercise') {
-    // Map custom workout data to CompactWorkoutView format
-    const compactExercises = exercises.map(ex => ({
-      id: ex.id,
-      exerciseId: ex.exercise_id,
-      exerciseName: ex.exercise_name,
-      exerciseNameEn: ex.exercise_name_en ?? null,
-      roleId: '',
-      machineName: ex.machine_name ?? null,
-      machineNameEn: ex.machine_name_en ?? null,
-      sets: ex.sets,
-      repMin: ex.reps,
-      repMax: ex.reps,
-      slotCategory: null as string | null,
-      repsPerSet: ex.reps_per_set,
-      weightPerSet: ex.weight_per_set,
-      unit_type: ex.unit_type,
-      category: ex.category,
-    }));
-
-    // Per-exercise set types (W/normal/F/D) for badges in the compact list.
-    const compactSetTypes = new Map<number, (string | null)[]>();
-    exercises.forEach((ex, idx) => { if (ex.set_types) compactSetTypes.set(idx, ex.set_types); });
-
-    const compactSetsMap = new Map<number, { completed: boolean; weight?: number; reps?: number; durationSeconds?: number }[]>();
-    exercises.forEach((ex, idx) => {
-      const completedSets = completedSetsMap.get(idx) || [];
-      const fullSets = Array.from({ length: ex.sets }, (_, i) => {
-        const s = completedSets[i];
-        return s
-          ? { completed: s.completed, weight: s.weight ?? undefined, reps: s.reps ?? undefined, durationSeconds: s.durationSeconds ?? undefined }
-          : { completed: false };
-      });
-      compactSetsMap.set(idx, fullSets);
-    });
-
-    const handleCompactComplete = (exIdx: number, setIdx: number, w?: number, r?: number, duration?: number) => {
-      setCompletedSetsMap(prev => {
-        const next = new Map(prev);
-        const existing = next.get(exIdx) || [];
-        const newSets = [...existing];
-        while (newSets.length <= setIdx) {
-          newSets.push({ completed: false, weight: null, reps: null, durationSeconds: null });
-        }
-        newSets[setIdx] = { completed: true, weight: w ?? null, reps: r ?? null, durationSeconds: duration ?? null };
-        next.set(exIdx, newSets);
-        return next;
-      });
-      setTotalSetsCompleted(prev => prev + 1);
-
-      // Check if all sets done for exercise → auto advance
-      const exercise = exercises[exIdx];
-      if (!exercise) return;
-      const setsForEx = setIdx + 1; // setIdx is 0-based index of just-completed set
-      const completedSetIdx = setIdx;
-      const exRestSec = exercise.rest_per_set?.[completedSetIdx] ?? exercise.rest_seconds ?? 120;
-      if (setsForEx >= exercise.sets) {
-        if (exIdx < exercises.length - 1) {
-          pendingAdvanceRef.current = { type: 'next_exercise', exIdx: exIdx + 1 };
-          if (exRestSec > 0) {
-            setRestSeconds(exRestSec);
-            setCurrentRestTotal(exRestSec);
-            setPlayerState('rest');
-          } else {
-            advanceAfterRest();
-          }
-        } else {
-          setPlayerState('completed');
-          announceWorkoutComplete();
-        }
-      } else {
-        pendingAdvanceRef.current = { type: 'next_set', exIdx, set: setsForEx + 1 };
-        if (exRestSec > 0) {
-          setCurrentExerciseIndex(exIdx);
-          setCurrentSet(setsForEx + 1);
-          setRestSeconds(exRestSec);
-          setCurrentRestTotal(exRestSec);
-          setPlayerState('rest');
-        } else {
-          advanceAfterRest();
-        }
+    const handleMinimize = () => {
+      if (id && plan && selectedDayId) {
+        const day = plan.days.find(d => d.id === selectedDayId);
+        savePausedWorkout({
+          planId: id,
+          planName: plan.name,
+          dayId: selectedDayId,
+          dayName: day?.name || t('workout.day_fallback', { number: day?.day_number || 1 }),
+          currentExerciseIndex,
+          currentSet,
+          totalSetsCompleted,
+          startedAt: startTime.toISOString(),
+          pausedAt: new Date().toISOString(),
+          completedSetsData: serializeCompletedSets(),
+        });
       }
+      navigate('/');
     };
 
     return (
       <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
-        <CompactWorkoutView
-          exercises={compactExercises}
-          currentExerciseIndex={currentExerciseIndex}
-          setsDataByExercise={compactSetsMap}
-          onCompleteSet={handleCompactComplete}
-          onSelectExercise={(idx) => {
-            const completedCount = (completedSetsMap.get(idx) || []).filter(s => s.completed).length;
-            setCurrentExerciseIndex(idx);
-            setCurrentSet(Math.min(completedCount + 1, exercises[idx]?.sets || 1));
-          }}
-          onSwitchToVideo={() => {
-            setViewMode('video');
-            setPlayerState('exercise');
-          }}
-          onClose={() => setShowExitDialog(true)}
-          onSkipExercise={() => {
-            if (currentExerciseIndex < exercises.length - 1) {
-              setCurrentExerciseIndex(prev => prev + 1);
-              setCurrentSet(1);
-            } else {
-              setPlayerState('completed');
-            }
-          }}
-          totalExercises={exercises.length}
-          showTimer
+        <LogWorkoutView
+          title={selectedDayId ? (plan.days.find(d => d.id === selectedDayId)?.name || plan.name) : plan.name}
+          exercises={exercises}
+          completedSetsMap={completedSetsMap}
+          startTime={startTime}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onCompleteSet={handleLogSetComplete}
+          onUncompleteSet={handleLogSetUncomplete}
           onShowInfo={handleShowInfo}
           onAddExercise={() => setAddPickerOpen(true)}
-          onFinishWorkout={() => setPlayerState('completed')}
-          externalCardioSecondsRemaining={isCurrentCardio ? cardioSeconds : undefined}
-          externalCardioPaused={cardioPaused}
-          onToggleCardioPause={handleCardioPauseToggle}
-          currentSetWeight={weight}
-          currentSetReps={reps}
-          onCurrentSetWeightChange={setWeight}
-          onCurrentSetRepsChange={setReps}
-          setTypesByExercise={compactSetTypes}
+          onFinish={() => setPlayerState('completed')}
+          onMinimize={handleMinimize}
           onExplainSetType={(type) => setExplainSetType(type as SetType)}
         />
 

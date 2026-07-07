@@ -590,6 +590,28 @@ const cs = {
   'set_type.drop_explain': 'Po dosažení selhání hned pokračuješ s nižší váhou bez pauzy.',
   'set_type.explain_ok': 'Rozumím',
 
+  // Log Workout (Hevy) — průběh vlastního tréninku
+  'log_workout.finish': 'Dokončit',
+  'log_workout.duration': 'Doba',
+  'log_workout.volume': 'Objem',
+  'log_workout.sets': 'Série',
+  'log_workout.col_set': 'SÉRIE',
+  'log_workout.col_previous': 'MINULE',
+  'log_workout.col_kg': 'KG',
+  'log_workout.col_reps': 'OPAK.',
+  'log_workout.col_time': 'ČAS',
+  'log_workout.add_set': 'Přidat sérii',
+  'log_workout.note_placeholder': 'Přidej poznámku…',
+  'log_workout.rest': 'Pauza',
+  'log_workout.rest_off': 'Vypnuto',
+  'log_workout.rest_skip': 'Přeskočit',
+  'log_workout.minimize': 'Minimalizovat',
+  'log_workout.rest_settings': 'Nastavení pauzy',
+  'log_workout.rest_timer': 'Časovač pauzy',
+  'log_workout.sound': 'Zvuk',
+  'log_workout.muscle_sets': 'Série',
+  'log_workout.muscle_empty': 'Dokonči první sérii a uvidíš rozložení svalů.',
+
   // MyPlan extra
   'myplan.week_type_normal': 'Normální',
   'myplan.week_type_moderate': 'Náročný',
