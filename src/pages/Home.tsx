@@ -529,17 +529,13 @@ const Home = () => {
                               'Nohy': t('workout.day_leg_day'),
                               'Push': 'Push', 'Pull': 'Pull', 'Tlak': 'Push', 'Tah': 'Pull',
                             };
-                            // F7: same list as the history section — newest first
-                            return (
-                              <div className="space-y-2">
-                                {recentSessions.slice(0, 3).map(s => {
-                                  const letter = s.day_letter.replace('_EXT', '');
-                                  const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
-                                  const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
-                                  return <WorkoutSessionCard key={s.id} session={s} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
-                                })}
-                              </div>
-                            );
+                            // Only the single most recent workout (Davidův feedback 7.7.:
+                            // víc karet vypadá divně) — "Zobrazit vše" vede do historie
+                            const last = recentSessions[0];
+                            const letter = last.day_letter.replace('_EXT', '');
+                            const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
+                            const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
+                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
                           })()}
                         </div>
                       )}
