@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Square, Timer, Info, Trophy } from 'lucide-react';
+import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Square, Timer, Info, Trophy, Plus } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
@@ -44,6 +44,7 @@ interface CompactWorkoutViewProps {
   showTimer?: boolean;
   onShowInfo?: (exerciseId: string) => void;
   onFinishWorkout?: () => void;
+  onAddExercise?: () => void;
   // External cardio timer — when provided, CompactWorkoutView delegates timer control to parent
   externalCardioSecondsRemaining?: number;
   externalCardioPaused?: boolean;
@@ -70,6 +71,7 @@ export const CompactWorkoutView = ({
   showTimer = false,
   onShowInfo,
   onFinishWorkout,
+  onAddExercise,
   externalCardioSecondsRemaining,
   externalCardioPaused,
   onToggleCardioPause,
@@ -599,6 +601,17 @@ export const CompactWorkoutView = ({
               </div>
             );
           })}
+
+          {/* Add exercise mid-workout (Hevy-style) */}
+          {onAddExercise && (
+            <button
+              onClick={onAddExercise}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-border text-primary font-medium text-sm active:scale-[0.98] transition-transform"
+            >
+              <Plus className="w-4 h-4" />
+              {t('custom_plan.add_exercise')}
+            </button>
+          )}
 
           {/* Finish workout button when all sets are done */}
           {onFinishWorkout && completedTotal >= totalSetsAll && totalSetsAll > 0 && (

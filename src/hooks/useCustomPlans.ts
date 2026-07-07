@@ -226,6 +226,24 @@ export function useCustomPlanDetail(planId: string | null) {
     await fetchPlan();
   };
 
+  // Add several exercises to a day at once (Hevy-style multi-select), preserving
+  // the order they were picked in.
+  const addExercisesBatch = async (dayId: string, exerciseIds: string[], sets = 3, reps = 10) => {
+    if (exerciseIds.length === 0) return;
+    const dayExercises = plan?.days.find(d => d.id === dayId)?.exercises || [];
+    const startOrder = dayExercises.length;
+    const rows = exerciseIds.map((exercise_id, i) => ({
+      day_id: dayId,
+      exercise_id,
+      sets,
+      reps,
+      weight_kg: null,
+      order_index: startOrder + i,
+    }));
+    await supabase.from('custom_plan_exercises').insert(rows);
+    await fetchPlan();
+  };
+
   const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: number[]; rest_seconds?: number; rest_per_set?: number[]; exercise_id?: string; exercise_name?: string; exercise_name_en?: string | null }) => {
     await supabase.from('custom_plan_exercises').update(updates).eq('id', exerciseId);
     await fetchPlan();
@@ -313,6 +331,7 @@ export function useCustomPlanDetail(planId: string | null) {
     removeDay,
     renameDay,
     addExercise,
+    addExercisesBatch,
     updateExercise,
     removeExercise,
     renamePlan,

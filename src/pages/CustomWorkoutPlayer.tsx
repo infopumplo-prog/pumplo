@@ -14,6 +14,7 @@ import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
 import { CompactWorkoutView } from '@/components/workout/CompactWorkoutView';
+import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
 const REST_BETWEEN_SETS = 90; // seconds
@@ -140,6 +141,7 @@ const CustomWorkoutPlayer = () => {
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<SuggestedAlternative[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'video' | 'list'>('list');
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
@@ -737,6 +739,32 @@ const CustomWorkoutPlayer = () => {
     setAudioMuted(next);
   };
 
+  // Append exercises picked mid-workout to the running session (ephemeral — not
+  // persisted to the plan). New exercises land at the end with default sets.
+  const handleAddExercisesToSession = (picked: PickerExercise[]) => {
+    setExercises(prev => [
+      ...prev,
+      ...picked.map((p): ExerciseWithVideo => ({
+        id: `adhoc-${p.id}-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+        exercise_id: p.id,
+        exercise_name: p.name,
+        exercise_name_en: p.name_en,
+        sets: 3,
+        reps: 10,
+        reps_per_set: null,
+        weight_kg: null,
+        weight_per_set: null,
+        rest_seconds: 120,
+        rest_per_set: null,
+        video_path: p.video_path,
+        machine_id: p.machine_id,
+        unit_type: p.unit_type,
+        category: p.category,
+      })),
+    ]);
+    setAddPickerOpen(false);
+  };
+
   // Go back to previous set
   const handleGoBack = () => {
     if (playerState === 'rest') {
@@ -1215,6 +1243,7 @@ const CustomWorkoutPlayer = () => {
           totalExercises={exercises.length}
           showTimer
           onShowInfo={handleShowInfo}
+          onAddExercise={() => setAddPickerOpen(true)}
           onFinishWorkout={() => setPlayerState('completed')}
           externalCardioSecondsRemaining={isCurrentCardio ? cardioSeconds : undefined}
           externalCardioPaused={cardioPaused}
@@ -1290,6 +1319,14 @@ const CustomWorkoutPlayer = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Add-exercise picker (mid-workout, Hevy-style) */}
+        <ExercisePicker
+          open={addPickerOpen}
+          onClose={() => setAddPickerOpen(false)}
+          onAdd={handleAddExercisesToSession}
+          gymId={selectedGymId}
+        />
 
         {/* Exercise info drawer (list mode) */}
         <Drawer open={infoDrawerOpen} onOpenChange={setInfoDrawerOpen}>

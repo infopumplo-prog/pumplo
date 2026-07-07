@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
@@ -23,6 +23,7 @@ import { Capacitor } from '@capacitor/core';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
+import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import {
   DndContext,
   closestCenter,
@@ -414,15 +415,23 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
                 rest={setRest}
                 isCardio={isCardio}
                 onRepsChange={(val) => {
-                  const arr = [...(exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps))];
-                  arr[i] = val;
+                  const base = exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps);
+                  const prevFirst = base[0] ?? exercise.reps;
+                  // Copy-down: editing set 1 pre-fills later sets that are still
+                  // empty or untouched (equal to the old set-1 value).
+                  const arr = i === 0
+                    ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                    : base.map((v: number | null, idx: number) => idx === i ? val : v);
                   const updates: Record<string, any> = { reps_per_set: arr };
                   if (isCardio) updates.reps = val;
                   onUpdate(exercise.id, updates);
                 }}
                 onWeightChange={(val) => {
-                  const arr = [...(exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg))];
-                  arr[i] = val;
+                  const base = exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg);
+                  const prevFirst = base[0] ?? exercise.weight_kg;
+                  const arr = i === 0
+                    ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                    : base.map((v: number | null, idx: number) => idx === i ? val : v);
                   onUpdate(exercise.id, { weight_per_set: arr });
                 }}
                 onRestChange={(val) => {
@@ -471,7 +480,7 @@ const CustomPlanDetail = () => {
   const { profile } = useUserProfile();
   const {
     plan, isLoading, addDay, removeDay, renameDay,
-    addExercise, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
+    addExercise, addExercisesBatch, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
     sharePlan, unsharePlan,
   } = useCustomPlanDetail(id || null);
   const [isSharing, setIsSharing] = useState(false);
@@ -486,6 +495,7 @@ const CustomPlanDetail = () => {
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
   const [drawerBottom, setDrawerBottom] = useState('0px');
   const [showGymSelector, setShowGymSelector] = useState(false);
@@ -756,6 +766,12 @@ const CustomPlanDetail = () => {
     resetSearch();
   };
 
+  // Batch-add exercises picked in the Hevy-style ExercisePicker to the active day.
+  const handleAddPickedExercises = async (exercises: PickerExercise[]) => {
+    if (!activeDayId) return;
+    await addExercisesBatch(activeDayId, exercises.map(e => e.id));
+  };
+
   const resetSearch = () => {
     setSearchQuery('');
     clearAllFilters();
@@ -850,8 +866,21 @@ const CustomPlanDetail = () => {
     }
   }, [exerciseDrawerOpen, allExercises.length, loadAllExercises]);
 
+  // Hevy has no "days" concept — a fresh routine should land straight on an
+  // empty exercise list. Auto-create the first day once so the user can hit
+  // "+ Přidat cvik" immediately instead of adding a day first.
+  const autoDayCreatedRef = useRef(false);
+  useEffect(() => {
+    if (!plan || isLoading) return;
+    if (plan.days.length === 0 && !autoDayCreatedRef.current) {
+      autoDayCreatedRef.current = true;
+      addDay(t('custom_plan.day_prefix', { n: 1 }));
+    }
+  }, [plan, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Check if plan has any exercises to enable start button
   const hasExercises = plan?.days.some(d => d.exercises.length > 0) ?? false;
+  const isSingleDay = (plan?.days.length ?? 0) <= 1;
 
   if (isLoading) {
     return (
@@ -932,38 +961,45 @@ const CustomPlanDetail = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-card border border-border rounded-2xl overflow-hidden"
             >
-              {/* Day Header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
-                {editingDayId === day.id ? (
-                  <input
-                    type="text"
-                    value={editingDayName}
-                    onChange={(e) => setEditingDayName(e.target.value)}
-                    onBlur={() => handleDayNameSave(day.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDayNameSave(day.id)}
-                    autoFocus
-                    className="bg-transparent text-sm font-semibold outline-none border-b border-primary"
-                  />
-                ) : (
+              {/* Day Header — hidden for single-day routines so it reads as a flat Hevy list */}
+              {!isSingleDay && (
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
+                  {editingDayId === day.id ? (
+                    <input
+                      type="text"
+                      value={editingDayName}
+                      onChange={(e) => setEditingDayName(e.target.value)}
+                      onBlur={() => handleDayNameSave(day.id)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleDayNameSave(day.id)}
+                      autoFocus
+                      className="bg-transparent text-sm font-semibold outline-none border-b border-primary"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
+                      className="text-sm font-semibold hover:text-primary transition-colors"
+                    >
+                      {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
+                    </button>
+                  )}
                   <button
-                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
-                    className="text-sm font-semibold hover:text-primary transition-colors"
+                    onClick={() => removeDay(day.id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >
-                    {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
+                    <Trash2 className="w-4 h-4" />
                   </button>
-                )}
-                <button
-                  onClick={() => removeDay(day.id)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Exercises with drag & drop */}
               <div className="px-4 py-2">
                 {day.exercises.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-3 text-center">{t('custom_plan.no_exercises')}</p>
+                  <div className="flex flex-col items-center text-center py-8">
+                    <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                      <Dumbbell className="w-7 h-7 text-muted-foreground/60" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{t('custom_plan.empty_routine_hint')}</p>
+                  </div>
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -994,7 +1030,7 @@ const CustomPlanDetail = () => {
                 )}
 
                 <button
-                  onClick={() => { setActiveDayId(day.id); setExerciseDrawerOpen(true); }}
+                  onClick={() => { setActiveDayId(day.id); setPickerOpen(true); }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 text-sm text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -1016,291 +1052,14 @@ const CustomPlanDetail = () => {
 
 
 
-        {/* Exercise Search Drawer */}
-        <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
-          <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }}>
-            <DrawerHeader className="shrink-0 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
-              <DrawerTitle>{t('custom_plan.select_exercise')}</DrawerTitle>
-            </DrawerHeader>
+        {/* Hevy-style multi-select exercise picker */}
+        <ExercisePicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onAdd={handleAddPickedExercises}
+          gymId={selectedWorkoutGymId || profile?.selected_gym_id || null}
+        />
 
-            {detailExercise ? (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 pb-4">
-                  <button
-                    onClick={() => { setDetailExercise(null); setVideoError(false); }}
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t('custom_plan.back_to_list')}
-                  </button>
-
-                  {signedDetailVideoUrl ? (
-                    <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
-                      {videoError ? (
-                        <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_loading')}</div>
-                      ) : (
-                        <video
-                          key={signedDetailVideoUrl}
-                          src={signedDetailVideoUrl}
-                          playsInline autoPlay loop muted preload="auto"
-                          controlsList="nodownload"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
-                          onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
-                          onError={() => setVideoError(true)}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">{t('custom_plan.no_video')}</p>
-                    </div>
-                  )}
-
-                  <h3 className="text-xl font-bold mb-1">{(isEn && detailExercise.name_en) ? detailExercise.name_en : detailExercise.name}</h3>
-                  <ExerciseInfoContent
-                    category={detailExercise.category}
-                    equipmentType={detailExercise.equipment_type}
-                    machineName={detailExercise.machine_name}
-                    primaryMuscles={detailExercise.primary_muscles}
-                    secondaryMuscles={detailExercise.secondary_muscles}
-                    primaryMusclesEn={detailExercise.primary_muscles_en}
-                    secondaryMusclesEn={detailExercise.secondary_muscles_en}
-                    description={detailExercise.description}
-                    descriptionEn={detailExercise.description_en}
-                    setupInstructions={detailExercise.setup_instructions}
-                    setupInstructionsEn={detailExercise.setup_instructions_en}
-                    commonMistakes={detailExercise.common_mistakes}
-                    commonMistakesEn={detailExercise.common_mistakes_en}
-                    tips={detailExercise.tips}
-                    tipsEn={detailExercise.tips_en}
-                  />
-                </div>
-
-                <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border">
-                  <Button
-                    onClick={() => handleAddExercise(detailExercise)}
-                    className="w-full h-12 rounded-xl gap-2 text-base font-semibold bg-[#5BC8F5] hover:bg-[#3AAED8] text-white"
-                  >
-                    <Plus className="w-5 h-5" />
-                    {t('custom_plan.add_to_workout')}
-                  </Button>
-                </div>
-              </div>
-            ) : filterPanelOpen ? (
-              /* ---- Filter Panel ---- */
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 pb-6">
-                  {/* Machine search */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.machine_search')}</p>
-                    <div className="relative mb-2">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder={t('custom_plan.machine_placeholder')}
-                        value={machineSearch}
-                        onChange={(e) => setMachineSearch(e.target.value)}
-                        className="w-full bg-muted rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      {machineSearch && (
-                        <button onClick={() => setMachineSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      )}
-                    </div>
-                    {machineSearch.trim().length > 0 && (() => {
-                      const list = filterMachinesByQuery(uniqueMachineNames, machineSearch);
-                      if (list.length === 0) return <p className="text-xs text-muted-foreground mt-1">{t('custom_plan.no_machine')}</p>;
-                      return (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {list.map((machine) => (
-                            <button
-                              key={machine}
-                              onClick={() => setMachineSearch(machineSearch === machine ? '' : machine)}
-                              className={cn(
-                                "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
-                                machineSearch === machine
-                                  ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                                  : "bg-card border-border text-foreground hover:border-[#5BC8F5]/50"
-                              )}
-                            >
-                              {machine}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Equipment type */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.equipment_type')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {EQUIPMENT_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedEquipment, setSelectedEquipment, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedEquipment.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedEquipment.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Muscles */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.muscle_groups')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {MUSCLE_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedMuscles, setSelectedMuscles, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedMuscles.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedMuscles.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Slot type (designation) */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.slot_type')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {SLOT_TYPE_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedSlotTypes, setSelectedSlotTypes, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedSlotTypes.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedSlotTypes.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Primary role */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.exercise_role')}</p>
-                    {ROLE_FILTER_GROUPS.map((group) => (
-                      <div key={group.label} className="mb-3">
-                        <p className="text-xs text-muted-foreground mb-1.5">{group.label}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {group.roles.map((r) => (
-                            <button
-                              key={r.key}
-                              onClick={() => toggleFilter(selectedRoles, setSelectedRoles, r.key)}
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                                selectedRoles.has(r.key)
-                                  ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                                  : "bg-card border-border text-foreground"
-                              )}
-                            >
-                              {selectedRoles.has(r.key) && <Check className="w-3.5 h-3.5" />}
-                              {r.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Filter panel bottom buttons */}
-                <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border flex gap-3">
-                  {activeFilterCount > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => { clearAllFilters(); applyFilters(searchQuery, new Set(), new Set(), new Set(), new Set(), ''); setFilterPanelOpen(false); }}
-                      className="h-12 rounded-xl px-6"
-                    >
-                      {t('custom_plan.clear_filters')}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={applyAndCloseFilters}
-                    className="flex-1 h-12 rounded-xl gap-2 text-base font-semibold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white"
-                  >
-                    {t('custom_plan.show_results')}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col overflow-hidden px-4">
-                {/* Search + Filter button */}
-                <div className="shrink-0 flex gap-2 mb-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text" placeholder={t('custom_plan.search_exercise')} value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="w-full bg-muted rounded-xl pl-10 pr-10 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => { setSearchQuery(''); applyFilters('', selectedMuscles, selectedEquipment, selectedSlotTypes, selectedRoles, machineSearch); }} className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setFilterPanelOpen(true)}
-                    className={cn(
-                      "shrink-0 flex items-center gap-1.5 px-3 py-3 rounded-xl text-sm font-medium transition-colors",
-                      activeFilterCount > 0
-                        ? "bg-[#5BC8F5] text-white"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    {activeFilterCount > 0 && <span className="text-xs font-bold">{activeFilterCount}</span>}
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto -mx-4 px-4 pb-6 overscroll-contain">
-                  {loadingExercises && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.loading_exercises')}</div>}
-                  {!loadingExercises && filteredExercises.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.no_results')}</div>}
-                  <div className="space-y-0.5">
-                    {filteredExercises.map((exercise) => (
-                      <div key={exercise.id} className="flex items-center rounded-xl hover:bg-muted transition-colors">
-                        <button onClick={() => handleAddExercise(exercise)} className="flex-1 text-left px-4 py-3 min-w-0">
-                          <p className="text-sm font-medium truncate">{(isEn && exercise.name_en) ? exercise.name_en : exercise.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {getCategoryLabel(exercise.category, t)}
-                            {exercise.primary_muscles?.length > 0 && ` · ${exercise.primary_muscles.map(m => translateMuscle(m, isEn)).join(', ')}`}
-                          </p>
-                        </button>
-                        <button onClick={() => { setDetailExercise(exercise); setVideoError(false); }} className="shrink-0 p-3 text-muted-foreground hover:text-[#5BC8F5] transition-colors">
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </DrawerContent>
-        </Drawer>
 
         {/* Exercise Detail View Drawer (from plan) */}
         <Drawer open={viewExerciseDrawerOpen} onOpenChange={(open) => { setViewExerciseDrawerOpen(open); if (!open) { setViewExerciseData(null); setViewVideoError(false); } }}>
