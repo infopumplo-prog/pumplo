@@ -433,15 +433,31 @@ export const WorkoutSession = ({
     resultsByIndex.forEach(r => {
       if (r.exerciseId) completedSets[r.exerciseId] = r.sets;
     });
+    // Killed during the between-exercise rest: the current exercise is fully
+    // done but the index only advances when the rest ends — snapshot the NEXT
+    // exercise so resume doesn't land past the last set ("Série 4/3").
+    let snapIndex = currentExerciseIndex;
+    let snapSetIndex = currentSetIndex;
+    let snapSets = currentExerciseSets;
+    const totalSets = liveExercises[currentExerciseIndex]?.sets || 0;
+    if (totalSets > 0 && currentSetIndex >= totalSets) {
+      if (currentExerciseIndex < liveExercises.length - 1) {
+        snapIndex = currentExerciseIndex + 1;
+        snapSetIndex = 0;
+        snapSets = [];
+      } else {
+        snapSetIndex = totalSets - 1;
+      }
+    }
     writePausedWorkoutSnapshot({
       planId,
       gymId,
       dayLetter,
       goalId,
       exercises: liveExercises,
-      currentExerciseIndex,
-      currentSetIndex,
-      currentExerciseSets,
+      currentExerciseIndex: snapIndex,
+      currentSetIndex: snapSetIndex,
+      currentExerciseSets: snapSets,
       completedSets,
       startedAt: workoutStartTime.toISOString(),
       pausedAt: new Date().toISOString(),

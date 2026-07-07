@@ -426,10 +426,26 @@ const Training = () => {
         setInitialWarmupIndex(pausedWorkout.warmupIndex || 0);
         setShowWarmup(true);
       } else {
-        // Resume in main workout
-        setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
-        setInitialSetIndex(pausedWorkout.currentSetIndex || 0);
-        setInitialCurrentExerciseSets(pausedWorkout.currentExerciseSets || []);
+        // Resume in main workout. Normalize snapshots taken during the
+        // between-exercise rest: a stored set index past the exercise's set
+        // count would render "Série 4/3" with no way forward — jump to the
+        // next exercise instead.
+        let exIdx = pausedWorkout.currentExerciseIndex;
+        let setIdx = pausedWorkout.currentSetIndex || 0;
+        let curSets = pausedWorkout.currentExerciseSets || [];
+        const exTotalSets = pausedWorkout.exercises[exIdx]?.sets || 0;
+        if (exTotalSets > 0 && setIdx >= exTotalSets) {
+          if (exIdx < pausedWorkout.exercises.length - 1) {
+            exIdx += 1;
+            setIdx = 0;
+            curSets = [];
+          } else {
+            setIdx = exTotalSets - 1;
+          }
+        }
+        setInitialExerciseIndex(exIdx);
+        setInitialSetIndex(setIdx);
+        setInitialCurrentExerciseSets(curSets);
         // Convert completedSets back to results array format
         const resultsArray = Object.entries(pausedWorkout.completedSets).map(([exerciseId, sets]) => {
           const exercise = pausedWorkout.exercises.find(e => e.exerciseId === exerciseId);
