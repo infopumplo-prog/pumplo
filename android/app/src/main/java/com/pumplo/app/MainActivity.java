@@ -7,8 +7,10 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // App-local plugin: native "Share to Instagram Stories" background handoff.
-        // Must be registered before super.onCreate() loads the bridge.
+        // App-local plugins — must be registered before super.onCreate() loads
+        // the bridge. RestActivity = ongoing rest-timer notification;
+        // InstagramShare = native "Share to Instagram Stories" handoff.
+        registerPlugin(RestActivityPlugin.class);
         registerPlugin(InstagramSharePlugin.class);
         super.onCreate(savedInstanceState);
         // Edge-to-edge: app content goes behind status bar and nav bar,
