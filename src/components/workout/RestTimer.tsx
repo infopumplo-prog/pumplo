@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
+import { startRestActivity, endRestActivity } from '@/lib/restLiveActivity';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -65,6 +66,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     if (isPaused || completedRef.current) {
       stopRestBeeps();
       cancelRestEndNotification();
+      endRestActivity();
       nativeBeepsRef.current = false;
       return;
     }
@@ -72,7 +74,13 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     let cancelled = false;
     startRestBeeps(remaining).then(handled => { if (!cancelled) nativeBeepsRef.current = handled; });
     scheduleRestEndNotification(remaining, t('workout.rest_over_title'), t('workout.rest_over_body'));
-    return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); nativeBeepsRef.current = false; };
+    startRestActivity({
+      exerciseName: nextExerciseName || label || t('workout.rest'),
+      nextSetText: nextExerciseName ? t('log_workout.next_exercise', { name: nextExerciseName }) : '',
+      endsAt: Date.now() + remaining * 1000,
+      totalSeconds: remaining,
+    });
+    return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); endRestActivity(); nativeBeepsRef.current = false; };
   }, [isPaused, t]);
 
   // Main tick — uses real clock, works even after phone sleep
@@ -96,6 +104,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
         if (!nativeBeepsRef.current) playAlarmFinish();
         stopRestBeeps();
         cancelRestEndNotification(); // finished in-app → no need for the banner
+        endRestActivity();
         onComplete();
       }
     };
@@ -138,7 +147,13 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     // Re-arm the backgrounded rest-end notification for the new end time.
     cancelRestEndNotification();
     scheduleRestEndNotification(duration, t('workout.rest_over_title'), t('workout.rest_over_body'));
-  }, [duration, t]);
+    startRestActivity({
+      exerciseName: nextExerciseName || label || t('workout.rest'),
+      nextSetText: nextExerciseName ? t('log_workout.next_exercise', { name: nextExerciseName }) : '',
+      endsAt: Date.now() + duration * 1000,
+      totalSeconds: duration,
+    });
+  }, [duration, t, nextExerciseName, label]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
