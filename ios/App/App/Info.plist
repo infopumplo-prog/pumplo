@@ -52,6 +52,8 @@
 	<string>Pumplo potřebuje přístup k fotkám, abys mohl přidat vlastní fotku ke sdílení svého tréninku.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Pumplo ukládá obrázek tvého tréninku do fotek, abys ho mohl sdílet.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
