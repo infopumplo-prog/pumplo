@@ -11,6 +11,7 @@ import { groupForMuscle } from '@/lib/muscleGroups';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
+import { startRestActivity, updateRestActivity, endRestActivity } from '@/lib/restLiveActivity';
 
 export interface LogExercise {
   id: string;
@@ -182,11 +183,17 @@ const LogWorkoutView = ({
   const restNativeRef = useRef(false);
   const resting = rest !== null;
 
-  const startRest = (seconds: number) => {
+  const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string }) => {
     if (seconds <= 0) return;
     restEndRef.current = Date.now() + seconds * 1000;
     restBeeps.current = { b3: false, b2: false, b1: false, done: false };
     setRest({ total: seconds, remaining: seconds });
+    startRestActivity({
+      exerciseName: ctx?.exerciseName ?? '',
+      nextSetText: ctx?.nextText ?? '',
+      endsAt: restEndRef.current,
+      totalSeconds: seconds,
+    });
   };
   const adjustRest = (delta: number) => {
     if (!rest) return;
@@ -196,8 +203,9 @@ const LogWorkoutView = ({
     stopRestBeeps();
     startRestBeeps(remaining).then(h => { restNativeRef.current = h; });
     setRest(r => (r ? { total: Math.max(r.total, remaining), remaining } : null));
+    updateRestActivity({ endsAt: restEndRef.current, totalSeconds: rest.total });
   };
-  const skipRest = () => { stopRestBeeps(); restNativeRef.current = false; setRest(null); };
+  const skipRest = () => { stopRestBeeps(); restNativeRef.current = false; setRest(null); endRestActivity(); };
 
   useEffect(() => {
     if (!resting) return;
@@ -218,13 +226,14 @@ const LogWorkoutView = ({
         if (!restNativeRef.current) playAlarmFinish();
         stopRestBeeps();
         setRest(null);
+        endRestActivity();
       }
     };
     tick();
     const iv = setInterval(tick, 250);
     const onVis = () => { if (document.visibilityState === 'visible') tick(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => { cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); };
+    return () => { cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); endRestActivity(); };
   }, [resting]);
 
   // --- Working stats (warm-up sets excluded) ---
@@ -267,6 +276,19 @@ const LogWorkoutView = ({
   const setInput = (key: string, field: 'w' | 'r', val: string) =>
     setInputs(prev => ({ ...prev, [key]: { w: prev[key]?.w ?? '', r: prev[key]?.r ?? '', [field]: val } }));
 
+  // Text for the lock-screen widget: what comes after the rest ends.
+  const nextSetText = (idx: number, si: number): string => {
+    const total = rowCount(idx);
+    if (si + 1 < total) {
+      const inp = inputs[`${idx}-${si + 1}`];
+      const detail = inp?.w && inp?.r ? ` (${inp.w} kg × ${inp.r})` : '';
+      return t('log_workout.next_set', { num: si + 2, total }) + detail;
+    }
+    const nextEx = exercises[idx + 1];
+    if (nextEx) return t('log_workout.next_exercise', { name: exName(nextEx) });
+    return t('log_workout.workout_done_next');
+  };
+
   const toggleSet = (ex: LogExercise, idx: number, si: number) => {
     unlockAudio();
     if (isDone(idx, si)) { onUncompleteSet(idx, si); return; }
@@ -284,7 +306,7 @@ const LogWorkoutView = ({
     playBeep();
     if (restTimerEnabled) {
       const restSec = ex.rest_per_set?.[si] ?? ex.rest_seconds ?? 120;
-      startRest(restSec);
+      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
     }
   };
 
