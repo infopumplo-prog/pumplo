@@ -24,6 +24,7 @@ const REST_BETWEEN_EXERCISES = 120; // seconds
 
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
+import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 
 interface ExerciseWithVideo {
   id: string;
@@ -163,6 +164,7 @@ const CustomWorkoutPlayer = () => {
     totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
     exerciseCount: number;
     exerciseDetails: { name: string; nameEn: string | null; isCardio: boolean; sets: { weight: number; reps: number }[] }[];
+    muscleIntensities?: Record<string, number>;
     savedAt?: number;
   }
   const SHARE_CACHE_KEY = `pumplo_share_${id}`;
@@ -232,6 +234,14 @@ const CustomWorkoutPlayer = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Muscle-group intensities (0–1) for the share card's body figure.
+  const computeShareMuscles = (): Record<string, number> => muscleIntensities(computeMuscleDistribution(
+    exercises.map((ex, i) => ({
+      primaryMuscles: ex.primary_muscles || [],
+      secondaryMuscles: ex.secondary_muscles || [],
+      completedSets: (completedSetsMap.get(i) || []).filter(s => s.completed).length,
+    }))));
+
   // Save completion data to localStorage when workout finishes
   useEffect(() => {
     if (playerState !== 'completed' || !plan) return;
@@ -250,6 +260,7 @@ const CustomWorkoutPlayer = () => {
           const sets = completedSetsMap.get(i) || [];
           return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         }),
+        muscleIntensities: computeShareMuscles(),
         savedAt: Date.now(),
       };
       localStorage.setItem(SHARE_CACHE_KEY, JSON.stringify(cache));
@@ -1158,6 +1169,7 @@ const CustomWorkoutPlayer = () => {
           const sets = completedSetsMap.get(i) || [];
           return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         })}
+        muscleIntensities={sc?.muscleIntensities ?? computeShareMuscles()}
         onClose={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} setShareCache(null); setPlayerState('exercise'); }}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}

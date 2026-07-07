@@ -13,6 +13,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { isInstagramInstalled, shareToInstagramStories } from '@/lib/instagramShare';
+import { MuscleBodySvg } from './MuscleBodySvg';
 
 interface ExerciseDetail { name: string; nameEn?: string | null; sets: { weight: number; reps: number }[]; isCardio?: boolean }
 
@@ -20,6 +21,7 @@ interface WorkoutShareCardProps {
   dayLetter: string; dayName?: string; goalId: string; gymName: string; gymInstagram?: string | null;
   totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
+  muscleIntensities?: Record<string, number>;
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
   onAbandon?: () => void; abandonDescription?: string;
 }
@@ -197,6 +199,57 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
   );
 };
 
+// 6. Muscle map — front + back body figures with highlighted groups
+const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform, exercisesLabel, repsLabel, muscles, musclesTitle }: TProps & { muscles: Record<string, number>; musclesTitle: string }) => (
+  <>
+    <BG photo={photo} gradient="linear-gradient(135deg, #0B1222 0%, #16213e 100%)" />
+    <Overlay photo={photo} />
+    <Center>
+      <Draggable transform={transform}>
+        <div className="rounded-2xl px-5 py-4 mb-3" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>{musclesTitle}</p>
+          <div className="flex justify-center gap-6">
+            <MuscleBodySvg intensities={muscles} side="front" width={104} />
+            <MuscleBodySvg intensities={muscles} side="back" width={104} />
+          </div>
+        </div>
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
+      </Draggable>
+    </Center>
+  </>
+);
+
+// 7. Fun fact — total volume compared to a real-world thing (Hevy elephant)
+const FUNFACT_TIERS: { min: number; key: string; emoji: string }[] = [
+  { min: 30000, key: 'whale', emoji: '🐋' },
+  { min: 12000, key: 'bus', emoji: '🚌' },
+  { min: 6000, key: 'elephant', emoji: '🐘' },
+  { min: 3000, key: 'rhino', emoji: '🦏' },
+  { min: 1500, key: 'car', emoji: '🚗' },
+  { min: 700, key: 'horse', emoji: '🐎' },
+  { min: 200, key: 'motorbike', emoji: '🏍️' },
+  { min: 50, key: 'dog', emoji: '🐕' },
+];
+const funFactTier = (kg: number) => FUNFACT_TIERS.find(tier => kg >= tier.min) ?? null;
+
+const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, emoji }: TProps & { totalKg: number; liftedLabel: string; factText: string; emoji: string }) => (
+  <>
+    <BG photo={photo} gradient="linear-gradient(160deg, #0B1222 0%, #0f3460 100%)" />
+    <Overlay photo={photo} />
+    <Center>
+      <Draggable transform={transform}>
+        <div className="rounded-2xl px-6 py-6 mb-3 text-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '4px' }}>{liftedLabel}</p>
+          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString('cs')} kg</p>
+          <p style={{ color: '#4CC9FF', fontSize: '15px', fontWeight: 600, marginTop: '8px' }}>{factText}</p>
+          <p style={{ fontSize: '72px', lineHeight: 1.3 }}>{emoji}</p>
+        </div>
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
+      </Draggable>
+    </Center>
+  </>
+);
+
 // ===== SHARED PARTS =====
 interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string; exercisesLabel: string; repsLabel: string; setsLabel: string; isEn: boolean }
 
@@ -247,12 +300,10 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
   </div>
 );
 
-const TEMPLATE_NAMES = ['Dark', 'Minimal', 'Bold', 'Cviky', 'Detail'];
-
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
+  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
 }: WorkoutShareCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -266,6 +317,9 @@ export const WorkoutShareCard = ({
   const { profile } = useUserProfile();
   const [templateIndex, setTemplateIndex] = useState(0);
   const [selectedEx, setSelectedEx] = useState(0);
+  // Template count lives in a ref so the (stable) native touch handlers always
+  // cycle over the CURRENT template list length.
+  const templateCountRef = useRef(5);
   const [igInstalled, setIgInstalled] = useState(false);
 
   useEffect(() => { isInstagramInstalled().then(setIgInstalled); }, []);
@@ -397,7 +451,7 @@ export const WorkoutShareCard = ({
 
       if (wasTap) {
         // Tap = cycle to next template
-        setTemplateIndex(i => (i + 1) % TEMPLATE_NAMES.length);
+        setTemplateIndex(i => (i + 1) % templateCountRef.current);
       }
 
       cachedBlobRef.current = null; setImageReady(false);
@@ -484,16 +538,19 @@ export const WorkoutShareCard = ({
   const tf = `translate(${pos.x}px, ${pos.y}px) scale(${scale})`;
   const tp: TProps = { photo: userPhoto, title, gym: gymName, gymIg: gymInstagram || null, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf, exercisesLabel: t('workout_share.exercises_label'), repsLabel: t('workout_share.reps_abbr'), setsLabel: t('workout_share.sets_unit'), isEn };
 
-  const renderTemplate = () => {
-    switch (templateIndex) {
-      case 0: return <T_DarkBlur {...tp} />;
-      case 1: return <T_Minimal {...tp} />;
-      case 2: return <T_Bold {...tp} />;
-      case 3: return <T_ExerciseList {...tp} exercises={exerciseDetails} />;
-      case 4: return <T_SingleExercise {...tp} exercises={exerciseDetails} selectedEx={selectedEx} onSelectEx={setSelectedEx} />;
-      default: return <T_DarkBlur {...tp} />;
-    }
-  };
+  const fact = funFactTier(totalWeight);
+  const hasMuscles = !!muscleIntensities && Object.keys(muscleIntensities).length > 0;
+  const templates: (() => JSX.Element)[] = [
+    () => <T_DarkBlur {...tp} />,
+    () => <T_Minimal {...tp} />,
+    () => <T_Bold {...tp} />,
+    () => <T_ExerciseList {...tp} exercises={exerciseDetails} />,
+    () => <T_SingleExercise {...tp} exercises={exerciseDetails} selectedEx={selectedEx} onSelectEx={setSelectedEx} />,
+    ...(hasMuscles ? [() => <T_MuscleMap {...tp} muscles={muscleIntensities!} musclesTitle={t('workout_share.muscles_title')} />] : []),
+    ...(fact ? [() => <T_FunFact {...tp} totalKg={totalWeight} liftedLabel={t('workout_share.funfact_lifted')} factText={t(`workout_share.funfact_${fact.key}`)} emoji={fact.emoji} />] : []),
+  ];
+  templateCountRef.current = templates.length;
+  const renderTemplate = templates[templateIndex % templates.length];
 
 
   return (
