@@ -12,6 +12,7 @@ import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
+import { GestureSafeInput } from '@/components/workout/GestureSafeInput';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
@@ -293,26 +294,26 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
       {isCardio ? (
         <div className="flex-1 flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
+            <GestureSafeInput containerClassName="w-14" type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-14 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} />
+              className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} />
             <span className="text-[10px] text-muted-foreground">min</span>
           </div>
           <div className="flex items-center gap-1">
-            <input type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
+            <GestureSafeInput containerClassName="w-14" type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-14 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} max={59} />
+              className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} max={59} />
             <span className="text-[10px] text-muted-foreground">s</span>
           </div>
         </div>
       ) : (
         <>
-          <input type="number" value={w} onChange={(e) => setW(e.target.value)}
+          <GestureSafeInput containerClassName="flex-1 min-w-0" type="number" value={w} onChange={(e) => setW(e.target.value)}
             onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
-            placeholder="–" className="flex-1 min-w-0 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} step={0.5} />
-          <input type="number" value={r} onChange={(e) => setR(e.target.value)}
+            placeholder="–" className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} step={0.5} />
+          <GestureSafeInput containerClassName="flex-1 min-w-0" type="number" value={r} onChange={(e) => setR(e.target.value)}
             onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
-            className="flex-1 min-w-0 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={1} />
+            className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={1} />
         </>
       )}
     </motion.div>

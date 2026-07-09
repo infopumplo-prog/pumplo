@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { MuscleBodySvg } from './MuscleBodySvg';
+import { GestureSafeInput } from './GestureSafeInput';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
@@ -532,13 +533,13 @@ const LogWorkoutView = ({
                           </>
                         ) : (
                           <>
-                            <input
+                            <GestureSafeInput
                               type="number" inputMode="decimal"
                               value={inputs[key]?.w ?? ''}
                               onChange={(e) => setInput(key, 'w', e.target.value)}
                               className={cn('w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50', done ? 'bg-transparent' : 'bg-muted')}
                             />
-                            <input
+                            <GestureSafeInput
                               type="number" inputMode="numeric"
                               value={inputs[key]?.r ?? ''}
                               onChange={(e) => setInput(key, 'r', e.target.value)}
