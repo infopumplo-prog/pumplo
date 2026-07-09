@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X, Check, Dumbbell, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -7,6 +7,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { translateMuscle } from '@/lib/muscleTranslation';
+import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { cn } from '@/lib/utils';
 
 // Exercise shape returned to the caller when exercises are picked.
@@ -73,6 +74,38 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   const [onlyMyGym, setOnlyMyGym] = useState(true);
   const [selected, setSelected] = useState<Map<string, PickerExercise>>(new Map());
   const [sheet, setSheet] = useState<null | 'equipment' | 'muscle'>(null);
+
+  // Exercise info sheet (opened by tapping the thumbnail). Details are fetched
+  // on demand so the list query stays light.
+  interface ExerciseInfo {
+    name: string; nameEn: string | null; videoUrl: string | null; category: string;
+    equipmentType: string | null; machineName: string | null;
+    primaryMuscles: string[]; secondaryMuscles: string[];
+    primaryMusclesEn: string[] | null; secondaryMusclesEn: string[] | null;
+    description: string | null; setupInstructions: string | null;
+    commonMistakes: string | null; tips: string | null;
+  }
+  const [info, setInfo] = useState<ExerciseInfo | null>(null);
+  const [infoVideoError, setInfoVideoError] = useState(false);
+  const openInfo = async (ex: PickerExercise) => {
+    setInfoVideoError(false);
+    const { data } = await supabase
+      .from('exercises')
+      .select('name, name_en, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
+      .eq('id', ex.id)
+      .single();
+    if (!data) return;
+    const d = data as any;
+    setInfo({
+      name: d.name, nameEn: d.name_en || null, videoUrl: publicVideoUrl(d.video_path),
+      category: d.category || '', equipmentType: d.equipment_type || null,
+      machineName: d.machines?.name || null,
+      primaryMuscles: d.primary_muscles || [], secondaryMuscles: d.secondary_muscles || [],
+      primaryMusclesEn: d.primary_muscles_en || null, secondaryMusclesEn: d.secondary_muscles_en || null,
+      description: d.description || null, setupInstructions: d.setup_instructions || null,
+      commonMistakes: d.common_mistakes || null, tips: d.tips || null,
+    });
+  };
 
   // Keyboard-aware fullscreen sizing (matches CustomPlanDetail drawer behaviour).
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
@@ -277,7 +310,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                 >
                   {/* Left accent bar (Hevy style) */}
                   <span className={cn('self-stretch w-1 rounded-full shrink-0', isSel ? 'bg-[#5BC8F5]' : 'bg-transparent')} />
-                  <ExerciseThumb videoPath={ex.video_path} />
+                  <ExerciseThumb videoPath={ex.video_path} onTap={() => openInfo(ex)} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{(isEn && ex.name_en) ? ex.name_en : ex.name}</p>
                     {primaryMuscleText(ex) && <p className="text-xs text-muted-foreground truncate">{primaryMuscleText(ex)}</p>}
@@ -351,6 +384,61 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
             </>
           )}
         </AnimatePresence>
+
+        {/* Exercise info sheet (thumbnail tap) */}
+        <AnimatePresence>
+          {info && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 z-10"
+                onClick={() => setInfo(null)}
+              />
+              <motion.div
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="absolute left-0 right-0 bottom-0 z-20 bg-background rounded-t-2xl max-h-[85%] flex flex-col"
+              >
+                <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted shrink-0" />
+                <p className="px-5 pt-3 pb-2 text-base font-bold shrink-0">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
+                <div className="overflow-y-auto px-5 pb-8">
+                  {info.videoUrl && !infoVideoError ? (
+                    <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                      <video
+                        key={info.videoUrl}
+                        src={info.videoUrl}
+                        playsInline autoPlay loop muted preload="auto"
+                        className="w-full h-full object-contain"
+                        onError={() => setInfoVideoError(true)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">{t('workout.no_video')}</p>
+                    </div>
+                  )}
+                  <ExerciseInfoContent
+                    category={info.category}
+                    equipmentType={info.equipmentType}
+                    machineName={info.machineName}
+                    primaryMuscles={info.primaryMuscles}
+                    secondaryMuscles={info.secondaryMuscles}
+                    primaryMusclesEn={info.primaryMusclesEn}
+                    secondaryMusclesEn={info.secondaryMusclesEn}
+                    description={info.description}
+                    descriptionEn={null}
+                    setupInstructions={info.setupInstructions}
+                    setupInstructionsEn={null}
+                    commonMistakes={info.commonMistakes}
+                    commonMistakesEn={null}
+                    tips={info.tips}
+                    tipsEn={null}
+                  />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </DrawerContent>
     </Drawer>
   );
@@ -376,21 +464,25 @@ const FilterOptionList = ({ options, selected, onSelect }: {
   </div>
 );
 
-// Small muted-loading video thumbnail with dumbbell fallback.
-const ExerciseThumb = ({ videoPath }: { videoPath: string | null }) => {
+// Small muted-loading video thumbnail with dumbbell fallback. Tapping it opens
+// the exercise info sheet (selection stays on the row itself).
+// The `#t=0.1` fragment forces iOS WKWebView to seek and PAINT the first frame —
+// with plain preload="metadata" iOS renders a black box until playback starts.
+const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?: () => void }) => {
   const [error, setError] = useState(false);
   const url = useRef(publicVideoUrl(videoPath)).current;
+  const handleTap = onTap ? (e: React.MouseEvent) => { e.stopPropagation(); onTap(); } : undefined;
   if (!url || error) {
     return (
-      <div className="shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+      <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
         <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
       </div>
     );
   }
   return (
-    <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-black">
+    <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
       <video
-        src={url}
+        src={url + '#t=0.1'}
         muted
         playsInline
         preload="metadata"

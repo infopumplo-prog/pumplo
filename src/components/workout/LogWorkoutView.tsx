@@ -74,7 +74,8 @@ const ExerciseThumb = ({ path, onClick }: { path: string | null; onClick: () => 
   return (
     <button onClick={onClick} className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 flex items-center justify-center">
       {url ? (
-        <video src={url} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+        {/* #t=0.1 forces iOS WKWebView to paint the first frame (else black box) */}
+        <video src={url + '#t=0.1'} muted playsInline preload="metadata" className="w-full h-full object-cover" />
       ) : (
         <Video className="w-5 h-5 text-muted-foreground" />
       )}

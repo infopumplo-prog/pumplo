@@ -228,8 +228,9 @@ const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
     );
   }
   return (
-    <div className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-black">
-      <video src={url} muted playsInline preload="metadata" className="w-full h-full object-cover" onError={() => setError(true)} />
+    <div className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-muted">
+      {/* #t=0.1 forces iOS WKWebView to paint the first frame (else black box) */}
+      <video src={url + '#t=0.1'} muted playsInline preload="metadata" className="w-full h-full object-cover" onError={() => setError(true)} />
     </div>
   );
 };
