@@ -23,6 +23,7 @@ export interface PickerExercise {
   category: string;
   machine_id: string | null;
   unit_type: string;
+  allowed_phase: string | null;
 }
 
 interface ExercisePickerProps {
@@ -132,7 +133,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
     setLoading(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type')
+      .select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type, allowed_phase')
       .order('name', { ascending: true });
     setAllExercises((data || []).map((e: any) => ({
       id: e.id,
@@ -145,6 +146,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
       category: e.category || '',
       machine_id: e.machine_id ?? null,
       unit_type: e.unit_type || 'reps',
+      allowed_phase: e.allowed_phase ?? null,
     })));
     setLoading(false);
   }, []);
@@ -326,7 +328,17 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                   <span className={cn('self-stretch w-1 rounded-full shrink-0', isSel ? 'bg-[#5BC8F5]' : 'bg-transparent')} />
                   <ExerciseThumb videoPath={ex.video_path} onTap={() => openInfo(ex)} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{(isEn && ex.name_en) ? ex.name_en : ex.name}</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="text-sm font-medium truncate">{(isEn && ex.name_en) ? ex.name_en : ex.name}</p>
+                      {(ex.allowed_phase === 'warmup' || ex.allowed_phase === 'cooldown') && (
+                        <span className={cn(
+                          'shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                          ex.allowed_phase === 'warmup' ? 'bg-amber-500/15 text-amber-600' : 'bg-teal-500/15 text-teal-600'
+                        )}>
+                          {ex.allowed_phase === 'warmup' ? t('exercise_picker.phase_warmup') : t('exercise_picker.phase_cooldown')}
+                        </span>
+                      )}
+                    </div>
                     {primaryMuscleText(ex) && <p className="text-xs text-muted-foreground truncate">{primaryMuscleText(ex)}</p>}
                   </div>
                   {isSel && (

@@ -842,6 +842,17 @@ const CustomWorkoutPlayer = () => {
       return next;
     });
   };
+  // Removing a set row shifts everything after it down by one (mirrors the
+  // per-row input shift in LogWorkoutView).
+  const handleLogSetRemove = (exIdx: number, setIdx: number) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      if (setIdx < arr.length) arr.splice(setIdx, 1);
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
   // In Log mode sets can be toggled on/off, so keep the completed counter derived
   // from the map (video mode manages it manually and is left untouched).
   useEffect(() => {
@@ -1281,6 +1292,7 @@ const CustomWorkoutPlayer = () => {
           onToggleMute={handleToggleMute}
           onCompleteSet={handleLogSetComplete}
           onUncompleteSet={handleLogSetUncomplete}
+          onRemoveSet={handleLogSetRemove}
           onShowInfo={handleShowInfo}
           onAddExercise={() => setAddPickerOpen(true)}
           onFinish={() => setPlayerState('completed')}

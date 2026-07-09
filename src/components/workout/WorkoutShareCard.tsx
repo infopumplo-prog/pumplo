@@ -209,8 +209,8 @@ const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform,
         <div className="rounded-2xl px-5 py-4 mb-3" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>{musclesTitle}</p>
           <div className="flex justify-center gap-6">
-            <MuscleBodySvg intensities={muscles} side="front" width={104} />
-            <MuscleBodySvg intensities={muscles} side="back" width={104} />
+            <MuscleBodySvg intensities={muscles} side="front" width={104} dark />
+            <MuscleBodySvg intensities={muscles} side="back" width={104} dark />
           </div>
         </div>
         <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />

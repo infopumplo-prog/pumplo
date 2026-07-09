@@ -6,18 +6,26 @@ interface MuscleBodySvgProps {
   intensities: Record<string, number>; // group key -> 0..1
   side: 'front' | 'back';
   width?: number;
+  dark?: boolean; // true on dark backgrounds (share card), false on app sheets
 }
 
-const BASE = 'rgba(255,255,255,0.10)';
-const fillFor = (intensities: Record<string, number>, key: string) => {
-  const v = intensities[key];
-  if (!v || v <= 0) return 'transparent';
-  return `rgba(76, 201, 255, ${(0.3 + 0.7 * Math.min(v, 1)).toFixed(2)})`;
+// Every region is ALWAYS painted in a light grey base; load blends it towards
+// Pumplo cyan — the harder the muscle worked, the bluer it gets.
+const CYAN: [number, number, number] = [76, 201, 255];
+const BASE_LIGHT: [number, number, number] = [226, 232, 240]; // slate-200
+const BASE_DARK: [number, number, number] = [148, 163, 184];  // slate-400 (reads grey-white on dark)
+
+const fillFor = (intensities: Record<string, number>, key: string, dark: boolean) => {
+  const base = dark ? BASE_DARK : BASE_LIGHT;
+  const v = Math.min(Math.max(intensities[key] ?? 0, 0), 1);
+  const t = v <= 0 ? 0 : 0.3 + 0.7 * v;
+  const mix = base.map((b, i) => Math.round(b + (CYAN[i] - b) * t));
+  return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
 };
 
 // Connected humanoid silhouette shared by both sides.
-const Silhouette = () => (
-  <g fill={BASE}>
+const Silhouette = ({ dark }: { dark: boolean }) => (
+  <g fill={dark ? 'rgba(255,255,255,0.12)' : 'rgba(100,116,139,0.18)'}>
     <circle cx="50" cy="13" r="9" />
     <rect x="45" y="21" width="10" height="9" rx="3" />
     {/* torso + pelvis */}
@@ -31,12 +39,12 @@ const Silhouette = () => (
   </g>
 );
 
-export const MuscleBodySvg = ({ intensities, side, width = 110 }: MuscleBodySvgProps) => {
-  const f = (key: string) => fillFor(intensities, key);
+export const MuscleBodySvg = ({ intensities, side, width = 110, dark = false }: MuscleBodySvgProps) => {
+  const f = (key: string) => fillFor(intensities, key, dark);
 
   return (
     <svg width={width} viewBox="0 0 100 220" fill="none">
-      <Silhouette />
+      <Silhouette dark={dark} />
       {side === 'front' ? (
         <g>
           {/* shoulders */}

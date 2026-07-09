@@ -7,7 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
 import { cn } from '@/lib/utils';
 import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
-import { computeMuscleDistribution } from '@/lib/muscleDistribution';
+import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
+import { MuscleBodySvg } from './MuscleBodySvg';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
@@ -50,6 +51,7 @@ interface LogWorkoutViewProps {
   onToggleMute: () => void;
   onCompleteSet: (exIdx: number, setIdx: number, weight: number | null, reps: number | null, durationSeconds: number | null) => void;
   onUncompleteSet: (exIdx: number, setIdx: number) => void;
+  onRemoveSet: (exIdx: number, setIdx: number) => void;
   onShowInfo: (exerciseId: string) => void;
   onAddExercise: () => void;
   onFinish: () => void;
@@ -80,7 +82,7 @@ const ExerciseThumb = ({ path, onClick }: { path: string | null; onClick: () => 
 
 const LogWorkoutView = ({
   title, exercises, completedSetsMap, startTime, isMuted, onToggleMute,
-  onCompleteSet, onUncompleteSet, onShowInfo, onAddExercise, onFinish, onMinimize, onExplainSetType,
+  onCompleteSet, onUncompleteSet, onRemoveSet, onShowInfo, onAddExercise, onFinish, onMinimize, onExplainSetType,
 }: LogWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -172,24 +174,76 @@ const LogWorkoutView = ({
     });
   }, [exercises]);
 
-  // --- Sticky rest bar ---
-  const [rest, setRest] = useState<{ total: number; remaining: number } | null>(null);
+  // --- Sticky countdown bar: rest between sets OR a timed (cardio) set ---
+  const [rest, setRest] = useState<{ total: number; remaining: number; mode: 'rest' | 'work'; run: number } | null>(null);
   const restEndRef = useRef(0);
   const restBeeps = useRef({ b3: false, b2: false, b1: false, done: false });
   const restNativeRef = useRef(false);
+  // Context of the running timed set, so the tick can complete it when time is up.
+  const workCtxRef = useRef<{ ex: LogExercise; idx: number; si: number } | null>(null);
+  // run = countdown instance id (effect re-arms beeps per run); chainRef marks
+  // "a new countdown replaces this one" so cleanup doesn't kill its Live Activity.
+  const runIdRef = useRef(0);
+  const chainRef = useRef(false);
   const resting = rest !== null;
 
   const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string }) => {
     if (seconds <= 0) return;
+    workCtxRef.current = null;
+    chainRef.current = true;
     restEndRef.current = Date.now() + seconds * 1000;
     restBeeps.current = { b3: false, b2: false, b1: false, done: false };
-    setRest({ total: seconds, remaining: seconds });
+    setRest({ total: seconds, remaining: seconds, mode: 'rest', run: ++runIdRef.current });
     startRestActivity({
       exerciseName: ctx?.exerciseName ?? '',
       nextSetText: ctx?.nextText ?? '',
       endsAt: restEndRef.current,
       totalSeconds: seconds,
     });
+  };
+
+  // Timed (cardio) set: run a visible countdown of the set duration with the
+  // same 3-2-1 + finish sounds as rest; completing happens when time is up.
+  const startWork = (ex: LogExercise, idx: number, si: number, seconds: number) => {
+    workCtxRef.current = { ex, idx, si };
+    chainRef.current = true;
+    restEndRef.current = Date.now() + seconds * 1000;
+    restBeeps.current = { b3: false, b2: false, b1: false, done: false };
+    setRest({ total: seconds, remaining: seconds, mode: 'work', run: ++runIdRef.current });
+    startRestActivity({
+      exerciseName: exName(ex),
+      nextSetText: t('log_workout.work_running', { num: si + 1, total: rowCount(idx) }),
+      endsAt: restEndRef.current,
+      totalSeconds: seconds,
+    });
+  };
+
+  // Mark the running timed set as done (time elapsed or user hit "Hotovo"),
+  // then chain straight into the configured rest.
+  const completeWork = () => {
+    const ctx = workCtxRef.current;
+    if (!ctx) return;
+    workCtxRef.current = null;
+    const dur = ctx.ex.reps || 0;
+    onCompleteSet(ctx.idx, ctx.si, null, dur, dur);
+    if (restTimerEnabled) {
+      const restSec = ctx.ex.rest_per_set?.[ctx.si] ?? ctx.ex.rest_seconds ?? 120;
+      if (restSec > 0) {
+        startRest(restSec, { exerciseName: exName(ctx.ex), nextText: nextSetText(ctx.idx, ctx.si) });
+        return;
+      }
+    }
+    setRest(null);
+    endRestActivity();
+  };
+
+  // Cancel a running timed set without completing it (tap ✓ again).
+  const cancelWork = () => {
+    workCtxRef.current = null;
+    stopRestBeeps();
+    restNativeRef.current = false;
+    setRest(null);
+    endRestActivity();
   };
   const adjustRest = (delta: number) => {
     if (!rest) return;
@@ -198,13 +252,14 @@ const LogWorkoutView = ({
     restBeeps.current = { b3: remaining < 3, b2: remaining < 2, b1: remaining < 1, done: false };
     stopRestBeeps();
     startRestBeeps(remaining).then(h => { restNativeRef.current = h; });
-    setRest(r => (r ? { total: Math.max(r.total, remaining), remaining } : null));
+    setRest(r => (r ? { ...r, total: Math.max(r.total, remaining), remaining } : null));
     updateRestActivity({ endsAt: restEndRef.current, totalSeconds: rest.total });
   };
   const skipRest = () => { stopRestBeeps(); restNativeRef.current = false; setRest(null); endRestActivity(); };
 
   useEffect(() => {
-    if (!resting) return;
+    if (!rest) return;
+    chainRef.current = false;
     let cancelled = false;
     const remainingAtStart = Math.max(0, Math.ceil((restEndRef.current - Date.now()) / 1000));
     startRestBeeps(remainingAtStart).then(h => { if (!cancelled) restNativeRef.current = h; });
@@ -221,16 +276,25 @@ const LogWorkoutView = ({
         b.done = true;
         if (!restNativeRef.current) playAlarmFinish();
         stopRestBeeps();
-        setRest(null);
-        endRestActivity();
+        if (workCtxRef.current) {
+          completeWork(); // timed set finished → log it (+ chains into rest)
+        } else {
+          setRest(null);
+          endRestActivity();
+        }
       }
     };
     tick();
     const iv = setInterval(tick, 250);
     const onVis = () => { if (document.visibilityState === 'visible') tick(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => { cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); endRestActivity(); };
-  }, [resting]);
+    return () => {
+      cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis);
+      // Keep the Live Activity alive when this countdown chains into the next
+      // one (work → rest); end it otherwise (skip / finish / unmount).
+      if (!chainRef.current) endRestActivity();
+    };
+  }, [rest?.run]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Working stats (warm-up sets excluded) ---
   const stats = useMemo(() => {
@@ -247,17 +311,16 @@ const LogWorkoutView = ({
   }, [completedSetsMap, exercises]);
 
   // --- Muscle distribution (primary=1, secondary=0.5 per completed set) ---
-  const muscleDist = useMemo(() => {
-    const dist = computeMuscleDistribution(exercises.map((ex, idx) => ({
-      primaryMuscles: ex.primary_muscles,
-      secondaryMuscles: ex.secondary_muscles,
-      completedSets: (completedSetsMap.get(idx) || []).filter(s => s.completed).length,
-    })));
-    return dist.map(d => ({
-      label: d.key ? t(`custom_plan.muscle_${d.key}`) : translateMuscle(d.raw, isEn),
-      value: d.value,
-    }));
-  }, [exercises, completedSetsMap, isEn, t]);
+  const muscleDistEntries = useMemo(() => computeMuscleDistribution(exercises.map((ex, idx) => ({
+    primaryMuscles: ex.primary_muscles,
+    secondaryMuscles: ex.secondary_muscles,
+    completedSets: (completedSetsMap.get(idx) || []).filter(s => s.completed).length,
+  }))), [exercises, completedSetsMap]);
+  const muscleDist = useMemo(() => muscleDistEntries.map(d => ({
+    label: d.key ? t(`custom_plan.muscle_${d.key}`) : translateMuscle(d.raw, isEn),
+    value: d.value,
+  })), [muscleDistEntries, isEn, t]);
+  const muscleIntens = useMemo(() => muscleIntensities(muscleDistEntries), [muscleDistEntries]);
   const muscleMax = muscleDist[0]?.value || 1;
 
   const isDone = (idx: number, si: number) => !!completedSetsMap.get(idx)?.[si]?.completed;
@@ -285,6 +348,16 @@ const LogWorkoutView = ({
     const isCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
     if (isCardio) {
       const dur = ex.reps || 0;
+      // Second tap on the running row cancels the timed set.
+      if (rest?.mode === 'work' && workCtxRef.current?.idx === idx && workCtxRef.current?.si === si) {
+        cancelWork();
+        return;
+      }
+      if (dur > 0) {
+        playBeep();
+        startWork(ex, idx, si, dur); // completes itself (and chains rest) when time is up
+        return;
+      }
       onCompleteSet(idx, si, null, dur, dur);
     } else {
       const inp = inputs[key];
@@ -297,6 +370,23 @@ const LogWorkoutView = ({
       const restSec = ex.rest_per_set?.[si] ?? ex.rest_seconds ?? 120;
       startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
     }
+  };
+
+  // Remove a set row: shift all per-row data above it down by one, then let the
+  // parent shift its completion map the same way. rowCount shrinks via a
+  // negative extraSets delta (works below the planned count too, min 1 row).
+  const removeSet = (idx: number, si: number) => {
+    if (rowCount(idx) <= 1) return;
+    if (rest?.mode === 'work' && workCtxRef.current?.idx === idx && workCtxRef.current?.si === si) cancelWork();
+    setInputs(prev => {
+      const next = { ...prev };
+      const total = rowCount(idx);
+      for (let j = si; j < total - 1; j++) next[`${idx}-${j}`] = next[`${idx}-${j + 1}`] ?? { w: '', r: '' };
+      delete next[`${idx}-${total - 1}`];
+      return next;
+    });
+    setExtraSets(p => ({ ...p, [idx]: (p[idx] || 0) - 1 }));
+    onRemoveSet(idx, si);
   };
 
   const restRowLabel = (sec: number) => {
@@ -404,12 +494,18 @@ const LogWorkoutView = ({
                     const badge = setBadgeLabel(ex.set_types, si);
                     const badgeColor = setBadgeColor(ex.set_types, si);
                     const type = getSetType(ex.set_types, si);
+                    const isRunning = rest?.mode === 'work' && workCtxRef.current?.idx === idx && workCtxRef.current?.si === si;
                     return (
-                      <div
+                      <motion.div
                         key={key}
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={{ left: 0.4, right: 0 }}
+                        dragDirectionLock
+                        onDragEnd={(_, info) => { if (info.offset.x < -70) removeSet(idx, si); }}
                         className={cn(
                           'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
-                          done ? 'bg-green-500/15' : ''
+                          done ? 'bg-green-500/15' : isRunning ? 'bg-[#5BC8F5]/15' : ''
                         )}
                       >
                         <button
@@ -421,7 +517,9 @@ const LogWorkoutView = ({
                         <div className="text-center text-xs text-muted-foreground truncate">{prevText}</div>
                         {isCardio ? (
                           <>
-                            <div className="text-center text-sm font-semibold tabular-nums col-span-2">{fmt(ex.reps || 0)}</div>
+                            <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isRunning && 'text-[#5BC8F5]')}>
+                              {isRunning ? fmt(rest?.remaining ?? 0) : fmt(ex.reps || 0)}
+                            </div>
                           </>
                         ) : (
                           <>
@@ -443,12 +541,12 @@ const LogWorkoutView = ({
                           onClick={() => toggleSet(ex, idx, si)}
                           className={cn(
                             'w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors active:scale-90',
-                            done ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'
+                            done ? 'bg-green-500 text-white' : isRunning ? 'bg-[#5BC8F5] text-white' : 'bg-muted text-muted-foreground'
                           )}
                         >
-                          <Check className="w-4 h-4" />
+                          {isRunning ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                         </button>
-                      </div>
+                      </motion.div>
                     );
                   })}
 
@@ -485,7 +583,12 @@ const LogWorkoutView = ({
             className="fixed left-0 right-0 z-40 px-3"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
           >
-            <div className="mx-auto max-w-md bg-[#1A2744] text-white rounded-2xl shadow-xl px-3 py-2.5">
+            <div className={cn('mx-auto max-w-md text-white rounded-2xl shadow-xl px-3 py-2.5', rest.mode === 'work' ? 'bg-[#0E3A52]' : 'bg-[#1A2744]')}>
+              {rest.mode === 'work' && workCtxRef.current && (
+                <p className="text-[11px] font-semibold text-[#5BC8F5] text-center mb-0.5 truncate">
+                  {exName(workCtxRef.current.ex)}
+                </p>
+              )}
               <div className="flex items-center gap-2">
                 <button onClick={() => adjustRest(-15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">-15 s</button>
                 <div className="flex-1 text-center">
@@ -495,7 +598,11 @@ const LogWorkoutView = ({
                   </div>
                 </div>
                 <button onClick={() => adjustRest(15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">+15 s</button>
-                <button onClick={skipRest} className="px-3 py-1.5 rounded-lg bg-[#5BC8F5] text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
+                {rest.mode === 'work' ? (
+                  <button onClick={() => { stopRestBeeps(); restNativeRef.current = false; restBeeps.current.done = true; completeWork(); }} className="px-3 py-1.5 rounded-lg bg-green-500 text-xs font-bold active:scale-95 transition-transform">{t('log_workout.work_done')}</button>
+                ) : (
+                  <button onClick={skipRest} className="px-3 py-1.5 rounded-lg bg-[#5BC8F5] text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -565,6 +672,10 @@ const LogWorkoutView = ({
                 <p className="text-sm text-muted-foreground text-center py-8">{t('log_workout.muscle_empty')}</p>
               ) : (
                 <>
+                  <div className="flex justify-center gap-8 mb-5">
+                    <MuscleBodySvg intensities={muscleIntens} side="front" width={96} />
+                    <MuscleBodySvg intensities={muscleIntens} side="back" width={96} />
+                  </div>
                   <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground mb-2">
                     <span>{t('stats.muscle')}</span>
                     <span>{t('log_workout.muscle_sets')}</span>
