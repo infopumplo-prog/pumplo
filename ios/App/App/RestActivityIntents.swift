@@ -6,12 +6,13 @@ import ActivityKit
 import AppIntents
 import UserNotifications
 
-// Lock-screen ✓ button: completes the upcoming set. LiveActivityIntent runs in
-// the APP process (woken in background if needed), so it can queue the event
-// for the webview, flip the Live Activity into a rest countdown natively and
-// arm a rest-end notification in case the webview stays asleep.
+// Lock-screen buttons for the workout Live Activity. LiveActivityIntent runs in
+// the APP process (woken in background if needed), so it can queue events for
+// the webview and flip the Live Activity natively even when JS is asleep.
 // Shared file: member of BOTH the App target and PumploWidgets (the widget
-// needs the type for Button(intent:)).
+// needs the types for Button(intent:)).
+
+// ✓ on the upcoming-set card → log the set, switch to the rest countdown.
 @available(iOS 17.0, *)
 struct CompleteSetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Complete set"
@@ -44,6 +45,37 @@ struct CompleteSetIntent: LiveActivityIntent {
         }
         // Wake the plugin (same process) so live JS can log the set instantly.
         NotificationCenter.default.post(name: Notification.Name("PumploSetCompleted"), object: nil)
+        return .result()
+    }
+}
+
+// Skip on the rest countdown → jump straight to the upcoming-set card.
+@available(iOS 17.0, *)
+struct SkipRestIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Skip rest"
+    static var openAppWhenRun: Bool = false
+
+    func perform() async throws -> some IntentResult {
+        let d = UserDefaults.standard
+        var queue = d.array(forKey: "pumplo_pending_rest_skips") as? [Double] ?? []
+        queue.append(Date().timeIntervalSince1970 * 1000)
+        d.set(queue, forKey: "pumplo_pending_rest_skips")
+
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent"])
+
+        // Flip back to the upcoming-set card stored by the app when rest began.
+        if let activity = Activity<RestActivityAttributes>.activities.first {
+            var state = activity.content.state
+            state.mode = "idle"
+            if let name = d.string(forKey: "pumplo_next_exercise_name"), !name.isEmpty { state.exerciseName = name }
+            state.nextSetText = d.string(forKey: "pumplo_next_set_text") ?? state.nextSetText
+            state.detailText = d.string(forKey: "pumplo_next_detail_text") ?? ""
+            state.thumbPath = d.string(forKey: "pumplo_next_thumb_path") ?? state.thumbPath
+            state.startedAt = Date()
+            state.endsAt = Date().addingTimeInterval(3600)
+            await activity.update(ActivityContent(state: state, staleDate: state.endsAt.addingTimeInterval(3600)))
+        }
+        NotificationCenter.default.post(name: Notification.Name("PumploRestSkipped"), object: nil)
         return .result()
     }
 }

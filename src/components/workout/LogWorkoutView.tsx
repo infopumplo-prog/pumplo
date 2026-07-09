@@ -13,7 +13,7 @@ import { GestureSafeInput } from './GestureSafeInput';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
-import { startRestActivity, updateRestActivity, endRestActivity, showSetActivity, consumePendingCompletions, addSetCompletedListener } from '@/lib/restLiveActivity';
+import { startRestActivity, updateRestActivity, endRestActivity, showSetActivity, consumePendingEvents, addLockScreenListener, type NextSetPayload } from '@/lib/restLiveActivity';
 
 export interface LogExercise {
   id: string;
@@ -190,7 +190,7 @@ const LogWorkoutView = ({
   const runIdRef = useRef(0);
   const resting = rest !== null;
 
-  const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string }) => {
+  const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string; nextSet?: NextSetPayload | null }) => {
     if (seconds <= 0) return;
     workCtxRef.current = null;
     restEndRef.current = Date.now() + seconds * 1000;
@@ -201,6 +201,8 @@ const LogWorkoutView = ({
       nextSetText: ctx?.nextText ?? '',
       endsAt: restEndRef.current,
       totalSeconds: seconds,
+      thumbUrl: ctx?.nextSet?.thumbUrl ?? null,
+      nextSet: ctx?.nextSet ?? null,
     });
   };
 
@@ -230,7 +232,8 @@ const LogWorkoutView = ({
     if (restTimerEnabled) {
       const restSec = ctx.ex.rest_per_set?.[ctx.si] ?? ctx.ex.rest_seconds ?? 120;
       if (restSec > 0) {
-        startRest(restSec, { exerciseName: exName(ctx.ex), nextText: nextSetText(ctx.idx, ctx.si) });
+        const f = followingSet(ctx.idx, ctx.si);
+        startRest(restSec, { exerciseName: exName(ctx.ex), nextText: nextSetText(ctx.idx, ctx.si), nextSet: f ? setPayload(f) : null });
         return;
       }
     }
@@ -333,6 +336,30 @@ const LogWorkoutView = ({
     return t('log_workout.workout_done_next');
   };
 
+  // Card payload for a given set (used for the lock-screen upcoming-set card).
+  const setPayload = (p: { ex: LogExercise; idx: number; si: number }): NextSetPayload => {
+    const isCardio = p.ex.unit_type === 'time_min' || p.ex.category === 'cardio';
+    const inp = inputs[`${p.idx}-${p.si}`];
+    return {
+      exerciseName: exName(p.ex),
+      setText: t('log_workout.set_of', { num: p.si + 1, total: rowCount(p.idx) }),
+      detailText: isCardio ? fmt(p.ex.reps || 0) : `${inp?.w || '–'} kg × ${inp?.r || '–'}`,
+      restSeconds: restTimerEnabled ? (p.ex.rest_per_set?.[p.si] ?? p.ex.rest_seconds ?? 120) : 0,
+      thumbUrl: getVideoThumbUrl(p.ex.video_path),
+    };
+  };
+
+  // The set that comes after completing (idx, si) — feeds the Skip intent.
+  const followingSet = (idx: number, si: number): { ex: LogExercise; idx: number; si: number } | null => {
+    if (si + 1 < rowCount(idx)) return { ex: exercises[idx], idx, si: si + 1 };
+    for (let j = idx + 1; j < exercises.length; j++) {
+      for (let k = 0; k < rowCount(j); k++) {
+        if (!isDone(j, k)) return { ex: exercises[j], idx: j, si: k };
+      }
+    }
+    return null;
+  };
+
   const toggleSet = (ex: LogExercise, idx: number, si: number) => {
     unlockAudio();
     if (isDone(idx, si)) { onUncompleteSet(idx, si); return; }
@@ -360,7 +387,8 @@ const LogWorkoutView = ({
     playBeep();
     if (restTimerEnabled) {
       const restSec = ex.rest_per_set?.[si] ?? ex.rest_seconds ?? 120;
-      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
+      const f = followingSet(idx, si);
+      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si), nextSet: f ? setPayload(f) : null });
     }
   };
 
@@ -395,20 +423,27 @@ const LogWorkoutView = ({
     }
     if (restTimerEnabled) {
       const restSec = ex.rest_per_set?.[si] ?? ex.rest_seconds ?? 120;
-      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
+      const f = followingSet(idx, si);
+      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si), nextSet: f ? setPayload(f) : null });
     }
   };
 
+  // Skip rest triggered from the lock screen (kept fresh via ref).
+  const skipFromLockRef = useRef<() => void>(() => {});
+  skipFromLockRef.current = () => { if (rest?.mode === 'rest') skipRest(); };
+
   useEffect(() => {
     const process = async () => {
-      const n = await consumePendingCompletions();
-      if (n > 0) completeFromLockRef.current();
+      const { completions, skips } = await consumePendingEvents();
+      if (skips > 0) skipFromLockRef.current();
+      if (completions > 0) completeFromLockRef.current();
     };
     process();
-    const removeListener = addSetCompletedListener(() => process());
+    const removeCompleted = addLockScreenListener('setCompleted', () => process());
+    const removeSkipped = addLockScreenListener('restSkipped', () => process());
     const onVis = () => { if (document.visibilityState === 'visible') process(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => { removeListener(); document.removeEventListener('visibilitychange', onVis); };
+    return () => { removeCompleted(); removeSkipped(); document.removeEventListener('visibilitychange', onVis); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // While no countdown runs, the banner shows the upcoming set with the ✓.
@@ -416,13 +451,8 @@ const LogWorkoutView = ({
     if (resting) return;
     const p = nextPending();
     if (!p) { endRestActivity(); return; }
-    const isCardio = p.ex.unit_type === 'time_min' || p.ex.category === 'cardio';
-    const inp = inputs[`${p.idx}-${p.si}`];
     showSetActivity({
-      exerciseName: exName(p.ex),
-      setText: t('log_workout.set_of', { num: p.si + 1, total: rowCount(p.idx) }),
-      detailText: isCardio ? fmt(p.ex.reps || 0) : `${inp?.w || '–'} kg × ${inp?.r || '–'}`,
-      restSeconds: restTimerEnabled ? (p.ex.rest_per_set?.[p.si] ?? p.ex.rest_seconds ?? 120) : 0,
+      ...setPayload(p),
       restOverTitle: t('workout.rest_over_title'),
       restOverBody: t('workout.rest_over_body'),
     });

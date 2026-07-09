@@ -16,6 +16,9 @@ struct RestActivityAttributes: ActivityAttributes {
         var mode: String
         // e.g. "22 kg × 55" for the upcoming set (idle mode only).
         var detailText: String
+        // Absolute path of the exercise thumbnail in the shared App Group
+        // container ("" = none) — widgets can only render local images.
+        var thumbPath: String
     }
 }
 #endif

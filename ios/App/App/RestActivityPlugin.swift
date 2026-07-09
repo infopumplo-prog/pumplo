@@ -6,11 +6,12 @@ import ActivityKit
 #endif
 
 // Lock-screen Live Activity for the workout. Two modes:
-//  - "idle": upcoming set card (exercise, set, kg × reps) with a ✓ App Intent
-//    button (iOS 17+) that completes the set straight from the lock screen;
-//  - "rest": system-rendered countdown (Text(timerInterval:)).
+//  - "idle": upcoming set card (thumb, exercise, set, kg × reps) with a ✓ App
+//    Intent button (iOS 17+) that completes the set from the lock screen;
+//  - "rest": system-rendered countdown with a Skip intent button.
 // JS only pushes state changes; the countdown itself never needs updates.
-// Silent no-op below iOS 16.2 or when the user disabled Live Activities.
+// Exercise thumbnails are downloaded into the App Group container because
+// widgets can only render local images.
 @objc(RestActivityPlugin)
 public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "RestActivityPlugin"
@@ -23,21 +24,39 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "consumePending", returnType: CAPPluginReturnPromise)
     ]
 
+    static let appGroup = "group.com.pumplo.app"
+
     public override func load() {
-        // Fired by CompleteSetIntent (same process) — forward to JS listeners.
+        // Fired by the lock-screen intents (same process) — forward to JS.
         NotificationCenter.default.addObserver(forName: Notification.Name("PumploSetCompleted"), object: nil, queue: .main) { [weak self] _ in
             self?.notifyListeners("setCompleted", data: [:])
         }
+        NotificationCenter.default.addObserver(forName: Notification.Name("PumploRestSkipped"), object: nil, queue: .main) { [weak self] _ in
+            self?.notifyListeners("restSkipped", data: [:])
+        }
     }
 
-    // Rest countdown (also cancels the intent-armed rest-end notification —
-    // when JS is awake it owns the rest alert with its own audio/notification).
+    // Rest countdown. Also stores the UPCOMING set card (nextSet…) so the
+    // lock-screen Skip intent can flip back to it natively, and cancels the
+    // intent-armed rest-end notification (awake JS owns the alert).
     @objc func start(_ call: CAPPluginCall) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent"])
+        let d = UserDefaults.standard
+        d.set(call.getString("nextExerciseName") ?? "", forKey: "pumplo_next_exercise_name")
+        d.set(call.getString("nextSetOfText") ?? "", forKey: "pumplo_next_set_text")
+        d.set(call.getString("nextDetailText") ?? "", forKey: "pumplo_next_detail_text")
+        d.set(call.getDouble("nextRestSeconds") ?? 0, forKey: "pumplo_pending_rest_seconds")
+
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { call.resolve(); return }
-        let state = RestActivityPlugin.restState(from: call)
+        let thumbUrl = call.getString("thumbUrl")
+        let nextThumbUrl = call.getString("nextThumbUrl")
         Task {
+            let thumbPath = await RestActivityPlugin.localThumb(for: thumbUrl)
+            let nextThumbPath = await RestActivityPlugin.localThumb(for: nextThumbUrl)
+            UserDefaults.standard.set(nextThumbPath ?? "", forKey: "pumplo_next_thumb_path")
+            var state = RestActivityPlugin.restState(from: call)
+            state.thumbPath = thumbPath ?? ""
             await RestActivityPlugin.startOrUpdate(state)
             call.resolve()
         }
@@ -77,26 +96,48 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { call.resolve(); return }
+        let thumbUrl = call.getString("thumbUrl")
         let now = Date()
-        let state = RestActivityAttributes.ContentState(
+        var state = RestActivityAttributes.ContentState(
             startedAt: now,
             endsAt: now.addingTimeInterval(3600), // unused in idle mode
             exerciseName: call.getString("exerciseName") ?? "",
             nextSetText: call.getString("setText") ?? "",
             mode: "idle",
-            detailText: call.getString("detailText") ?? "")
+            detailText: call.getString("detailText") ?? "",
+            thumbPath: "")
         Task {
+            state.thumbPath = await RestActivityPlugin.localThumb(for: thumbUrl) ?? ""
             await RestActivityPlugin.startOrUpdate(state, staleAfter: 3600)
             call.resolve()
         }
     }
 
-    // Set completions queued by the intent while the webview slept.
+    // Events queued by the lock-screen intents while the webview slept.
     @objc func consumePending(_ call: CAPPluginCall) {
         let d = UserDefaults.standard
-        let queue = d.array(forKey: "pumplo_pending_set_completions") as? [Double] ?? []
+        let completions = d.array(forKey: "pumplo_pending_set_completions") as? [Double] ?? []
+        let skips = d.array(forKey: "pumplo_pending_rest_skips") as? [Double] ?? []
         d.removeObject(forKey: "pumplo_pending_set_completions")
-        call.resolve(["completions": queue])
+        d.removeObject(forKey: "pumplo_pending_rest_skips")
+        call.resolve(["completions": completions, "skips": skips])
+    }
+
+    // Download (once) an exercise thumbnail into the App Group container so the
+    // widget process can render it. Returns the local path, or nil.
+    private static func localThumb(for urlString: String?) async -> String? {
+        guard let urlString, !urlString.isEmpty, let url = URL(string: urlString) else { return nil }
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return nil }
+        let dir = container.appendingPathComponent("thumbs", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let name = String(abs(urlString.hashValue)) + ".jpg"
+        let file = dir.appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: file.path) { return file.path }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            try data.write(to: file)
+            return file.path
+        } catch { return nil }
     }
 
     @available(iOS 16.2, *)
@@ -120,6 +161,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             exerciseName: call.getString("exerciseName") ?? "",
             nextSetText: call.getString("nextSetText") ?? "",
             mode: "rest",
-            detailText: "")
+            detailText: "",
+            thumbPath: "")
     }
 }

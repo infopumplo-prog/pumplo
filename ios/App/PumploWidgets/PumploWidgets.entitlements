@@ -6,13 +6,5 @@
 	<array>
 		<string>group.com.pumplo.app</string>
 	</array>
-	<key>aps-environment</key>
-	<string>development</string>
-	<key>com.apple.developer.usernotifications.time-sensitive</key>
-	<true/>
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
-	</array>
 </dict>
 </plist>
