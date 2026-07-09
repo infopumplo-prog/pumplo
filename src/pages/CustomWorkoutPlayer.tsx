@@ -983,7 +983,9 @@ const CustomWorkoutPlayer = () => {
           const setInserts: any[] = [];
           exercises.forEach((exercise, exIdx) => {
             const setsData = completedSetsMap.get(exIdx) || [];
-            for (let i = 0; i < exercise.sets; i++) {
+            // Sets ADDED mid-workout live beyond the planned count — save them too.
+            const rowTotal = Math.max(exercise.sets, setsData.length);
+            for (let i = 0; i < rowTotal; i++) {
               const setData = setsData[i];
               setInserts.push({
                 session_id: session.id,
@@ -993,6 +995,7 @@ const CustomWorkoutPlayer = () => {
                 weight_kg: setData?.weight || null,
                 reps: setData?.reps || null,
                 completed: setData?.completed || false,
+                set_type: getSetType(exercise.set_types, i),
               });
             }
           });
