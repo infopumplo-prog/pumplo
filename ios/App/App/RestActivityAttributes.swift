@@ -12,6 +12,10 @@ struct RestActivityAttributes: ActivityAttributes {
         var endsAt: Date
         var exerciseName: String
         var nextSetText: String
+        // "rest" = countdown; "idle" = upcoming set card with the ✓ intent button.
+        var mode: String
+        // e.g. "22 kg × 55" for the upcoming set (idle mode only).
+        var detailText: String
     }
 }
 #endif

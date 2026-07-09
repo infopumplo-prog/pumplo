@@ -10,6 +10,8 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -35,6 +37,44 @@ public class RestActivityPlugin extends Plugin {
     public void end(PluginCall call) {
         NotificationManagerCompat.from(getContext()).cancel(NOTIF_ID);
         call.resolve();
+    }
+
+    // Upcoming-set card (no countdown, no lock-screen button on Android yet).
+    @PluginMethod
+    public void showSet(PluginCall call) {
+        Context ctx = getContext();
+        NotificationManagerCompat mgr = NotificationManagerCompat.from(ctx);
+        if (!mgr.areNotificationsEnabled()) { call.resolve(); return; }
+        ensureChannel(ctx);
+
+        String exerciseName = call.getString("exerciseName", "");
+        String setText = call.getString("setText", "");
+        String detailText = call.getString("detailText", "");
+
+        Intent launch = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+        PendingIntent tap = launch == null ? null : PendingIntent.getActivity(
+                ctx, 9912, launch, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(ctx.getApplicationInfo().icon)
+                .setContentTitle(exerciseName)
+                .setContentText(setText + (detailText.isEmpty() ? "" : " · " + detailText))
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .setShowWhen(false)
+                .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        if (tap != null) b.setContentIntent(tap);
+        try { mgr.notify(NOTIF_ID, b.build()); } catch (SecurityException ignored) { }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void consumePending(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("completions", new JSArray());
+        call.resolve(ret);
     }
 
     private void show(PluginCall call) {

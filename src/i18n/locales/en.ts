@@ -611,6 +611,7 @@ const en = {
   'log_workout.next_exercise': 'Next exercise: {{name}}',
   'log_workout.work_running': 'Set {{num}} of {{total}} running',
   'log_workout.work_done': 'Done',
+  'log_workout.set_of': 'Set {{num}} of {{total}}',
   'log_workout.workout_done_next': 'Last set ✅',
   'log_workout.minimize': 'Minimize',
   'log_workout.rest_settings': 'Rest timer settings',

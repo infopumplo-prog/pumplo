@@ -611,6 +611,7 @@ const cs = {
   'log_workout.next_exercise': 'Další cvik: {{name}}',
   'log_workout.work_running': 'Probíhá série {{num}} z {{total}}',
   'log_workout.work_done': 'Hotovo',
+  'log_workout.set_of': 'Série {{num}} z {{total}}',
   'log_workout.workout_done_next': 'Poslední série ✅',
   'log_workout.minimize': 'Minimalizovat',
   'log_workout.rest_settings': 'Nastavení pauzy',

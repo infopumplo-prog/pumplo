@@ -13,7 +13,7 @@ import { GestureSafeInput } from './GestureSafeInput';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
-import { startRestActivity, updateRestActivity, endRestActivity } from '@/lib/restLiveActivity';
+import { startRestActivity, updateRestActivity, endRestActivity, showSetActivity, consumePendingCompletions, addSetCompletedListener } from '@/lib/restLiveActivity';
 
 export interface LogExercise {
   id: string;
@@ -186,16 +186,13 @@ const LogWorkoutView = ({
   const restNativeRef = useRef(false);
   // Context of the running timed set, so the tick can complete it when time is up.
   const workCtxRef = useRef<{ ex: LogExercise; idx: number; si: number } | null>(null);
-  // run = countdown instance id (effect re-arms beeps per run); chainRef marks
-  // "a new countdown replaces this one" so cleanup doesn't kill its Live Activity.
+  // run = countdown instance id (the effect re-arms beeps per run).
   const runIdRef = useRef(0);
-  const chainRef = useRef(false);
   const resting = rest !== null;
 
   const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string }) => {
     if (seconds <= 0) return;
     workCtxRef.current = null;
-    chainRef.current = true;
     restEndRef.current = Date.now() + seconds * 1000;
     restBeeps.current = { b3: false, b2: false, b1: false, done: false };
     setRest({ total: seconds, remaining: seconds, mode: 'rest', run: ++runIdRef.current });
@@ -211,7 +208,6 @@ const LogWorkoutView = ({
   // same 3-2-1 + finish sounds as rest; completing happens when time is up.
   const startWork = (ex: LogExercise, idx: number, si: number, seconds: number) => {
     workCtxRef.current = { ex, idx, si };
-    chainRef.current = true;
     restEndRef.current = Date.now() + seconds * 1000;
     restBeeps.current = { b3: false, b2: false, b1: false, done: false };
     setRest({ total: seconds, remaining: seconds, mode: 'work', run: ++runIdRef.current });
@@ -238,8 +234,7 @@ const LogWorkoutView = ({
         return;
       }
     }
-    setRest(null);
-    endRestActivity();
+    setRest(null); // idle sync takes the banner over
   };
 
   // Cancel a running timed set without completing it (tap ✓ again).
@@ -247,8 +242,7 @@ const LogWorkoutView = ({
     workCtxRef.current = null;
     stopRestBeeps();
     restNativeRef.current = false;
-    setRest(null);
-    endRestActivity();
+    setRest(null); // idle sync takes the banner over
   };
   const adjustRest = (delta: number) => {
     if (!rest) return;
@@ -260,11 +254,10 @@ const LogWorkoutView = ({
     setRest(r => (r ? { ...r, total: Math.max(r.total, remaining), remaining } : null));
     updateRestActivity({ endsAt: restEndRef.current, totalSeconds: rest.total });
   };
-  const skipRest = () => { stopRestBeeps(); restNativeRef.current = false; setRest(null); endRestActivity(); };
+  const skipRest = () => { stopRestBeeps(); restNativeRef.current = false; setRest(null); };
 
   useEffect(() => {
     if (!rest) return;
-    chainRef.current = false;
     let cancelled = false;
     const remainingAtStart = Math.max(0, Math.ceil((restEndRef.current - Date.now()) / 1000));
     startRestBeeps(remainingAtStart).then(h => { if (!cancelled) restNativeRef.current = h; });
@@ -284,8 +277,7 @@ const LogWorkoutView = ({
         if (workCtxRef.current) {
           completeWork(); // timed set finished → log it (+ chains into rest)
         } else {
-          setRest(null);
-          endRestActivity();
+          setRest(null); // idle sync takes the banner over
         }
       }
     };
@@ -293,12 +285,7 @@ const LogWorkoutView = ({
     const iv = setInterval(tick, 250);
     const onVis = () => { if (document.visibilityState === 'visible') tick(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => {
-      cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis);
-      // Keep the Live Activity alive when this countdown chains into the next
-      // one (work → rest); end it otherwise (skip / finish / unmount).
-      if (!chainRef.current) endRestActivity();
-    };
+    return () => { cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); };
   }, [rest?.run]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Working stats (warm-up sets excluded) ---
@@ -376,6 +363,73 @@ const LogWorkoutView = ({
       startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
     }
   };
+
+  // --- Lock-screen banner: upcoming set (idle) + ✓-from-lock-screen handling ---
+  // The next pending set = first uncompleted row in exercise order.
+  const nextPending = (): { ex: LogExercise; idx: number; si: number } | null => {
+    for (let idx = 0; idx < exercises.length; idx++) {
+      const total = rowCount(idx);
+      for (let si = 0; si < total; si++) {
+        if (!isDone(idx, si)) return { ex: exercises[idx], idx, si };
+      }
+    }
+    return null;
+  };
+
+  // Complete the pending set as if ✓ was tapped in the app (used by the
+  // lock-screen intent). Kept in a ref so the one-time listener sees fresh state.
+  const completeFromLockRef = useRef<() => void>(() => {});
+  completeFromLockRef.current = () => {
+    const p = nextPending();
+    if (!p) return;
+    const { ex, idx, si } = p;
+    const isCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
+    if (isCardio) {
+      const dur = ex.reps || 0;
+      onCompleteSet(idx, si, null, dur, dur);
+    } else {
+      const inp = inputs[`${idx}-${si}`];
+      const wNum = inp?.w ? parseFloat(inp.w) : NaN;
+      const rNum = inp?.r ? parseInt(inp.r) : NaN;
+      onCompleteSet(idx, si, isNaN(wNum) ? null : wNum, isNaN(rNum) ? (ex.reps || null) : rNum, null);
+    }
+    if (restTimerEnabled) {
+      const restSec = ex.rest_per_set?.[si] ?? ex.rest_seconds ?? 120;
+      startRest(restSec, { exerciseName: exName(ex), nextText: nextSetText(idx, si) });
+    }
+  };
+
+  useEffect(() => {
+    const process = async () => {
+      const n = await consumePendingCompletions();
+      if (n > 0) completeFromLockRef.current();
+    };
+    process();
+    const removeListener = addSetCompletedListener(() => process());
+    const onVis = () => { if (document.visibilityState === 'visible') process(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { removeListener(); document.removeEventListener('visibilitychange', onVis); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While no countdown runs, the banner shows the upcoming set with the ✓.
+  useEffect(() => {
+    if (resting) return;
+    const p = nextPending();
+    if (!p) { endRestActivity(); return; }
+    const isCardio = p.ex.unit_type === 'time_min' || p.ex.category === 'cardio';
+    const inp = inputs[`${p.idx}-${p.si}`];
+    showSetActivity({
+      exerciseName: exName(p.ex),
+      setText: t('log_workout.set_of', { num: p.si + 1, total: rowCount(p.idx) }),
+      detailText: isCardio ? fmt(p.ex.reps || 0) : `${inp?.w || '–'} kg × ${inp?.r || '–'}`,
+      restSeconds: restTimerEnabled ? (p.ex.rest_per_set?.[p.si] ?? p.ex.rest_seconds ?? 120) : 0,
+      restOverTitle: t('workout.rest_over_title'),
+      restOverBody: t('workout.rest_over_body'),
+    });
+  }, [resting, completedSetsMap, exercises, extraSets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving the workout view (minimize / finish) removes the banner.
+  useEffect(() => () => { endRestActivity(); }, []);
 
   // Remove a set row: shift all per-row data above it down by one, then let the
   // parent shift its completion map the same way. rowCount shrinks via a
