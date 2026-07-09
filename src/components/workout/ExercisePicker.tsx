@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, Check, Dumbbell, ChevronDown } from 'lucide-react';
+import { Search, X, Check, Dumbbell, ChevronDown, Maximize2 } from 'lucide-react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { translateMuscle } from '@/lib/muscleTranslation';
-import { getVideoThumbUrl } from '@/lib/videoUtils';
+import { getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { cn } from '@/lib/utils';
 
@@ -81,6 +81,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   // on demand so the list query stays light.
   interface ExerciseInfo {
     name: string; nameEn: string | null; videoUrl: string | null; category: string;
+    allowedPhase: string | null;
     equipmentType: string | null; machineName: string | null;
     primaryMuscles: string[]; secondaryMuscles: string[];
     primaryMusclesEn: string[] | null; secondaryMusclesEn: string[] | null;
@@ -89,6 +90,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   }
   const [info, setInfo] = useState<ExerciseInfo | null>(null);
   const [infoVideoError, setInfoVideoError] = useState(false);
+  const infoVideoRef = useRef<HTMLVideoElement | null>(null);
   // Swipe-to-dismiss for the info sheet: drag starts from the header strip
   // (dragListener=false), so the scrollable content below still scrolls freely.
   const infoDragControls = useDragControls();
@@ -103,7 +105,8 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
     const d = data as any;
     setInfo({
       name: d.name, nameEn: d.name_en || null, videoUrl: publicVideoUrl(d.video_path),
-      category: d.category || '', equipmentType: d.equipment_type || null,
+      category: d.category || '', allowedPhase: ex.allowed_phase,
+      equipmentType: d.equipment_type || null,
       machineName: d.machines?.name || null,
       primaryMuscles: d.primary_muscles || [], secondaryMuscles: d.secondary_muscles || [],
       primaryMusclesEn: d.primary_muscles_en || null, secondaryMusclesEn: d.secondary_muscles_en || null,
@@ -178,7 +181,10 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
     if (onlyMyGym && gymId) {
       list = list.filter(e => e.machine_id == null || gymMachineIds.has(e.machine_id));
     }
-    if (equipment) {
+    if (equipment === 'warmup' || equipment === 'cooldown') {
+      // Pseudo-filters in the equipment sheet: warm-up / stretching exercises.
+      list = list.filter(e => e.allowed_phase === equipment);
+    } else if (equipment) {
       list = list.filter(e => e.equipment_type === equipment);
     }
     if (muscle) {
@@ -222,7 +228,9 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   };
   useEffect(() => { if (open) { setInfo(null); setInfoVideoError(false); } }, [open]);
 
-  const equipmentLabel = equipment ? t(`equipment.${equipment}`) : t('exercise_picker.all');
+  const equipmentLabel = equipment === 'warmup' ? t('exercise_picker.phase_warmup')
+    : equipment === 'cooldown' ? t('exercise_picker.phase_cooldown')
+    : equipment ? t(`equipment.${equipment}`) : t('exercise_picker.all');
   const muscleLabel = muscle ? t(`custom_plan.muscle_${muscle}`) : t('exercise_picker.all');
 
   // Czech-correct plural for the "Add N exercises" CTA.
@@ -394,7 +402,12 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                 <div className="overflow-y-auto pb-6">
                   {sheet === 'equipment' ? (
                     <FilterOptionList
-                      options={[{ key: null, label: t('exercise_picker.all') }, ...EQUIPMENT_KEYS.map(k => ({ key: k, label: t(`equipment.${k}`) }))]}
+                      options={[
+                        { key: null, label: t('exercise_picker.all') },
+                        ...EQUIPMENT_KEYS.map(k => ({ key: k, label: t(`equipment.${k}`) })),
+                        { key: 'warmup', label: t('exercise_picker.phase_warmup') },
+                        { key: 'cooldown', label: t('exercise_picker.phase_cooldown') },
+                      ]}
                       selected={equipment}
                       onSelect={(k) => { setEquipment(k); setSheet(null); }}
                     />
@@ -438,18 +451,36 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                   onPointerDown={(e) => { e.stopPropagation(); infoDragControls.start(e); }}
                 >
                   <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" />
-                  <p className="px-5 pt-3 pb-2 text-base font-bold">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
+                  <div className="px-5 pt-3 pb-2 flex items-center gap-2">
+                    <p className="text-base font-bold">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
+                    {(info.allowedPhase === 'warmup' || info.allowedPhase === 'cooldown') && (
+                      <span className={cn(
+                        'shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full',
+                        info.allowedPhase === 'warmup' ? 'bg-amber-500/15 text-amber-600' : 'bg-teal-500/15 text-teal-600'
+                      )}>
+                        {info.allowedPhase === 'warmup' ? t('exercise_picker.phase_warmup') : t('exercise_picker.phase_cooldown')}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="overflow-y-auto px-5 pb-8">
                   {info.videoUrl && !infoVideoError ? (
-                    <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                    <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                       <video
+                        ref={infoVideoRef}
                         key={info.videoUrl}
                         src={info.videoUrl}
                         playsInline autoPlay loop muted preload="auto"
                         className="w-full h-full object-contain"
                         onError={() => setInfoVideoError(true)}
                       />
+                      <button
+                        type="button"
+                        onClick={() => enterVideoFullscreen(infoVideoRef.current)}
+                        className="absolute bottom-2 right-2 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">

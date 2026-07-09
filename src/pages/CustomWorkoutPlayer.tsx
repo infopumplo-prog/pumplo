@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -16,7 +16,7 @@ import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, enterVideoFullscreen } from '@/lib/videoUtils';
 import { cn } from '@/lib/utils';
 import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 const REST_BETWEEN_SETS = 90; // seconds
@@ -1383,7 +1383,16 @@ const CustomWorkoutPlayer = () => {
             {exerciseDetail && (
               <div className="px-4 pb-6 overflow-y-auto">
                 {signedInfoVideoUrl ? (
-                  <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                  <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                    {!infoVideoError && (
+                      <button
+                        type="button"
+                        onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
+                        className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                    )}
                     {infoVideoError ? (
                       <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                     ) : (
@@ -1758,7 +1767,16 @@ const CustomWorkoutPlayer = () => {
           {exerciseDetail && (
             <div className="px-4 pb-6 overflow-y-auto">
               {signedInfoVideoUrl ? (
-                <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                  {!infoVideoError && (
+                    <button
+                      type="button"
+                      onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
+                      className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  )}
                   {infoVideoError ? (
                     <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                   ) : (

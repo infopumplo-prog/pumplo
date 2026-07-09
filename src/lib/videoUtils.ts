@@ -17,6 +17,18 @@ export const getSignedVideoUrl = async (videoPath: string | null): Promise<strin
   return data?.publicUrl ?? null;
 };
 
+// Fullscreen for exercise videos. iOS WKWebView doesn't implement the standard
+// Fullscreen API on elements, but exposes webkitEnterFullscreen() directly on
+// <video>, which opens the native player (with its own controls).
+export const enterVideoFullscreen = (video: HTMLVideoElement | null): void => {
+  if (!video) return;
+  const v = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+  try {
+    if (typeof v.webkitEnterFullscreen === 'function') v.webkitEnterFullscreen();
+    else if (v.requestFullscreen) v.requestFullscreen();
+  } catch { /* fullscreen unavailable → noop */ }
+};
+
 // Static first-frame JPEG generated next to each video (<folder>/thumb.jpg).
 // Lists must use this instead of <video> thumbnails: 200 concurrent <video>
 // elements each pull megabytes on iOS, the ~20 kB JPEGs load instantly.

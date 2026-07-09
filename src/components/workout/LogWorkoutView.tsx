@@ -500,9 +500,9 @@ const LogWorkoutView = ({
                         key={key}
                         drag="x"
                         dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={{ left: 0.4, right: 0 }}
-                        dragDirectionLock
-                        onDragEnd={(_, info) => { if (info.offset.x < -70) removeSet(idx, si); }}
+                        dragElastic={{ left: 0.5, right: 0 }}
+                        style={{ touchAction: 'pan-y' }}
+                        onDragEnd={(_, info) => { if (info.offset.x < -60 || info.velocity.x < -400) removeSet(idx, si); }}
                         className={cn(
                           'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
                           done ? 'bg-green-500/15' : isRunning ? 'bg-[#5BC8F5]/15' : ''
