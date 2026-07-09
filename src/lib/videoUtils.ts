@@ -25,7 +25,9 @@ export const getVideoThumbUrl = (videoPath: string | null): string | null => {
   if (!videoPath) return null;
   const file = extractFilePath(videoPath);
   const slash = file.lastIndexOf('/');
-  if (slash === -1) return null;
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(`${file.substring(0, slash)}/thumb.jpg`);
+  // Videos in per-exercise folders → <folder>/thumb.jpg; legacy root-level
+  // videos → <file>/thumb.jpg (the generator uploads them there).
+  const folder = slash === -1 ? file : file.substring(0, slash);
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(`${folder}/thumb.jpg`);
   return data?.publicUrl ?? null;
 };

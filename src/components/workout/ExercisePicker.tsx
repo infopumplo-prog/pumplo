@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X, Check, Dumbbell, ChevronDown } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +88,9 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   }
   const [info, setInfo] = useState<ExerciseInfo | null>(null);
   const [infoVideoError, setInfoVideoError] = useState(false);
+  // Swipe-to-dismiss for the info sheet: drag starts from the header strip
+  // (dragListener=false), so the scrollable content below still scrolls freely.
+  const infoDragControls = useDragControls();
   const openInfo = async (ex: PickerExercise) => {
     setInfoVideoError(false);
     const { data } = await supabase
@@ -204,8 +207,18 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   const handleAdd = () => {
     if (selected.size === 0) return;
     onAdd(Array.from(selected.values()));
+    setSelected(new Map());
     onClose();
   };
+
+  // Cancel = drop the in-progress selection AND any open info sheet, so the
+  // picker opens clean next time (the component stays mounted between opens).
+  const handleCancel = () => {
+    setSelected(new Map());
+    setInfo(null);
+    onClose();
+  };
+  useEffect(() => { if (open) { setInfo(null); setInfoVideoError(false); } }, [open]);
 
   const equipmentLabel = equipment ? t(`equipment.${equipment}`) : t('exercise_picker.all');
   const muscleLabel = muscle ? t(`custom_plan.muscle_${muscle}`) : t('exercise_picker.all');
@@ -227,7 +240,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
       <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }} hideHandle>
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-4 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
-          <button onClick={onClose} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
+          <button onClick={handleCancel} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
             {t('exercise_picker.cancel')}
           </button>
           <h2 className="text-base font-bold">{t('exercise_picker.title')}</h2>
@@ -398,10 +411,22 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
               <motion.div
                 initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                drag="y"
+                dragListener={false}
+                dragControls={infoDragControls}
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0, bottom: 0.7 }}
+                onDragEnd={(_, i) => { if (i.offset.y > 100 || i.velocity.y > 500) setInfo(null); }}
                 className="absolute left-0 right-0 bottom-0 z-20 bg-background rounded-t-2xl max-h-[85%] flex flex-col"
               >
-                <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted shrink-0" />
-                <p className="px-5 pt-3 pb-2 text-base font-bold shrink-0">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
+                <div
+                  className="shrink-0 cursor-grab active:cursor-grabbing"
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={(e) => infoDragControls.start(e)}
+                >
+                  <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" />
+                  <p className="px-5 pt-3 pb-2 text-base font-bold">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
+                </div>
                 <div className="overflow-y-auto px-5 pb-8">
                   {info.videoUrl && !infoVideoError ? (
                     <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
