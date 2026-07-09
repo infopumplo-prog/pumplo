@@ -128,7 +128,10 @@ export function useCustomPlanDetail(planId: string | null) {
       setPlan(null);
       return;
     }
-    setIsLoading(true);
+    // Full-screen loading only on the FIRST load. Refetches after mutations run
+    // silently in the background — flipping isLoading here made the editor flash
+    // its loading screen on every change (feels like a reload, not an edit).
+    if (!planRef.current) setIsLoading(true);
 
     const { data: planData } = await supabase
       .from('custom_plans')
@@ -228,8 +231,8 @@ export function useCustomPlanDetail(planId: string | null) {
   };
 
   const renameDay = async (dayId: string, name: string) => {
+    setPlan(prev => prev ? { ...prev, days: prev.days.map(d => d.id === dayId ? { ...d, name } : d) } : prev);
     await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
-    await fetchPlan();
   };
 
   const addExercise = async (dayId: string, exerciseId: string, sets = 3, reps = 10, weightKg: number | null = null) => {
@@ -272,17 +275,15 @@ export function useCustomPlanDetail(planId: string | null) {
     const { notes, set_types, ...known } = updates;
     const hasMeta = notes !== undefined || set_types !== undefined;
 
-    if (hasMeta) {
-      setPlan(prev => prev ? {
-        ...prev,
-        days: prev.days.map(d => ({
-          ...d,
-          exercises: d.exercises.map(e => e.id === exerciseId
-            ? { ...e, ...(notes !== undefined ? { notes } : {}), ...(set_types !== undefined ? { set_types } : {}) }
-            : e),
-        })),
-      } : prev);
-    }
+    // Optimistic update for EVERYTHING — every field here maps 1:1 onto the
+    // local exercise row, so the UI updates instantly and no refetch is needed.
+    setPlan(prev => prev ? {
+      ...prev,
+      days: prev.days.map(d => ({
+        ...d,
+        exercises: d.exercises.map(e => e.id === exerciseId ? { ...e, ...updates } : e),
+      })),
+    } : prev);
 
     if (Object.keys(known).length > 0) {
       await supabase.from('custom_plan_exercises').update(known).eq('id', exerciseId);
@@ -294,12 +295,18 @@ export function useCustomPlanDetail(planId: string | null) {
       const { error } = await supabase.from('custom_plan_exercises').update(meta).eq('id', exerciseId);
       if (error) console.warn('[custom_plan] notes/set_types not persisted — apply P2 DDL:', error.message);
     }
-    await fetchPlan();
+    // Swapping the exercise itself changes joined data (video, muscles) the
+    // optimistic merge can't know — refresh silently in the background.
+    if (updates.exercise_id !== undefined) fetchPlan();
   };
 
   const removeExercise = async (exerciseId: string) => {
+    // Optimistic removal — the row disappears immediately, no refetch.
+    setPlan(prev => prev ? {
+      ...prev,
+      days: prev.days.map(d => ({ ...d, exercises: d.exercises.filter(e => e.id !== exerciseId) })),
+    } : prev);
     await supabase.from('custom_plan_exercises').delete().eq('id', exerciseId);
-    await fetchPlan();
   };
 
   const duplicateExercise = async (exerciseId: string) => {
@@ -321,8 +328,8 @@ export function useCustomPlanDetail(planId: string | null) {
 
   const renamePlan = async (name: string) => {
     if (!planId) return;
+    setPlan(prev => prev ? { ...prev, name } : prev);
     await supabase.from('custom_plans').update({ name }).eq('id', planId);
-    await fetchPlan();
   };
 
   const sharePlan = async (): Promise<string | null> => {
