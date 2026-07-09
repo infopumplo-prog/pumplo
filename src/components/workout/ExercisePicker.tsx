@@ -417,12 +417,13 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                 dragConstraints={{ top: 0, bottom: 0 }}
                 dragElastic={{ top: 0, bottom: 0.7 }}
                 onDragEnd={(_, i) => { if (i.offset.y > 100 || i.velocity.y > 500) setInfo(null); }}
+                data-vaul-no-drag
                 className="absolute left-0 right-0 bottom-0 z-20 bg-background rounded-t-2xl max-h-[85%] flex flex-col"
               >
                 <div
                   className="shrink-0 cursor-grab active:cursor-grabbing"
                   style={{ touchAction: 'none' }}
-                  onPointerDown={(e) => infoDragControls.start(e)}
+                  onPointerDown={(e) => { e.stopPropagation(); infoDragControls.start(e); }}
                 >
                   <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" />
                   <p className="px-5 pt-3 pb-2 text-base font-bold">{(isEn && info.nameEn) ? info.nameEn : info.name}</p>
