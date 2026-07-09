@@ -122,6 +122,9 @@ const CustomWorkoutPlayer = () => {
   const { profile } = useUserProfile();
   const searchParams = new URLSearchParams(window.location.search);
   const resumeMode = searchParams.get('resume') === 'true';
+  // Gym chosen already on the plan page (selector + location gate ran there) —
+  // don't ask again, jump straight to day selection.
+  const gymParam = searchParams.get('gym');
 
   // State
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
@@ -132,7 +135,7 @@ const CustomWorkoutPlayer = () => {
   const [exercises, setExercises] = useState<ExerciseWithVideo[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-  const [playerState, setPlayerState] = useState<PlayerState>('select_gym');
+  const [playerState, setPlayerState] = useState<PlayerState>(() => gymParam ? 'select_day' : 'select_gym');
   const [restSeconds, setRestSeconds] = useState(0);
   const [startTime] = useState<Date>(new Date());
   const [totalSetsCompleted, setTotalSetsCompleted] = useState(0);
@@ -405,6 +408,12 @@ const CustomWorkoutPlayer = () => {
 
     setPlayerState('select_day');
   };
+
+  // Gym passed from the plan page → run the selection handler once on mount
+  // (fetches gym name/IG and moves on) without showing the selector again.
+  useEffect(() => {
+    if (gymParam) handleGymSelected(gymParam);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check exercise equipment compatibility with selected gym
   const checkEquipmentCompatibility = useCallback(async (dayExercises: ExerciseWithVideo[]) => {
@@ -842,6 +851,18 @@ const CustomWorkoutPlayer = () => {
       return next;
     });
   };
+  // Mid-workout edits that PERSIST to the routine (Hevy-style): rest timer and
+  // notes write straight back to custom_plan_exercises.
+  const handleUpdateRest = async (rowId: string, seconds: number) => {
+    setExercises(prev => prev.map(e => e.id === rowId ? { ...e, rest_seconds: seconds, rest_per_set: null } : e));
+    await supabase.from('custom_plan_exercises').update({ rest_seconds: seconds, rest_per_set: null }).eq('id', rowId);
+  };
+  const handleUpdateNote = async (rowId: string, note: string | null) => {
+    setExercises(prev => prev.map(e => e.id === rowId ? { ...e, notes: note } : e));
+    const { error } = await supabase.from('custom_plan_exercises').update({ notes: note }).eq('id', rowId);
+    if (error) console.warn('[custom_plan] note not persisted:', error.message);
+  };
+
   // Removing a set row shifts everything after it down by one (mirrors the
   // per-row input shift in LogWorkoutView).
   const handleLogSetRemove = (exIdx: number, setIdx: number) => {
@@ -1293,6 +1314,8 @@ const CustomWorkoutPlayer = () => {
           onCompleteSet={handleLogSetComplete}
           onUncompleteSet={handleLogSetUncomplete}
           onRemoveSet={handleLogSetRemove}
+          onUpdateRest={handleUpdateRest}
+          onUpdateNote={handleUpdateNote}
           onShowInfo={handleShowInfo}
           onAddExercise={() => setAddPickerOpen(true)}
           onFinish={() => setPlayerState('completed')}

@@ -251,10 +251,11 @@ export const formatRest = (sec: number, t: (k: string) => string): string => {
 };
 
 // --- Per-set table row (SÉRIE | KG | OPAK.) — local state, saves on blur ---
-const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, onWeightChange, onOpenTypeSheet }: {
+const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, onWeightChange, onOpenTypeSheet, onRemove }: {
   index: number; reps: number; weight: number | null;
   isCardio: boolean; setTypes: (string | null)[] | null;
   onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onOpenTypeSheet: (index: number) => void;
+  onRemove?: () => void;
 }) => {
   const [r, setR] = useState(String(reps));
   const [w, setW] = useState(weight != null ? String(weight) : '');
@@ -274,7 +275,14 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
   };
 
   return (
-    <div className="flex items-center gap-2 py-1">
+    <motion.div
+      drag={onRemove ? 'x' : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0.5, right: 0 }}
+      style={{ touchAction: 'pan-y' }}
+      onDragEnd={(_, info) => { if (onRemove && (info.offset.x < -60 || info.velocity.x < -400)) onRemove(); }}
+      className="flex items-center gap-2 py-1"
+    >
       {/* SÉRIE — type badge, tap opens the "Typ série" sheet */}
       <button
         onClick={() => onOpenTypeSheet(index)}
@@ -307,7 +315,7 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
             className="flex-1 min-w-0 bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={1} />
         </>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -350,6 +358,18 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
 
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
+
+  // Swipe-left removal of a single set row (mirrors the type-sheet removal).
+  const handleRemoveSetAt = (setIndex: number) => {
+    if (exercise.sets <= 1) { onRemove(exercise.id); return; }
+    const dropAt = <T,>(arr: T[] | null | undefined, fallback: T[]): T[] => (arr ?? fallback).filter((_, i) => i !== setIndex);
+    onUpdate(exercise.id, {
+      sets: exercise.sets - 1,
+      reps_per_set: dropAt(exercise.reps_per_set, Array(exercise.sets).fill(exercise.reps)),
+      weight_per_set: dropAt(exercise.weight_per_set, Array(exercise.sets).fill(exercise.weight_kg)),
+      set_types: dropAt(exercise.set_types, Array(exercise.sets).fill('normal')),
+    });
+  };
 
   // Append a new set copying the last set's values (Hevy "+ Add set").
   const handleAddSet = () => {
@@ -462,6 +482,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
               weight={setWeight}
               isCardio={isCardio}
               setTypes={exercise.set_types}
+              onRemove={() => handleRemoveSetAt(i)}
               onOpenTypeSheet={(idx) => onOpenTypeSheet(exercise, idx)}
               onRepsChange={(val) => {
                 const base = exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps);
@@ -596,10 +617,10 @@ const CustomPlanDetail = () => {
         setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
         setShowLocationGate(true);
       } else {
-        navigate(`/custom-workout/${id}`);
+        navigate(`/custom-workout/${id}?gym=${gymId}`);
       }
     } finally {
       setIsCheckingEquipment(false);
@@ -624,10 +645,10 @@ const CustomPlanDetail = () => {
       if (gymData?.latitude != null && gymData?.longitude != null) {
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setPendingWorkoutPath(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
         setShowLocationGate(true);
       } else {
-        navigate(`/custom-workout/${id}`);
+        navigate(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
       }
     } finally {
       setIsCheckingEquipment(false);

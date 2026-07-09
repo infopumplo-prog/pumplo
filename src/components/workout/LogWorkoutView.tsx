@@ -52,6 +52,8 @@ interface LogWorkoutViewProps {
   onCompleteSet: (exIdx: number, setIdx: number, weight: number | null, reps: number | null, durationSeconds: number | null) => void;
   onUncompleteSet: (exIdx: number, setIdx: number) => void;
   onRemoveSet: (exIdx: number, setIdx: number) => void;
+  onUpdateRest: (exerciseRowId: string, seconds: number) => void;
+  onUpdateNote: (exerciseRowId: string, note: string | null) => void;
   onShowInfo: (exerciseId: string) => void;
   onAddExercise: () => void;
   onFinish: () => void;
@@ -82,7 +84,7 @@ const ExerciseThumb = ({ path, onClick }: { path: string | null; onClick: () => 
 
 const LogWorkoutView = ({
   title, exercises, completedSetsMap, startTime, isMuted, onToggleMute,
-  onCompleteSet, onUncompleteSet, onRemoveSet, onShowInfo, onAddExercise, onFinish, onMinimize, onExplainSetType,
+  onCompleteSet, onUncompleteSet, onRemoveSet, onUpdateRest, onUpdateNote, onShowInfo, onAddExercise, onFinish, onMinimize, onExplainSetType,
 }: LogWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -94,6 +96,8 @@ const LogWorkoutView = ({
   const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const [alarmOpen, setAlarmOpen] = useState(false);
   const [muscleOpen, setMuscleOpen] = useState(false);
+  // Exercise index whose rest timer is being edited (sheet), persists to the plan.
+  const [restEditIdx, setRestEditIdx] = useState<number | null>(null);
   const [durationSec, setDurationSec] = useState(0);
 
   // --- Live duration ---
@@ -458,21 +462,26 @@ const LogWorkoutView = ({
                   </button>
                 </div>
 
-                {/* Note */}
+                {/* Note — saves to the routine on blur */}
                 <div className="px-3 pb-2">
                   <input
                     value={notes[idx] ?? ''}
                     onChange={(e) => setNotes(p => ({ ...p, [idx]: e.target.value }))}
+                    onBlur={() => { const v = (notes[idx] ?? '').trim() || null; if (v !== (ex.notes ?? null)) onUpdateNote(ex.id, v); }}
                     placeholder={t('log_workout.note_placeholder')}
                     className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none py-1"
                   />
                 </div>
 
-                {/* Rest timer row */}
-                <div className="px-3 pb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                {/* Rest timer row — tap to edit, persists to the routine */}
+                <button
+                  onClick={() => setRestEditIdx(idx)}
+                  className="px-3 pb-2 flex items-center gap-1.5 text-xs text-[#5BC8F5] font-medium"
+                >
                   <Timer className="w-3.5 h-3.5" />
                   <span>{t('log_workout.rest')}: {restRowLabel(ex.rest_seconds)}</span>
-                </div>
+                  <ChevronDown className="w-3 h-3 -rotate-90" />
+                </button>
 
                 {/* Sets table */}
                 <div className="px-3 pb-3">
@@ -645,6 +654,41 @@ const LogWorkoutView = ({
                   <span className="w-5 h-5 rounded-full bg-white shadow" />
                 </span>
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rest-timer edit sheet (persists to the routine) */}
+      <AnimatePresence>
+        {restEditIdx !== null && exercises[restEditIdx] && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm"
+            onClick={() => setRestEditIdx(null)}
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="w-full max-h-[65vh] bg-card rounded-t-3xl flex flex-col safe-bottom"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 pb-3 shrink-0">
+                <h2 className="text-lg font-bold">{t('log_workout.rest_timer')}</h2>
+                <button onClick={() => setRestEditIdx(null)} className="p-1.5 rounded-lg text-muted-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="overflow-y-auto pb-8">
+                {[0, ...Array.from({ length: 60 }, (_, i) => (i + 1) * 5)].map(sec => (
+                  <button
+                    key={sec}
+                    onClick={() => { onUpdateRest(exercises[restEditIdx].id, sec); setRestEditIdx(null); }}
+                    className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-muted transition-colors"
+                  >
+                    <span className={cn('text-sm', (exercises[restEditIdx].rest_seconds ?? 0) === sec ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{restRowLabel(sec)}</span>
+                    {(exercises[restEditIdx].rest_seconds ?? 0) === sec && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+                  </button>
+                ))}
+              </div>
             </motion.div>
           </motion.div>
         )}
