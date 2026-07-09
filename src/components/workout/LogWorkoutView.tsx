@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check, Info, Plus, AlarmClock, PersonStanding, Video, Volume2, VolumeX, X, Timer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getVideoThumbUrl } from '@/lib/videoUtils';
 import { cn } from '@/lib/utils';
 import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 import { computeMuscleDistribution } from '@/lib/muscleDistribution';
@@ -63,19 +63,14 @@ const fmt = (sec: number) => {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}`;
 };
 
-// Small first-frame thumbnail that signs its own video URL.
+// Static first-frame JPEG thumbnail (<video> thumbnails stall iOS at list scale).
 const ExerciseThumb = ({ path, onClick }: { path: string | null; onClick: () => void }) => {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let c = false;
-    getSignedVideoUrl(path).then(u => { if (!c) setUrl(u); });
-    return () => { c = true; };
-  }, [path]);
+  const [error, setError] = useState(false);
+  const url = getVideoThumbUrl(path);
   return (
     <button onClick={onClick} className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-      {url ? (
-        // #t=0.1 forces iOS WKWebView to paint the first frame (else black box)
-        <video src={url + '#t=0.1'} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+      {url && !error ? (
+        <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => setError(true)} />
       ) : (
         <Video className="w-5 h-5 text-muted-foreground" />
       )}

@@ -16,3 +16,16 @@ export const getSignedVideoUrl = async (videoPath: string | null): Promise<strin
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(extractFilePath(videoPath));
   return data?.publicUrl ?? null;
 };
+
+// Static first-frame JPEG generated next to each video (<folder>/thumb.jpg).
+// Lists must use this instead of <video> thumbnails: 200 concurrent <video>
+// elements each pull megabytes on iOS, the ~20 kB JPEGs load instantly.
+// (Thumb generation: ffmpeg first frame, see repo CLAUDE.md video pipeline.)
+export const getVideoThumbUrl = (videoPath: string | null): string | null => {
+  if (!videoPath) return null;
+  const file = extractFilePath(videoPath);
+  const slash = file.lastIndexOf('/');
+  if (slash === -1) return null;
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(`${file.substring(0, slash)}/thumb.jpg`);
+  return data?.publicUrl ?? null;
+};

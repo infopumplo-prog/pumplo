@@ -7,6 +7,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { translateMuscle } from '@/lib/muscleTranslation';
+import { getVideoThumbUrl } from '@/lib/videoUtils';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { cn } from '@/lib/utils';
 
@@ -464,13 +465,12 @@ const FilterOptionList = ({ options, selected, onSelect }: {
   </div>
 );
 
-// Small muted-loading video thumbnail with dumbbell fallback. Tapping it opens
-// the exercise info sheet (selection stays on the row itself).
-// The `#t=0.1` fragment forces iOS WKWebView to seek and PAINT the first frame —
-// with plain preload="metadata" iOS renders a black box until playback starts.
+// Static first-frame JPEG thumbnail with dumbbell fallback. Tapping it opens
+// the exercise info sheet (selection stays on the row itself). Never render
+// <video> in the list — 200 of them stall the whole picker on iOS.
 const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?: () => void }) => {
   const [error, setError] = useState(false);
-  const url = useRef(publicVideoUrl(videoPath)).current;
+  const url = useRef(getVideoThumbUrl(videoPath)).current;
   const handleTap = onTap ? (e: React.MouseEvent) => { e.stopPropagation(); onTap(); } : undefined;
   if (!url || error) {
     return (
@@ -481,11 +481,10 @@ const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?:
   }
   return (
     <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
-      <video
-        src={url + '#t=0.1'}
-        muted
-        playsInline
-        preload="metadata"
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
         className="w-full h-full object-cover"
         onError={() => setError(true)}
       />

@@ -11,7 +11,7 @@ import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans'
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
@@ -216,10 +216,11 @@ const publicVideoUrl = (videoPath: string | null): string | null => {
   return supabase.storage.from(CARD_BUCKET).getPublicUrl(path).data?.publicUrl ?? null;
 };
 
-// Small video thumbnail (preload=metadata) with dumbbell fallback for the card.
+// Static first-frame JPEG thumbnail with dumbbell fallback for the card
+// (<video> thumbnails stall iOS when many render at once).
 const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
   const [error, setError] = useState(false);
-  const url = useRef(publicVideoUrl(videoPath)).current;
+  const url = useRef(getVideoThumbUrl(videoPath)).current;
   if (!url || error) {
     return (
       <div className="shrink-0 w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
@@ -229,8 +230,7 @@ const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
   }
   return (
     <div className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-muted">
-      {/* #t=0.1 forces iOS WKWebView to paint the first frame (else black box) */}
-      <video src={url + '#t=0.1'} muted playsInline preload="metadata" className="w-full h-full object-cover" onError={() => setError(true)} />
+      <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => setError(true)} />
     </div>
   );
 };
