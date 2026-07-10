@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +12,10 @@ import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
-import { showSetActivity, endRestActivity } from '@/lib/restLiveActivity';
+import { showSetActivity, endRestActivity, startRestActivity, updateRestActivity } from '@/lib/restLiveActivity';
+import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
+import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
+import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { Info, Maximize2 } from 'lucide-react';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
@@ -107,6 +110,10 @@ export const WorkoutSession = ({
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restAdvance, setRestAdvance] = useState(true);
   const [restDuration, setRestDuration] = useState(0);
+  // Shared rest clock: both presentations (full-screen video / list bottom bar)
+  // read the SAME end timestamp, so switching views mid-rest keeps counting.
+  const [restEndsAt, setRestEndsAt] = useState(0);
+  const [restRemaining, setRestRemaining] = useState(0);
   const [restLabel, setRestLabel] = useState('');
   // Results stored by exercise index for back-navigation support
   const [resultsByIndex, setResultsByIndex] = useState<Map<number, ExerciseResult>>(() => {
@@ -374,6 +381,7 @@ export const WorkoutSession = ({
       const nextRest = getRestSecondsForCategory(goalId, nextExercise?.slotCategory);
       setRestAdvance(true);
       setRestDuration(nextRest);
+      setRestEndsAt(Date.now() + nextRest * 1000);
       setRestLabel(t('workout.next_exercise_prep'));
       setShowRestTimer(true);
       setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
@@ -542,8 +550,10 @@ export const WorkoutSession = ({
       const allDone = newSets.every(s => s.completed);
       if (!allDone) {
         // Rest between sets (Pumplo-guided, same as the video flow)
+        const sec = getRestSecondsForCategory(goalId, exercise.slotCategory);
         setRestAdvance(false);
-        setRestDuration(getRestSecondsForCategory(goalId, exercise.slotCategory));
+        setRestDuration(sec);
+        setRestEndsAt(Date.now() + sec * 1000);
         setRestLabel(t('log_workout.rest'));
         setShowRestTimer(true);
       }
@@ -567,7 +577,9 @@ export const WorkoutSession = ({
           setCurrentExerciseIndex(nextIdx);
           setHighestIndexReached(prev2 => Math.max(prev2, nextIdx));
           setRestAdvance(false); // index already moved
-          setRestDuration(getRestSecondsForCategory(goalId, liveExercises[nextIdx]?.slotCategory));
+          const nextSec = getRestSecondsForCategory(goalId, liveExercises[nextIdx]?.slotCategory);
+          setRestDuration(nextSec);
+          setRestEndsAt(Date.now() + nextSec * 1000);
           setRestLabel(t('workout.next_exercise_prep'));
           setShowRestTimer(true);
         } else {
@@ -630,11 +642,11 @@ export const WorkoutSession = ({
     commonMistakes: string | null; tips: string | null;
   }
   const [swapInfo, setSwapInfo] = useState<SwapInfo | null>(null);
-  const openSwapInfo = async (c: SwapCandidate) => {
+  const openExerciseInfo = async (exerciseId: string) => {
     const { data } = await supabase
       .from('exercises')
       .select('name, name_en, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
-      .eq('id', c.id)
+      .eq('id', exerciseId)
       .single();
     if (!data) return;
     const d = data as any;
@@ -648,6 +660,57 @@ export const WorkoutSession = ({
       commonMistakes: d.common_mistakes || null, tips: d.tips || null,
     });
   };
+
+  // List-mode rest engine: beeps, rest-end notification and lock-screen
+  // countdown for the bottom rest bar. The full-screen RestTimer (video view)
+  // arms all of this itself; cleanups hand over cleanly on view toggles.
+  const restBarBeeps = useRef({ b3: false, b2: false, b1: false, done: false });
+  const restBarNativeRef = useRef(false);
+  const restCompleteRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!showRestTimer || viewMode !== 'list' || !restEndsAt) return;
+    let cancelled = false;
+    const remainingAtStart = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+    restBarBeeps.current = { b3: remainingAtStart < 3, b2: remainingAtStart < 2, b1: remainingAtStart < 1, done: false };
+    startRestBeeps(remainingAtStart).then(h => { if (!cancelled) restBarNativeRef.current = h; });
+    scheduleRestEndNotification(remainingAtStart, t('workout.rest_over_title'), t('workout.rest_over_body'));
+    startRestActivity({
+      exerciseName: (isEn && currentExercise?.exerciseNameEn) ? currentExercise!.exerciseNameEn! : (currentExercise?.exerciseName || ''),
+      nextSetText: restLabel,
+      endsAt: restEndsAt,
+      totalSeconds: restDuration,
+    });
+    const tick = () => {
+      const rem = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+      setRestRemaining(rem);
+      const b = restBarBeeps.current;
+      if (!restBarNativeRef.current) {
+        if (rem === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
+        if (rem === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
+        if (rem === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
+      }
+      if (rem <= 0 && !b.done) {
+        b.done = true;
+        if (!restBarNativeRef.current) playAlarmFinish();
+        stopRestBeeps();
+        cancelRestEndNotification();
+        restCompleteRef.current();
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 250);
+    const onVis = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis);
+      stopRestBeeps(); cancelRestEndNotification(); restBarNativeRef.current = false;
+    };
+  }, [showRestTimer, viewMode, restEndsAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const adjustListRest = (delta: number) => {
+    setRestEndsAt(prev => Math.max(Date.now(), prev + delta * 1000));
+  };
+  restCompleteRef.current = handleRestComplete;
 
   const handleCompactSelectExercise = useCallback((index: number) => {
     setCurrentExerciseIndex(index);
@@ -698,15 +761,21 @@ export const WorkoutSession = ({
     );
   }
 
-  // Rest timer overlay
-  if (showRestTimer) {
+  // Rest timer overlay — full screen ONLY in video view. In list view the rest
+  // renders as a bottom bar over the list (custom-workout parity); both read
+  // the same restEndsAt clock, so toggling views never resets the countdown.
+  if (showRestTimer && viewMode === 'video') {
     return (
       <RestTimer
-        duration={restDuration}
+        key={restEndsAt}
+        duration={Math.max(1, Math.ceil((restEndsAt - Date.now()) / 1000))}
         onComplete={handleRestComplete}
         label={restLabel}
-        nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
-        nextVideoUrl={nextVideoUrl}
+        nextExerciseName={restAdvance
+          ? ((isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined))
+          : ((isEn && currentExercise?.exerciseNameEn) ? currentExercise!.exerciseNameEn! : (currentExercise?.exerciseName || undefined))}
+        nextVideoUrl={restAdvance ? nextVideoUrl : null}
+        onToggleView={() => setViewMode('list')}
       />
     );
   }
@@ -752,7 +821,7 @@ export const WorkoutSession = ({
                       <span className="text-sm font-medium truncate">{(isEn && c.name_en) ? c.name_en : c.name}</span>
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); openSwapInfo(c); }}
+                      onClick={(e) => { e.stopPropagation(); openExerciseInfo(c.id); }}
                       className="p-2.5 rounded-xl text-muted-foreground shrink-0"
                     >
                       <Info className="w-5 h-5" />
@@ -763,7 +832,14 @@ export const WorkoutSession = ({
             </div>
           </motion.div>
 
-          {/* Exercise detail above the picker — close it to get back to the list */}
+        </>
+      )}
+    </AnimatePresence>
+  );
+
+  // Exercise detail sheet (list-view ⓘ and swap-sheet ⓘ) — closing it returns
+  // to whatever was underneath.
+  const infoSheetJsx = (
           <AnimatePresence>
             {swapInfo && (
               <>
@@ -824,9 +900,6 @@ export const WorkoutSession = ({
               </>
             )}
           </AnimatePresence>
-        </>
-      )}
-    </AnimatePresence>
   );
 
   // Compact list mode
@@ -848,9 +921,41 @@ export const WorkoutSession = ({
           totalExercises={liveExercises.length}
           startTime={workoutStartTime}
           restSecondsByIndex={liveExercises.map(e => getRestSecondsForCategory(goalId, e.slotCategory))}
+          onShowInfo={openExerciseInfo}
         />
 
+        {/* Sticky rest bar (shared clock with the full-screen rest) */}
+        <AnimatePresence>
+          {showRestTimer && (
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              className="fixed left-0 right-0 z-[70] px-3"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+            >
+              <div className="mx-auto max-w-md bg-[#1A2744] text-white rounded-2xl shadow-xl px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-[#5BC8F5] text-center mb-0.5 truncate">{restLabel}</p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => adjustListRest(-15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">-15 s</button>
+                  <div className="flex-1 text-center">
+                    <span className={restRemaining <= 3 ? 'text-2xl font-black tabular-nums text-red-400' : 'text-2xl font-black tabular-nums text-white'}>
+                      {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, '0')}
+                    </span>
+                    <div className="h-1 mt-1 bg-white/15 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#5BC8F5] rounded-full" style={{ width: `${restDuration > 0 ? (restRemaining / restDuration) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                  <button onClick={() => adjustListRest(15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">+15 s</button>
+                  <button onClick={() => { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); }} className="px-3 py-1.5 rounded-lg bg-[#5BC8F5] text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {swapSheetJsx}
+        {infoSheetJsx}
 
         {/* Skip Dialog */}
         <ExerciseSkipDialog
@@ -916,6 +1021,7 @@ export const WorkoutSession = ({
       />
 
       {swapSheetJsx}
+      {infoSheetJsx}
 
       {/* Skip Dialog */}
       <ExerciseSkipDialog

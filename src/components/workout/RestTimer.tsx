@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
@@ -17,9 +17,12 @@ interface RestTimerProps {
   label?: string;
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
+  // Switch to the list presentation mid-rest (countdown keeps running — the
+  // parent owns the rest clock).
+  onToggleView?: () => void;
 }
 
-export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl }: RestTimerProps) => {
+export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl, onToggleView }: RestTimerProps) => {
   const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
@@ -197,6 +200,19 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
+
+      {onToggleView && (
+        <button
+          onClick={onToggleView}
+          className={cn(
+            'absolute right-16 z-20 p-2.5 rounded-xl',
+            onVideo ? 'bg-black/40 text-white' : 'bg-muted/80 text-foreground'
+          )}
+          style={{ top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))' }}
+        >
+          <List className="w-5 h-5" />
+        </button>
+      )}
 
       <div className="relative z-10 flex flex-col items-center w-full">
         <p className={cn('text-lg mb-2', onVideo ? 'text-white/80' : 'text-muted-foreground')}>{label ?? t('workout.rest')}</p>
