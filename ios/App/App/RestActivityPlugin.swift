@@ -105,7 +105,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             nextSetText: call.getString("setText") ?? "",
             mode: "idle",
             detailText: call.getString("detailText") ?? "",
-            thumbPath: "")
+            thumbPath: "",
+            showButton: call.getBool("showButton") ?? true)
         Task {
             state.thumbPath = await RestActivityPlugin.localThumb(for: thumbUrl) ?? ""
             await RestActivityPlugin.startOrUpdate(state, staleAfter: 3600)
@@ -162,6 +163,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             nextSetText: call.getString("nextSetText") ?? "",
             mode: "rest",
             detailText: "",
-            thumbPath: "")
+            thumbPath: "",
+            showButton: true)
     }
 }

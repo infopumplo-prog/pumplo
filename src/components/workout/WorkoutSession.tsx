@@ -11,7 +11,10 @@ import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
+import { showSetActivity, endRestActivity } from '@/lib/restLiveActivity';
+import { ExerciseInfoContent } from './ExerciseInfoContent';
+import { Info, Maximize2 } from 'lucide-react';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
@@ -102,6 +105,7 @@ export const WorkoutSession = ({
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restAdvance, setRestAdvance] = useState(true);
   const [restDuration, setRestDuration] = useState(0);
   const [restLabel, setRestLabel] = useState('');
   // Results stored by exercise index for back-navigation support
@@ -368,6 +372,7 @@ export const WorkoutSession = ({
       // Show rest timer before next exercise — use the NEXT exercise's category for rest
       const nextExercise = liveExercises[currentExerciseIndex + 1];
       const nextRest = getRestSecondsForCategory(goalId, nextExercise?.slotCategory);
+      setRestAdvance(true);
       setRestDuration(nextRest);
       setRestLabel(t('workout.next_exercise_prep'));
       setShowRestTimer(true);
@@ -378,9 +383,14 @@ export const WorkoutSession = ({
     }
   }, [currentExercise, currentExerciseIndex, liveExercises.length, goalId, liveExercises]);
 
+  // Between-SET rests (list mode) must not advance the exercise; only the
+  // between-EXERCISE rest does.
   const handleRestComplete = useCallback(() => {
     setShowRestTimer(false);
-    setCurrentExerciseIndex(prev => prev + 1);
+    setRestAdvance(prev => {
+      if (prev) setCurrentExerciseIndex(i => i + 1);
+      return true;
+    });
   }, []);
 
   const handleSkipClick = useCallback(() => {
@@ -530,6 +540,13 @@ export const WorkoutSession = ({
 
       // Check if all sets for this exercise are done
       const allDone = newSets.every(s => s.completed);
+      if (!allDone) {
+        // Rest between sets (Pumplo-guided, same as the video flow)
+        setRestAdvance(false);
+        setRestDuration(getRestSecondsForCategory(goalId, exercise.slotCategory));
+        setRestLabel(t('log_workout.rest'));
+        setShowRestTimer(true);
+      }
       if (allDone) {
         // Save result
         const result: ExerciseResult = {
@@ -549,6 +566,10 @@ export const WorkoutSession = ({
         if (nextIdx !== -1) {
           setCurrentExerciseIndex(nextIdx);
           setHighestIndexReached(prev2 => Math.max(prev2, nextIdx));
+          setRestAdvance(false); // index already moved
+          setRestDuration(getRestSecondsForCategory(goalId, liveExercises[nextIdx]?.slotCategory));
+          setRestLabel(t('workout.next_exercise_prep'));
+          setShowRestTimer(true);
         } else {
           // Check if ALL exercises done
           const allExercisesDone = liveExercises.every((_, i) => {
@@ -563,7 +584,70 @@ export const WorkoutSession = ({
 
       return updated;
     });
-  }, [liveExercises]);
+  }, [liveExercises, goalId, t]);
+
+  // --- Lock-screen banner for the guided workout (info-only ✓ hidden; rest
+  // countdowns come from RestTimer which drives the banner itself) ---
+  const [currentThumbUrl, setCurrentThumbUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const id = currentExercise?.exerciseId;
+    if (!id) { setCurrentThumbUrl(null); return; }
+    supabase.from('exercises').select('video_path').eq('id', id).single().then(({ data }) => {
+      if (!cancelled) setCurrentThumbUrl(getVideoThumbUrl(data?.video_path || null));
+    });
+    return () => { cancelled = true; };
+  }, [currentExercise?.exerciseId]);
+
+  useEffect(() => {
+    if (showSummary || showCooldown) { endRestActivity(); return; }
+    if (showRestTimer) return; // RestTimer owns the banner while resting
+    const ex = liveExercises[currentExerciseIndex];
+    if (!ex) return;
+    const sets = setsDataByExercise.get(currentExerciseIndex) || [];
+    const mapIdx = sets.findIndex(st => !st.completed);
+    const setIdx = viewMode === 'list' ? (mapIdx === -1 ? Math.max(ex.sets - 1, 0) : mapIdx) : currentSetIndex;
+    showSetActivity({
+      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
+      setText: t('log_workout.set_of', { num: Math.min(setIdx + 1, ex.sets), total: ex.sets }),
+      detailText: `${ex.repMin}–${ex.repMax} ${t('workout_share.reps_abbr')}`,
+      restSeconds: 0,
+      showButton: false,
+      thumbUrl: currentThumbUrl,
+    });
+  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t]);
+
+  // Leaving the workout removes the banner.
+  useEffect(() => () => { endRestActivity(); }, []);
+
+  // Exercise detail opened from the swap sheet (closes back to the list).
+  interface SwapInfo {
+    name: string; nameEn: string | null; videoUrl: string | null; category: string;
+    equipmentType: string | null; machineName: string | null;
+    primaryMuscles: string[]; secondaryMuscles: string[];
+    primaryMusclesEn: string[] | null; secondaryMusclesEn: string[] | null;
+    description: string | null; setupInstructions: string | null;
+    commonMistakes: string | null; tips: string | null;
+  }
+  const [swapInfo, setSwapInfo] = useState<SwapInfo | null>(null);
+  const openSwapInfo = async (c: SwapCandidate) => {
+    const { data } = await supabase
+      .from('exercises')
+      .select('name, name_en, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
+      .eq('id', c.id)
+      .single();
+    if (!data) return;
+    const d = data as any;
+    setSwapInfo({
+      name: d.name, nameEn: d.name_en || null, videoUrl: d.video_path || null,
+      category: d.category || '', equipmentType: d.equipment_type || null,
+      machineName: d.machines?.name || null,
+      primaryMuscles: d.primary_muscles || [], secondaryMuscles: d.secondary_muscles || [],
+      primaryMusclesEn: d.primary_muscles_en || null, secondaryMusclesEn: d.secondary_muscles_en || null,
+      description: d.description || null, setupInstructions: d.setup_instructions || null,
+      commonMistakes: d.common_mistakes || null, tips: d.tips || null,
+    });
+  };
 
   const handleCompactSelectExercise = useCallback((index: number) => {
     setCurrentExerciseIndex(index);
@@ -653,24 +737,93 @@ export const WorkoutSession = ({
               {swapOptions.map(c => {
                 const thumb = getVideoThumbUrl(c.video_path);
                 return (
-                  <button
-                    key={c.id}
-                    onClick={() => { setSwapOptions(null); applySwap(c); }}
-                    className="w-full flex items-center gap-3 px-5 py-2.5 text-left hover:bg-muted transition-colors"
-                  >
-                    <div className="shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                      {thumb ? (
-                        <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
-                      ) : (
-                        <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium">{(isEn && c.name_en) ? c.name_en : c.name}</span>
-                  </button>
+                  <div key={c.id} className="w-full flex items-center gap-1 pr-3 hover:bg-muted transition-colors">
+                    <button
+                      onClick={() => { setSwapOptions(null); applySwap(c); }}
+                      className="flex-1 min-w-0 flex items-center gap-3 pl-5 py-2.5 text-left"
+                    >
+                      <div className="shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                        {thumb ? (
+                          <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        ) : (
+                          <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium truncate">{(isEn && c.name_en) ? c.name_en : c.name}</span>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openSwapInfo(c); }}
+                      className="p-2.5 rounded-xl text-muted-foreground shrink-0"
+                    >
+                      <Info className="w-5 h-5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           </motion.div>
+
+          {/* Exercise detail above the picker — close it to get back to the list */}
+          <AnimatePresence>
+            {swapInfo && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[85] bg-black/40"
+                  onClick={() => setSwapInfo(null)}
+                />
+                <motion.div
+                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  className="fixed left-0 right-0 bottom-0 z-[86] bg-background rounded-t-3xl max-h-[85vh] flex flex-col safe-bottom"
+                >
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+                    <p className="text-base font-bold truncate">{(isEn && swapInfo.nameEn) ? swapInfo.nameEn : swapInfo.name}</p>
+                    <button onClick={() => setSwapInfo(null)} className="p-1.5 rounded-lg text-muted-foreground"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="overflow-y-auto px-5 pb-8">
+                    {swapInfo.videoUrl ? (
+                      <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                        <video
+                          src={swapInfo.videoUrl}
+                          playsInline autoPlay loop muted preload="auto"
+                          className="w-full h-full object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
+                          className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">{t('workout.no_video')}</p>
+                      </div>
+                    )}
+                    <ExerciseInfoContent
+                      category={swapInfo.category}
+                      equipmentType={swapInfo.equipmentType}
+                      machineName={swapInfo.machineName}
+                      primaryMuscles={swapInfo.primaryMuscles}
+                      secondaryMuscles={swapInfo.secondaryMuscles}
+                      primaryMusclesEn={swapInfo.primaryMusclesEn}
+                      secondaryMusclesEn={swapInfo.secondaryMusclesEn}
+                      description={swapInfo.description}
+                      descriptionEn={null}
+                      setupInstructions={swapInfo.setupInstructions}
+                      setupInstructionsEn={null}
+                      commonMistakes={swapInfo.commonMistakes}
+                      commonMistakesEn={null}
+                      tips={swapInfo.tips}
+                      tipsEn={null}
+                    />
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>
@@ -694,6 +847,7 @@ export const WorkoutSession = ({
           isSwapping={isSwapping}
           totalExercises={liveExercises.length}
           startTime={workoutStartTime}
+          restSecondsByIndex={liveExercises.map(e => getRestSecondsForCategory(goalId, e.slotCategory))}
         />
 
         {swapSheetJsx}

@@ -224,3 +224,19 @@
 .pb-nav {
   padding-bottom: var(--bottom-nav-offset);
 }
+
+/* Native-app feel: long-press must drive app gestures (hold-to-pick swap),
+   not the iOS text-selection callout. Inputs keep normal text selection. */
+* {
+  -webkit-touch-callout: none;
+}
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}

@@ -129,7 +129,7 @@ struct LockScreenRestView: View {
                     Text(state.detailText)
                         .font(.title3).bold().foregroundColor(.white).lineLimit(1)
                     Spacer()
-                    if #available(iOS 17.0, *) {
+                    if state.showButton, #available(iOS 17.0, *) {
                         Button(intent: CompleteSetIntent()) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 10)

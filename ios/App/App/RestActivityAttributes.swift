@@ -19,6 +19,9 @@ struct RestActivityAttributes: ActivityAttributes {
         // Absolute path of the exercise thumbnail in the shared App Group
         // container ("" = none) — widgets can only render local images.
         var thumbPath: String
+        // false hides the ✓ intent button (guided Pumplo workouts drive sets
+        // in-app; the banner is informational there).
+        var showButton: Bool
     }
 }
 #endif

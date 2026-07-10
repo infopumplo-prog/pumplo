@@ -66,6 +66,8 @@ interface CompactWorkoutViewProps {
   onExplainSetType?: (type: string) => void;
   // Workout start (drives the Doba stat, Log Workout header parity)
   startTime?: Date;
+  // Read-only per-exercise rest length (Pumplo drives rests, no editing)
+  restSecondsByIndex?: number[];
 }
 
 export const CompactWorkoutView = ({
@@ -95,6 +97,7 @@ export const CompactWorkoutView = ({
   setTypesByExercise,
   onExplainSetType,
   startTime,
+  restSecondsByIndex,
 }: CompactWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -441,6 +444,14 @@ export const CompactWorkoutView = ({
                     </button>
                   )}
                 </div>
+
+                {/* Rest between sets (read-only — Pumplo drives the plan) */}
+                {restSecondsByIndex?.[idx] != null && (
+                  <div className="px-3 pb-2 -mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Timer className="w-3.5 h-3.5" />
+                    <span>{t('log_workout.rest')}: {(() => { const sec = restSecondsByIndex[idx]; const m = Math.floor(sec / 60), ss = sec % 60; return m === 0 ? `${ss} s` : ss === 0 ? `${m} min` : `${m} min ${ss} s`; })()}</span>
+                  </div>
+                )}
 
                 {/* Sets table — visual parity with the custom Log Workout, but
                     the plan stays fixed (no add/remove, only the current set

@@ -25,7 +25,7 @@ interface RestActivityPlugin {
   end(): Promise<void>;
   showSet(options: {
     exerciseName: string; setText: string; detailText: string;
-    restSeconds: number; thumbUrl?: string | null;
+    restSeconds: number; thumbUrl?: string | null; showButton?: boolean;
     restOverTitle?: string; restOverBody?: string;
   }): Promise<void>;
   consumePending(): Promise<{ completions: number[]; skips: number[] }>;
@@ -65,7 +65,7 @@ export async function endRestActivity(): Promise<void> {
 // Upcoming-set card (idle mode) + payload for the lock-screen ✓ intent.
 export async function showSetActivity(options: {
   exerciseName: string; setText: string; detailText: string;
-  restSeconds: number; thumbUrl?: string | null;
+  restSeconds: number; thumbUrl?: string | null; showButton?: boolean;
   restOverTitle?: string; restOverBody?: string;
 }): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
