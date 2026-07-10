@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, SkipForward, Volume2, VolumeX, List } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
@@ -275,12 +275,14 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
           <Button variant="outline" size="icon" className="w-14 h-14 rounded-full text-xs font-bold" onClick={() => handleAdjust(15)}>
             +15 s
           </Button>
-          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={onSkip || onComplete}>
-            <SkipForward className="w-6 h-6" />
-          </Button>
         </div>
 
-        <p className={cn('text-sm mt-6', onVideo ? 'text-white/60' : 'text-muted-foreground')}>{t('workout.skip_tap')}</p>
+        <button
+          onClick={onSkip || onComplete}
+          className={cn('text-sm mt-6 py-2 px-6 active:scale-95 transition-transform', onVideo ? 'text-white/60' : 'text-muted-foreground')}
+        >
+          {t('workout.skip_tap')}
+        </button>
       </div>
     </motion.div>
   );

@@ -12,7 +12,7 @@ import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
-import { showSetActivity, endRestActivity, startRestActivity, updateRestActivity } from '@/lib/restLiveActivity';
+import { showSetActivity, endRestActivity, startRestActivity, updateRestActivity, consumePendingEvents, addLockScreenListener } from '@/lib/restLiveActivity';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
@@ -611,6 +611,29 @@ export const WorkoutSession = ({
     return () => { cancelled = true; };
   }, [currentExercise?.exerciseId]);
 
+  // Suggested weight for the upcoming set: last completed set this session,
+  // else the most recent logged weight for the exercise (same prefill order as
+  // the list view).
+  const [currentExWeight, setCurrentExWeight] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const ex = liveExercises[currentExerciseIndex];
+    const inSession = [...(setsDataByExercise.get(currentExerciseIndex) || [])].reverse().find(st => st.completed && st.weight != null);
+    if (inSession?.weight != null) { setCurrentExWeight(inSession.weight); return; }
+    if (!ex?.exerciseId) { setCurrentExWeight(null); return; }
+    supabase
+      .from('workout_session_sets')
+      .select('weight_kg')
+      .eq('exercise_id', ex.exerciseId)
+      .not('weight_kg', 'is', null)
+      .gt('weight_kg', 0)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setCurrentExWeight((data as any)?.weight_kg ?? null); });
+    return () => { cancelled = true; };
+  }, [currentExerciseIndex, liveExercises, setsDataByExercise]);
+
   useEffect(() => {
     if (showSummary || showCooldown) { endRestActivity(); return; }
     if (showRestTimer) return; // RestTimer owns the banner while resting
@@ -619,15 +642,63 @@ export const WorkoutSession = ({
     const sets = setsDataByExercise.get(currentExerciseIndex) || [];
     const mapIdx = sets.findIndex(st => !st.completed);
     const setIdx = viewMode === 'list' ? (mapIdx === -1 ? Math.max(ex.sets - 1, 0) : mapIdx) : currentSetIndex;
+    const repsText = `${ex.repMin}–${ex.repMax} ${t('workout_share.reps_abbr')}`;
     showSetActivity({
       exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
       setText: t('log_workout.set_of', { num: Math.min(setIdx + 1, ex.sets), total: ex.sets }),
-      detailText: `${ex.repMin}–${ex.repMax} ${t('workout_share.reps_abbr')}`,
-      restSeconds: 0,
-      showButton: false,
+      detailText: currentExWeight != null ? `${currentExWeight} kg × ${repsText}` : repsText,
+      restSeconds: getRestSecondsForCategory(goalId, ex.slotCategory),
+      showButton: true,
       thumbUrl: currentThumbUrl,
+      restOverTitle: t('workout.rest_over_title'),
+      restOverBody: t('workout.rest_over_body'),
     });
-  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t]);
+  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId]);
+
+  // ✓ / Skip from the lock screen (same behaviour as the custom workout).
+  const [playerSync, setPlayerSync] = useState(0);
+  useEffect(() => { setPlayerSync(0); }, [currentExerciseIndex]);
+  const lockCompleteRef = useRef<() => void>(() => {});
+  lockCompleteRef.current = () => {
+    if (showRestTimer || showSummary || showCooldown) return;
+    const ex = liveExercises[currentExerciseIndex];
+    if (!ex) return;
+    const base = viewMode === 'video' && currentExerciseSets.length === ex.sets
+      ? currentExerciseSets
+      : (setsDataByExercise.get(currentExerciseIndex) || Array.from({ length: ex.sets }, () => ({ completed: false })));
+    const si = base.findIndex(st => !st.completed);
+    if (si === -1) return;
+    const reps = ex.repMax;
+    handleCompactCompleteSet(currentExerciseIndex, si, currentExWeight ?? undefined, reps);
+    if (viewMode === 'video') {
+      // Re-seed the video player so it lands on the next set when unlocked.
+      const updated = [...base];
+      updated[si] = { completed: true, weight: currentExWeight ?? undefined, reps };
+      setCurrentExerciseSets(updated);
+      setCurrentSetIndex(Math.min(si + 1, ex.sets - 1));
+      setPlayerSync(n => n + 1);
+    }
+  };
+  const lockSkipRef = useRef<() => void>(() => {});
+  lockSkipRef.current = () => {
+    if (!showRestTimer) return;
+    stopRestBeeps();
+    cancelRestEndNotification();
+    handleRestComplete();
+  };
+  useEffect(() => {
+    const process = async () => {
+      const { completions, skips } = await consumePendingEvents();
+      if (skips > 0) lockSkipRef.current();
+      if (completions > 0) lockCompleteRef.current();
+    };
+    process();
+    const rm1 = addLockScreenListener('setCompleted', () => process());
+    const rm2 = addLockScreenListener('restSkipped', () => process());
+    const onVis = () => { if (document.visibilityState === 'visible') process(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { rm1(); rm2(); document.removeEventListener('visibilitychange', onVis); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leaving the workout removes the banner.
   useEffect(() => () => { endRestActivity(); }, []);
@@ -992,7 +1063,7 @@ export const WorkoutSession = ({
   return (
     <div className="fixed inset-0 z-[60]">
       <ExercisePlayerWithVideo
-        key={currentExerciseIndex}
+        key={`${currentExerciseIndex}-${playerSync}`}
         exercise={currentExercise}
         exerciseIndex={currentExerciseIndex}
         totalExercises={liveExercises.length}
@@ -1011,8 +1082,8 @@ export const WorkoutSession = ({
         gymId={gymId}
         planId={planId || undefined}
         dayLetter={dayLetter}
-        initialSetIndex={currentExerciseIndex === initialExerciseIndex ? initialSetIndex : 0}
-        initialSetsData={currentExerciseIndex === initialExerciseIndex ? initialCurrentExerciseSets : undefined}
+        initialSetIndex={playerSync > 0 ? currentSetIndex : (currentExerciseIndex === initialExerciseIndex ? initialSetIndex : 0)}
+        initialSetsData={playerSync > 0 ? currentExerciseSets : (currentExerciseIndex === initialExerciseIndex ? initialCurrentExerciseSets : undefined)}
         onSetChange={(setIdx, sets) => {
           setCurrentSetIndex(setIdx);
           setCurrentExerciseSets(sets);
