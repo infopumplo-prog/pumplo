@@ -190,9 +190,14 @@ const LogWorkoutView = ({
   const runIdRef = useRef(0);
   const resting = rest !== null;
 
+  // Last rest context, so the activity can be re-asserted after unlock (iOS
+  // may drop/stale it while the phone is locked; update() can't resurrect it).
+  const lastRestCtxRef = useRef<{ exerciseName: string; nextText: string; nextSet?: NextSetPayload | null } | null>(null);
+
   const startRest = (seconds: number, ctx?: { exerciseName: string; nextText: string; nextSet?: NextSetPayload | null }) => {
     if (seconds <= 0) return;
     workCtxRef.current = null;
+    lastRestCtxRef.current = ctx ?? null;
     restEndRef.current = Date.now() + seconds * 1000;
     restBeeps.current = { b3: false, b2: false, b1: false, done: false };
     setRest({ total: seconds, remaining: seconds, mode: 'rest', run: ++runIdRef.current });
@@ -432,15 +437,25 @@ const LogWorkoutView = ({
   const skipFromLockRef = useRef<() => void>(() => {});
   skipFromLockRef.current = () => { if (rest?.mode === 'rest') skipRest(); };
 
+  const lockProcessingRef = useRef(false);
   useEffect(() => {
+    const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
     const process = async () => {
-      const { completions, skips } = await consumePendingEvents();
-      if (skips > 0) skipFromLockRef.current();
-      // Every queued ✓ logs one set; spaced so state settles between writes.
-      for (let i = 0; i < completions; i++) {
-        if (i > 0) await new Promise(r => setTimeout(r, 400));
-        completeFromLockRef.current();
-      }
+      if (lockProcessingRef.current) return;
+      lockProcessingRef.current = true;
+      try {
+        // Replay the lock-screen taps in the order they happened, spaced so
+        // state settles between writes (the refs re-read fresh state).
+        let events = await consumePendingEvents();
+        while (events.length > 0) {
+          for (const ev of events) {
+            if (ev === 'skip') skipFromLockRef.current();
+            else completeFromLockRef.current();
+            await wait(350);
+          }
+          events = await consumePendingEvents(); // taps queued while replaying
+        }
+      } finally { lockProcessingRef.current = false; }
     };
     process();
     const removeCompleted = addLockScreenListener('setCompleted', () => process());
@@ -449,6 +464,28 @@ const LogWorkoutView = ({
     document.addEventListener('visibilitychange', onVis);
     return () => { removeCompleted(); removeSkipped(); document.removeEventListener('visibilitychange', onVis); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-assert the lock-screen card on every return to the foreground — if iOS
+  // dropped or staled the Live Activity while locked, this repaints it.
+  const [resumeTick, setResumeTick] = useState(0);
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === 'visible') setResumeTick(n => n + 1); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+  // Mid-rest unlock: repaint the countdown (start re-creates a dead activity).
+  useEffect(() => {
+    if (!resumeTick || !rest || rest.mode !== 'rest' || restEndRef.current <= Date.now()) return;
+    const ctx = lastRestCtxRef.current;
+    startRestActivity({
+      exerciseName: ctx?.exerciseName ?? '',
+      nextSetText: ctx?.nextText ?? '',
+      endsAt: restEndRef.current,
+      totalSeconds: rest.total,
+      thumbUrl: ctx?.nextSet?.thumbUrl ?? null,
+      nextSet: ctx?.nextSet ?? null,
+    });
+  }, [resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // While no countdown runs, the banner shows the upcoming set with the ✓.
   // Debounced: inputs are in the deps (fresh kg × reps on the lock screen)
@@ -465,7 +502,7 @@ const LogWorkoutView = ({
       });
     }, 600);
     return () => clearTimeout(timer);
-  }, [resting, completedSetsMap, exercises, extraSets, inputs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resting, completedSetsMap, exercises, extraSets, inputs, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leaving the workout view (minimize / finish) removes the banner.
   useEffect(() => () => { endRestActivity(); }, []);

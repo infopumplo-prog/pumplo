@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
-import { startRestActivity, endRestActivity } from '@/lib/restLiveActivity';
+import { startRestActivity, endRestActivity, type NextSetPayload } from '@/lib/restLiveActivity';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -25,9 +25,12 @@ interface RestTimerProps {
   endsAt?: number;
   // ±15 s handler — updates the parent clock so every presentation reacts.
   onAdjust?: (deltaSeconds: number) => void;
+  // Card the lock-screen Skip intent flips back to when this rest is skipped
+  // natively — without it the widget would show a blank set after Skip.
+  nextSet?: NextSetPayload | null;
 }
 
-export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl, onToggleView, endsAt, onAdjust }: RestTimerProps) => {
+export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl, onToggleView, endsAt, onAdjust, nextSet }: RestTimerProps) => {
   const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
@@ -49,8 +52,11 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
   // The background video pauses when iOS suspends the webview (e.g. user switches
   // to Spotify). Resume it whenever the app/tab comes back to the foreground.
+  // wakeTick also re-runs the activity effect so a Live Activity that iOS
+  // dropped or staled while the phone was locked gets repainted on unlock.
+  const [wakeTick, setWakeTick] = useState(0);
   useEffect(() => {
-    const resumeVideo = () => { videoRef.current?.play().catch(() => {}); };
+    const resumeVideo = () => { videoRef.current?.play().catch(() => {}); setWakeTick(n => n + 1); };
     const onVisible = () => { if (document.visibilityState === 'visible') resumeVideo(); };
     document.addEventListener('visibilitychange', onVisible);
     const sub = CapApp.addListener('resume', resumeVideo);
@@ -95,9 +101,14 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       nextSetText: nextExerciseName ? t('log_workout.next_exercise', { name: nextExerciseName }) : '',
       endsAt: Date.now() + remaining * 1000,
       totalSeconds: remaining,
+      nextSet,
     });
-    return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); endRestActivity(); nativeBeepsRef.current = false; };
-  }, [isPaused, endsAt, t]); // eslint-disable-line react-hooks/exhaustive-deps
+    // No endRestActivity here: the follow-up set card UPDATES the same
+    // activity. Ending it raced the update natively (both async) and could
+    // kill the widget for the rest of the workout; the workout-level owner
+    // ends the activity on exit/summary.
+    return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); nativeBeepsRef.current = false; };
+  }, [isPaused, endsAt, wakeTick, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
@@ -120,8 +131,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
         if (!nativeBeepsRef.current) playAlarmFinish();
         stopRestBeeps();
         cancelRestEndNotification(); // finished in-app → no need for the banner
-        endRestActivity();
-        onComplete();
+        onComplete(); // the next set card updates the activity — don't end it
       }
     };
 

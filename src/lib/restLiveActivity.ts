@@ -72,13 +72,20 @@ export async function showSetActivity(options: {
   try { await RestActivity.showSet(options); } catch { /* noop */ }
 }
 
-// Lock-screen events queued while the webview slept.
-export async function consumePendingEvents(): Promise<{ completions: number; skips: number }> {
-  if (!Capacitor.isNativePlatform()) return { completions: 0, skips: 0 };
+// Lock-screen events queued while the webview slept, in the order the user
+// tapped them. Both native queues store tap timestamps (ms) — merging and
+// sorting restores the real ✓/Skip interleaving, which matters: replaying
+// "all skips, then all completions" drops sets when a ✓ follows a Skip.
+export type LockScreenEvent = 'complete' | 'skip';
+export async function consumePendingEvents(): Promise<LockScreenEvent[]> {
+  if (!Capacitor.isNativePlatform()) return [];
   try {
     const { completions, skips } = await RestActivity.consumePending();
-    return { completions: completions?.length ?? 0, skips: skips?.length ?? 0 };
-  } catch { return { completions: 0, skips: 0 }; }
+    return [
+      ...(completions ?? []).map(ts => ({ ts, ev: 'complete' as const })),
+      ...(skips ?? []).map(ts => ({ ts, ev: 'skip' as const })),
+    ].sort((a, b) => a.ts - b.ts).map(x => x.ev);
+  } catch { return []; }
 }
 
 // Live notifications when a lock-screen intent fires while the app is awake.

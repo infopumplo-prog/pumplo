@@ -42,10 +42,17 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func start(_ call: CAPPluginCall) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent"])
         let d = UserDefaults.standard
-        d.set(call.getString("nextExerciseName") ?? "", forKey: "pumplo_next_exercise_name")
-        d.set(call.getString("nextSetOfText") ?? "", forKey: "pumplo_next_set_text")
-        d.set(call.getString("nextDetailText") ?? "", forKey: "pumplo_next_detail_text")
-        d.set(call.getDouble("nextRestSeconds") ?? 0, forKey: "pumplo_pending_rest_seconds")
+        // Callers that don't know the upcoming set (bare rest re-arms) must not
+        // blank the stored card the lock-screen Skip intent flips back to.
+        let nextName = call.getString("nextExerciseName") ?? ""
+        let nextSetText = call.getString("nextSetOfText") ?? ""
+        if !nextName.isEmpty || !nextSetText.isEmpty {
+            d.set(nextName, forKey: "pumplo_next_exercise_name")
+            d.set(nextSetText, forKey: "pumplo_next_set_text")
+            d.set(call.getString("nextDetailText") ?? "", forKey: "pumplo_next_detail_text")
+        }
+        let nextRest = call.getDouble("nextRestSeconds") ?? 0
+        if nextRest > 0 { d.set(nextRest, forKey: "pumplo_pending_rest_seconds") }
 
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { call.resolve(); return }
@@ -53,8 +60,10 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let nextThumbUrl = call.getString("nextThumbUrl")
         Task {
             let thumbPath = await RestActivityPlugin.localThumb(for: thumbUrl)
-            let nextThumbPath = await RestActivityPlugin.localThumb(for: nextThumbUrl)
-            UserDefaults.standard.set(nextThumbPath ?? "", forKey: "pumplo_next_thumb_path")
+            if let nextThumbUrl, !nextThumbUrl.isEmpty {
+                let nextThumbPath = await RestActivityPlugin.localThumb(for: nextThumbUrl)
+                UserDefaults.standard.set(nextThumbPath ?? "", forKey: "pumplo_next_thumb_path")
+            }
             var state = RestActivityPlugin.restState(from: call)
             state.thumbPath = thumbPath ?? ""
             await RestActivityPlugin.startOrUpdate(state)

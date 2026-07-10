@@ -281,6 +281,12 @@ export const ExercisePlayer = ({
         duration={restBetweenSets}
         onComplete={handleRestComplete}
         label={t('workout.rest_before_set', { n: currentSet + 2 })}
+        nextSet={{
+          exerciseName: exerciseName || '',
+          setText: t('log_workout.set_of', { num: Math.min(currentSet + 2, totalSets), total: totalSets }),
+          detailText: weight ? `${weight} kg × ${repMin}–${repMax} ${t('workout_share.reps_abbr')}` : `${repMin}–${repMax} ${t('workout_share.reps_abbr')}`,
+          restSeconds: restBetweenSets,
+        }}
       />
     );
   }
