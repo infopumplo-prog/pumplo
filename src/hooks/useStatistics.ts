@@ -64,6 +64,7 @@ export interface StatSetRow {
   name: string;
   nameEn: string | null;
   muscles: string[];
+  secondaryMuscles: string[];
   date: string;
 }
 
@@ -129,14 +130,14 @@ export const useStatistics = () => {
 
       // Fetch exercise details for muscle groups
       const exerciseIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
-      const exerciseMap = new Map<string, { name: string; name_en: string | null; muscles: string[] }>();
+      const exerciseMap = new Map<string, { name: string; name_en: string | null; muscles: string[]; secondaryMuscles: string[] }>();
       if (exerciseIds.length > 0) {
         const { data: exercises } = await supabase
           .from('exercises')
-          .select('id, name, name_en, primary_muscles')
+          .select('id, name, name_en, primary_muscles, secondary_muscles')
           .in('id', exerciseIds);
         (exercises || []).forEach(e => {
-          exerciseMap.set(e.id, { name: e.name, name_en: (e as { name_en?: string | null }).name_en || null, muscles: e.primary_muscles || [] });
+          exerciseMap.set(e.id, { name: e.name, name_en: (e as { name_en?: string | null }).name_en || null, muscles: e.primary_muscles || [], secondaryMuscles: (e as { secondary_muscles?: string[] }).secondary_muscles || [] });
         });
       }
 
@@ -379,6 +380,7 @@ export const useStatistics = () => {
           name: exInfo?.name || set.exercise_name || 'Neznámý',
           nameEn: exInfo?.name_en || null,
           muscles: exInfo?.muscles || [],
+          secondaryMuscles: exInfo?.secondaryMuscles || [],
           date: (set.workout_sessions as { started_at: string } | null)?.started_at || set.created_at,
         };
       });

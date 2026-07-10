@@ -107,11 +107,17 @@ const Statistics = () => {
 
   const now = useMemo(() => new Date(), []);
   const from = useMemo(() => periodStart(period, now), [period, now]);
-  // Previous window of the same length, right before `from` (null for all-time).
-  const prevFrom = useMemo(() => {
+  // Previous comparison window. For fixed-length periods it's the same-length
+  // window right before `from`. For 'today' it's the SAME elapsed slice of
+  // yesterday (00:00 → now-24h) — not yesterday's late evening.
+  const prevWindow = useMemo(() => {
     if (!from) return null;
-    return new Date(from.getTime() - (now.getTime() - from.getTime()));
-  }, [from, now]);
+    if (period === 'today') {
+      const dayMs = 24 * 60 * 60 * 1000;
+      return { from: new Date(from.getTime() - dayMs), to: new Date(now.getTime() - dayMs) };
+    }
+    return { from: new Date(from.getTime() - (now.getTime() - from.getTime())), to: from };
+  }, [from, now, period]);
 
   const timeline = useMemo(() => stats?.sessionTimeline || [], [stats]);
   const inPeriod = useMemo(
@@ -119,9 +125,9 @@ const Statistics = () => {
     [timeline, from]
   );
   const inPrevPeriod = useMemo(() => {
-    if (!from || !prevFrom) return null;
-    return timeline.filter(d => { const t2 = new Date(d.date); return t2 >= prevFrom && t2 < from; });
-  }, [timeline, from, prevFrom]);
+    if (!prevWindow) return null;
+    return timeline.filter(d => { const t2 = new Date(d.date); return t2 >= prevWindow.from && t2 < prevWindow.to; });
+  }, [timeline, prevWindow]);
 
   // --- Period summary + trends ---
   const summary = useMemo(() => {
@@ -160,7 +166,7 @@ const Statistics = () => {
     [stats?.setRows, from]
   );
   const muscleDist = useMemo(() => computeMuscleDistribution(
-    setRowsInPeriod.map(r => ({ primaryMuscles: r.muscles, secondaryMuscles: [], completedSets: 1 }))
+    setRowsInPeriod.map(r => ({ primaryMuscles: r.muscles, secondaryMuscles: r.secondaryMuscles, completedSets: 1 }))
   ), [setRowsInPeriod]);
   const muscleIntens = useMemo(() => muscleIntensities(muscleDist), [muscleDist]);
   const muscleMax = muscleDist[0]?.value || 1;

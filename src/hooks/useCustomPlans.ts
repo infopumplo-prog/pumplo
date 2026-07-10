@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface CustomPlanDay {
@@ -231,8 +233,10 @@ export function useCustomPlanDetail(planId: string | null) {
   };
 
   const renameDay = async (dayId: string, name: string) => {
+    const snapshot = planRef.current;
     setPlan(prev => prev ? { ...prev, days: prev.days.map(d => d.id === dayId ? { ...d, name } : d) } : prev);
-    await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
+    const { error } = await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const addExercise = async (dayId: string, exerciseId: string, sets = 3, reps = 10, weightKg: number | null = null) => {
@@ -286,7 +290,8 @@ export function useCustomPlanDetail(planId: string | null) {
     } : prev);
 
     if (Object.keys(known).length > 0) {
-      await supabase.from('custom_plan_exercises').update(known).eq('id', exerciseId);
+      const { error } = await supabase.from('custom_plan_exercises').update(known).eq('id', exerciseId);
+      if (error) { toast.error(i18n.t('custom_plan.save_failed')); fetchPlan(); }
     }
     if (hasMeta) {
       const meta: Record<string, unknown> = {};
@@ -301,12 +306,14 @@ export function useCustomPlanDetail(planId: string | null) {
   };
 
   const removeExercise = async (exerciseId: string) => {
-    // Optimistic removal — the row disappears immediately, no refetch.
+    // Optimistic removal — the row disappears immediately; roll back on failure.
+    const snapshot = planRef.current;
     setPlan(prev => prev ? {
       ...prev,
       days: prev.days.map(d => ({ ...d, exercises: d.exercises.filter(e => e.id !== exerciseId) })),
     } : prev);
-    await supabase.from('custom_plan_exercises').delete().eq('id', exerciseId);
+    const { error } = await supabase.from('custom_plan_exercises').delete().eq('id', exerciseId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const duplicateExercise = async (exerciseId: string) => {
@@ -328,8 +335,10 @@ export function useCustomPlanDetail(planId: string | null) {
 
   const renamePlan = async (name: string) => {
     if (!planId) return;
+    const snapshot = planRef.current;
     setPlan(prev => prev ? { ...prev, name } : prev);
-    await supabase.from('custom_plans').update({ name }).eq('id', planId);
+    const { error } = await supabase.from('custom_plans').update({ name }).eq('id', planId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const sharePlan = async (): Promise<string | null> => {

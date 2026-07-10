@@ -436,7 +436,11 @@ const LogWorkoutView = ({
     const process = async () => {
       const { completions, skips } = await consumePendingEvents();
       if (skips > 0) skipFromLockRef.current();
-      if (completions > 0) completeFromLockRef.current();
+      // Every queued ✓ logs one set; spaced so state settles between writes.
+      for (let i = 0; i < completions; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 400));
+        completeFromLockRef.current();
+      }
     };
     process();
     const removeCompleted = addLockScreenListener('setCompleted', () => process());
@@ -447,16 +451,21 @@ const LogWorkoutView = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // While no countdown runs, the banner shows the upcoming set with the ✓.
+  // Debounced: inputs are in the deps (fresh kg × reps on the lock screen)
+  // without a native round-trip per keystroke.
   useEffect(() => {
     if (resting) return;
-    const p = nextPending();
-    if (!p) { endRestActivity(); return; }
-    showSetActivity({
-      ...setPayload(p),
-      restOverTitle: t('workout.rest_over_title'),
-      restOverBody: t('workout.rest_over_body'),
-    });
-  }, [resting, completedSetsMap, exercises, extraSets]); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => {
+      const p = nextPending();
+      if (!p) { endRestActivity(); return; }
+      showSetActivity({
+        ...setPayload(p),
+        restOverTitle: t('workout.rest_over_title'),
+        restOverBody: t('workout.rest_over_body'),
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [resting, completedSetsMap, exercises, extraSets, inputs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leaving the workout view (minimize / finish) removes the banner.
   useEffect(() => () => { endRestActivity(); }, []);

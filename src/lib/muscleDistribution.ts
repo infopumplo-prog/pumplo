@@ -31,7 +31,9 @@ export function computeMuscleDistribution(items: MuscleDistItem[]): MuscleDistEn
 // Normalised 0–1 intensity per GROUP key (raw-only buckets dropped) — feeds
 // the MuscleBodySvg highlight.
 export function muscleIntensities(dist: MuscleDistEntry[]): Record<string, number> {
-  const max = dist[0]?.value || 1;
+  // Normalise against the largest GROUPED entry — a raw (ungrouped) bucket at
+  // the top would inflate the denominator and wash out every drawn muscle.
+  const max = dist.find(d => d.key)?.value || 1;
   const out: Record<string, number> = {};
   dist.forEach(d => { if (d.key) out[d.key] = Math.max(out[d.key] ?? 0, d.value / max); });
   return out;

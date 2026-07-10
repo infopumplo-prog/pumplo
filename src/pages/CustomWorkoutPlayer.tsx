@@ -983,21 +983,22 @@ const CustomWorkoutPlayer = () => {
           const setInserts: any[] = [];
           exercises.forEach((exercise, exIdx) => {
             const setsData = completedSetsMap.get(exIdx) || [];
-            // Sets ADDED mid-workout live beyond the planned count — save them too.
-            const rowTotal = Math.max(exercise.sets, setsData.length);
-            for (let i = 0; i < rowTotal; i++) {
-              const setData = setsData[i];
+            // Persist COMPLETED sets only (incl. ones added beyond the plan).
+            // Uncompleted rows carried no data and swipe-deleted sets used to
+            // resurface as phantom rows via Math.max(plan, map length).
+            setsData.forEach((setData, i) => {
+              if (!setData?.completed) return;
               setInserts.push({
                 session_id: session.id,
                 exercise_id: exercise.exercise_id || null,
                 exercise_name: exercise.exercise_name,
                 set_number: i + 1,
-                weight_kg: setData?.weight || null,
-                reps: setData?.reps || null,
-                completed: setData?.completed || false,
+                weight_kg: setData.weight || null,
+                reps: setData.reps || null,
+                completed: true,
                 set_type: getSetType(exercise.set_types, i),
               });
-            }
+            });
           });
           if (setInserts.length > 0) {
             const { error: setsError } = await supabase.from('workout_session_sets').insert(setInserts);

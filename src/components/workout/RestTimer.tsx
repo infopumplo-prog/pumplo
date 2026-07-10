@@ -209,7 +209,18 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
 
       {onToggleView && (
         <button
-          onClick={onToggleView}
+          onClick={() => {
+            // Fold an active pause into the shared clock before leaving —
+            // the list bar reads live endsAt and knows nothing about local pause.
+            if (isPaused && pausedAtRef.current) {
+              const pausedSec = Math.round((Date.now() - pausedAtRef.current) / 1000);
+              if (onAdjust) onAdjust(pausedSec);
+              else endTimeRef.current += pausedSec * 1000;
+              pausedAtRef.current = null;
+              setIsPaused(false);
+            }
+            onToggleView();
+          }}
           className={cn(
             'absolute right-16 z-20 p-2.5 rounded-xl',
             onVideo ? 'bg-black/40 text-white' : 'bg-muted/80 text-foreground'

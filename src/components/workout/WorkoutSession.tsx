@@ -12,7 +12,7 @@ import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
-import { showSetActivity, endRestActivity, startRestActivity, updateRestActivity, consumePendingEvents, addLockScreenListener } from '@/lib/restLiveActivity';
+import { showSetActivity, endRestActivity, startRestActivity, consumePendingEvents, addLockScreenListener } from '@/lib/restLiveActivity';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
@@ -690,7 +690,11 @@ export const WorkoutSession = ({
     const process = async () => {
       const { completions, skips } = await consumePendingEvents();
       if (skips > 0) lockSkipRef.current();
-      if (completions > 0) lockCompleteRef.current();
+      // Every queued ✓ logs one set; spaced so state settles between writes.
+      for (let i = 0; i < completions; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 400));
+        lockCompleteRef.current();
+      }
     };
     process();
     const rm1 = addLockScreenListener('setCompleted', () => process());

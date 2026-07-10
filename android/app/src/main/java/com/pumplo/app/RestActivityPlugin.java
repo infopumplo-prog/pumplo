@@ -26,6 +26,10 @@ public class RestActivityPlugin extends Plugin {
     private static final int NOTIF_ID = 9912;
     private static final String CHANNEL_ID = "pumplo_rest_live";
     private boolean channelEnsured = false;
+    // update() often carries only the new endsAt — keep the last texts so the
+    // ongoing notification never goes blank on ±15 s adjustments.
+    private String lastExerciseName = "";
+    private String lastNextSetText = "";
 
     @PluginMethod
     public void start(PluginCall call) { show(call); }
@@ -87,6 +91,8 @@ public class RestActivityPlugin extends Plugin {
         if (endsAt == null) { call.resolve(); return; }
         String exerciseName = call.getString("exerciseName", "");
         String nextSetText = call.getString("nextSetText", "");
+        if (exerciseName.isEmpty()) exerciseName = lastExerciseName; else lastExerciseName = exerciseName;
+        if (nextSetText.isEmpty()) nextSetText = lastNextSetText; else lastNextSetText = nextSetText;
 
         Intent launch = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
         PendingIntent tap = launch == null ? null : PendingIntent.getActivity(

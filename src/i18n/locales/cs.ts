@@ -577,6 +577,7 @@ const cs = {
   'custom_plan.rest_row_label': 'Pauza mezi sériemi',
   'custom_plan.rest_off': 'Vypnuto',
   'custom_plan.rest_sheet_title': 'Pauza mezi sériemi',
+  'custom_plan.save_failed': 'Uložení se nepovedlo — zkus to znovu',
   'custom_plan.add_set': 'Přidat sérii',
   'custom_plan.col_set': 'SÉRIE',
   'custom_plan.col_kg': 'KG',
