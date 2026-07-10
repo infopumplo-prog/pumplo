@@ -545,8 +545,12 @@ export const WorkoutSession = ({
     if (exerciseChangeRef.current === currentExerciseIndex) return;
     exerciseChangeRef.current = currentExerciseIndex;
     setPlayerSync(0);
-    setCurrentSetIndex(0);
-    setCurrentExerciseSets([]);
+    // Seed from what's already logged — navigating BACK to a done exercise
+    // must show its real sets (green), not a blank restart.
+    const known = setsDataRef.current.get(currentExerciseIndex) || [];
+    const pend = known.findIndex(s => !s.completed);
+    setCurrentExerciseSets(known);
+    setCurrentSetIndex(pend === -1 ? Math.max(known.length - 1, 0) : pend);
   }, [currentExerciseIndex]);
 
   // Compact mode: complete a single set for any exercise
@@ -618,6 +622,46 @@ export const WorkoutSession = ({
     }
   }, [liveExercises, goalId, t, currentExerciseIndex]);
 
+  // First incomplete set, preferring the exercise the user is viewing; falls
+  // back to the workout's next pending set (the user may have navigated back
+  // to a finished exercise — the lock-screen ✓ must still log something).
+  const findPendingSet = (preferIdx: number): { exIdx: number; si: number } | null => {
+    const pendingAt = (i: number) => {
+      const s = setsDataByExercise.get(i) || [];
+      return s.length === 0 ? 0 : s.findIndex(st => !st.completed);
+    };
+    if (liveExercises[preferIdx]) {
+      const p = pendingAt(preferIdx);
+      if (p !== -1) return { exIdx: preferIdx, si: p };
+    }
+    for (let i = 0; i < liveExercises.length; i++) {
+      // Skipped/finished exercises already carry a result — don't resurrect them.
+      if (resultsByIndex.has(i)) continue;
+      const p = pendingAt(i);
+      if (p !== -1) return { exIdx: i, si: p };
+    }
+    return null;
+  };
+
+  // Edit weight/reps of an ALREADY completed set (list view, Hevy parity).
+  // No rest, no advance — just data + the saved result kept in sync.
+  const handleEditCompletedSet = useCallback((exerciseIndex: number, setIndex: number, weight?: number, reps?: number) => {
+    const existing = setsDataRef.current.get(exerciseIndex);
+    if (!existing?.[setIndex]?.completed) return;
+    const newSets = [...existing];
+    newSets[setIndex] = { ...newSets[setIndex], weight, reps };
+    const updated = new Map(setsDataRef.current);
+    updated.set(exerciseIndex, newSets);
+    setsDataRef.current = updated;
+    setSetsDataByExercise(updated);
+    if (exerciseIndex === currentExerciseIndex) setCurrentExerciseSets(newSets);
+    setResultsByIndex(prev => {
+      const r = prev.get(exerciseIndex);
+      if (!r) return prev;
+      return new Map(prev).set(exerciseIndex, { ...r, sets: newSets });
+    });
+  }, [currentExerciseIndex]);
+
   // --- Lock-screen banner for the guided workout (info-only ✓ hidden; rest
   // countdowns come from RestTimer which drives the banner itself) ---
   const [currentThumbUrl, setCurrentThumbUrl] = useState<string | null>(null);
@@ -667,37 +711,39 @@ export const WorkoutSession = ({
   useEffect(() => {
     if (showSummary || showCooldown) { endRestActivity(); return; }
     if (showRestTimer) return; // RestTimer owns the banner while resting
-    const ex = liveExercises[currentExerciseIndex];
-    if (!ex) return;
-    const sets = setsDataByExercise.get(currentExerciseIndex) || [];
-    const mapIdx = sets.findIndex(st => !st.completed);
-    const setIdx = viewMode === 'list' ? (mapIdx === -1 ? Math.max(ex.sets - 1, 0) : mapIdx) : currentSetIndex;
+    // The card always shows the next set TO LOG — when the user navigates back
+    // to a finished exercise, the workout's next pending set is shown instead,
+    // so the ✓ on the lock screen keeps working.
+    const target = findPendingSet(currentExerciseIndex);
+    if (!target) { endRestActivity(); return; }
+    const ex = liveExercises[target.exIdx];
+    const sameExercise = target.exIdx === currentExerciseIndex;
     const repsText = `${ex.repMin}–${ex.repMax} ${t('workout_share.reps_abbr')}`;
     showSetActivity({
       exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
-      setText: t('log_workout.set_of', { num: Math.min(setIdx + 1, ex.sets), total: ex.sets }),
-      detailText: currentExWeight != null ? `${currentExWeight} kg × ${repsText}` : repsText,
+      setText: t('log_workout.set_of', { num: Math.min(target.si + 1, ex.sets), total: ex.sets }),
+      detailText: sameExercise && currentExWeight != null ? `${currentExWeight} kg × ${repsText}` : repsText,
       restSeconds: getRestSecondsForCategory(goalId, ex.slotCategory),
       showButton: true,
-      thumbUrl: currentThumbUrl,
+      thumbUrl: sameExercise ? currentThumbUrl : null,
       restOverTitle: t('workout.rest_over_title'),
       restOverBody: t('workout.rest_over_body'),
     });
-  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]);
+  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✓ / Skip from the lock screen (same behaviour as the custom workout).
   const lockCompleteRef = useRef<() => void>(() => {});
   lockCompleteRef.current = () => {
     if (showRestTimer || showSummary || showCooldown) return;
-    const ex = liveExercises[currentExerciseIndex];
+    // Same target the banner shows: the viewed exercise's first incomplete
+    // set, or the workout's next pending one when the viewed exercise is done.
+    const target = findPendingSet(currentExerciseIndex);
+    if (!target) return;
+    const ex = liveExercises[target.exIdx];
     if (!ex) return;
-    const base = viewMode === 'video' && currentExerciseSets.length === ex.sets
-      ? currentExerciseSets
-      : (setsDataByExercise.get(currentExerciseIndex) || Array.from({ length: ex.sets }, () => ({ completed: false })));
-    const si = base.findIndex(st => !st.completed);
-    if (si === -1) return;
+    const weight = target.exIdx === currentExerciseIndex ? (currentExWeight ?? undefined) : undefined;
     // handleCompactCompleteSet also re-seeds the video player mirror.
-    handleCompactCompleteSet(currentExerciseIndex, si, currentExWeight ?? undefined, ex.repMax);
+    handleCompactCompleteSet(target.exIdx, target.si, weight, ex.repMax);
   };
   const lockSkipRef = useRef<() => void>(() => {});
   lockSkipRef.current = () => {
@@ -778,20 +824,17 @@ export const WorkoutSession = ({
   // pending set of the exercise the rest leads to. Passed as nextSet with
   // every rest start so the native flip never shows a blank card.
   const upcomingSetPayload = (): NextSetPayload | null => {
-    const exIdx = restAdvance ? currentExerciseIndex + 1 : currentExerciseIndex;
-    const ex = liveExercises[exIdx];
-    if (!ex) return null;
-    const sets = setsDataByExercise.get(exIdx) || [];
-    const pend = sets.findIndex(st => !st.completed);
-    const setNum = pend === -1 ? 1 : pend + 1;
+    const target = findPendingSet(restAdvance ? currentExerciseIndex + 1 : currentExerciseIndex);
+    if (!target) return null;
+    const ex = liveExercises[target.exIdx];
     const repsText = `${ex.repMin}–${ex.repMax} ${t('workout_share.reps_abbr')}`;
-    const sameExercise = exIdx === currentExerciseIndex;
+    const sameExercise = target.exIdx === currentExerciseIndex;
     return {
       exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
-      setText: t('log_workout.set_of', { num: Math.min(setNum, ex.sets), total: ex.sets }),
+      setText: t('log_workout.set_of', { num: Math.min(target.si + 1, ex.sets), total: ex.sets }),
       detailText: sameExercise && currentExWeight != null ? `${currentExWeight} kg × ${repsText}` : repsText,
       restSeconds: getRestSecondsForCategory(goalId, ex.slotCategory),
-      thumbUrl: sameExercise ? currentThumbUrl : getVideoThumbUrl(nextVideoUrl),
+      thumbUrl: sameExercise ? currentThumbUrl : (target.exIdx === currentExerciseIndex + 1 ? getVideoThumbUrl(nextVideoUrl) : null),
     };
   };
 
@@ -1059,6 +1102,7 @@ export const WorkoutSession = ({
           startTime={workoutStartTime}
           restSecondsByIndex={liveExercises.map(e => getRestSecondsForCategory(goalId, e.slotCategory))}
           onShowInfo={openExerciseInfo}
+          onEditSet={handleEditCompletedSet}
         />
 
         {/* Sticky rest bar (shared clock with the full-screen rest) */}

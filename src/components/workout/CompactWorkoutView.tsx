@@ -68,6 +68,9 @@ interface CompactWorkoutViewProps {
   startTime?: Date;
   // Read-only per-exercise rest length (Pumplo drives rests, no editing)
   restSecondsByIndex?: number[];
+  // Edit weight/reps of an already completed set (Hevy parity: going back to
+  // a finished exercise and fixing the numbers).
+  onEditSet?: (exerciseIndex: number, setIndex: number, weight?: number, reps?: number) => void;
 }
 
 export const CompactWorkoutView = ({
@@ -98,6 +101,7 @@ export const CompactWorkoutView = ({
   onExplainSetType,
   startTime,
   restSecondsByIndex,
+  onEditSet,
 }: CompactWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -501,10 +505,37 @@ export const CompactWorkoutView = ({
                               : <span className="text-muted-foreground">{fmtExTarget}</span>}
                           </div>
                         ) : done ? (
-                          <>
-                            <div className="text-center text-sm font-semibold tabular-nums">{s?.weight ?? '–'}</div>
-                            <div className="text-center text-sm font-semibold tabular-nums">{s?.reps ?? '–'}</div>
-                          </>
+                          onEditSet ? (
+                            // Completed sets stay editable (fix weight/reps after
+                            // the fact); committed on blur, no rest is triggered.
+                            <>
+                              <input
+                                key={`w-${idx}-${si}`}
+                                type="number" inputMode="decimal"
+                                defaultValue={s?.weight ?? ''}
+                                onBlur={(e) => {
+                                  const v = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                  if (v !== (s?.weight ?? undefined)) onEditSet(idx, si, v, s?.reps);
+                                }}
+                                className="w-full text-center text-sm font-semibold tabular-nums rounded-lg h-8 border-0 outline-none focus:ring-2 focus:ring-green-500/40 bg-transparent"
+                              />
+                              <input
+                                key={`r-${idx}-${si}`}
+                                type="number" inputMode="numeric"
+                                defaultValue={s?.reps ?? ''}
+                                onBlur={(e) => {
+                                  const v = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                  if (v !== (s?.reps ?? undefined)) onEditSet(idx, si, s?.weight, v);
+                                }}
+                                className="w-full text-center text-sm font-semibold tabular-nums rounded-lg h-8 border-0 outline-none focus:ring-2 focus:ring-green-500/40 bg-transparent"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-center text-sm font-semibold tabular-nums">{s?.weight ?? '–'}</div>
+                              <div className="text-center text-sm font-semibold tabular-nums">{s?.reps ?? '–'}</div>
+                            </>
+                          )
                         ) : isCurrent ? (
                           <>
                             <input
