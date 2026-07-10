@@ -193,9 +193,10 @@ const en = {
   'profile.feedback': 'Feedback',
 
   // Statistics
+  'stats.period_today': 'Today',
   'stats.period_week': 'Week',
   'stats.period_month': 'Month',
-  'stats.period_3m': '3 months',
+  'stats.period_3m': '3M',
   'stats.period_all': 'All',
   'stats.trainings': 'Workouts',
   'stats.time': 'Time',

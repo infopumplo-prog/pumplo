@@ -26,13 +26,19 @@ const GROUP_TO_MUSCLES: Record<string, Muscle[]> = {
   calves: ['calves'],
 };
 
-// 6-step grey→cyan ramp; intensity picks the bucket (frequency = index + 1).
+// 6-step ramp: the MORE a muscle is trained, the DARKER the blue.
+// grey-blue → Pumplo cyan (mid) → deep blue (top).
 const STEPS = 6;
 const CYAN: [number, number, number] = [76, 201, 255];
+const DEEP: [number, number, number] = [13, 94, 175]; // deep blue for the most-trained
+const lerp = (a: [number, number, number], b: [number, number, number], t: number) =>
+  a.map((v, k) => Math.round(v + (b[k] - v) * t)) as [number, number, number];
 const rampColor = (i: number, dark: boolean): string => {
   const base: [number, number, number] = dark ? [148, 163, 184] : [203, 213, 225];
-  const t = 0.15 + 0.85 * (i / (STEPS - 1));
-  const mix = base.map((b, k) => Math.round(b + (CYAN[k] - b) * t));
+  const t = i / (STEPS - 1);
+  const mix = t <= 0.5
+    ? lerp(base, CYAN, 0.3 + 1.4 * t)   // 0→0.5: grey → cyan
+    : lerp(CYAN, DEEP, (t - 0.5) * 2);   // 0.5→1: cyan → deep blue
   return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
 };
 

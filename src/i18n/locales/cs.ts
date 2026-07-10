@@ -193,9 +193,10 @@ const cs = {
   'profile.feedback': 'Zpětná vazba',
 
   // Statistics
+  'stats.period_today': 'Dnes',
   'stats.period_week': 'Týden',
   'stats.period_month': 'Měsíc',
-  'stats.period_3m': '3 měsíce',
+  'stats.period_3m': '3M',
   'stats.period_all': 'Vše',
   'stats.trainings': 'Tréninky',
   'stats.time': 'Čas',

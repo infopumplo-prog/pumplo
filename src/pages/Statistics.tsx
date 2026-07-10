@@ -15,7 +15,7 @@ import { translateMuscle } from '@/lib/muscleTranslation';
 import { cn } from '@/lib/utils';
 
 type MetricKey = 'weight' | 'duration' | 'sets';
-type Period = 'week' | 'month' | '3m' | 'all';
+type Period = 'today' | 'week' | 'month' | '3m' | 'all';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,6 +45,7 @@ const CustomTooltip = ({ active, payload, metric, metricColor, metricUnit, isEn 
 const periodStart = (period: Period, now: Date): Date | null => {
   const d = new Date(now);
   switch (period) {
+    case 'today': d.setHours(0, 0, 0, 0); return d;
     case 'week': d.setDate(d.getDate() - 7); return d;
     case 'month': d.setMonth(d.getMonth() - 1); return d;
     case '3m': d.setMonth(d.getMonth() - 3); return d;
@@ -89,6 +90,7 @@ const Statistics = () => {
     { key: 'sets', label: t('stats.series_count'), unit: '', color: '#FBBF24' },
   ];
   const PERIODS: { key: Period; label: string }[] = [
+    { key: 'today', label: t('stats.period_today') },
     { key: 'week', label: t('stats.period_week') },
     { key: 'month', label: t('stats.period_month') },
     { key: '3m', label: t('stats.period_3m') },
@@ -134,7 +136,7 @@ const Statistics = () => {
 
   // --- Chart: per session for week, per calendar week otherwise ---
   const chartData = useMemo(() => {
-    if (period === 'week') return inPeriod;
+    if (period === 'today' || period === 'week') return inPeriod;
     const byWeek = new Map<string, { date: string; label: string; weight: number; duration: number; sets: number }>();
     inPeriod.forEach(d => {
       const dt = new Date(d.date);
