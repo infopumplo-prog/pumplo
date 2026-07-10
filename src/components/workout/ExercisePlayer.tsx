@@ -10,6 +10,7 @@ import { RestTimer } from './RestTimer';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { useLongPress } from '@/lib/useLongPress';
 
 
 interface SetData {
@@ -35,6 +36,7 @@ interface ExercisePlayerProps {
   onCompleteExercise: (setsData: SetData[]) => void;
   onSkipExercise?: () => void;
   onSwapExercise?: () => void;
+  onSwapLongPress?: () => void;
   isSwapping?: boolean;
   onSwitchToList?: () => void;
   onClose?: () => void;
@@ -77,6 +79,7 @@ export const ExercisePlayer = ({
   onCompleteExercise,
   onSkipExercise,
   onSwapExercise,
+  onSwapLongPress,
   isSwapping = false,
   onSwitchToList,
   onClose,
@@ -104,6 +107,8 @@ export const ExercisePlayer = ({
   nextVideoUrl
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
+  // Hold on the swap button → sheet with every slot alternative.
+  const swapPress = useLongPress(() => onSwapLongPress?.());
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
@@ -331,7 +336,12 @@ export const ExercisePlayer = ({
                 {exerciseIndex + 1}/{totalExercises}
               </span>
               {onSwapExercise && (
-                <button onClick={onSwapExercise} className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`} style={{ pointerEvents: 'auto' }}>
+                <button
+                  {...swapPress.handlers}
+                  onClick={() => { if (!swapPress.wasLongPress()) onSwapExercise(); }}
+                  className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`}
+                  style={{ pointerEvents: 'auto', touchAction: 'none' }}
+                >
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
                 </button>
               )}

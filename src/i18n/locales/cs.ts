@@ -730,6 +730,8 @@ const cs = {
 
   // Misc workout text
   'workout.sets_x_reps': '{{sets}} sérií × {{min}}-{{max}} opak.',
+  'workout.list_title': 'Trénink',
+  'workout.swap_pick_title': 'Vyber náhradní cvik',
   'workout.swap_success': 'Vyměněno za: {{name}}',
   'workout.exercise_label': 'Cvik',
   'workout.cooldown_skipped': 'Protažení přeskočeno',

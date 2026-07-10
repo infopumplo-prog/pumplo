@@ -733,6 +733,8 @@ const en = {
 
   // Misc workout text
   'workout.sets_x_reps': '{{sets}} sets × {{min}}-{{max}} reps',
+  'workout.list_title': 'Workout',
+  'workout.swap_pick_title': 'Pick a replacement',
   'workout.swap_success': 'Swapped to: {{name}}',
   'workout.exercise_label': 'Exercise',
   'workout.cooldown_skipped': 'Cooldown skipped',

@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trophy, Clock, Dumbbell, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExercisePlayer } from './ExercisePlayer';
@@ -11,7 +11,7 @@ import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
@@ -24,6 +24,15 @@ interface SetData {
   completed: boolean;
   weight?: number;
   reps?: number;
+}
+
+// A slot alternative offered by the swap button / hold-to-pick sheet.
+interface SwapCandidate {
+  id: string;
+  name: string;
+  name_en: string | null;
+  machine_id: string | null;
+  video_path: string | null;
 }
 
 interface ExerciseResult {
@@ -201,120 +210,141 @@ export const WorkoutSession = ({
       });
   }, [gymId]);
   
+  // All valid alternatives for the current slot (same role, available at gym,
+  // not already in the workout). Feeds both the quick swap and the hold-to-pick
+  // sheet.
+  const fetchSwapCandidates = useCallback(async (): Promise<SwapCandidate[]> => {
+    const exercise = liveExercises[currentExerciseIndex];
+    if (!exercise) return [];
+
+    const roleId = exercise.roleId;
+    const isCardio = CARDIO_ROLE_IDS.includes(roleId);
+
+    // IDs to exclude: all exercises currently in workout
+    const excludeIds = liveExercises
+      .map(e => e.exerciseId)
+      .filter((id): id is string => !!id);
+
+    // Fetch gym machine IDs for equipment filtering
+    const { data: gymMachines } = await supabase
+      .from('gym_machines')
+      .select('machine_id')
+      .eq('gym_id', gymId);
+    const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
+
+    // Query candidates with same role
+    let query = supabase
+      .from('exercises')
+      .select('id, name, name_en, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category, video_path')
+      .eq('allowed_phase', 'main');
+
+    if (isCardio) {
+      query = query.eq('category', 'cardio');
+    } else {
+      query = query.eq('primary_role', roleId);
+    }
+
+    const { data: candidates, error } = await query;
+    if (error || !candidates) return [];
+
+    // Filter: exclude current exercises, must be available at gym (machine check)
+    const valid = candidates.filter(c => {
+      if (excludeIds.includes(c.id)) return false;
+      if (c.machine_id && !machineIds.has(c.machine_id)) return false;
+      return true;
+    });
+    console.log(`[Swap] Role: ${roleId}, DB candidates: ${candidates?.length}, after gym/exclude filter: ${valid.length}`);
+    return valid as SwapCandidate[];
+  }, [currentExerciseIndex, liveExercises, gymId]);
+
+  // Apply a chosen alternative to the current slot (DB + in-memory).
+  const applySwap = useCallback(async (pick: SwapCandidate) => {
+    const exercise = liveExercises[currentExerciseIndex];
+    if (!exercise) return;
+
+    // Fetch machine name if applicable
+    let newMachineName: string | null = null;
+    let newMachineNameEn: string | null = null;
+    if (pick.machine_id) {
+      const { data: machine } = await supabase
+        .from('machines')
+        .select('name, name_en')
+        .eq('id', pick.machine_id)
+        .single();
+      newMachineName = machine?.name || null;
+      newMachineNameEn = (machine as Record<string, unknown> | null)?.name_en as string | null || null;
+    }
+
+    // Update DB
+    if (planId && exercise.exerciseId) {
+      await supabase
+        .from('user_workout_exercises')
+        .update({
+          exercise_id: pick.id,
+          is_fallback: true,
+          fallback_reason: 'user_swap',
+        })
+        .eq('plan_id', planId)
+        .eq('day_letter', dayLetter)
+        .eq('slot_order', exercise.slotOrder);
+    }
+
+    // Update in-memory
+    setLiveExercises(prev => {
+      const updated = [...prev];
+      updated[currentExerciseIndex] = {
+        ...exercise,
+        exerciseId: pick.id,
+        exerciseName: pick.name,
+        exerciseNameEn: pick.name_en || null,
+        machineName: newMachineName,
+        machineNameEn: newMachineNameEn,
+        isFallback: true,
+        fallbackReason: 'user_swap',
+      };
+      return updated;
+    });
+
+    toast.success(t('workout.swap_success', { name: pick.name }));
+  }, [currentExerciseIndex, liveExercises, planId, dayLetter, t]);
+
   /**
-   * Swap current exercise for the closest alternative with same role.
-   * Queries DB for exercises matching role_id, available at gym, excluding used exercises.
+   * Quick swap: random alternative with the same role.
    */
   const handleSwapExercise = useCallback(async () => {
     if (isSwapping) return;
     setIsSwapping(true);
-
     try {
-      const exercise = liveExercises[currentExerciseIndex];
-      if (!exercise) return;
-
-      const roleId = exercise.roleId;
-      const isCardio = CARDIO_ROLE_IDS.includes(roleId);
-
-      // IDs to exclude: all exercises currently in workout
-      const excludeIds = liveExercises
-        .map(e => e.exerciseId)
-        .filter((id): id is string => !!id);
-
-      // Fetch gym machine IDs for equipment filtering
-      const { data: gymMachines } = await supabase
-        .from('gym_machines')
-        .select('machine_id')
-        .eq('gym_id', gymId);
-      const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
-
-      // Query candidates with same role
-      let query = supabase
-        .from('exercises')
-        .select('id, name, name_en, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category')
-        .eq('allowed_phase', 'main');
-
-      if (isCardio) {
-        query = query.eq('category', 'cardio');
-      } else {
-        query = query.eq('primary_role', roleId);
-      }
-
-      const { data: candidates, error } = await query;
-      if (error || !candidates || candidates.length === 0) {
-        toast.error(t('workout.no_replacement'));
-        return;
-      }
-
-      // Filter: exclude current exercises, must be available at gym (machine check)
-      const valid = candidates.filter(c => {
-        if (excludeIds.includes(c.id)) return false;
-        if (c.machine_id && !machineIds.has(c.machine_id)) return false;
-        return true;
-      });
-
-      console.log(`[Swap] Role: ${roleId}, DB candidates: ${candidates?.length}, after gym/exclude filter: ${valid.length}`);
-      console.log(`[Swap] Valid exercises:`, valid.map(v => v.name));
-
+      const valid = await fetchSwapCandidates();
       if (valid.length === 0) {
         toast.error(t('workout.no_replacement'));
         return;
       }
-
-      // Pick random from all valid candidates
-      const pick = valid[Math.floor(Math.random() * valid.length)];
-
-      // Fetch machine name if applicable
-      let newMachineName: string | null = null;
-      let newMachineNameEn: string | null = null;
-      if (pick.machine_id) {
-        const { data: machine } = await supabase
-          .from('machines')
-          .select('name, name_en')
-          .eq('id', pick.machine_id)
-          .single();
-        newMachineName = machine?.name || null;
-        newMachineNameEn = (machine as Record<string, unknown> | null)?.name_en as string | null || null;
-      }
-
-      // Update DB
-      if (planId && exercise.exerciseId) {
-        await supabase
-          .from('user_workout_exercises')
-          .update({
-            exercise_id: pick.id,
-            is_fallback: true,
-            fallback_reason: 'user_swap',
-          })
-          .eq('plan_id', planId)
-          .eq('day_letter', dayLetter)
-          .eq('slot_order', exercise.slotOrder);
-      }
-
-      // Update in-memory
-      setLiveExercises(prev => {
-        const updated = [...prev];
-        updated[currentExerciseIndex] = {
-          ...exercise,
-          exerciseId: pick.id,
-          exerciseName: pick.name,
-          exerciseNameEn: (pick as Record<string, unknown>).name_en as string | null || null,
-          machineName: newMachineName,
-          machineNameEn: newMachineNameEn,
-          isFallback: true,
-          fallbackReason: 'user_swap',
-        };
-        return updated;
-      });
-
-      toast.success(t('workout.swap_success', { name: pick.name }));
+      await applySwap(valid[Math.floor(Math.random() * valid.length)]);
     } catch (err) {
       console.error('[Swap] Error:', err);
       toast.error(t('workout.swap_error'));
     } finally {
       setIsSwapping(false);
     }
-  }, [currentExerciseIndex, liveExercises, gymId, planId, dayLetter, isSwapping]);
+  }, [fetchSwapCandidates, applySwap, isSwapping, t]);
+
+  // Hold on the swap button: show ALL slot alternatives to pick from.
+  const [swapOptions, setSwapOptions] = useState<SwapCandidate[] | null>(null);
+  const handleSwapLongPress = useCallback(async () => {
+    if (isSwapping) return;
+    setIsSwapping(true);
+    try {
+      const valid = await fetchSwapCandidates();
+      if (valid.length === 0) {
+        toast.error(t('workout.no_replacement'));
+        return;
+      }
+      setSwapOptions(valid.sort((a, b) => a.name.localeCompare(b.name, 'cs')));
+    } finally {
+      setIsSwapping(false);
+    }
+  }, [fetchSwapCandidates, isSwapping, t]);
 
   // Track current set state for pause functionality
   const [currentSetIndex, setCurrentSetIndex] = useState(initialSetIndex);
@@ -600,6 +630,52 @@ export const WorkoutSession = ({
   // Main exercise player
   if (!currentExercise) return null;
 
+  // Hold-to-pick sheet with every valid slot alternative (shared by both views).
+  const swapSheetJsx = (
+    <AnimatePresence>
+      {swapOptions && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
+            onClick={() => setSwapOptions(null)}
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed left-0 right-0 bottom-0 z-[81] bg-card rounded-t-3xl max-h-[70vh] flex flex-col safe-bottom"
+          >
+            <div className="flex items-center justify-between p-5 pb-3 shrink-0">
+              <h2 className="text-lg font-bold">{t('workout.swap_pick_title')}</h2>
+              <button onClick={() => setSwapOptions(null)} className="p-1.5 rounded-lg text-muted-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto pb-8">
+              {swapOptions.map(c => {
+                const thumb = getVideoThumbUrl(c.video_path);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSwapOptions(null); applySwap(c); }}
+                    className="w-full flex items-center gap-3 px-5 py-2.5 text-left hover:bg-muted transition-colors"
+                  >
+                    <div className="shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                      {thumb ? (
+                        <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      ) : (
+                        <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <span className="text-sm font-medium">{(isEn && c.name_en) ? c.name_en : c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+
   // Compact list mode
   if (viewMode === 'list') {
     return (
@@ -614,9 +690,13 @@ export const WorkoutSession = ({
           onClose={() => setShowExitDialog(true)}
           onSkipExercise={handleSkipClick}
           onSwapExercise={handleSwapExercise}
+          onSwapLongPress={handleSwapLongPress}
           isSwapping={isSwapping}
           totalExercises={liveExercises.length}
+          startTime={workoutStartTime}
         />
+
+        {swapSheetJsx}
 
         {/* Skip Dialog */}
         <ExerciseSkipDialog
@@ -659,6 +739,7 @@ export const WorkoutSession = ({
         onCompleteExercise={handleCompleteExercise}
         onSkipExercise={handleSkipClick}
         onSwapExercise={handleSwapExercise}
+        onSwapLongPress={handleSwapLongPress}
         isSwapping={isSwapping}
         onSwitchToList={() => setViewMode('list')}
         onClose={() => setShowExitDialog(true)}
@@ -679,6 +760,8 @@ export const WorkoutSession = ({
         nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
         nextVideoUrl={nextVideoUrl}
       />
+
+      {swapSheetJsx}
 
       {/* Skip Dialog */}
       <ExerciseSkipDialog
@@ -719,6 +802,7 @@ const ExercisePlayerWithVideo = ({
   onCompleteExercise,
   onSkipExercise,
   onSwapExercise,
+  onSwapLongPress,
   isSwapping,
   onSwitchToList,
   onClose,
@@ -742,6 +826,7 @@ const ExercisePlayerWithVideo = ({
   onCompleteExercise: (setsData: SetData[]) => void;
   onSkipExercise: () => void;
   onSwapExercise?: () => void;
+  onSwapLongPress?: () => void;
   isSwapping?: boolean;
   onSwitchToList?: () => void;
   onClose?: () => void;
@@ -863,6 +948,7 @@ const ExercisePlayerWithVideo = ({
       onCompleteExercise={onCompleteExercise}
       onSkipExercise={onSkipExercise}
       onSwapExercise={onSwapExercise}
+      onSwapLongPress={onSwapLongPress}
       isSwapping={isSwapping}
       onSwitchToList={onSwitchToList}
       onClose={onClose}

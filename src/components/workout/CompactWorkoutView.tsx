@@ -7,6 +7,8 @@ import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBe
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
+import { getVideoThumbUrl } from '@/lib/videoUtils';
+import { useLongPress } from '@/lib/useLongPress';
 
 interface SetData {
   completed: boolean;
@@ -19,8 +21,10 @@ interface WorkoutExerciseCompact {
   id: string;
   exerciseId: string | null;
   exerciseName?: string;
+  exerciseNameEn?: string | null;
   roleId: string;
   machineName?: string | null;
+  machineNameEn?: string | null;
   sets: number;
   repMin: number;
   repMax: number;
@@ -41,6 +45,7 @@ interface CompactWorkoutViewProps {
   onClose: () => void;
   onSkipExercise: () => void;
   onSwapExercise?: () => void;
+  onSwapLongPress?: () => void;
   isSwapping?: boolean;
   totalExercises: number;
   showTimer?: boolean;
@@ -59,6 +64,8 @@ interface CompactWorkoutViewProps {
   // Optional per-exercise set types (W/normal/F/D) for badges + ? explanations.
   setTypesByExercise?: Map<number, (string | null)[]>;
   onExplainSetType?: (type: string) => void;
+  // Workout start (drives the Doba stat, Log Workout header parity)
+  startTime?: Date;
 }
 
 export const CompactWorkoutView = ({
@@ -71,6 +78,7 @@ export const CompactWorkoutView = ({
   onClose,
   onSkipExercise,
   onSwapExercise,
+  onSwapLongPress,
   isSwapping = false,
   totalExercises,
   showTimer = false,
@@ -86,6 +94,7 @@ export const CompactWorkoutView = ({
   onCurrentSetRepsChange,
   setTypesByExercise,
   onExplainSetType,
+  startTime,
 }: CompactWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -114,7 +123,6 @@ export const CompactWorkoutView = ({
   const effectiveReps = currentSetReps !== undefined ? currentSetReps : reps;
   const setEffectiveWeight = (v: string) => onCurrentSetWeightChange ? onCurrentSetWeightChange(v) : setWeight(v);
   const setEffectiveReps = (v: string) => onCurrentSetRepsChange ? onCurrentSetRepsChange(v) : setReps(v);
-  const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
   // Timer state
@@ -274,306 +282,285 @@ export const CompactWorkoutView = ({
     setTimerSeconds(0);
   };
 
+  // Hold on the swap button → sheet with every slot alternative (parent-owned).
+  const swapPress = useLongPress(() => onSwapLongPress?.());
+
+  // --- Log Workout header parity: live duration + working volume ---
+  const [elapsedSec, setElapsedSec] = useState(0);
+  useEffect(() => {
+    if (!startTime) return;
+    const tick = () => setElapsedSec(Math.floor((Date.now() - startTime.getTime()) / 1000));
+    tick();
+    const iv = setInterval(tick, 1000);
+    const onV = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onV);
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onV); };
+  }, [startTime]);
+  const totalVolume = exercises.reduce((sum, _, idx) => {
+    const sets = setsDataByExercise.get(idx) || [];
+    return sum + sets.reduce((s2, st) => st.completed ? s2 + (st.weight || 0) * (st.reps || 0) : s2, 0);
+  }, 0);
+
+  // --- Exercise thumbnails (first video frame) ---
+  const exerciseIdsKey = exercises.map(e => e.exerciseId).join(',');
+  const [thumbById, setThumbById] = useState<Map<string, string | null>>(new Map());
+  useEffect(() => {
+    const ids = [...new Set(exercises.map(e => e.exerciseId).filter((id): id is string => !!id))];
+    if (!ids.length) return;
+    let cancelled = false;
+    supabase.from('exercises').select('id, video_path').in('id', ids).then(({ data }) => {
+      if (cancelled || !data) return;
+      setThumbById(new Map((data as { id: string; video_path: string | null }[]).map(r => [r.id, getVideoThumbUrl(r.video_path)])));
+    });
+    return () => { cancelled = true; };
+  }, [exerciseIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- MINULE: last logged values per exercise (most recent session) ---
+  const [lastValues, setLastValues] = useState<Map<string, Map<number, { weight: number | null; reps: number | null }>>>(new Map());
+  useEffect(() => {
+    const ids = [...new Set(exercises.map(e => e.exerciseId).filter((id): id is string => !!id))];
+    if (!ids.length) return;
+    let cancelled = false;
+    supabase
+      .from('workout_session_sets')
+      .select('exercise_id, set_number, weight_kg, reps, session_id, created_at')
+      .in('exercise_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(400)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const latestSession = new Map<string, string>();
+        const map = new Map<string, Map<number, { weight: number | null; reps: number | null }>>();
+        for (const row of data as any[]) {
+          const exId = row.exercise_id as string | null;
+          if (!exId || !row.session_id) continue;
+          if (!latestSession.has(exId)) latestSession.set(exId, row.session_id);
+          if (row.session_id !== latestSession.get(exId)) continue;
+          if (!map.has(exId)) map.set(exId, new Map());
+          const inner = map.get(exId)!;
+          if (!inner.has(row.set_number)) inner.set(row.set_number, { weight: row.weight_kg, reps: row.reps });
+        }
+        setLastValues(map);
+      });
+    return () => { cancelled = true; };
+  }, [exerciseIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const completedTotal = exercises.reduce((sum, _, idx) => {
     const sets = setsDataByExercise.get(idx) || [];
     return sum + sets.filter(s => s.completed).length;
   }, 0);
   const totalSetsAll = exercises.reduce((sum, ex) => sum + ex.sets, 0);
-  const progressPercent = totalSetsAll > 0 ? (completedTotal / totalSetsAll) * 100 : 0;
 
   return (
     <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-none px-4 pt-4 pb-3 border-b border-border safe-top">
-        <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 -ml-1 rounded-xl text-foreground">
+      {/* Header — Log Workout look; the workout stays Pumplo-guided */}
+      <div className="flex-none safe-top border-b border-border">
+        <div className="flex items-center gap-1 px-3 pt-2">
+          <button onClick={onClose} className="p-2 -ml-1 rounded-xl hover:bg-muted transition-colors">
             <X className="w-5 h-5" />
           </button>
-          <div className="flex-1">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-primary rounded-full"
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-          </div>
-          <span className="text-xs text-muted-foreground shrink-0">
-            {completedTotal}/{totalSetsAll}
-          </span>
-          <button
-            onClick={onSwitchToVideo}
-            className="p-2 rounded-xl bg-muted text-foreground"
-            title={t('workout.switch_to_video')}
-          >
+          <h1 className="flex-1 min-w-0 text-base font-bold truncate">{t('workout.list_title')}</h1>
+          <span className="text-xs text-muted-foreground shrink-0 mr-1">{completedTotal}/{totalSetsAll}</span>
+          <button onClick={onSwitchToVideo} className="p-2 rounded-xl bg-muted text-foreground" title={t('workout.switch_to_video')}>
             <Video className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex items-stretch gap-2 px-3 pb-3 pt-1">
+          <div className="flex-1 grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">{t('log_workout.duration')}</p>
+              <p className="text-lg font-bold tabular-nums text-[#5BC8F5]">{formatTimer(elapsedSec)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">{t('log_workout.volume')}</p>
+              <p className="text-lg font-bold tabular-nums">{Math.round(totalVolume)} <span className="text-xs font-medium text-muted-foreground">kg</span></p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">{t('log_workout.sets')}</p>
+              <p className="text-lg font-bold tabular-nums">{completedTotal}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Exercise list */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-4 py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-3 py-3 pb-24">
+        <div className="space-y-4">
           {exercises.map((ex, idx) => {
             const sets = setsDataByExercise.get(idx) ||
               Array.from({ length: ex.sets }, () => ({ completed: false }));
             const completedSets = sets.filter(s => s.completed).length;
             const isActive = idx === currentExerciseIndex;
-            const isDone = completedSets === ex.sets;
+            const isDone = completedSets >= ex.sets;
             const isExCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
             const exTargetSec = isExCardio ? ex.repMax : 0;
-            const fmtExTarget = isExCardio ? `${Math.floor(exTargetSec / 60)}:${String(exTargetSec % 60).padStart(2, '0')}` : '';
+            const fmtExTarget = isExCardio ? formatTimer(exTargetSec) : '';
+            const thumb = ex.exerciseId ? thumbById.get(ex.exerciseId) : null;
+            const exName = (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId);
 
             return (
               <div
                 key={ex.id}
                 ref={isActive ? activeRef : undefined}
-                className={`rounded-xl border transition-all ${
-                  isActive
-                    ? 'border-primary bg-primary/5 shadow-sm'
-                    : isDone
-                    ? 'border-border/50 bg-muted/30 opacity-60'
-                    : 'border-border/50 bg-muted/50'
-                }`}
+                className={cn(
+                  'rounded-2xl border bg-card overflow-hidden transition-all',
+                  isActive ? 'border-[#5BC8F5] shadow-sm' : 'border-border',
+                  isDone && !isActive && 'opacity-60'
+                )}
               >
-                {/* Exercise row - always visible */}
-                <div className="flex items-center gap-3 py-3 px-3">
-                  <button
-                    onClick={() => onSelectExercise(idx)}
-                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                  >
-                  {/* Status indicator */}
-                  <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${
-                    isDone ? 'bg-green-500/20' : isActive ? 'bg-primary/20' : 'bg-muted'
-                  }`}>
-                    {isDone ? (
-                      <Check className="w-4 h-4 text-green-600" />
+                {/* Exercise header */}
+                <div className="flex items-center gap-3 p-3">
+                  <button onClick={() => onSelectExercise(idx)} className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                    {thumb ? (
+                      <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
                     ) : (
-                      <span className={`font-bold text-sm ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {idx + 1}
-                      </span>
+                      <Video className="w-5 h-5 text-muted-foreground" />
                     )}
-                  </div>
-
-                  {/* Name + sets progress */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className={`font-medium text-sm truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>
-                        {(isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId)}
-                      </p>
+                  </button>
+                  <button onClick={() => onSelectExercise(idx)} className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-bold text-[15px] text-[#5BC8F5] truncate">{exName}</p>
                       {ex.slotCategory && slotCategoryLabels[ex.slotCategory] && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${slotCategoryLabels[ex.slotCategory].color}`}>
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border shrink-0', slotCategoryLabels[ex.slotCategory].color)}>
                           {slotCategoryLabels[ex.slotCategory].label}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-muted-foreground">
-                        {completedSets}/{ex.sets} sérií
-                        {ex.machineName && ` · ${(isEn && ex.machineNameEn) ? ex.machineNameEn : ex.machineName}`}
-                      </p>
-                      {/* Mini set dots */}
-                      <div className="flex gap-0.5">
-                        {sets.map((s, si) => (
-                          <div
-                            key={si}
-                            className={`w-2 h-2 rounded-full ${
-                              s.completed ? 'bg-green-500' : 'bg-muted-foreground/20'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    {/* Show completed sets summary - tap to expand */}
-                    {completedSets > 0 && !isActive && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedExercise(expandedExercise === idx ? null : idx);
-                        }}
-                        className="text-[10px] text-primary mt-0.5 font-medium"
-                      >
-                        {expandedExercise === idx ? t('workout.hide_detail') : (completedSets === 1 ? t('workout.show_sets_singular', { n: completedSets }) : t('workout.show_sets_plural', { n: completedSets }))}
-                      </button>
+                    {ex.machineName && (
+                      <p className="text-xs text-muted-foreground truncate">{(isEn && ex.machineNameEn) ? ex.machineNameEn : ex.machineName}</p>
                     )}
-                  </div>
                   </button>
                   {onShowInfo && ex.exerciseId && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onShowInfo(ex.exerciseId!);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); onShowInfo(ex.exerciseId!); }}
                       className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors shrink-0"
                     >
-                      <Info className="w-4.5 h-4.5" />
+                      <Info className="w-5 h-5" />
                     </button>
                   )}
                 </div>
 
-                {/* Expanded sets detail table */}
-                {expandedExercise === idx && !isActive && sets.some(s => s.completed) && (
-                  <div className="px-3 pb-3 pt-1 border-t border-border/50">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-muted-foreground text-[10px]">
-                          <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                          <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
-                          <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
-                          {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sets.map((s, si) =>
-                          s.completed ? (
-                            <tr key={si} className="border-t border-border/30">
-                              <td className="py-1.5 text-muted-foreground">{renderSetLabel(idx, si)}</td>
-                              <td className="py-1.5 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
-                              <td className="py-1.5 text-center font-medium">{s.reps ?? '–'}</td>
-                              {showTimer && (
-                                <td className="py-1.5 text-center text-muted-foreground font-mono">
-                                  {s.durationSeconds ? formatTimer(s.durationSeconds) : '–'}
-                                </td>
-                              )}
-                            </tr>
-                          ) : null
-                        )}
-                      </tbody>
-                    </table>
+                {/* Sets table — visual parity with the custom Log Workout, but
+                    the plan stays fixed (no add/remove, only the current set
+                    is actionable). */}
+                <div className="px-3 pb-3">
+                  <div className="grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center text-[11px] font-semibold text-muted-foreground pb-1.5">
+                    <div className="text-center">{t('log_workout.col_set')}</div>
+                    <div className="text-center">{t('log_workout.col_previous')}</div>
+                    <div className="text-center">{isExCardio ? t('log_workout.col_time') : t('log_workout.col_kg')}</div>
+                    <div className="text-center">{isExCardio ? '' : t('log_workout.col_reps')}</div>
+                    <div className="text-center"><Check className="w-3.5 h-3.5 mx-auto" /></div>
                   </div>
-                )}
 
-                {/* Expanded: active exercise input area */}
-                {isActive && !allSetsComplete && (
-                  <div className="px-3 pb-3 pt-1 border-t border-border/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {isExCardio
-                            ? t('workout.compact_cardio_series', { n: currentSetIndex + 1, total: ex.sets, target: fmtExTarget })
-                            : t('workout.compact_series', { n: currentSetIndex + 1, total: ex.sets, min: ex.repMin, max: ex.repMax })}
-                        </p>
-                        {(() => {
-                          const types = setTypesByExercise?.get(idx);
-                          if (!types || currentSetIndex < 0) return null;
-                          const type = getSetType(types, currentSetIndex);
-                          if (type === 'normal') return null;
-                          return (
-                            <button
-                              onClick={() => onExplainSetType?.(type)}
-                              className={cn('flex items-center gap-1 text-xs font-bold', setBadgeColor(types, currentSetIndex))}
-                            >
-                              {setBadgeLabel(types, currentSetIndex)}
-                              <Info className="w-3 h-3" />
-                            </button>
-                          );
-                        })()}
-                      </div>
-                      {(timerRunning || externalCardioSecondsRemaining !== undefined) && (
-                        <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${externalCardioPaused ? 'text-amber-500' : 'text-primary'}`}>
-                          <Timer className="w-3.5 h-3.5" />
-                          {externalCardioSecondsRemaining !== undefined ? formatTimer(externalCardioSecondsRemaining) : formatTimer(timerSeconds)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-end gap-2">
-                      {isExCardio ? (
-                        <div className="flex-1 flex items-center justify-center h-11 bg-muted rounded-xl">
-                          <Timer className="w-4 h-4 text-muted-foreground mr-2" />
-                          <span className="text-base font-semibold font-mono text-foreground">
-                            {externalCardioSecondsRemaining !== undefined
-                              ? formatTimer(externalCardioSecondsRemaining)
-                              : timerRunning ? formatTimer(timerSeconds) : fmtExTarget}
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex-1">
-                            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t('workout.weight_kg')}</label>
+                  {Array.from({ length: ex.sets }, (_, si) => {
+                    const s = sets[si];
+                    const done = !!s?.completed;
+                    const isCurrent = isActive && si === currentSetIndex && !allSetsComplete;
+                    const lv = ex.exerciseId ? lastValues.get(ex.exerciseId)?.get(si + 1) : undefined;
+                    const prevText = lv && (lv.weight != null || lv.reps != null)
+                      ? (isExCardio ? (lv.reps != null ? formatTimer(lv.reps) : '–') : `${lv.weight ?? 0} kg × ${lv.reps ?? 0}`)
+                      : '–';
+                    const types = setTypesByExercise?.get(idx);
+                    const type = types ? getSetType(types, si) : 'normal';
+                    return (
+                      <div
+                        key={si}
+                        className={cn(
+                          'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
+                          done ? 'bg-green-500/15' : isCurrent ? 'bg-[#5BC8F5]/10' : ''
+                        )}
+                      >
+                        <button
+                          onClick={() => type !== 'normal' && onExplainSetType?.(type)}
+                          className="text-center font-bold text-sm"
+                        >
+                          {renderSetLabel(idx, si)}
+                        </button>
+                        <div className="text-center text-xs text-muted-foreground truncate">{prevText}</div>
+                        {isExCardio ? (
+                          <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isCurrent && (timerRunning || externalCardioSecondsRemaining !== undefined) && 'text-[#5BC8F5]')}>
+                            {done
+                              ? (s?.durationSeconds ? formatTimer(s.durationSeconds) : fmtExTarget)
+                              : isCurrent
+                              ? (externalCardioSecondsRemaining !== undefined
+                                  ? formatTimer(externalCardioSecondsRemaining)
+                                  : timerRunning ? formatTimer(timerSeconds) : fmtExTarget)
+                              : <span className="text-muted-foreground">{fmtExTarget}</span>}
+                          </div>
+                        ) : done ? (
+                          <>
+                            <div className="text-center text-sm font-semibold tabular-nums">{s?.weight ?? '–'}</div>
+                            <div className="text-center text-sm font-semibold tabular-nums">{s?.reps ?? '–'}</div>
+                          </>
+                        ) : isCurrent ? (
+                          <>
                             <input
-                              type="number"
-                              inputMode="decimal"
-                              placeholder={t('workout.weight_placeholder')}
+                              type="number" inputMode="decimal"
                               value={effectiveWeight}
                               onChange={(e) => setEffectiveWeight(e.target.value)}
-                              className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
                             />
-                          </div>
-                          <div className="flex-1">
-                            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t('workout.reps')}</label>
                             <input
-                              type="number"
-                              inputMode="numeric"
+                              type="number" inputMode="numeric"
                               value={effectiveReps}
                               onChange={(e) => setEffectiveReps(e.target.value)}
-                              className="w-full bg-muted text-foreground text-center text-base font-semibold rounded-xl h-11 border-0 outline-none focus:ring-2 focus:ring-primary/50"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
                             />
-                          </div>
-                        </>
-                      )}
-                      <button
-                        onClick={handleCompleteCurrentSet}
-                        className={`w-12 h-11 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-transform shrink-0 ${
-                          externalCardioSecondsRemaining !== undefined
-                            ? externalCardioPaused ? 'bg-green-500' : 'bg-amber-500'
-                            : timerRunning
-                            ? 'bg-red-500'
-                            : isExCardio || (showTimer && timerSeconds === 0)
-                            ? 'bg-green-500'
-                            : 'bg-primary'
-                        }`}
-                      >
-                        {externalCardioSecondsRemaining !== undefined ? (
-                          externalCardioPaused ? <Play className="w-5 h-5 text-white" /> : <Pause className="w-5 h-5 text-white" />
-                        ) : (!timerRunning && (isExCardio || timerSeconds === 0)) ? (
-                          <Play className="w-5 h-5 text-white" />
-                        ) : timerRunning ? (
-                          <Square className="w-5 h-5 text-white" />
+                          </>
                         ) : (
-                          <ChevronRight className="w-6 h-6 text-white" />
+                          <>
+                            <div className="text-center text-sm text-muted-foreground tabular-nums">{ex.weightPerSet?.[si] ?? '–'}</div>
+                            <div className="text-center text-sm text-muted-foreground tabular-nums">{ex.repsPerSet?.[si] ?? `${ex.repMin}–${ex.repMax}`}</div>
+                          </>
                         )}
-                      </button>
-                    </div>
+                        {done ? (
+                          <div className="w-8 h-8 mx-auto rounded-lg bg-green-500 text-white flex items-center justify-center">
+                            <Check className="w-4 h-4" />
+                          </div>
+                        ) : isCurrent ? (
+                          <button
+                            onClick={handleCompleteCurrentSet}
+                            className={cn(
+                              'w-8 h-8 mx-auto rounded-lg flex items-center justify-center shadow-sm active:scale-90 transition-transform text-white',
+                              externalCardioSecondsRemaining !== undefined
+                                ? externalCardioPaused ? 'bg-green-500' : 'bg-amber-500'
+                                : timerRunning
+                                ? 'bg-red-500'
+                                : isExCardio || (showTimer && timerSeconds === 0)
+                                ? 'bg-green-500'
+                                : 'bg-[#5BC8F5]'
+                            )}
+                          >
+                            {externalCardioSecondsRemaining !== undefined ? (
+                              externalCardioPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />
+                            ) : (!timerRunning && (isExCardio || (showTimer && timerSeconds === 0))) ? (
+                              <Play className="w-4 h-4" />
+                            ) : timerRunning ? (
+                              <Square className="w-4 h-4" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </button>
+                        ) : (
+                          <div className="w-8 h-8 mx-auto rounded-lg bg-muted" />
+                        )}
+                      </div>
+                    );
+                  })}
 
-                    {/* Completed sets table for active exercise */}
-                    {currentSets.some(s => s.completed) && (
-                      <table className="w-full text-xs mt-2">
-                        <thead>
-                          <tr className="text-muted-foreground text-[10px]">
-                            <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                            <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
-                            <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
-                            {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {currentSets.map((s, si) =>
-                            s.completed ? (
-                              <tr key={si} className="border-t border-border/30">
-                                <td className="py-1 text-muted-foreground">{renderSetLabel(currentExerciseIndex, si)}</td>
-                                <td className="py-1 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
-                                <td className="py-1 text-center font-medium">{s.reps ?? '–'}</td>
-                                {showTimer && (
-                                  <td className="py-1 text-center text-muted-foreground font-mono">
-                                    {s.durationSeconds ? formatTimer(s.durationSeconds) : '–'}
-                                  </td>
-                                )}
-                              </tr>
-                            ) : null
-                          )}
-                        </tbody>
-                      </table>
-                    )}
-
-                    {/* Action buttons */}
+                  {/* Active exercise controls (Pumplo drives the plan) */}
+                  {isActive && !allSetsComplete && (
                     <div className="flex gap-2 mt-2">
                       {onSwapExercise && (
                         <button
-                          onClick={onSwapExercise}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium ${isSwapping ? 'opacity-50' : ''}`}
+                          {...swapPress.handlers}
+                          onClick={() => { if (!swapPress.wasLongPress()) onSwapExercise(); }}
+                          style={{ touchAction: 'none' }}
+                          className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-muted-foreground text-xs font-medium', isSwapping && 'opacity-50')}
                         >
-                          <RefreshCw className={`w-3.5 h-3.5 ${isSwapping ? 'animate-spin' : ''}`} />
+                          <RefreshCw className={cn('w-3.5 h-3.5', isSwapping && 'animate-spin')} />
                           {t('workout.swap')}
                         </button>
                       )}
@@ -585,51 +572,8 @@ export const CompactWorkoutView = ({
                         {t('workout.skip_confirm')}
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* Active exercise: all sets done */}
-                {isActive && allSetsComplete && (
-                  <div className="px-3 pb-3 pt-1 border-t border-border/50">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedExercise(expandedExercise === idx ? null : idx);
-                      }}
-                      className="text-sm text-green-600 font-medium text-center py-2 w-full"
-                    >
-                      {expandedExercise === idx ? t('workout.hide_detail') : t('workout.all_sets_done')}
-                    </button>
-                    {expandedExercise === idx && sets.some(s => s.completed) && (
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-muted-foreground text-[10px]">
-                            <th className="text-left font-medium py-1">{t('workout.session_sets_label')}</th>
-                            <th className="text-center font-medium py-1">{t('workout.weight_header')}</th>
-                            <th className="text-center font-medium py-1">{t('workout.reps_header')}</th>
-                            {showTimer && <th className="text-center font-medium py-1">{t('workout.time_header')}</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sets.map((s, si) =>
-                            s.completed ? (
-                              <tr key={si} className="border-t border-border/30">
-                                <td className="py-1.5 text-muted-foreground">{renderSetLabel(idx, si)}</td>
-                                <td className="py-1.5 text-center font-medium">{s.weight ? `${s.weight} kg` : '–'}</td>
-                                <td className="py-1.5 text-center font-medium">{s.reps ?? '–'}</td>
-                                {showTimer && (
-                                  <td className="py-1.5 text-center text-muted-foreground font-mono">
-                                    {s.durationSeconds ? formatTimer(s.durationSeconds) : '–'}
-                                  </td>
-                                )}
-                              </tr>
-                            ) : null
-                          )}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
