@@ -56,11 +56,19 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   // dropped or staled while the phone was locked gets repainted on unlock.
   const [wakeTick, setWakeTick] = useState(0);
   useEffect(() => {
-    const resumeVideo = () => { videoRef.current?.play().catch(() => {}); setWakeTick(n => n + 1); };
+    const play = () => { videoRef.current?.play().catch(() => {}); };
+    // iOS may reject play() fired exactly at resume — retry shortly after.
+    const timers: number[] = [];
+    const resumeVideo = () => {
+      play();
+      timers.push(window.setTimeout(play, 300), window.setTimeout(play, 1200));
+      setWakeTick(n => n + 1);
+    };
     const onVisible = () => { if (document.visibilityState === 'visible') resumeVideo(); };
     document.addEventListener('visibilitychange', onVisible);
     const sub = CapApp.addListener('resume', resumeVideo);
     return () => {
+      timers.forEach(id => clearTimeout(id));
       document.removeEventListener('visibilitychange', onVisible);
       sub.then(s => s.remove()).catch(() => {});
     };

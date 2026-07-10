@@ -215,17 +215,25 @@ export const ExercisePlayer = ({
       videoRef.current?.pause();
       return;
     }
-    playVideo();
-
     // Resume playback when the user returns to the app. visibilitychange covers
     // web/PWA; Capacitor 'resume' is the reliable signal in the native WKWebView.
-    const onVisible = () => { if (document.visibilityState === 'visible') playVideo(); };
+    // iOS often rejects a play() fired exactly at resume (the webview is still
+    // waking up, and the lock-screen replay runs at the same moment) — retry a
+    // couple of times; play() on an already-playing video is a no-op.
+    const timers: number[] = [];
+    const playWithRetry = () => {
+      playVideo();
+      timers.push(window.setTimeout(playVideo, 300), window.setTimeout(playVideo, 1200));
+    };
+    playWithRetry();
+    const onVisible = () => { if (document.visibilityState === 'visible') playWithRetry(); };
     document.addEventListener('visibilitychange', onVisible);
     let removeResume: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
-      App.addListener('resume', playVideo).then((h) => { removeResume = () => h.remove(); });
+      App.addListener('resume', playWithRetry).then((h) => { removeResume = () => h.remove(); });
     }
     return () => {
+      timers.forEach(id => clearTimeout(id));
       document.removeEventListener('visibilitychange', onVisible);
       removeResume?.();
     };
