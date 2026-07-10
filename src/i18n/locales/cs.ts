@@ -193,6 +193,15 @@ const cs = {
   'profile.feedback': 'Zpětná vazba',
 
   // Statistics
+  'stats.period_week': 'Týden',
+  'stats.period_month': 'Měsíc',
+  'stats.period_3m': '3 měsíce',
+  'stats.period_all': 'Vše',
+  'stats.trainings': 'Tréninky',
+  'stats.time': 'Čas',
+  'stats.volume': 'Objem',
+  'stats.vs_previous': 'Šipky porovnávají s předchozím obdobím',
+  'stats.chart_total': 'celkem za období',
   'stats.title': 'Statistiky',
   'stats.subtitle': 'Tvůj progres na jednom místě',
   'stats.no_data': 'Zatím nemáš žádná data. Dokonči svůj první trénink!',

@@ -58,8 +58,18 @@ export interface SessionDataPoint {
   workouts: number;
 }
 
+// One completed set with everything the period-filtered views need.
+export interface StatSetRow {
+  exerciseId: string | null;
+  name: string;
+  nameEn: string | null;
+  muscles: string[];
+  date: string;
+}
+
 export interface Statistics {
   streak: { current: number; max: number };
+  setRows: StatSetRow[];
   thisMonth: { workouts: number; weight: number; duration: number };
   allTime: { workouts: number; weight: number };
   weeklyVolume: WeeklyVolume[];
@@ -361,8 +371,21 @@ export const useStatistics = () => {
           };
         });
 
+      // Raw per-set rows for client-side period filtering (muscles, top exercises)
+      const setRows: StatSetRow[] = allSets.map(set => {
+        const exInfo = exerciseMap.get(set.exercise_id || '');
+        return {
+          exerciseId: set.exercise_id || null,
+          name: exInfo?.name || set.exercise_name || 'Neznámý',
+          nameEn: exInfo?.name_en || null,
+          muscles: exInfo?.muscles || [],
+          date: (set.workout_sessions as { started_at: string } | null)?.started_at || set.created_at,
+        };
+      });
+
       setStats({
         streak,
+        setRows,
         thisMonth: { workouts: thisMonthData.workouts, weight: thisMonthData.weight, duration: thisMonthData.duration },
         allTime,
         weeklyVolume,
