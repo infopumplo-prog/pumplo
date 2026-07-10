@@ -71,6 +71,9 @@ interface CompactWorkoutViewProps {
   // Edit weight/reps of an already completed set (Hevy parity: going back to
   // a finished exercise and fixing the numbers).
   onEditSet?: (exerciseIndex: number, setIndex: number, weight?: number, reps?: number) => void;
+  // Un-check a completed set (tap the green ✓): it becomes pending again so
+  // the values can be changed and the set re-completed.
+  onUncheckSet?: (exerciseIndex: number, setIndex: number) => void;
 }
 
 export const CompactWorkoutView = ({
@@ -102,6 +105,7 @@ export const CompactWorkoutView = ({
   startTime,
   restSecondsByIndex,
   onEditSet,
+  onUncheckSet,
 }: CompactWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -189,6 +193,10 @@ export const CompactWorkoutView = ({
   // Stable ref so the cardio auto-complete effect can call onCompleteSet without stale closure
   const onCompleteSetRef = useRef(onCompleteSet);
   onCompleteSetRef.current = onCompleteSet;
+
+  // Drafts for pending sets of NON-active exercises (un-checked to fix values,
+  // or filled in later); keyed `${exerciseIndex}-${setIndex}`.
+  const [backfill, setBackfill] = useState<Record<string, { w?: string; r?: string }>>({});
 
   // Cardio auto-complete: countdown beeps at T-3/2/1, auto-complete at target
   useEffect(() => {
@@ -401,6 +409,7 @@ export const CompactWorkoutView = ({
             const completedSets = sets.filter(s => s.completed).length;
             const isActive = idx === currentExerciseIndex;
             const isDone = completedSets >= ex.sets;
+            const exPending = sets.findIndex(s => !s.completed);
             const isExCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
             const exTargetSec = isExCardio ? ex.repMax : 0;
             const fmtExTarget = isExCardio ? formatTimer(exTargetSec) : '';
@@ -473,6 +482,12 @@ export const CompactWorkoutView = ({
                     const s = sets[si];
                     const done = !!s?.completed;
                     const isCurrent = isActive && si === currentSetIndex && !allSetsComplete;
+                    // First pending set of a NON-active exercise: editable +
+                    // checkable, so un-checked sets can be fixed and re-done.
+                    const isBackfill = !done && !isActive && si === exPending && !isExCardio;
+                    const bfKey = `${idx}-${si}`;
+                    const bfW = backfill[bfKey]?.w ?? (s?.weight != null ? `${s.weight}` : (ex.weightPerSet?.[si] != null ? `${ex.weightPerSet[si]}` : ''));
+                    const bfR = backfill[bfKey]?.r ?? (s?.reps != null ? `${s.reps}` : (ex.repsPerSet?.[si] != null ? `${ex.repsPerSet[si]}` : `${ex.repMax}`));
                     const lv = ex.exerciseId ? lastValues.get(ex.exerciseId)?.get(si + 1) : undefined;
                     const prevText = lv && (lv.weight != null || lv.reps != null)
                       ? (isExCardio ? (lv.reps != null ? formatTimer(lv.reps) : '–') : `${lv.weight ?? 0} kg × ${lv.reps ?? 0}`)
@@ -551,6 +566,21 @@ export const CompactWorkoutView = ({
                               className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
                             />
                           </>
+                        ) : isBackfill ? (
+                          <>
+                            <input
+                              type="number" inputMode="decimal"
+                              value={bfW}
+                              onChange={(e) => setBackfill(prev => ({ ...prev, [bfKey]: { ...prev[bfKey], w: e.target.value } }))}
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                            />
+                            <input
+                              type="number" inputMode="numeric"
+                              value={bfR}
+                              onChange={(e) => setBackfill(prev => ({ ...prev, [bfKey]: { ...prev[bfKey], r: e.target.value } }))}
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                            />
+                          </>
                         ) : (
                           <>
                             <div className="text-center text-sm text-muted-foreground tabular-nums">{ex.weightPerSet?.[si] ?? '–'}</div>
@@ -558,9 +588,30 @@ export const CompactWorkoutView = ({
                           </>
                         )}
                         {done ? (
-                          <div className="w-8 h-8 mx-auto rounded-lg bg-green-500 text-white flex items-center justify-center">
+                          onUncheckSet ? (
+                            <button
+                              onClick={() => onUncheckSet(idx, si)}
+                              className="w-8 h-8 mx-auto rounded-lg bg-green-500 text-white flex items-center justify-center active:scale-90 transition-transform"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div className="w-8 h-8 mx-auto rounded-lg bg-green-500 text-white flex items-center justify-center">
+                              <Check className="w-4 h-4" />
+                            </div>
+                          )
+                        ) : isBackfill ? (
+                          <button
+                            onClick={() => {
+                              const wNum = parseFloat(bfW);
+                              const rNum = parseInt(bfR);
+                              onCompleteSet(idx, si, isNaN(wNum) ? undefined : wNum, isNaN(rNum) ? ex.repMax : rNum);
+                              setBackfill(prev => { const { [bfKey]: _, ...rest } = prev; return rest; });
+                            }}
+                            className="w-8 h-8 mx-auto rounded-lg bg-muted border border-[#5BC8F5]/40 text-[#5BC8F5] flex items-center justify-center active:scale-90 transition-transform"
+                          >
                             <Check className="w-4 h-4" />
-                          </div>
+                          </button>
                         ) : isCurrent ? (
                           <button
                             onClick={handleCompleteCurrentSet}
