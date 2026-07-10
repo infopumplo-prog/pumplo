@@ -254,24 +254,24 @@ const Statistics = () => {
             <Card>
               <CardContent className="p-4">
                 <div className="grid grid-cols-3 gap-2">
-                  <div>
+                  <div className="text-center">
                     <p className="text-[11px] text-muted-foreground">{t('stats.trainings')}</p>
                     <p className="text-xl font-bold text-foreground tabular-nums">{summary.cur.workouts}</p>
                     <TrendBadge current={summary.cur.workouts} previous={summary.prev?.workouts ?? null} />
                   </div>
-                  <div>
+                  <div className="text-center">
                     <p className="text-[11px] text-muted-foreground">{t('stats.time')}</p>
                     <p className="text-xl font-bold text-foreground tabular-nums">{fmtDuration(summary.cur.duration, isEn)}</p>
                     <TrendBadge current={summary.cur.duration} previous={summary.prev?.duration ?? null} />
                   </div>
-                  <div>
+                  <div className="text-center">
                     <p className="text-[11px] text-muted-foreground">{t('stats.volume')}</p>
                     <p className="text-xl font-bold text-foreground tabular-nums">{vol.value} <span className="text-xs font-medium text-muted-foreground">{vol.unit}</span></p>
                     <TrendBadge current={summary.cur.weight} previous={summary.prev?.weight ?? null} />
                   </div>
                 </div>
                 {summary.prev && (
-                  <p className="text-[10px] text-muted-foreground/70 mt-2">{t('stats.vs_previous')}</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-2 text-center">{t('stats.vs_previous')}</p>
                 )}
               </CardContent>
             </Card>

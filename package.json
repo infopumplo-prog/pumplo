@@ -77,6 +77,7 @@
     "pg": "^8.20.0",
     "qr-code-styling": "^1.9.2",
     "react": "^18.3.1",
+    "react-body-highlighter": "^2.0.5",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.61.1",
