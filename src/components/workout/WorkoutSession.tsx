@@ -767,8 +767,9 @@ export const WorkoutSession = ({
   if (showRestTimer && viewMode === 'video') {
     return (
       <RestTimer
-        key={restEndsAt}
-        duration={Math.max(1, Math.ceil((restEndsAt - Date.now()) / 1000))}
+        duration={restDuration}
+        endsAt={restEndsAt}
+        onAdjust={adjustListRest}
         onComplete={handleRestComplete}
         label={restLabel}
         nextExerciseName={restAdvance
@@ -935,10 +936,10 @@ export const WorkoutSession = ({
               style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
             >
               <div className="mx-auto max-w-md bg-[#1A2744] text-white rounded-2xl shadow-xl px-3 py-2.5">
-                <p className="text-[11px] font-semibold text-[#5BC8F5] text-center mb-0.5 truncate">{restLabel}</p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => adjustListRest(-15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">-15 s</button>
                   <div className="flex-1 text-center">
+                    <p className="text-[11px] font-semibold text-[#5BC8F5] truncate">{restLabel}</p>
                     <span className={restRemaining <= 3 ? 'text-2xl font-black tabular-nums text-red-400' : 'text-2xl font-black tabular-nums text-white'}>
                       {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, '0')}
                     </span>

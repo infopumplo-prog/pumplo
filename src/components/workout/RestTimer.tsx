@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX, List } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, VolumeX, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
@@ -20,9 +20,14 @@ interface RestTimerProps {
   // Switch to the list presentation mid-rest (countdown keeps running — the
   // parent owns the rest clock).
   onToggleView?: () => void;
+  // Shared rest clock (epoch ms). When provided, the timer follows it exactly
+  // (view toggles / ±15 s never reset the countdown).
+  endsAt?: number;
+  // ±15 s handler — updates the parent clock so every presentation reacts.
+  onAdjust?: (deltaSeconds: number) => void;
 }
 
-export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl, onToggleView }: RestTimerProps) => {
+export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseName, nextVideoUrl, onToggleView, endsAt, onAdjust }: RestTimerProps) => {
   const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
@@ -32,8 +37,8 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     setIsMuted(next);
     setAudioMuted(next);
   };
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const endTimeRef = useRef(Date.now() + duration * 1000);
+  const [timeLeft, setTimeLeft] = useState(() => endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : duration);
+  const endTimeRef = useRef(endsAt ?? (Date.now() + duration * 1000));
   const pausedAtRef = useRef<number | null>(null);
   const completedRef = useRef(false);
   const beeped3Ref = useRef(false);
@@ -66,6 +71,14 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   // keep-alive). Instead we schedule a LOCAL NOTIFICATION with a beep that fires
   // at rest-end. It's cancelled if the rest finishes or is paused in-app.
   useEffect(() => {
+    if (endsAt) {
+      endTimeRef.current = endsAt;
+      const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      beeped3Ref.current = rem < 3;
+      beeped2Ref.current = rem < 2;
+      beeped1Ref.current = rem < 1;
+      setTimeLeft(rem);
+    }
     if (isPaused || completedRef.current) {
       stopRestBeeps();
       cancelRestEndNotification();
@@ -84,7 +97,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       totalSeconds: remaining,
     });
     return () => { cancelled = true; stopRestBeeps(); cancelRestEndNotification(); endRestActivity(); nativeBeepsRef.current = false; };
-  }, [isPaused, t]);
+  }, [isPaused, endsAt, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Main tick — uses real clock, works even after phone sleep
   useEffect(() => {
@@ -126,7 +139,8 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
   const handlePause = useCallback(() => {
     if (isPaused) {
       const pausedDuration = Date.now() - (pausedAtRef.current || Date.now());
-      endTimeRef.current += pausedDuration;
+      if (onAdjust) onAdjust(Math.round(pausedDuration / 1000));
+      else endTimeRef.current += pausedDuration;
       pausedAtRef.current = null;
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
       beeped3Ref.current = remaining < 3;
@@ -136,27 +150,19 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
       pausedAtRef.current = Date.now();
     }
     setIsPaused(prev => !prev);
-  }, [isPaused]);
+  }, [isPaused, onAdjust]);
 
-  const handleReset = useCallback(() => {
-    endTimeRef.current = Date.now() + duration * 1000;
-    pausedAtRef.current = null;
-    completedRef.current = false;
-    beeped3Ref.current = false;
-    beeped2Ref.current = false;
-    beeped1Ref.current = false;
-    setTimeLeft(duration);
-    setIsPaused(false);
-    // Re-arm the backgrounded rest-end notification for the new end time.
+  const handleAdjust = useCallback((deltaSeconds: number) => {
+    if (onAdjust) { onAdjust(deltaSeconds); return; }
+    endTimeRef.current = Math.max(Date.now(), endTimeRef.current + deltaSeconds * 1000);
+    const rem = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+    beeped3Ref.current = rem < 3;
+    beeped2Ref.current = rem < 2;
+    beeped1Ref.current = rem < 1;
+    setTimeLeft(rem);
     cancelRestEndNotification();
-    scheduleRestEndNotification(duration, t('workout.rest_over_title'), t('workout.rest_over_body'));
-    startRestActivity({
-      exerciseName: nextExerciseName || label || t('workout.rest'),
-      nextSetText: nextExerciseName ? t('log_workout.next_exercise', { name: nextExerciseName }) : '',
-      endsAt: Date.now() + duration * 1000,
-      totalSeconds: duration,
-    });
-  }, [duration, t, nextExerciseName, label]);
+    scheduleRestEndNotification(rem, t('workout.rest_over_title'), t('workout.rest_over_body'));
+  }, [onAdjust, t]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -164,7 +170,7 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = ((duration - timeLeft) / duration) * 100;
+  const progress = Math.max(0, Math.min(100, ((duration - timeLeft) / duration) * 100));
   const onVideo = !!nextVideoUrl;
 
   return (
@@ -260,11 +266,14 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={handleReset}>
-            <RotateCcw className="w-6 h-6" />
+          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full text-xs font-bold" onClick={() => handleAdjust(-15)}>
+            -15 s
           </Button>
           <Button size="icon" className="w-20 h-20 rounded-full" onClick={handlePause}>
             {isPaused ? <Play className="w-10 h-10 ml-1" /> : <Pause className="w-10 h-10" />}
+          </Button>
+          <Button variant="outline" size="icon" className="w-14 h-14 rounded-full text-xs font-bold" onClick={() => handleAdjust(15)}>
+            +15 s
           </Button>
           <Button variant="outline" size="icon" className="w-14 h-14 rounded-full" onClick={onSkip || onComplete}>
             <SkipForward className="w-6 h-6" />
