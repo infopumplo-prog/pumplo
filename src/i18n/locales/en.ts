@@ -577,6 +577,8 @@ const en = {
   'custom_plan.rest_row_label': 'Rest between sets',
   'custom_plan.rest_off': 'Off',
   'custom_plan.rest_sheet_title': 'Rest between sets',
+  'custom_plan.share_workout': 'Share workout',
+  'custom_plan.share_copy_link': 'Copy link',
   'custom_plan.save_failed': 'Saving failed — try again',
   'custom_plan.add_set': 'Add set',
   'custom_plan.col_set': 'SET',
