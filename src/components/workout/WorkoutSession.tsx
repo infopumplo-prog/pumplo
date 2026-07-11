@@ -109,6 +109,10 @@ export const WorkoutSession = ({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restAdvance, setRestAdvance] = useState(true);
+  // Ref mirror + navigation helper assigned later (they need refs declared
+  // further down); handlers only run after the first render, so this is safe.
+  const restAdvanceRef = useRef(true);
+  const goToExerciseRef = useRef<(idx: number) => void>(() => {});
   const [restDuration, setRestDuration] = useState(0);
   // Shared rest clock: both presentations (full-screen video / list bottom bar)
   // read the SAME end timestamp, so switching views mid-rest keeps counting.
@@ -383,6 +387,7 @@ export const WorkoutSession = ({
       const nextExercise = liveExercises[currentExerciseIndex + 1];
       const nextRest = getRestSecondsForCategory(goalId, nextExercise?.slotCategory);
       setRestAdvance(true);
+      restAdvanceRef.current = true;
       setRestDuration(nextRest);
       setRestEndsAt(Date.now() + nextRest * 1000);
       setRestLabel(t('workout.next_exercise_prep'));
@@ -398,11 +403,14 @@ export const WorkoutSession = ({
   // between-EXERCISE rest does.
   const handleRestComplete = useCallback(() => {
     setShowRestTimer(false);
-    setRestAdvance(prev => {
-      if (prev) setCurrentExerciseIndex(i => i + 1);
-      return true;
-    });
-  }, []);
+    restShowingRef.current = false;
+    // Advance index AND seed the set position in the same batch — doing the
+    // seed in an effect let the player mount with the previous exercise's
+    // stale set index (clamped to the LAST set of the next exercise).
+    if (restAdvanceRef.current) goToExerciseRef.current(currentExerciseIndexRef.current + 1);
+    setRestAdvance(true);
+    restAdvanceRef.current = true;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSkipClick = useCallback(() => {
     setShowSkipDialog(true);
@@ -417,7 +425,7 @@ export const WorkoutSession = ({
     setResultsByIndex(prev => new Map(prev).set(currentExerciseIndex, newResult));
 
     if (currentExerciseIndex < liveExercises.length - 1) {
-      setCurrentExerciseIndex(prev => prev + 1);
+      goToExerciseRef.current(currentExerciseIndex + 1);
       setHighestIndexReached(prev => Math.max(prev, currentExerciseIndex + 1));
     } else {
       triggerPostWorkout();
@@ -428,7 +436,8 @@ export const WorkoutSession = ({
   const handleGoPrevious = useCallback(() => {
     if (currentExerciseIndex > 0) {
       setShowRestTimer(false);
-      setCurrentExerciseIndex(prev => prev - 1);
+      restShowingRef.current = false;
+      goToExerciseRef.current(currentExerciseIndex - 1);
     }
   }, [currentExerciseIndex]);
 
@@ -436,7 +445,8 @@ export const WorkoutSession = ({
   const handleGoNext = useCallback(() => {
     if (currentExerciseIndex < highestIndexReached) {
       setShowRestTimer(false);
-      setCurrentExerciseIndex(prev => prev + 1);
+      restShowingRef.current = false;
+      goToExerciseRef.current(currentExerciseIndex + 1);
     }
   }, [currentExerciseIndex, highestIndexReached]);
 
@@ -552,18 +562,19 @@ export const WorkoutSession = ({
   const restShowingRef = useRef(false);
   restShowingRef.current = showRestTimer;
   const [playerSync, setPlayerSync] = useState(0);
-  const exerciseChangeRef = useRef(currentExerciseIndex);
-  useEffect(() => {
-    if (exerciseChangeRef.current === currentExerciseIndex) return;
-    exerciseChangeRef.current = currentExerciseIndex;
-    setPlayerSync(0);
-    // Seed from what's already logged — navigating BACK to a done exercise
-    // must show its real sets (green), not a blank restart.
-    const known = setsDataRef.current.get(currentExerciseIndex) || [];
-    const pend = known.findIndex(s => !s.completed);
+  // The ONLY way to change the viewed exercise: index + set position are
+  // seeded together in one batch, so the player never mounts with a stale
+  // set index from the previous exercise. Seeds from logged sets, so going
+  // BACK to a finished exercise shows its real green sets.
+  goToExerciseRef.current = (idx: number) => {
+    setCurrentExerciseIndex(idx);
+    currentExerciseIndexRef.current = idx;
+    const known = setsDataRef.current.get(idx) || [];
+    const pend = known.findIndex(st => !st.completed);
     setCurrentExerciseSets(known);
-    setCurrentSetIndex(pend === -1 ? Math.max(known.length - 1, 0) : pend);
-  }, [currentExerciseIndex]);
+    setCurrentSetIndex(known.length === 0 ? 0 : (pend === -1 ? Math.max(known.length - 1, 0) : pend));
+    setPlayerSync(n => n + 1);
+  };
 
   // Compact mode: complete a single set for any exercise. Completing a set of
   // the exercise the user is ON trains (rest + advance); ticking a set of an
@@ -595,6 +606,7 @@ export const WorkoutSession = ({
         // Rest between sets (Pumplo-guided, same as the video flow)
         const sec = getRestSecondsForCategory(goalId, exercise.slotCategory);
         setRestAdvance(false);
+        restAdvanceRef.current = false;
         setRestDuration(sec);
         setRestEndsAt(Date.now() + sec * 1000);
         setRestLabel(t('log_workout.rest'));
@@ -622,9 +634,10 @@ export const WorkoutSession = ({
       return sets.some(s => !s.completed);
     });
     if (nextIdx !== -1) {
-      setCurrentExerciseIndex(nextIdx);
+      goToExerciseRef.current(nextIdx);
       setHighestIndexReached(prev2 => Math.max(prev2, nextIdx));
       setRestAdvance(false); // index already moved
+      restAdvanceRef.current = false;
       const nextSec = getRestSecondsForCategory(goalId, liveExercises[nextIdx]?.slotCategory);
       setRestDuration(nextSec);
       setRestEndsAt(Date.now() + nextSec * 1000);
@@ -793,9 +806,8 @@ export const WorkoutSession = ({
     const sameExercise = target.exIdx === currentExerciseIndexRef.current;
     if (!sameExercise) {
       // ✓ from the lock screen on a later exercise = the user moved on; follow.
-      setCurrentExerciseIndex(target.exIdx);
+      goToExerciseRef.current(target.exIdx);
       setHighestIndexReached(p => Math.max(p, target.exIdx));
-      currentExerciseIndexRef.current = target.exIdx;
     }
     const weight = sameExercise ? (currentExWeight ?? undefined) : undefined;
     // handleCompactCompleteSet also re-seeds the video player mirror.
@@ -948,7 +960,7 @@ export const WorkoutSession = ({
   restCompleteRef.current = handleRestComplete;
 
   const handleCompactSelectExercise = useCallback((index: number) => {
-    setCurrentExerciseIndex(index);
+    goToExerciseRef.current(index);
     setHighestIndexReached(prev => Math.max(prev, index));
   }, []);
 
