@@ -22,6 +22,14 @@ struct RestActivityAttributes: ActivityAttributes {
         // false hides the ✓ intent button (guided Pumplo workouts drive sets
         // in-app; the banner is informational there).
         var showButton: Bool
+        // Card shown when a REST countdown expires while the app is asleep:
+        // the widget flips to it natively via the staleDate re-render (the JS
+        // side can't update anything with the phone locked). Empty upNextName
+        // = nothing follows (last set / cooldown) → generic "rest over" card.
+        var upNextName: String? = nil
+        var upNextSetText: String? = nil
+        var upNextDetail: String? = nil
+        var upNextThumbPath: String? = nil
     }
 }
 #endif

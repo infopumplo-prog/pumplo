@@ -30,15 +30,24 @@ struct CompleteSetIntent: LiveActivityIntent {
             state.mode = "rest"
             state.startedAt = Date()
             state.endsAt = Date().addingTimeInterval(max(restSec, 1))
-            await activity.update(ActivityContent(state: state, staleDate: state.endsAt.addingTimeInterval(180)))
+            // Card the widget flips to when this rest expires (stale re-render).
+            state.upNextName = d.string(forKey: "pumplo_next_exercise_name") ?? ""
+            state.upNextSetText = d.string(forKey: "pumplo_next_set_text") ?? ""
+            state.upNextDetail = d.string(forKey: "pumplo_next_detail_text") ?? ""
+            state.upNextThumbPath = d.string(forKey: "pumplo_next_thumb_path") ?? ""
+            // Stale exactly at rest end → native flip with the app asleep.
+            await activity.update(ActivityContent(state: state, staleDate: state.endsAt))
         }
         if restSec > 0 {
             let content = UNMutableNotificationContent()
             content.title = d.string(forKey: "pumplo_rest_over_title") ?? "Pauza skončila"
             content.body = d.string(forKey: "pumplo_rest_over_body") ?? ""
-            content.sound = .default
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("rest_beep.wav"))
+            if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
             let req = UNNotificationRequest(
-                identifier: "pumplo_rest_intent",
+                // Same identifier the app (JS + native plugin) manages — one
+                // rest-end alert regardless of who scheduled it last.
+                identifier: "9911",
                 content: content,
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(restSec, 1), repeats: false))
             try? await UNUserNotificationCenter.current().add(req)
@@ -61,7 +70,7 @@ struct SkipRestIntent: LiveActivityIntent {
         queue.append(Date().timeIntervalSince1970 * 1000)
         d.set(queue, forKey: "pumplo_pending_rest_skips")
 
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent"])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent", "9911"])
 
         // Flip back to the upcoming-set card stored by the app when rest began.
         if let activity = Activity<RestActivityAttributes>.activities.first {

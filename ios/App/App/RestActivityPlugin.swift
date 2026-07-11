@@ -36,6 +36,31 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    // Capacitor LocalNotifications uses the numeric id as the identifier —
+    // scheduling under the SAME id from native code means JS and native manage
+    // one notification (last write wins, all cancel paths work on both).
+    static let restEndNotifId = "9911"
+
+    // Schedule the rest-end alert NATIVELY. The JS side also schedules it, but
+    // the webview may be suspended behind a locked phone before its async
+    // schedule lands — this is what made rest-end silent on device.
+    private static func scheduleRestEndNotification(endsAt: Date) {
+        let d = UserDefaults.standard
+        let secs = endsAt.timeIntervalSinceNow
+        guard secs > 0 else { return }
+        let content = UNMutableNotificationContent()
+        content.title = d.string(forKey: "pumplo_rest_over_title") ?? "Pauza skončila"
+        content.body = d.string(forKey: "pumplo_rest_over_body") ?? ""
+        content.sound = UNNotificationSound(named: UNNotificationSoundName("rest_beep.wav"))
+        if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
+        let req = UNNotificationRequest(
+            identifier: restEndNotifId,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(secs, 1), repeats: false))
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [restEndNotifId, "pumplo_rest_intent"])
+        UNUserNotificationCenter.current().add(req)
+    }
+
     // Rest countdown. Also stores the UPCOMING set card (nextSet…) so the
     // lock-screen Skip intent can flip back to it natively, and cancels the
     // intent-armed rest-end notification (awake JS owns the alert).
@@ -54,24 +79,37 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let nextRest = call.getDouble("nextRestSeconds") ?? 0
         if nextRest > 0 { d.set(nextRest, forKey: "pumplo_pending_rest_seconds") }
 
+        // Native rest-end alert — survives the webview being suspended.
+        let endsAtMs = call.getDouble("endsAt") ?? 0
+        if endsAtMs > 0 {
+            RestActivityPlugin.scheduleRestEndNotification(endsAt: Date(timeIntervalSince1970: endsAtMs / 1000))
+        }
+
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { call.resolve(); return }
         let thumbUrl = call.getString("thumbUrl")
         let nextThumbUrl = call.getString("nextThumbUrl")
         Task {
             let thumbPath = await RestActivityPlugin.localThumb(for: thumbUrl)
+            var nextThumbPath: String? = nil
             if let nextThumbUrl, !nextThumbUrl.isEmpty {
-                let nextThumbPath = await RestActivityPlugin.localThumb(for: nextThumbUrl)
+                nextThumbPath = await RestActivityPlugin.localThumb(for: nextThumbUrl)
                 UserDefaults.standard.set(nextThumbPath ?? "", forKey: "pumplo_next_thumb_path")
             }
             var state = RestActivityPlugin.restState(from: call)
             state.thumbPath = thumbPath ?? ""
-            await RestActivityPlugin.startOrUpdate(state)
+            state.upNextThumbPath = nextThumbPath ?? UserDefaults.standard.string(forKey: "pumplo_next_thumb_path") ?? ""
+            // Rest goes stale exactly at endsAt → the widget flips itself to
+            // the next-set card even with the app asleep.
+            await RestActivityPlugin.startOrUpdate(state, staleAfter: 0)
             call.resolve()
         }
     }
 
     @objc func update(_ call: CAPPluginCall) {
+        if let endsAtMs = call.getDouble("endsAt") {
+            RestActivityPlugin.scheduleRestEndNotification(endsAt: Date(timeIntervalSince1970: endsAtMs / 1000))
+        }
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         Task {
             guard let activity = Activity<RestActivityAttributes>.activities.first else { call.resolve(); return }
@@ -79,13 +117,13 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             let endsAtMs = call.getDouble("endsAt") ?? state.endsAt.timeIntervalSince1970 * 1000
             state.endsAt = Date(timeIntervalSince1970: endsAtMs / 1000)
             if let next = call.getString("nextSetText") { state.nextSetText = next }
-            await activity.update(ActivityContent(state: state, staleDate: state.endsAt.addingTimeInterval(180)))
+            await activity.update(ActivityContent(state: state, staleDate: state.endsAt))
             call.resolve()
         }
     }
 
     @objc func end(_ call: CAPPluginCall) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent"])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent", RestActivityPlugin.restEndNotifId])
         guard #available(iOS 16.2, *) else { call.resolve(); return }
         Task {
             for activity in Activity<RestActivityAttributes>.activities {
@@ -98,6 +136,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     // Upcoming-set card. Also records what the lock-screen ✓ should do
     // (rest length + notification copy) for CompleteSetIntent.
     @objc func showSet(_ call: CAPPluginCall) {
+        // The card flips to idle → any pending rest-end alert is obsolete.
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pumplo_rest_intent", RestActivityPlugin.restEndNotifId])
         let d = UserDefaults.standard
         d.set(call.getDouble("restSeconds") ?? 0, forKey: "pumplo_pending_rest_seconds")
         if let title = call.getString("restOverTitle") { d.set(title, forKey: "pumplo_rest_over_title") }
@@ -165,6 +205,10 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let endsAtMs = call.getDouble("endsAt") ?? Date().timeIntervalSince1970 * 1000
         let totalSeconds = call.getDouble("totalSeconds") ?? 0
         let endsAt = Date(timeIntervalSince1970: endsAtMs / 1000)
+        let d = UserDefaults.standard
+        // Card the widget flips to when this rest expires with the app asleep.
+        let upName = call.getString("nextExerciseName") ?? ""
+        let upSet = call.getString("nextSetOfText") ?? ""
         return RestActivityAttributes.ContentState(
             startedAt: endsAt.addingTimeInterval(-max(totalSeconds, 1)),
             endsAt: endsAt,
@@ -173,6 +217,13 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             mode: "rest",
             detailText: "",
             thumbPath: "",
-            showButton: true)
+            showButton: true,
+            upNextName: upName.isEmpty ? (d.string(forKey: "pumplo_next_exercise_name") ?? "") : upName,
+            upNextSetText: upSet.isEmpty ? (d.string(forKey: "pumplo_next_set_text") ?? "") : upSet,
+            upNextDetail: {
+                let v = call.getString("nextDetailText") ?? ""
+                return v.isEmpty ? (d.string(forKey: "pumplo_next_detail_text") ?? "") : v
+            }(),
+            upNextThumbPath: "")
     }
 }
