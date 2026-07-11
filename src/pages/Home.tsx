@@ -94,12 +94,14 @@ const Home = () => {
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
   // First-run guided tour (also replayable via the ? button).
-  const tour = useCoachTour('home', 1, isOnboardingComplete);
+  const tour = useCoachTour('home', 2, isOnboardingComplete);
   const tourSteps = [
-    { title: t('tour.home.welcome_title'), body: t('tour.home.welcome_body') },
     { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
-    { target: '[data-coach="home-tabs"]', title: t('tour.home.tabs_title'), body: t('tour.home.tabs_body') },
-    { title: t('tour.home.nav_title'), body: t('tour.home.nav_body') },
+    { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t('tour.home.tab_pumplo_body') },
+    { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t('tour.home.tab_custom_body') },
+    { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
+    { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
+    { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
   ];
 
   // Refetch plan and stats when navigating back to Home
@@ -284,6 +286,7 @@ const Home = () => {
             <div className="flex gap-1 border-b border-border/50" data-coach="home-tabs">
               <button
                 onClick={() => setActiveTab('pumplo')}
+                data-coach="home-tab-pumplo"
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'pumplo'
@@ -309,6 +312,7 @@ const Home = () => {
               </button>
               <button
                 onClick={() => setActiveTab('custom')}
+                data-coach="home-tab-custom"
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'custom'
@@ -607,7 +611,7 @@ const Home = () => {
           </DrawerContent>
         </Drawer>
       </div>
-      <CoachTour screenId="home" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="home" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>;
 };
 export default Home;

@@ -22,9 +22,11 @@ const Profile = () => {
   const { t } = useTranslation();
 
   // First-run hint.
-  const profileTour = useCoachTour('profile', 1, true);
+  const profileTour = useCoachTour('profile', 2, true);
   const profileTourSteps = [
-    { title: t('tour.profile.profile_title'), body: t('tour.profile.profile_body') },
+    { target: '[data-coach="profile-messages"]', title: t('tour.profile.messages_title'), body: t('tour.profile.messages_body') },
+    { target: '[data-coach="profile-history"]', title: t('tour.profile.history_title'), body: t('tour.profile.history_body') },
+    { target: '[data-coach="profile-settings"]', title: t('tour.profile.settings_title'), body: t('tour.profile.settings_body') },
   ];
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -85,12 +87,12 @@ const Profile = () => {
     : { icon: GraduationCap, label: t('profile.become_trainer'), onClick: () => navigate('/become-trainer') };
 
   const menuItems = [
-    { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount },
+    { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount, coach: 'profile-messages' },
     { icon: Calendar, label: t('profile.my_plan'), onClick: () => navigate('/profile/plan') },
-    { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history') },
+    { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history'), coach: 'profile-history' },
     trainerMenuItem,
     { icon: ClipboardList, label: t('profile.edit_questionnaire'), onClick: () => setOnboardingOpen(true) },
-    { icon: Settings, label: t('profile.settings'), onClick: () => navigate('/settings') },
+    { icon: Settings, label: t('profile.settings'), onClick: () => navigate('/settings'), coach: 'profile-settings' },
     { icon: MessageSquare, label: t('profile.feedback'), onClick: () => setFeedbackOpen(true) },
   ];
 
@@ -197,6 +199,7 @@ const Profile = () => {
                 <button
                   key={item.label}
                   onClick={item.onClick}
+                  data-coach={(item as any).coach}
                   className={`w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors ${
                     index !== menuItems.length - 1 ? 'border-b border-border' : ''
                   }`}
@@ -237,7 +240,7 @@ const Profile = () => {
       {/* Feedback Dialog */}
       <AppFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
-      <CoachTour screenId="profile" steps={profileTourSteps} open={profileTour.open} onClose={profileTour.closeTour} />
+      <CoachTour screenId="profile" version={2} steps={profileTourSteps} open={profileTour.open} onClose={profileTour.closeTour} />
     </PageTransition>
   );
 };

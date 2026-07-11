@@ -57,10 +57,11 @@ const Map = () => {
   const { gyms } = usePublishedGyms();
 
   // First-run hint: the plan is built around a specific gym's equipment.
-  const tour = useCoachTour('map', 1, true);
+  const tour = useCoachTour('map', 2, true);
   const tourSteps = [
-    { title: t('tour.map.pick_title'), body: t('tour.map.pick_body') },
-    { title: t('tour.map.change_title'), body: t('tour.map.change_body') },
+    { target: '[data-coach="map-canvas"]', title: t('tour.map.pick_title'), body: t('tour.map.pick_body') },
+    { target: '[data-coach="map-filter"]', title: t('tour.map.filter_title'), body: t('tour.map.filter_body') },
+    { target: '[data-coach="map-locate"]', title: t('tour.map.locate_title'), body: t('tour.map.locate_body') },
   ];
   const [gymMachinesMap, setGymMachinesMap] = useState<Record<string, string[]>>({});
   const [availableMachines, setAvailableMachines] = useState<string[]>([]);
@@ -376,6 +377,8 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
+        {/* Invisible anchor so the tour spotlights the map's centre, not the whole screen */}
+        <div data-coach="map-canvas" className="absolute left-1/2 top-[38%] -translate-x-1/2 w-56 h-40 pointer-events-none" />
         <div className="absolute inset-0">
           <GymMap
             gyms={filteredGyms}
@@ -389,6 +392,7 @@ const Map = () => {
           <div className="absolute right-[60px] z-50" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
             <button
               onClick={() => setFiltersOpen(true)}
+              data-coach="map-filter"
               className="relative w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
               aria-label="Filtrovat posilovny"
             >
@@ -406,6 +410,7 @@ const Map = () => {
           {/* Center on user button */}
           <button
             onClick={handleCenterOnUser}
+            data-coach="map-locate"
             className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
             aria-label="Vycentrovat na mou polohu"
@@ -472,7 +477,7 @@ const Map = () => {
           </DrawerContent>
         </Drawer>
       </div>
-      <CoachTour screenId="map" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="map" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

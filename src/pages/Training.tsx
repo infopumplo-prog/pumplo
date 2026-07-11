@@ -123,11 +123,10 @@ const Training = () => {
 
   // First-run guided tour — explains how the plan/split works (top App Review
   // reviewer feedback: "I didn't understand how the plan / split works").
-  const tour = useCoachTour('training', 1, true);
+  const tour = useCoachTour('training', 2, true);
   const tourSteps = [
-    { title: t('tour.training.plan_title'), body: t('tour.training.plan_body') },
+    { target: '[data-coach="training-day0"]', title: t('tour.training.plan_title'), body: t('tour.training.plan_body') },
     { target: '[data-coach="training-week"]', title: t('tour.training.week_title'), body: t('tour.training.week_body') },
-    { target: '[data-coach="training-days"]', title: t('tour.training.day_title'), body: t('tour.training.day_body') },
   ];
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [completedWorkouts, setCompletedWorkouts] = useState<CompletedWorkout[]>([]);
@@ -1842,6 +1841,7 @@ const Training = () => {
           {daysInViewingWeek.map((day, index) => (
             <motion.button
               key={`${viewingWeek}-${day.dayOfWeek}`}
+              data-coach={index === 0 ? 'training-day0' : undefined}
               onClick={() => setSelectedDayIndex(selectedDayIndex === index ? null : index)}
               className={cn(
                 "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
@@ -2407,7 +2407,7 @@ const Training = () => {
           }}
         />
       </div>
-      <CoachTour screenId="training" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="training" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };
