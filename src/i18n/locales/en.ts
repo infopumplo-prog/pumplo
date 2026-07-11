@@ -2291,6 +2291,46 @@ const en = {
   'notif.streak_1_body': 'Don\'t lose momentum! Closing in {time}.',
   'notif.streak_2_title': '🏆 Keep your streak!',
   'notif.streak_2_body': '{streak} day streak! {time} left until closing.',
+
+  // --- Coach tour (first-run hints) ---
+  'tour.skip': 'Skip',
+  'tour.next': 'Next',
+  'tour.done': 'Got it',
+
+  'tour.home.welcome_title': 'Welcome to Pumplo!',
+  'tour.home.welcome_body': 'This is your home screen. Your workout for today is prepared here, tailored to you and your gym.',
+  'tour.home.today_title': "Today's workout",
+  'tour.home.today_body': 'Pumplo prepares what to train every workout day. Just tap and start — the app guides you exercise by exercise, set by set.',
+  'tour.home.tabs_title': 'Pumplo plan vs. your own workouts',
+  'tour.home.tabs_body': 'Switch between the Pumplo plan (driven by the app based on your goal) and custom workouts you build yourself.',
+  'tour.home.nav_title': 'Bottom menu',
+  'tour.home.nav_body': 'Home = today\'s workout · Map = pick your gym · Statistics = your progress · Profile = settings and messages.',
+
+  'tour.training.plan_title': 'How does your plan work?',
+  'tour.training.plan_body': 'Your plan is divided into training days — a "split". Each letter (A, B, C…) is a different workout type: e.g. A = push (chest, shoulders), B = pull (back, biceps), C = legs. Rotating them trains your whole body while muscles get time to recover.',
+  'tour.training.week_title': 'Weeks & progression',
+  'tour.training.week_body': 'The plan runs in weeks. Each week the load or volume rises slightly so your body keeps adapting. Browse here to see what future weeks look like.',
+  'tour.training.day_title': 'Training day',
+  'tour.training.day_body': 'Tap a day to see its exercises, sets and reps. The highlighted day is today — start your workout from there.',
+
+  'tour.map.pick_title': 'Pick your gym',
+  'tour.map.pick_body': 'Pumplo builds your plan from the machines and equipment of a SPECIFIC gym. Pick yours on the map and the plan adapts to it.',
+  'tour.map.change_title': 'Training elsewhere?',
+  'tour.map.change_body': 'You can switch gyms anytime — the plan rebuilds automatically around the equipment they have.',
+
+  'tour.stats.period_title': 'Your progress',
+  'tour.stats.period_body': 'Switch periods (Today, Week, Month…) to track workouts, time and kilograms lifted. Arrows show the trend vs. the previous period.',
+  'tour.stats.muscles_title': 'Muscle map',
+  'tour.stats.muscles_body': 'The darker the blue, the more sets that muscle group got. See at a glance what you\'re missing.',
+
+  'tour.profile.profile_title': 'Your profile',
+  'tour.profile.profile_body': 'Plan settings (goal, days per week, injuries), trainer messages and your workout history live here.',
+
+  'tour.editor.table_title': 'Sets & values',
+  'tour.editor.table_body': 'Each row is one set — enter weight and reps. Tap the set number for its type (warm-up W, to failure F, drop set D).',
+  'tour.editor.swipe_title': 'Swipe to delete',
+  'tour.editor.swipe_body': 'Delete a set by swiping left on its row. Deleting the last set removes the whole exercise.',
+
 };
 
 export default en;

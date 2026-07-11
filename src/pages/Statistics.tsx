@@ -8,6 +8,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { useStatistics } from '@/hooks/useStatistics';
 import { MuscleBodySvg } from '@/components/workout/MuscleBodySvg';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
@@ -100,6 +101,13 @@ const Statistics = () => {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const [period, setPeriod] = useState<Period>('month');
+
+  // First-run hints for the stats screen.
+  const tour = useCoachTour('stats', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="stats-period"]', title: t('tour.stats.period_title'), body: t('tour.stats.period_body') },
+    { target: '[data-coach="stats-muscles"]', title: t('tour.stats.muscles_title'), body: t('tour.stats.muscles_body') },
+  ];
   const [activeMetric, setActiveMetric] = useState<MetricKey>('weight');
   const [prSearch, setPrSearch] = useState('');
   const [prDrawerOpen, setPrDrawerOpen] = useState(false);
@@ -241,7 +249,7 @@ const Statistics = () => {
         <motion.div className="px-4 space-y-4" variants={containerVariants} initial="hidden" animate="visible">
           {/* Period switcher — drives everything below */}
           <motion.div variants={itemVariants}>
-            <div className="flex bg-muted rounded-xl p-1">
+            <div className="flex bg-muted rounded-xl p-1" data-coach="stats-period">
               {PERIODS.map(p => (
                 <button
                   key={p.key}
@@ -389,7 +397,7 @@ const Statistics = () => {
 
           {/* Muscle distribution — body figure + top groups, for the period */}
           {muscleDist.length > 0 && (
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} data-coach="stats-muscles">
               <Card>
                 <CardHeader className="pb-2 px-4 pt-4">
                   <CardTitle className="text-sm font-medium">{t('stats.muscle_distribution')}</CardTitle>
@@ -583,6 +591,7 @@ const Statistics = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      <CoachTour screenId="stats" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

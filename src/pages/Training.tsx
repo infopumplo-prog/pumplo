@@ -23,6 +23,7 @@ import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import NotificationOnboardingDrawer from '@/components/notifications/NotificationOnboardingDrawer';
@@ -119,6 +120,15 @@ const Training = () => {
   
   // Week switching
   const [viewingWeek, setViewingWeek] = useState<number>(1);
+
+  // First-run guided tour — explains how the plan/split works (top App Review
+  // reviewer feedback: "I didn't understand how the plan / split works").
+  const tour = useCoachTour('training', 1, true);
+  const tourSteps = [
+    { title: t('tour.training.plan_title'), body: t('tour.training.plan_body') },
+    { target: '[data-coach="training-week"]', title: t('tour.training.week_title'), body: t('tour.training.week_body') },
+    { target: '[data-coach="training-days"]', title: t('tour.training.day_title'), body: t('tour.training.day_body') },
+  ];
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [completedWorkouts, setCompletedWorkouts] = useState<CompletedWorkout[]>([]);
   const [historyExercises, setHistoryExercises] = useState<HistoryExercise[]>([]);
@@ -1710,6 +1720,7 @@ const Training = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
+              <CoachHelpButton onClick={tour.openTour} />
               <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title={t('training.cancel_plan')}>
                 <X className="w-5 h-5" />
               </Button>
@@ -1789,7 +1800,7 @@ const Training = () => {
         </div>
 
         {/* Week Navigation - Compact */}
-        <div className="px-4 py-3 flex items-center justify-between bg-muted/30">
+        <div className="px-4 py-3 flex items-center justify-between bg-muted/30" data-coach="training-week">
           <Button 
             variant="ghost" 
             size="sm"
@@ -1827,7 +1838,7 @@ const Training = () => {
         </div>
 
         {/* Days in Week */}
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-2" data-coach="training-days">
           {daysInViewingWeek.map((day, index) => (
             <motion.button
               key={`${viewingWeek}-${day.dayOfWeek}`}
@@ -2396,6 +2407,7 @@ const Training = () => {
           }}
         />
       </div>
+      <CoachTour screenId="training" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

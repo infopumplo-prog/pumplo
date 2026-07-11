@@ -18,6 +18,7 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { cn } from '@/lib/utils';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -458,7 +459,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
       </button>
 
       {/* Sets table */}
-      <div className="ml-7 mt-2">
+      <div className="ml-7 mt-2" data-coach="editor-sets">
         <div className="flex items-center gap-2 px-1 pb-1">
           <span className="w-10 shrink-0 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_set')}</span>
           {isCardio ? (
@@ -548,6 +549,13 @@ const CustomPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+
+  // First-run hints for the workout editor.
+  const tour = useCoachTour('editor', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="editor-sets"]', title: t('tour.editor.table_title'), body: t('tour.editor.table_body') },
+    { target: '[data-coach="editor-sets"]', title: t('tour.editor.swipe_title'), body: t('tour.editor.swipe_body') },
+  ];
   const isEn = i18n.language === 'en';
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -1235,6 +1243,7 @@ const CustomPlanDetail = () => {
         </Drawer>
       </div>
 
+      <CoachTour screenId="editor" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
 
       {/* Equipment incompatibility banner */}

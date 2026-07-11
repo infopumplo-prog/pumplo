@@ -2274,6 +2274,46 @@ const cs = {
   'notif.streak_1_body': 'Neztrácej momentum! Zavírá se za {time}.',
   'notif.streak_2_title': '🏆 Drž svůj streak!',
   'notif.streak_2_body': '{streak} dní série! Zbývá {time} do zavírání.',
+
+  // --- Coach tour (first-run hints) ---
+  'tour.skip': 'Přeskočit',
+  'tour.next': 'Další',
+  'tour.done': 'Rozumím',
+
+  'tour.home.welcome_title': 'Vítej v Pumplo!',
+  'tour.home.welcome_body': 'Tohle je tvoje domovská obrazovka. Najdeš tu dnešní trénink připravený přesně pro tebe a tvoji posilovnu.',
+  'tour.home.today_title': 'Dnešní trénink',
+  'tour.home.today_body': 'Pumplo ti každý tréninkový den nachystá, co máš cvičit. Stačí ťuknout a začít — appka tě provede cvik po cviku, sérii po sérii.',
+  'tour.home.tabs_title': 'Pumplo plán vs. vlastní tréninky',
+  'tour.home.tabs_body': 'Přepínej mezi plánem od Pumpla (řídí ho appka podle tvého cíle) a vlastními tréninky, které si sestavíš sám.',
+  'tour.home.nav_title': 'Spodní menu',
+  'tour.home.nav_body': 'Domů = dnešní trénink · Mapa = výběr posilovny · Statistiky = tvůj pokrok · Profil = nastavení a zprávy.',
+
+  'tour.training.plan_title': 'Jak funguje tvůj plán?',
+  'tour.training.plan_body': 'Tvůj plán je rozdělený na tréninkové dny — tzv. split. Každé písmeno (A, B, C…) je jiný typ tréninku: třeba A = tlaky (hrudník, ramena), B = tahy (záda, biceps), C = nohy. Střídáním procvičíš celé tělo a svaly mají čas na regeneraci.',
+  'tour.training.week_title': 'Týdny a postup',
+  'tour.training.week_body': 'Plán běží v týdnech. Každý týden se lehce zvedá zátěž nebo objem, aby tělo mělo důvod sílit. Tady si můžeš prohlédnout, co tě čeká v dalších týdnech.',
+  'tour.training.day_title': 'Tréninkový den',
+  'tour.training.day_body': 'Ťukni na den a uvidíš cviky, série a opakování. Zvýrazněný den je ten dnešní — z něj spouštíš trénink.',
+
+  'tour.map.pick_title': 'Vyber si posilovnu',
+  'tour.map.pick_body': 'Pumplo staví plán ze strojů a vybavení KONKRÉTNÍ posilovny. Vyber na mapě tu svoji a plán se jí přizpůsobí.',
+  'tour.map.change_title': 'Cvičíš jinde?',
+  'tour.map.change_body': 'Posilovnu můžeš kdykoli změnit — plán se automaticky přeskládá podle vybavení, které tam mají.',
+
+  'tour.stats.period_title': 'Tvůj pokrok',
+  'tour.stats.period_body': 'Přepínej období (Dnes, Týden, Měsíc…) a sleduj tréninky, čas a zvednuté kilogramy. Šipky ukazují trend proti minulému období.',
+  'tour.stats.muscles_title': 'Mapa svalů',
+  'tour.stats.muscles_body': 'Čím tmavší modrá, tím víc sérií daná partie dostala. Na první pohled vidíš, co ti chybí.',
+
+  'tour.profile.profile_title': 'Tvůj profil',
+  'tour.profile.profile_body': 'Tady najdeš nastavení plánu (cíl, dny v týdnu, zranění), zprávy s trenéry a historii tréninků.',
+
+  'tour.editor.table_title': 'Série a hodnoty',
+  'tour.editor.table_body': 'Každý řádek je jedna série — nastav váhu a opakování. Ťukni na číslo série pro typ (rozehřívací W, do selhání F, drop set D).',
+  'tour.editor.swipe_title': 'Mazání swipem',
+  'tour.editor.swipe_body': 'Sérii smažeš přejetím prstem doleva po řádku. Poslední série smaže celý cvik.',
+
 };
 
 export default cs;

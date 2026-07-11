@@ -18,6 +18,7 @@ import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
 
 // Calculate distance between two points using Haversine formula
@@ -54,6 +55,13 @@ const Map = () => {
   const { toast } = useToast();
   const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
   const { gyms } = usePublishedGyms();
+
+  // First-run hint: the plan is built around a specific gym's equipment.
+  const tour = useCoachTour('map', 1, true);
+  const tourSteps = [
+    { title: t('tour.map.pick_title'), body: t('tour.map.pick_body') },
+    { title: t('tour.map.change_title'), body: t('tour.map.change_body') },
+  ];
   const [gymMachinesMap, setGymMachinesMap] = useState<Record<string, string[]>>({});
   const [availableMachines, setAvailableMachines] = useState<string[]>([]);
 
@@ -464,6 +472,7 @@ const Map = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      <CoachTour screenId="map" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

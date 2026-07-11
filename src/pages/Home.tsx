@@ -18,6 +18,7 @@ import pumploWordmark from '@/assets/pumplo-wordmark.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -91,6 +92,15 @@ const Home = () => {
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  // First-run guided tour (also replayable via the ? button).
+  const tour = useCoachTour('home', 1, isOnboardingComplete);
+  const tourSteps = [
+    { title: t('tour.home.welcome_title'), body: t('tour.home.welcome_body') },
+    { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
+    { target: '[data-coach="home-tabs"]', title: t('tour.home.tabs_title'), body: t('tour.home.tabs_body') },
+    { title: t('tour.home.nav_title'), body: t('tour.home.nav_body') },
+  ];
 
   // Refetch plan and stats when navigating back to Home
   useEffect(() => {
@@ -254,9 +264,12 @@ const Home = () => {
           delay: 0.1
         }}>
             <p className="text-muted-foreground text-sm">{t('home.hello')}</p>
-            <h1 className="text-3xl font-bold text-foreground">
-              {profile?.first_name || t('home.athlete')} 💪
-            </h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-foreground">
+                {profile?.first_name || t('home.athlete')} 💪
+              </h1>
+              <CoachHelpButton onClick={tour.openTour} />
+            </div>
           </motion.div>
         </div>
 
@@ -268,7 +281,7 @@ const Home = () => {
         {/* Tab Switch */}
         {isOnboardingComplete && (
           <div className="px-6 pt-2">
-            <div className="flex gap-1 border-b border-border/50">
+            <div className="flex gap-1 border-b border-border/50" data-coach="home-tabs">
               <button
                 onClick={() => setActiveTab('pumplo')}
                 className={cn(
@@ -377,7 +390,7 @@ const Home = () => {
                 </motion.div>) : plan ? (/* Active plan */
           <>
                   {/* Week Progress Card with next training inside */}
-                  <motion.div variants={itemVariants}>
+                  <motion.div variants={itemVariants} data-coach="home-today">
                     <div className="rounded-3xl bg-[#5BC8F5] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
@@ -594,6 +607,7 @@ const Home = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      <CoachTour screenId="home" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>;
 };
 export default Home;

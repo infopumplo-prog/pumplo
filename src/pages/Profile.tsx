@@ -13,12 +13,19 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
 import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
   const { t } = useTranslation();
+
+  // First-run hint.
+  const profileTour = useCoachTour('profile', 1, true);
+  const profileTourSteps = [
+    { title: t('tour.profile.profile_title'), body: t('tour.profile.profile_body') },
+  ];
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { profile, isLoading, updateProfile, refetch } = useUserProfile();
@@ -230,6 +237,7 @@ const Profile = () => {
       {/* Feedback Dialog */}
       <AppFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
+      <CoachTour screenId="profile" steps={profileTourSteps} open={profileTour.open} onClose={profileTour.closeTour} />
     </PageTransition>
   );
 };
