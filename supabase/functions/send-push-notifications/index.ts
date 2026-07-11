@@ -938,11 +938,13 @@ async function processClosingNotifications(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getDaysSinceLastWorkout(supabase: SupabaseClient<any>, userId: string): Promise<number | null> {
+  // Count ANY session, including one still in progress — a user training
+  // RIGHT NOW must not get a "two days off?" win-back push (happened to
+  // David mid-workout: his running session wasn't completed yet).
   const { data } = await supabase
     .from('workout_sessions')
     .select('started_at, completed_at')
     .eq('user_id', userId)
-    .not('completed_at', 'is', null)
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle();

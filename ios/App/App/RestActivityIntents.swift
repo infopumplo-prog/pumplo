@@ -20,6 +20,12 @@ struct CompleteSetIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         let d = UserDefaults.standard
+        // Double-tap guard: a real set can't be completed twice within 2 s —
+        // repeated taps on a (perceived) unresponsive card must not queue
+        // extra completions (they used to log several sets on unlock).
+        let now = Date().timeIntervalSince1970
+        if now - d.double(forKey: "pumplo_last_complete_tap") < 2.0 { return .result() }
+        d.set(now, forKey: "pumplo_last_complete_tap")
         var queue = d.array(forKey: "pumplo_pending_set_completions") as? [Double] ?? []
         queue.append(Date().timeIntervalSince1970 * 1000)
         d.set(queue, forKey: "pumplo_pending_set_completions")
