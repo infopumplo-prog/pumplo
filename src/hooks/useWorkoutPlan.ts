@@ -137,7 +137,11 @@ export const useWorkoutPlan = () => {
       const uniqueDayLetters = new Set(
         (exercisesData || []).map(e => e.day_letter)
       );
-      const dayCount = uniqueDayLetters.size || 2;
+      // Bare plan (no exercises yet — gym not picked): day count from split.
+      const SPLIT_DAYS: Record<string, number> = { full_body: 2, upper_lower: 2, ppl: 3 };
+      const dayCount = uniqueDayLetters.size
+        || SPLIT_DAYS[(planData as Record<string, unknown>).split_type as string]
+        || 2;
 
       // Self-heal the day counter: day advancement runs in onComplete, which the
       // user can skip by closing the app on the post-workout summary/share screen

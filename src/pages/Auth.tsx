@@ -216,7 +216,9 @@ const Auth = () => {
             started_at: new Date().toISOString(),
             current_week: 1,
             gym_id: null, // Will be set when user selects gym
-            training_days: trainingDays
+            training_days: trainingDays,
+            // Lets the plan card show correct day letters before a gym exists
+            split_type: trainingSplit
           });
       }
 

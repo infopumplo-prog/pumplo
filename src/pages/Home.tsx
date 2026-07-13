@@ -351,27 +351,9 @@ const Home = () => {
 
           {/* My Plan Section (Pumplo plán) */}
           {isOnboardingComplete && activeTab === 'pumplo' && <>
-              {/* No gym selected */}
-              {!profile?.selected_gym_id && !planLoading ? <motion.div variants={itemVariants}>
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
-                    <div className="absolute -left-8 -bottom-8 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                    
-                    <div className="relative">
-                      <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
-                        <MapPin className="w-8 h-8 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">{t('home.select_gym')}</h3>
-                      <p className="text-muted-foreground mb-6">
-                        {t('home.select_gym_desc')}
-                      </p>
-                      <Button onClick={() => navigate('/map')} size="lg" className="gap-2 rounded-xl">
-                        <MapPin className="w-5 h-5" />
-                        {t('home.find_gym')}
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div> : !plan && !planLoading ? (/* No plan yet */
+              {/* Gym is picked right before the first workout — the plan card
+                  shows even without one. */}
+              {!plan && !planLoading ? (/* No plan yet */
           <motion.div variants={itemVariants}>
                   <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 via-primary/10 to-transparent border border-primary/20 p-6">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />

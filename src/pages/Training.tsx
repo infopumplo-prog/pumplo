@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -164,6 +164,8 @@ const Training = () => {
 
   // Auto-start flag from URL param
   const [autoStartTriggered, setAutoStartTriggered] = useState(false);
+  const [pendingAutoStartGymId, setPendingAutoStartGymId] = useState<string | null>(null);
+  const handleRegeneratePlanRef = useRef<(gymOverride?: string) => void>(() => {});
 
   // Resume workout state
   const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
@@ -380,21 +382,18 @@ const Training = () => {
   useEffect(() => {
     const shouldAutoStart = searchParams.get('start') === 'true';
     
+    const gymIdParam = searchParams.get('gymId') || profile?.selected_gym_id || null;
     if (
-      shouldAutoStart && 
-      !autoStartTriggered && 
-      plan && 
-      !planLoading && 
-      profile?.selected_gym_id && 
+      shouldAutoStart &&
+      !autoStartTriggered &&
+      plan &&
+      !planLoading &&
+      gymIdParam &&
       !profileLoading
     ) {
       setAutoStartTriggered(true);
-      // Clear the URL param
+      // Clear the URL params
       searchParams.delete('start');
-      setSearchParams(searchParams, { replace: true });
-      
-      // Start workout flow directly (gym already confirmed in Home)
-      const gymIdParam = searchParams.get('gymId') || profile.selected_gym_id;
       searchParams.delete('gymId');
       setSearchParams(searchParams, { replace: true });
 
@@ -405,11 +404,28 @@ const Training = () => {
         setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(gymIdParam);
         setShowWorkoutPreview(true);
+      } else if (plan.exercises.length === 0) {
+        // Bare plan (questionnaire done, first gym just picked): fill the
+        // plan from this gym's equipment, then auto-start below.
+        setPendingAutoStartGymId(gymIdParam);
+        handleRegeneratePlanRef.current(gymIdParam);
       } else {
         setShowMissingExercisesDialog(true);
       }
     }
   }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams]);
+
+  // Once the bare plan has been generated for the picked gym, start the workout.
+  useEffect(() => {
+    if (!pendingAutoStartGymId || planLoading || isRegeneratingPlan) return;
+    const exercisesFromPlan = getCurrentDayExercises().filter(ex => ex.exerciseId);
+    if (exercisesFromPlan.length > 0) {
+      setGeneratedExercises(exercisesFromPlan);
+      setSelectedWorkoutGymId(pendingAutoStartGymId);
+      setShowWorkoutPreview(true);
+      setPendingAutoStartGymId(null);
+    }
+  }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartGymId, getCurrentDayExercises]);
 
   // Auto-resume paused workout when navigating from Home with ?resume=true
   useEffect(() => {
@@ -474,7 +490,7 @@ const Training = () => {
   }, [searchParams, pausedWorkout, autoStartTriggered, setSearchParams, clearPausedWorkout]);
   
   // Function to regenerate plan automatically
-  const handleRegeneratePlan = useCallback(async () => {
+  const handleRegeneratePlan = useCallback(async (gymOverride?: string) => {
     if (!profile?.primary_goal) return;
     
     setIsRegeneratingPlan(true);
@@ -496,7 +512,7 @@ const Training = () => {
       }
       
       // Create new plan with current profile training_days snapshot and generate exercises
-      const selectedGymId = profile.selected_gym_id;
+      const selectedGymId = gymOverride || profile.selected_gym_id;
       const durationMinutes = profile.training_duration_minutes || 60;
       
       if (selectedGymId && profile.user_level) {
@@ -533,10 +549,10 @@ const Training = () => {
           });
       }
       
-      // Reset day index but KEEP STREAK!
+      // Reset day index but KEEP STREAK! (+ persist the freshly picked gym)
       await supabase
         .from('user_profiles')
-        .update({ current_day_index: 0 })
+        .update(gymOverride ? { current_day_index: 0, selected_gym_id: gymOverride } : { current_day_index: 0 })
         .eq('user_id', userData.user.id);
       
       // Refetch
@@ -553,6 +569,7 @@ const Training = () => {
       setIsRegeneratingPlan(false);
     }
   }, [profile, plan, refetchProfile, refetchPlan]);
+  handleRegeneratePlanRef.current = handleRegeneratePlan;
 
   // Get today's weekday
   const todayWeekday = getCurrentWeekday();
