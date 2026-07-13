@@ -101,8 +101,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    const { data, error } = await supabase.auth.signUp({
+
+    // Never hang the registration spinner forever: if the network (or the
+    // auth client's internal lock) stalls, surface an error after 20 s.
+    const signUpPromise = supabase.auth.signUp({
       email,
       password,
       options: {
@@ -113,6 +115,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       },
     });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('signup_timeout')), 20000));
+
+    let data, error;
+    try {
+      ({ data, error } = await Promise.race([signUpPromise, timeout]));
+    } catch (e) {
+      if (e instanceof Error && e.message === 'signup_timeout') {
+        return { success: false, error: 'Registrace vypršela — zkontroluj připojení k internetu a zkus to znovu.' };
+      }
+      return { success: false, error: e instanceof Error ? e.message : 'Registrace selhala' };
+    }
 
     if (error) {
       if (error.message.includes('User already registered')) {

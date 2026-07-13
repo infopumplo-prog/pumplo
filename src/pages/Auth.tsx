@@ -24,7 +24,6 @@ import {
   OnboardingTrainerTip,
   OnboardingTrainerWelcome,
   OnboardingOutcomeStep,
-  OnboardingGymStep,
 } from '@/components/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,7 +65,6 @@ const Auth = () => {
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
-  const [showGymStep, setShowGymStep] = useState(false);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
@@ -266,11 +264,9 @@ const Auth = () => {
       }
       setShowTrainerTip(false);
       if (onboardingStep === 6) {
-        if (gymIdFromQR) {
-          setShowOutcomeStep(true);
-        } else {
-          setShowGymStep(true);
-        }
+        // Gym is picked right before the first workout (or via a gym QR code),
+        // not in the questionnaire — the plan preview doesn't need it.
+        setShowOutcomeStep(true);
         return;
       }
       setOnboardingStep(onboardingStep + 1);
@@ -280,16 +276,7 @@ const Auth = () => {
   const handlePrevStep = () => {
     if (showOutcomeStep) {
       setShowOutcomeStep(false);
-      if (gymIdFromQR) {
-        // came from QR — skip gym step, go back to equipment step
-        setOnboardingStep(6);
-      } else {
-        setShowGymStep(true);
-      }
-      return;
-    }
-    if (showGymStep) {
-      setShowGymStep(false);
+      setOnboardingStep(6);
       return;
     }
     if (showTrainerTip) {
@@ -316,7 +303,6 @@ const Auth = () => {
     setError('');
     setOnboardingStep(0);
     setShowOutcomeStep(false);
-    setShowGymStep(false);
     setShowTrainerWelcome(newMode === 'register');
   };
 
@@ -723,50 +709,6 @@ const Auth = () => {
                 <>
                   <OnboardingTrainerWelcome onStart={() => setShowTrainerWelcome(false)} />
                   <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
-                    {t('auth.have_account')}{' '}
-                    <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
-                      {t('auth.sign_in')}
-                    </button>
-                  </p>
-                </>
-              ) : showGymStep ? (
-                <>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key="gym"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <OnboardingGymStep
-                        selectedGymId={selectedGymId}
-                        onSelect={setSelectedGymId}
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-                  <div className="flex gap-3 mt-6 pb-4">
-                    <Button variant="outline" onClick={() => setShowGymStep(false)} className="flex-1">
-                      <ChevronLeft className="w-4 h-4 mr-1" />
-                      {t('auth.back')}
-                    </Button>
-                    <Button
-                      onClick={() => { setShowGymStep(false); setShowOutcomeStep(true); }}
-                      className="flex-1"
-                      disabled={!selectedGymId}
-                    >
-                      {t('auth.continue')}
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => { setSelectedGymId(null); setShowGymStep(false); setShowOutcomeStep(true); }}
-                    className="w-full text-muted-foreground text-sm pb-2"
-                  >
-                    {t('auth.skip')}
-                  </Button>
-                  <p className="text-center text-muted-foreground text-sm pb-8">
                     {t('auth.have_account')}{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">
                       {t('auth.sign_in')}
