@@ -2334,6 +2334,25 @@ const en = {
   'tour.profile.settings_title': 'Settings',
   'tour.profile.settings_body': 'Change your goal, training days per week or injuries — the plan adapts.',
 
+  'tour.player.inputs_title': 'Weight & reps',
+  'tour.player.inputs_body': 'Before checking off a set, adjust the weight and reps you actually did.',
+  'tour.player.complete_title': 'Set done',
+  'tour.player.complete_body': 'This button logs the set — a rest countdown starts. You can also check off sets from the Lock Screen widget.',
+  'tour.player.swap_title': 'Swap exercise',
+  'tour.player.swap_body': 'A short tap swaps in a random alternative; hold to pick from all options for this slot.',
+  'tour.player.list_title': 'List view',
+  'tour.player.list_body': 'Switches the whole workout to a list — see all exercises and sets at once and revisit finished ones.',
+
+  'tour.wlist.row_title': 'Current set',
+  'tour.wlist.row_body': 'The highlighted row is up next — adjust kg and reps and tap ✓. Tap the green ✓ of a finished set to un-check and edit it.',
+  'tour.wlist.info_title': 'Exercise detail',
+  'tour.wlist.info_body': 'ⓘ opens the detail with video, muscles and instructions.',
+
+  'tour.log.row_title': 'Logging sets',
+  'tour.log.row_body': 'Each row is one set — fill in kg and reps and tap ✓. A rest countdown starts.',
+  'tour.log.swipe_title': 'Swipe to delete',
+  'tour.log.swipe_body': 'Swipe a set left to delete it. Tap the set number to choose its type (W/F/D).',
+
   'tour.editor.table_title': 'Sets & values',
   'tour.editor.table_body': 'Each row is one set — enter weight and reps. Tap the set number for its type (warm-up W, to failure F, drop set D).',
   'tour.editor.swipe_title': 'Swipe to delete',

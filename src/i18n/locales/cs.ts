@@ -2317,6 +2317,25 @@ const cs = {
   'tour.profile.settings_title': 'Nastavení',
   'tour.profile.settings_body': 'Uprav cíl, tréninkové dny v týdnu nebo zranění — plán se přizpůsobí.',
 
+  'tour.player.inputs_title': 'Váha a opakování',
+  'tour.player.inputs_body': 'Před odškrtnutím série uprav, s jakou váhou a kolika opakováními jsi ji odcvičil.',
+  'tour.player.complete_title': 'Hotová série',
+  'tour.player.complete_body': 'Tímhle tlačítkem sérii zapíšeš — pak se spustí pauza s odpočtem. Série jdou odškrtávat i z widgetu na zamčené obrazovce.',
+  'tour.player.swap_title': 'Výměna cviku',
+  'tour.player.swap_body': 'Krátký ťuk vymění cvik za náhodnou alternativu, podržením si vybereš ze všech možností pro tento slot.',
+  'tour.player.list_title': 'Zobrazení pod sebou',
+  'tour.player.list_body': 'Přepne celý trénink do seznamu — vidíš všechny cviky a série najednou a můžeš se vracet k hotovým.',
+
+  'tour.wlist.row_title': 'Aktuální série',
+  'tour.wlist.row_body': 'Zvýrazněný řádek je série na řadě — uprav kg a opakování a odškrtni ✓. Hotové (zelené) série můžeš ťuknutím na ✓ vrátit a upravit.',
+  'tour.wlist.info_title': 'Detail cviku',
+  'tour.wlist.info_body': 'ⓘ otevře detail s videem, svaly a instrukcemi ke cviku.',
+
+  'tour.log.row_title': 'Zapisování sérií',
+  'tour.log.row_body': 'Každý řádek je série — vyplň kg a opakování a odškrtni ✓. Spustí se pauza s odpočtem.',
+  'tour.log.swipe_title': 'Mazání swipem',
+  'tour.log.swipe_body': 'Sérii smažeš přejetím prstem doleva. Ťuknutím na číslo série nastavíš její typ (W/F/D).',
+
   'tour.editor.table_title': 'Série a hodnoty',
   'tour.editor.table_body': 'Každý řádek je jedna série — nastav váhu a opakování. Ťukni na číslo série pro typ (rozehřívací W, do selhání F, drop set D).',
   'tour.editor.swipe_title': 'Mazání swipem',

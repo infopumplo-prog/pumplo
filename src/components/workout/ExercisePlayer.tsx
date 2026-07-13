@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshC
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
@@ -121,6 +122,15 @@ export const ExercisePlayer = ({
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  // First-workout guided tour (video player controls).
+  const tour = useCoachTour('player', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="player-inputs"]', title: t('tour.player.inputs_title'), body: t('tour.player.inputs_body') },
+    { target: '[data-coach="player-complete"]', title: t('tour.player.complete_title'), body: t('tour.player.complete_body') },
+    { target: '[data-coach="player-swap"]', title: t('tour.player.swap_title'), body: t('tour.player.swap_body') },
+    { target: '[data-coach="player-list"]', title: t('tour.player.list_title'), body: t('tour.player.list_body') },
+  ];
 
   const handleToggleMute = () => {
     const next = !isMuted;
@@ -352,6 +362,7 @@ export const ExercisePlayer = ({
               {onSwapExercise && (
                 <button
                   {...swapPress.handlers}
+                  data-coach="player-swap"
                   onClick={() => { if (!swapPress.wasLongPress()) onSwapExercise(); }}
                   className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`}
                   style={{ pointerEvents: 'auto', touchAction: 'none' }}
@@ -365,7 +376,7 @@ export const ExercisePlayer = ({
                 </button>
               )}
               {onSwitchToList && (
-                <button onClick={onSwitchToList} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={onSwitchToList} data-coach="player-list" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <List className="w-5 h-5" />
                 </button>
               )}
@@ -488,7 +499,7 @@ export const ExercisePlayer = ({
 
                     {/* Weight and reps inputs */}
                     {showWeightInput && currentSet < totalSets && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" data-coach="player-inputs">
                         <div className="flex-1">
                           <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.weight_kg')}</label>
                           <input
@@ -517,6 +528,7 @@ export const ExercisePlayer = ({
                   {/* Complete set button */}
                   {currentSet < totalSets && (
                     <button
+                      data-coach="player-complete"
                       onClick={handleCompleteSet}
                       className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
                     >
@@ -529,6 +541,8 @@ export const ExercisePlayer = ({
           </div>
         </div>
       </motion.div>
+
+      <CoachTour screenId="player" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
 
       {/* Info drawer */}
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>

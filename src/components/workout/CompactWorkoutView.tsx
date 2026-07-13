@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
 import { useLongPress } from '@/lib/useLongPress';
@@ -197,6 +198,13 @@ export const CompactWorkoutView = ({
   // Drafts for pending sets of NON-active exercises (un-checked to fix values,
   // or filled in later); keyed `${exerciseIndex}-${setIndex}`.
   const [backfill, setBackfill] = useState<Record<string, { w?: string; r?: string }>>({});
+
+  // First-workout tour for the list presentation.
+  const tour = useCoachTour('wlist', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="wlist-current"]', title: t('tour.wlist.row_title'), body: t('tour.wlist.row_body') },
+    { target: '[data-coach="wlist-info"]', title: t('tour.wlist.info_title'), body: t('tour.wlist.info_body') },
+  ];
 
   // Cardio auto-complete: countdown beeps at T-3/2/1, auto-complete at target
   useEffect(() => {
@@ -450,6 +458,7 @@ export const CompactWorkoutView = ({
                   </button>
                   {onShowInfo && ex.exerciseId && (
                     <button
+                      data-coach="wlist-info"
                       onClick={(e) => { e.stopPropagation(); onShowInfo(ex.exerciseId!); }}
                       className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors shrink-0"
                     >
@@ -497,6 +506,7 @@ export const CompactWorkoutView = ({
                     return (
                       <div
                         key={si}
+                        data-coach={isCurrent ? 'wlist-current' : undefined}
                         className={cn(
                           'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
                           done ? 'bg-green-500/15' : isCurrent ? 'bg-[#5BC8F5]/10' : ''
@@ -694,6 +704,7 @@ export const CompactWorkoutView = ({
           )}
         </div>
       </div>
+      <CoachTour screenId="wlist" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { MuscleBodySvg } from './MuscleBodySvg';
 import { GestureSafeInput } from './GestureSafeInput';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
@@ -467,6 +468,13 @@ const LogWorkoutView = ({
 
   // Re-assert the lock-screen card on every return to the foreground — if iOS
   // dropped or staled the Live Activity while locked, this repaints it.
+  // First-workout tour for the custom workout log.
+  const logTour = useCoachTour('log', 1, true);
+  const logTourSteps = [
+    { target: '[data-coach="log-row"]', title: t('tour.log.row_title'), body: t('tour.log.row_body') },
+    { target: '[data-coach="log-row"]', title: t('tour.log.swipe_title'), body: t('tour.log.swipe_body') },
+  ];
+
   const [resumeTick, setResumeTick] = useState(0);
   useEffect(() => {
     const onVis = () => { if (document.visibilityState === 'visible') setResumeTick(n => n + 1); };
@@ -638,6 +646,7 @@ const LogWorkoutView = ({
                     return (
                       <motion.div
                         key={key}
+                        data-coach={idx === 0 && si === 0 ? 'log-row' : undefined}
                         drag="x"
                         dragConstraints={{ left: 0, right: 0 }}
                         dragElastic={{ left: 0.5, right: 0 }}
@@ -872,6 +881,7 @@ const LogWorkoutView = ({
           </motion.div>
         )}
       </AnimatePresence>
+      <CoachTour screenId="log" steps={logTourSteps} open={logTour.open} onClose={logTour.closeTour} />
     </div>
   );
 };
