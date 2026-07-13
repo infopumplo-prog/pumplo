@@ -17,6 +17,14 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 // Map Stripe price IDs to plan IDs — LIVE mode (switched 2026-04-11)
 const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
+  // 2026-07 two-tier pricing: Start 1500 / Neomezený (premium) 3000
+  "price_1TshbKEvdp2FxnFOGJ5FHAsC": { plan_id: "start", period: "monthly" },
+  "price_1TshbLEvdp2FxnFOaSD3uBaD": { plan_id: "start", period: "annual" },
+  "price_1TshbLEvdp2FxnFO4UUBStkz": { plan_id: "premium", period: "monthly" },
+  "price_1TshbLEvdp2FxnFOXQJlLdqb": { plan_id: "premium", period: "annual" },
+  // NextGen deal: discounted Start (-500 Kč, 2 branches on one subscription)
+  "price_1TshckEvdp2FxnFO5QO5zDFB": { plan_id: "start", period: "monthly" },
+  // legacy prices (pre-2026-07 tiers) — keep mapping for existing subscriptions
   "price_1TKxyrEvdp2FxnFO3TTdE9mS": { plan_id: "start", period: "monthly" },
   "price_1TKxysEvdp2FxnFOCXjuXt8g": { plan_id: "start", period: "annual" },
   "price_1TKxysEvdp2FxnFO4ImRp2gn": { plan_id: "profi", period: "monthly" },
