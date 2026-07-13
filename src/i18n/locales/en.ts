@@ -2334,6 +2334,11 @@ const en = {
   'tour.profile.settings_title': 'Settings',
   'tour.profile.settings_body': 'Change your goal, training days per week or injuries — the plan adapts.',
 
+  'tour.warmup.skip_title': 'Warm-up',
+  'tour.warmup.skip_body': 'A short warm-up runs before the workout — each exercise has a countdown. This button skips an exercise; the X skips the whole warm-up.',
+  'tour.cooldown.skip_title': 'Post-workout stretch',
+  'tour.cooldown.skip_body': 'A short stretch follows the last exercise for better recovery. This button skips an exercise.',
+
   'tour.common.help_title': 'Replay anytime',
   'tour.common.help_body': 'Tap this button to replay this guide whenever you need it. It lives on every screen.',
 

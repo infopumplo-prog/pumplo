@@ -2317,6 +2317,11 @@ const cs = {
   'tour.profile.settings_title': 'Nastavení',
   'tour.profile.settings_body': 'Uprav cíl, tréninkové dny v týdnu nebo zranění — plán se přizpůsobí.',
 
+  'tour.warmup.skip_title': 'Rozcvička',
+  'tour.warmup.skip_body': 'Před tréninkem tě provedeme krátkou rozcvičkou — každý cvik má odpočet. Tímhle tlačítkem přeskočíš cvik, křížkem celou rozcvičku.',
+  'tour.cooldown.skip_title': 'Protažení po tréninku',
+  'tour.cooldown.skip_body': 'Po posledním cviku tě čeká krátké protažení pro lepší regeneraci. Tímhle tlačítkem přeskočíš cvik.',
+
   'tour.common.help_title': 'Nápověda kdykoli znovu',
   'tour.common.help_body': 'Tímhle tlačítkem si tuhle nápovědu kdykoli spustíš znovu. Najdeš ho na každé obrazovce.',
 
