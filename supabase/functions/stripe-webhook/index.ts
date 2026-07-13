@@ -80,6 +80,34 @@ serve(async (req) => {
 });
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
+  // --- Custom deal path: gyms already exist (created by admin), the payment
+  // link carries their ids — just attach the Stripe subscription to them.
+  // This is how per-customer pricing works (e.g. NextGen: 2 gyms, 1000 CZK).
+  const customGymIds = session.metadata?.custom_gym_ids;
+  if (customGymIds) {
+    const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+    const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
+    const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    for (const gymId of customGymIds.split(",").map((g) => g.trim()).filter(Boolean)) {
+      const { error } = await supabase
+        .from("gym_subscriptions")
+        .upsert({
+          gym_id: gymId,
+          plan_id: session.metadata?.plan_id || "nextgen_custom",
+          status: "active",
+          billing_period: "monthly",
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: session.customer as string,
+          current_period_start: periodStart,
+          current_period_end: periodEnd,
+          is_grandfathered: false,
+        }, { onConflict: "gym_id" });
+      if (error) console.error("custom_gym_ids upsert failed for", gymId, error);
+      else console.log("Attached custom subscription to gym", gymId);
+    }
+    return;
+  }
+
   // Get metadata from session (gym_name, user_id, address, machines, etc.)
   const userId = session.metadata?.user_id;
   const gymName = session.metadata?.gym_name;
@@ -311,34 +339,34 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-  const { data: gymSub } = await supabase
+  // One Stripe subscription can cover several gyms (custom multi-gym deals).
+  const { data: gymSubs } = await supabase
     .from("gym_subscriptions")
     .select("id, gym_id, plan_id")
-    .eq("stripe_subscription_id", subscription.id)
-    .single();
+    .eq("stripe_subscription_id", subscription.id);
 
-  if (!gymSub) return;
+  for (const gymSub of gymSubs ?? []) {
+    await supabase
+      .from("gym_subscriptions")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", gymSub.id);
 
-  await supabase
-    .from("gym_subscriptions")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", gymSub.id);
+    // Unpublish gym when subscription cancelled
+    await supabase
+      .from("gyms")
+      .update({ is_published: false })
+      .eq("id", gymSub.gym_id);
 
-  // Unpublish gym when subscription cancelled
-  await supabase
-    .from("gyms")
-    .update({ is_published: false })
-    .eq("id", gymSub.gym_id);
-
-  await supabase.from("subscription_events").insert({
-    gym_id: gymSub.gym_id,
-    event_type: "cancelled",
-    from_plan_id: gymSub.plan_id,
-  });
+    await supabase.from("subscription_events").insert({
+      gym_id: gymSub.gym_id,
+      event_type: "cancelled",
+      from_plan_id: gymSub.plan_id,
+    });
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -346,12 +374,11 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const planInfo = PRICE_TO_PLAN[priceId];
   if (!planInfo) return;
 
-  const { data: gymSub } = await supabase
+  const { data: gymSubs } = await supabase
     .from("gym_subscriptions")
     .select("id, gym_id, plan_id")
-    .eq("stripe_subscription_id", subscription.id)
-    .single();
-
+    .eq("stripe_subscription_id", subscription.id);
+  const gymSub = gymSubs?.[0];
   if (!gymSub) return;
 
   const oldPlan = gymSub.plan_id;
@@ -372,7 +399,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", gymSub.id);
+    .eq("stripe_subscription_id", subscription.id);
 
   await supabase.from("subscription_events").insert({
     gym_id: gymSub.gym_id,
