@@ -8,6 +8,7 @@ import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
+import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StartWorkoutButtonProps {
@@ -78,7 +79,7 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
         animate={{ opacity: 1, y: 0 }}
       >
         <Button
-          onClick={() => setShowGymSelector(true)}
+          onClick={() => { prefetchGymLocation(); setShowGymSelector(true); }}
           size="lg"
           variant="gradient"
           className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"

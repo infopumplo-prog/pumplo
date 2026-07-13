@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
@@ -853,6 +854,7 @@ const Training = () => {
 
   // Otevře GymSelector před startem tréninku
   const handleStartWorkout = () => {
+    prefetchGymLocation(); // warm the GPS fix while the user picks a gym
     setShowGymSelectorForStart(true);
   };
 
