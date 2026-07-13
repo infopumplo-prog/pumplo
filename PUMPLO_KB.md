@@ -7,16 +7,15 @@
 
 ## Pricing (ověřeno, schváleno Davidem — 1.5.2026)
 
-### B2B Gym subscription (3 tiers)
-| Tier | Cena |
-|------|------|
-| Basic | 1 990 CZK/měs |
-| Standard | 3 990 CZK/měs |
-| Premium | 6 990 CZK/měs |
+### B2B Gym subscription (2 tiery — rozhodnutí Davida 13.7.2026)
+| Tier | Cena | Limity |
+|------|------|--------|
+| Start | 1 500 CZK/měs (15 000/rok) | max 25 cvičišť, 1 trenér, 2 broadcast zprávy/měs, základní analytika |
+| Neomezený | 3 000 CZK/měs (30 000/rok) | bez limitů |
 
-**Realistický tier mix: 40 % Basic, 50 % Standard, 10 % Premium → avg 3 490 CZK/gym/měs**
+Custom slevy per zákazník = zvýhodněná Stripe cena na stejném produktu (příklad: NextGen platí 1 000 CZK/měs za Start pro 2 pobočky — jedna subscription, metadata custom_gym_ids).
 
-> **NEPLATNÉ:** Flat model 5 000 CZK/měs. Nepoužívat.
+> **NEPLATNÉ:** 3 tiery 1 990/3 990/6 990 (model 1.5.–13.7.2026) i flat 5 000 CZK/měs. Nepoužívat.
 
 ### B2C Premium (členové)
 - **150 CZK/měs** na člena
