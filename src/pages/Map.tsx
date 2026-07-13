@@ -62,6 +62,7 @@ const Map = () => {
     { target: '[data-coach="map-canvas"]', title: t('tour.map.pick_title'), body: t('tour.map.pick_body') },
     { target: '[data-coach="map-filter"]', title: t('tour.map.filter_title'), body: t('tour.map.filter_body') },
     { target: '[data-coach="map-locate"]', title: t('tour.map.locate_title'), body: t('tour.map.locate_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const [gymMachinesMap, setGymMachinesMap] = useState<Record<string, string[]>>({});
   const [availableMachines, setAvailableMachines] = useState<string[]>([]);
@@ -406,6 +407,17 @@ const Map = () => {
               )}
             </button>
           </div>
+
+          {/* Tour replay */}
+          <button
+            onClick={tour.openTour}
+            data-coach="help-btn"
+            className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)' }}
+            aria-label="Help"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          </button>
 
           {/* Center on user button */}
           <button

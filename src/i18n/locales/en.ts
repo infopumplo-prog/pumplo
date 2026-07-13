@@ -2334,6 +2334,18 @@ const en = {
   'tour.profile.settings_title': 'Settings',
   'tour.profile.settings_body': 'Change your goal, training days per week or injuries — the plan adapts.',
 
+  'tour.common.help_title': 'Replay anytime',
+  'tour.common.help_body': 'Tap this button to replay this guide whenever you need it. It lives on every screen.',
+
+  'tour.myplan.overview_title': 'Plan settings',
+  'tour.myplan.overview_body': 'Your plan at a glance: goal, split, training days and gym. You can regenerate it here too.',
+  'tour.history.overview_title': 'Workout history',
+  'tour.history.overview_body': 'Every finished workout with sets, weights and time. Tap a workout for details.',
+  'tour.messages.overview_title': 'Messages',
+  'tour.messages.overview_body': 'Chats with trainers and your gym in one place.',
+  'tour.settings.overview_title': 'Settings',
+  'tour.settings.overview_body': 'Edit your profile, goal, training days, notifications and account.',
+
   'tour.player.inputs_title': 'Weight & reps',
   'tour.player.inputs_body': 'Before checking off a set, adjust the weight and reps you actually did.',
   'tour.player.complete_title': 'Set done',

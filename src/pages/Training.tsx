@@ -128,6 +128,7 @@ const Training = () => {
   const tourSteps = [
     { target: '[data-coach="training-day0"]', title: t('tour.training.plan_title'), body: t('tour.training.plan_body') },
     { target: '[data-coach="training-week"]', title: t('tour.training.week_title'), body: t('tour.training.week_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [completedWorkouts, setCompletedWorkouts] = useState<CompletedWorkout[]>([]);

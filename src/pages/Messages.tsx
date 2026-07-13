@@ -6,12 +6,20 @@ import { useGymMessages } from '@/hooks/useGymMessages';
 import { useConversations } from '@/hooks/useConversations';
 import { MessageDetailDrawer } from '@/components/messages/MessageDetailDrawer';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
 const Messages = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('messages', 1, true);
+  const tourSteps = [
+    { title: t('tour.messages.overview_title'), body: t('tour.messages.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
 
   const formatRelativeDate = (dateStr: string): string => {
     const d = new Date(dateStr);
@@ -61,6 +69,7 @@ const Messages = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-bold">{t('messages.title')}</h1>
+            <CoachHelpButton onClick={tour.openTour} />
           </div>
 
           {/* Tabs */}
@@ -240,6 +249,7 @@ const Messages = () => {
           onMarkAsRead={markAsRead}
         />
       </div>
+      <CoachTour screenId="messages" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

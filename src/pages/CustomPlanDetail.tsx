@@ -18,7 +18,7 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
-import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { cn } from '@/lib/utils';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -555,6 +555,7 @@ const CustomPlanDetail = () => {
   const tourSteps = [
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.table_title'), body: t('tour.editor.table_body') },
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.swipe_title'), body: t('tour.editor.swipe_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const isEn = i18n.language === 'en';
   const { toast } = useToast();
@@ -1064,6 +1065,7 @@ const CustomPlanDetail = () => {
                 {plan.name}
               </button>
             )}
+            <CoachHelpButton onClick={tour.openTour} className="shrink-0" />
             <button
               onClick={handleShare}
               disabled={isSharing}

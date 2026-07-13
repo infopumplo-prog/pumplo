@@ -102,6 +102,7 @@ const Home = () => {
     { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
     { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
     { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
   // Refetch plan and stats when navigating back to Home

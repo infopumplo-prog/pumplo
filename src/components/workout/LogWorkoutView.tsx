@@ -10,7 +10,7 @@ import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { MuscleBodySvg } from './MuscleBodySvg';
 import { GestureSafeInput } from './GestureSafeInput';
-import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
@@ -473,6 +473,7 @@ const LogWorkoutView = ({
   const logTourSteps = [
     { target: '[data-coach="log-row"]', title: t('tour.log.row_title'), body: t('tour.log.row_body') },
     { target: '[data-coach="log-row"]', title: t('tour.log.swipe_title'), body: t('tour.log.swipe_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
   const [resumeTick, setResumeTick] = useState(0);
@@ -550,6 +551,7 @@ const LogWorkoutView = ({
             <ChevronDown className="w-5 h-5" />
           </button>
           <h1 className="flex-1 min-w-0 text-base font-bold truncate">{title}</h1>
+          <CoachHelpButton onClick={logTour.openTour} />
           <button onClick={onToggleMute} className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors">
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>

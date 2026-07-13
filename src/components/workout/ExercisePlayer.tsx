@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, HelpCircle, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
@@ -130,6 +130,7 @@ export const ExercisePlayer = ({
     { target: '[data-coach="player-complete"]', title: t('tour.player.complete_title'), body: t('tour.player.complete_body') },
     { target: '[data-coach="player-swap"]', title: t('tour.player.swap_title'), body: t('tour.player.swap_body') },
     { target: '[data-coach="player-list"]', title: t('tour.player.list_title'), body: t('tour.player.list_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
   const handleToggleMute = () => {
@@ -406,6 +407,14 @@ export const ExercisePlayer = ({
                 <p className="text-white/50 text-xs mt-0.5 truncate">{machineName}</p>
               )}
             </div>
+            <button
+              onClick={tour.openTour}
+              data-coach="help-btn"
+              className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              style={{ pointerEvents: 'auto' }}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
             <button
               onClick={() => setShowInfoDrawer(!showInfoDrawer)}
               className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"

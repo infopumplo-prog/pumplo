@@ -8,7 +8,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
-import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { useStatistics } from '@/hooks/useStatistics';
 import { MuscleBodySvg } from '@/components/workout/MuscleBodySvg';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
@@ -107,6 +107,7 @@ const Statistics = () => {
   const tourSteps = [
     { target: '[data-coach="stats-period"]', title: t('tour.stats.period_title'), body: t('tour.stats.period_body') },
     { target: '[data-coach="stats-muscles"]', title: t('tour.stats.muscles_title'), body: t('tour.stats.muscles_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const [activeMetric, setActiveMetric] = useState<MetricKey>('weight');
   const [prSearch, setPrSearch] = useState('');
@@ -228,7 +229,7 @@ const Statistics = () => {
       <div className="min-h-screen bg-background safe-top pb-nav">
         {/* Header + streak chip (streak is timeless) */}
         <div className="px-6 pt-8 pb-3 flex items-start justify-between">
-          <div>
+          <div className="flex-1">
             <motion.h1
               className="text-2xl font-bold text-foreground"
               initial={{ opacity: 0, y: -10 }}
@@ -238,6 +239,7 @@ const Statistics = () => {
             </motion.h1>
             <p className="text-sm text-muted-foreground mt-1">{t('stats.subtitle')}</p>
           </div>
+          <CoachHelpButton onClick={tour.openTour} />
           {stats.streak.current > 0 && (
             <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-500 rounded-full px-3 py-1.5">
               <Flame className="w-4 h-4" />

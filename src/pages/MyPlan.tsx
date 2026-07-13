@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS, SPLIT_INFO } from '@/lib/trainingGoals';
 import { getCurrentDayLetter } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,13 @@ const DAY_NAME_EN: Record<string, string> = {
 
 const MyPlan = () => {
   const { t, i18n } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('myplan', 1, true);
+  const tourSteps = [
+    { title: t('tour.myplan.overview_title'), body: t('tour.myplan.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const isEn = i18n.language === 'en';
   const navigate = useNavigate();
 
@@ -314,6 +322,7 @@ const MyPlan = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <h1 className="text-2xl font-bold text-foreground">{t('myplan.title')}</h1>
+              <CoachHelpButton onClick={tour.openTour} />
             </div>
           </div>
           <div className="px-6 py-6">
@@ -332,6 +341,7 @@ const MyPlan = () => {
           </div>
           <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
         </div>
+        <CoachTour screenId="myplan" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
       </PageTransition>
     );
   }
@@ -369,7 +379,8 @@ const MyPlan = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
+              <h1 className="flex-1 text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
+              <CoachHelpButton onClick={tour.openTour} />
               <p className="text-sm text-muted-foreground">
                 {t('myplan.weeks_per_frequency', { weeks: totalWeeks, days: trainingDaysCount })}
               </p>
@@ -657,6 +668,7 @@ const MyPlan = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      <CoachTour screenId="myplan" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

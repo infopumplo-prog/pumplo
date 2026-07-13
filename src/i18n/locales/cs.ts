@@ -2317,6 +2317,18 @@ const cs = {
   'tour.profile.settings_title': 'Nastavení',
   'tour.profile.settings_body': 'Uprav cíl, tréninkové dny v týdnu nebo zranění — plán se přizpůsobí.',
 
+  'tour.common.help_title': 'Nápověda kdykoli znovu',
+  'tour.common.help_body': 'Tímhle tlačítkem si tuhle nápovědu kdykoli spustíš znovu. Najdeš ho na každé obrazovce.',
+
+  'tour.myplan.overview_title': 'Nastavení plánu',
+  'tour.myplan.overview_body': 'Tady vidíš svůj plán: cíl, split, tréninkové dny a posilovnu. Můžeš ho tu i přegenerovat.',
+  'tour.history.overview_title': 'Historie tréninků',
+  'tour.history.overview_body': 'Každý dokončený trénink se sériemi, váhami a časem. Ťukni na trénink pro detail.',
+  'tour.messages.overview_title': 'Zprávy',
+  'tour.messages.overview_body': 'Komunikace s trenéry a tvojí posilovnou na jednom místě.',
+  'tour.settings.overview_title': 'Nastavení',
+  'tour.settings.overview_body': 'Úprava profilu, cíle, tréninkových dnů, notifikací a účtu.',
+
   'tour.player.inputs_title': 'Váha a opakování',
   'tour.player.inputs_body': 'Před odškrtnutím série uprav, s jakou váhou a kolika opakováními jsi ji odcvičil.',
   'tour.player.complete_title': 'Hotová série',

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,13 @@ const Settings = () => {
   } = usePushNotifications();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('settings', 1, true);
+  const tourSteps = [
+    { title: t('tour.settings.overview_title'), body: t('tour.settings.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const currentLang = i18n.language as 'cs' | 'en';
 
   // Profile state
@@ -348,6 +356,7 @@ const Settings = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-xl font-bold">{t('settings.title')}</h1>
+            <CoachHelpButton onClick={tour.openTour} />
           </div>
         </div>
 
@@ -689,6 +698,7 @@ const Settings = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      <CoachTour screenId="settings" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

@@ -164,6 +164,7 @@ export const CoachHelpButton = ({ onClick, className }: { onClick: () => void; c
     type="button"
     onClick={onClick}
     aria-label="Help"
+    data-coach="help-btn"
     className={cn('p-2 rounded-xl text-muted-foreground hover:text-foreground active:scale-90 transition-transform', className)}
   >
     <HelpCircle className="w-5 h-5" />

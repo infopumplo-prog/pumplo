@@ -13,7 +13,7 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
-import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,7 @@ const Profile = () => {
     { target: '[data-coach="profile-messages"]', title: t('tour.profile.messages_title'), body: t('tour.profile.messages_body') },
     { target: '[data-coach="profile-history"]', title: t('tour.profile.history_title'), body: t('tour.profile.history_body') },
     { target: '[data-coach="profile-settings"]', title: t('tour.profile.settings_title'), body: t('tour.profile.settings_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -123,14 +124,17 @@ const Profile = () => {
 
       {/* Header — single gradient extends behind status bar */}
       <div className="gradient-hero px-6 pb-6" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2rem)' }}>
-        <motion.h1
-          className="text-2xl font-bold text-foreground"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          {t('profile.my_profile')}
-        </motion.h1>
+        <div className="flex items-center justify-between">
+          <motion.h1
+            className="text-2xl font-bold text-foreground"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {t('profile.my_profile')}
+          </motion.h1>
+          <CoachHelpButton onClick={profileTour.openTour} />
+        </div>
       </div>
 
       <motion.div

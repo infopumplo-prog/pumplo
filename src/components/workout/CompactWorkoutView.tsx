@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
 import { useLongPress } from '@/lib/useLongPress';
@@ -204,6 +204,7 @@ export const CompactWorkoutView = ({
   const tourSteps = [
     { target: '[data-coach="wlist-current"]', title: t('tour.wlist.row_title'), body: t('tour.wlist.row_body') },
     { target: '[data-coach="wlist-info"]', title: t('tour.wlist.info_title'), body: t('tour.wlist.info_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
   // Cardio auto-complete: countdown beeps at T-3/2/1, auto-complete at target
@@ -379,6 +380,7 @@ export const CompactWorkoutView = ({
       {/* Header — Log Workout look; the workout stays Pumplo-guided */}
       <div className="flex-none safe-top border-b border-border">
         <div className="flex items-center gap-1 px-3 pt-2">
+          <CoachHelpButton onClick={tour.openTour} />
           <button onClick={onClose} className="p-2 -ml-1 rounded-xl hover:bg-muted transition-colors">
             <X className="w-5 h-5" />
           </button>
