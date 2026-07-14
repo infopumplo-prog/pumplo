@@ -90,7 +90,7 @@ serve(async (req) => {
     step = "find-subscription";
     const { data: subs, error: subError } = await supabaseAdmin
       .from("gym_subscriptions")
-      .select("gym_id, stripe_customer_id, is_grandfathered, status")
+      .select("gym_id, stripe_customer_id, stripe_subscription_id, is_grandfathered, status")
       .in("gym_id", candidateGymIds);
     if (subError) {
       return jsonResponse(500, { step, error: "Subscription query failed", detail: subError.message });
@@ -111,7 +111,7 @@ serve(async (req) => {
     if (subscription.is_grandfathered) {
       return jsonResponse(403, {
         step: "grandfathered-check",
-        error: "Vaše předplatné je spravováno ručně. Pro změny kontaktujte podporu.",
+        error: "Předplatné je zatím na individuální domluvě — samoobsluha se aktivuje po první platbě kartou. Pro změny napište na info@pumplo.com.",
         grandfathered: true,
       });
     }
@@ -125,9 +125,20 @@ serve(async (req) => {
     }
 
     step = "stripe-portal-create";
+    // Optional deep-link flows: land the user straight in the cancel or
+    // plan-change screen for THIS gym's subscription instead of the portal home.
+    const flow = body?.flow as string | undefined; // 'cancel' | 'update'
+    let flow_data: Record<string, unknown> | undefined;
+    if ((flow === "cancel" || flow === "update") && subscription.stripe_subscription_id) {
+      flow_data = flow === "cancel"
+        ? { type: "subscription_cancel", subscription_cancel: { subscription: subscription.stripe_subscription_id } }
+        : { type: "subscription_update", subscription_update: { subscription: subscription.stripe_subscription_id } };
+    }
+
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
       return_url: return_url || "https://pumplo-admin.vercel.app/",
+      ...(flow_data ? { flow_data } : {}),
     });
 
     return jsonResponse(200, { url: session.url });
