@@ -36,7 +36,7 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { price_id, gym_name, address, phone, machine_ids, success_url, cancel_url } =
+    const { price_id, gym_name, address, phone, machine_ids, success_url, cancel_url, additional_gym } =
       await req.json();
     const user_id = user.id; // verified identity, never trust a body-supplied user_id
 
@@ -67,19 +67,37 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Create Stripe customer first (required for Accounts V2 in test mode)
-    const customer = await stripe.customers.create({
-      metadata: { user_id, gym_name },
-    });
+    // Existing paying customer (any active subscription on one of their gyms):
+    // reuse their Stripe customer and waive the one-time implementation fee.
+    // Server-side check — the client's `additional_gym` flag alone is not trusted.
+    let existingCustomerId: string | null = null;
+    const { data: ownedGyms } = await adminClient
+      .from("gyms").select("id").eq("owner_id", user_id);
+    if (ownedGyms && ownedGyms.length > 0) {
+      const { data: activeSub } = await adminClient
+        .from("gym_subscriptions")
+        .select("stripe_customer_id")
+        .in("gym_id", ownedGyms.map((g) => g.id))
+        .eq("status", "active")
+        .not("stripe_customer_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+      existingCustomerId = activeSub?.stripe_customer_id ?? null;
+    }
+
+    const customerId = existingCustomerId ??
+      (await stripe.customers.create({ metadata: { user_id, gym_name } })).id;
+
+    const lineItems = [{ price: price_id, quantity: 1 }];
+    if (!existingCustomerId) {
+      lineItems.push({ price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 });
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer: customer.id,
+      customer: customerId,
       payment_method_types: ["card"],
-      line_items: [
-        { price: price_id, quantity: 1 },
-        { price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 },
-      ],
+      line_items: lineItems,
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
       cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
       metadata: {
@@ -88,6 +106,7 @@ serve(async (req) => {
         address: address || "",
         phone: phone || "",
         machine_ids: machine_ids ? JSON.stringify(machine_ids) : "[]",
+        additional_gym: additional_gym ? "true" : "",
       },
       subscription_data: {
         metadata: {

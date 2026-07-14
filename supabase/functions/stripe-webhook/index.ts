@@ -96,7 +96,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
     const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
     const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    for (const gymId of customGymIds.split(",").map((g) => g.trim()).filter(Boolean)) {
+    for (const gymId of customGymIds.split(",").map((g: string) => g.trim()).filter(Boolean)) {
       const { error } = await supabase
         .from("gym_subscriptions")
         .upsert({
@@ -166,6 +166,21 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }, { onConflict: "user_id,role", ignoreDuplicates: true });
   if (roleError) {
     console.error("Failed to set business role:", roleError);
+  }
+
+  // 2b. Additional gym bought from the admin dashboard: bump the owner's
+  // gym licence so the count stays consistent with what they pay for.
+  if (session.metadata?.additional_gym === "true") {
+    const { data: prof } = await supabase
+      .from("user_profiles")
+      .select("gym_license_count")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const { error: licError } = await supabase
+      .from("user_profiles")
+      .update({ gym_license_count: (prof?.gym_license_count ?? 1) + 1 })
+      .eq("user_id", userId);
+    if (licError) console.error("Failed to bump gym_license_count:", licError);
   }
 
   // 3. Create gym subscription
