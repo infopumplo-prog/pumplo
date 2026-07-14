@@ -39,3 +39,4 @@ dist-ssr
 
 .superpowers/
 .claude
+deno.lock
