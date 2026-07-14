@@ -36,23 +36,55 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { price_id, gym_name, address, phone, machine_ids, success_url, cancel_url, additional_gym } =
-      await req.json();
+    const {
+      price_id,
+      gym_name,
+      address,
+      phone,
+      machine_ids,
+      success_url,
+      cancel_url,
+      additional_gym,
+      activate_gym_ids,
+    }: {
+      price_id?: string;
+      gym_name?: string;
+      address?: string;
+      phone?: string;
+      machine_ids?: string[];
+      success_url?: string;
+      cancel_url?: string;
+      additional_gym?: boolean;
+      activate_gym_ids?: string[];
+    } = await req.json();
     const user_id = user.id; // verified identity, never trust a body-supplied user_id
 
-    if (!price_id || !gym_name) {
+    // Two mutually exclusive flows:
+    //  - activate flow: attach a subscription (one item per gym) to gyms that
+    //    already exist but have no subscription yet (e.g. NextGen / Pavel).
+    //  - gym_name flow (original): buy a subscription for a brand-new gym.
+    const isActivateFlow = Array.isArray(activate_gym_ids) && activate_gym_ids.length > 0;
+
+    if (!price_id) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!isActivateFlow && !gym_name) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // --- Only allow Stripe price IDs that belong to an active plan ---
-    // (stops a client from passing an arbitrary/cheaper price_id).
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
+
+    // --- Only allow Stripe price IDs that belong to an active plan ---
+    // (stops a client from passing an arbitrary/cheaper price_id).
     const { data: plans } = await adminClient
       .from("subscription_plans")
       .select("stripe_price_monthly_id, stripe_price_annual_id")
@@ -67,17 +99,27 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Per-owner discount (e.g. NextGen deal): a coupon stored on the profile is
+    // applied to the checkout session for both flows.
+    const { data: profile } = await adminClient
+      .from("user_profiles")
+      .select("stripe_coupon_id")
+      .eq("user_id", user_id)
+      .maybeSingle();
+    const couponId = profile?.stripe_coupon_id ?? null;
+
     // Existing paying customer (any active subscription on one of their gyms):
     // reuse their Stripe customer and waive the one-time implementation fee.
     // Server-side check — the client's `additional_gym` flag alone is not trusted.
     let existingCustomerId: string | null = null;
     const { data: ownedGyms } = await adminClient
       .from("gyms").select("id").eq("owner_id", user_id);
+    const ownedGymIds = new Set((ownedGyms ?? []).map((g: { id: string }) => g.id));
     if (ownedGyms && ownedGyms.length > 0) {
       const { data: activeSub } = await adminClient
         .from("gym_subscriptions")
         .select("stripe_customer_id")
-        .in("gym_id", ownedGyms.map((g) => g.id))
+        .in("gym_id", ownedGyms.map((g: { id: string }) => g.id))
         .eq("status", "active")
         .not("stripe_customer_id", "is", null)
         .limit(1)
@@ -85,33 +127,59 @@ serve(async (req) => {
       existingCustomerId = activeSub?.stripe_customer_id ?? null;
     }
 
-    const customerId = existingCustomerId ??
-      (await stripe.customers.create({ metadata: { user_id, gym_name } })).id;
+    let lineItems: { price: string; quantity: number }[];
+    let metadata: Record<string, string>;
 
-    const lineItems = [{ price: price_id, quantity: 1 }];
-    if (!existingCustomerId) {
-      lineItems.push({ price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 });
+    if (isActivateFlow) {
+      // Verify every gym id belongs to the authenticated owner.
+      const ids = activate_gym_ids!;
+      const allOwned = ids.every((id) => ownedGymIds.has(id));
+      if (!allOwned) {
+        return new Response(JSON.stringify({ error: "Posilovna nepatří tomuto účtu." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      lineItems = ids.map(() => ({ price: price_id, quantity: 1 }));
+      metadata = {
+        user_id,
+        activate_gym_ids: ids.join(","),
+      };
+    } else {
+      lineItems = [{ price: price_id, quantity: 1 }];
+      // Brand-new customers pay the one-time implementation fee; existing
+      // paying owners buying another gym do not.
+      if (!existingCustomerId) {
+        lineItems.push({ price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 });
+      }
+      metadata = {
+        user_id,
+        gym_name: gym_name!,
+        address: address || "",
+        phone: phone || "",
+        machine_ids: machine_ids ? JSON.stringify(machine_ids) : "[]",
+        additional_gym: additional_gym ? "true" : "",
+      };
     }
+
+    const customerId = existingCustomerId ??
+      (await stripe.customers.create({
+        metadata: { user_id, ...(gym_name ? { gym_name } : {}) },
+      })).id;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       payment_method_types: ["card"],
       line_items: lineItems,
+      // Stripe rejects `discounts` together with `allow_promotion_codes`, so we
+      // only ever set the coupon here and never the latter.
+      ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
       cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
-      metadata: {
-        user_id,
-        gym_name,
-        address: address || "",
-        phone: phone || "",
-        machine_ids: machine_ids ? JSON.stringify(machine_ids) : "[]",
-        additional_gym: additional_gym ? "true" : "",
-      },
+      metadata,
       subscription_data: {
         metadata: {
           user_id,
-          gym_name,
+          ...(gym_name ? { gym_name } : {}),
         },
       },
     });
