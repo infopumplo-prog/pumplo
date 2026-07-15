@@ -89,28 +89,26 @@ serve(async (req) => {
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // --- Activate path: gyms already exist (owner has them, no subscription
-  // yet) and the checkout carries one subscription item per gym. Attach the
-  // new subscription+items to those gyms. Order of items follows the order of
-  // activate_gym_ids passed to create-checkout.
+  // yet). Quantity model: the subscription has ONE item per price with
+  // quantity = gym count (Stripe forbids duplicate recurring prices), so all
+  // activated gyms share the same subscription item id.
   const activateGymIds = session.metadata?.activate_gym_ids;
   if (activateGymIds) {
     const ids = activateGymIds.split(",").map((g: string) => g.trim()).filter(Boolean);
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-    const items = subscription.items.data;
+    const item = subscription.items.data[0];
     const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
     const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    if (items.length !== ids.length) {
+    if (!item) {
+      console.error("Activate: subscription has no items", subscription.id);
+      return;
+    }
+    if ((item.quantity ?? 1) !== ids.length) {
       console.error(
-        `activate_gym_ids count (${ids.length}) != subscription items (${items.length}); mapping by index defensively`,
+        `Activate: item quantity (${item.quantity}) != gym count (${ids.length}) on`, subscription.id,
       );
     }
-    for (let i = 0; i < ids.length; i++) {
-      const gymId = ids[i];
-      const item = items[i];
-      if (!item) {
-        console.error("No subscription item for gym", gymId, "at index", i);
-        continue;
-      }
+    for (const gymId of ids) {
       const planInfo = PRICE_TO_PLAN[item.price.id];
       if (!planInfo) console.error("Unknown price ID on activate:", item.price.id);
       const { error } = await supabase
@@ -477,12 +475,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     const planInfo = PRICE_TO_PLAN[item.price.id];
     if (!planInfo) continue;
 
-    // Match by item id; fall back to the sole row for legacy single-item subs
-    // whose row predates item-id storage.
-    let gymSub = gymSubs.find((r) => r.stripe_subscription_item_id === item.id);
-    if (!gymSub && gymSubs.length === 1) gymSub = gymSubs[0];
-    if (!gymSub) continue;
-
+    // Quantity model: several rows can share one item — reconcile them ALL.
+    // Fall back to the sole row for legacy single-item subs whose row predates
+    // item-id storage.
+    const matchedSubs = gymSubs.filter((r) => r.stripe_subscription_item_id === item.id);
+    if (matchedSubs.length === 0 && gymSubs.length === 1) matchedSubs.push(gymSubs[0]);
+    for (const gymSub of matchedSubs) {
     const oldPlan = gymSub.plan_id;
     if (oldPlan === planInfo.plan_id) continue; // No plan change for this gym
 
@@ -537,6 +535,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
           console.log(`Gym ${gymSub.gym_id} unpublished after downgrade — exceeds ${planInfo.plan_id} limits`);
         }
       }
+    }
     }
   }
 }

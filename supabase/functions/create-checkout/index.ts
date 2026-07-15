@@ -138,7 +138,8 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Posilovna nepatří tomuto účtu." }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      lineItems = ids.map(() => ({ price: price_id, quantity: 1 }));
+      // Stripe forbids duplicate recurring prices — one line item, quantity = gym count.
+      lineItems = [{ price: price_id, quantity: ids.length }];
       metadata = {
         user_id,
         activate_gym_ids: ids.join(","),

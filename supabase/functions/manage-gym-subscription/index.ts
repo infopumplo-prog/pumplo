@@ -135,16 +135,24 @@ serve(async (req: Request) => {
         return jsonResponse(500, { error: "Nepodařilo se vytvořit posilovnu", detail: gymError?.message });
       }
 
-      // Add the subscription item; always_invoice charges the prorated
-      // remainder of the current period immediately.
-      const item = await stripe.subscriptionItems.create({
-        subscription: activeSub.stripe_subscription_id,
-        price: price_id,
-        quantity: 1,
-        proration_behavior: "always_invoice",
-      });
-
+      // Quantity model: one subscription item per price, quantity = gym count
+      // (Stripe forbids duplicate recurring prices on one subscription).
+      // always_invoice charges the prorated remainder immediately.
       const subscription = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
+      const existingItem = subscription.items.data.find(
+        (it: Stripe.SubscriptionItem) => it.price.id === price_id,
+      );
+      const item = existingItem
+        ? await stripe.subscriptionItems.update(existingItem.id, {
+            quantity: (existingItem.quantity ?? 1) + 1,
+            proration_behavior: "always_invoice",
+          })
+        : await stripe.subscriptionItems.create({
+            subscription: activeSub.stripe_subscription_id,
+            price: price_id,
+            quantity: 1,
+            proration_behavior: "always_invoice",
+          });
 
       const { error: subError } = await admin.from("gym_subscriptions").insert({
         gym_id: gym.id,
@@ -210,23 +218,62 @@ serve(async (req: Request) => {
 
       const { data: row } = await admin
         .from("gym_subscriptions")
-        .select("id, stripe_subscription_item_id")
+        .select("id, stripe_subscription_id, stripe_subscription_item_id")
         .eq("gym_id", gym_id)
         .maybeSingle();
-      if (!row?.stripe_subscription_item_id) {
+      if (!row?.stripe_subscription_id || !row?.stripe_subscription_item_id) {
         return jsonResponse(409, { error: "Předplatné nemá položku ke změně." });
       }
 
-      await stripe.subscriptionItems.update(row.stripe_subscription_item_id, {
-        price: price_id,
+      // Quantity model: an item can back several gyms. Moving one gym to a
+      // different price = decrement/remove on the old item + increment/create
+      // on the new one, atomically in a single subscription update.
+      const subscription = await stripe.subscriptions.retrieve(row.stripe_subscription_id);
+      const oldItem = subscription.items.data.find(
+        (it: Stripe.SubscriptionItem) => it.id === row.stripe_subscription_item_id,
+      );
+      if (!oldItem) {
+        return jsonResponse(409, { error: "Stripe položka předplatného nenalezena." });
+      }
+      if (oldItem.price.id === price_id) {
+        return jsonResponse(200, { ok: true }); // already on this plan
+      }
+      const newItem = subscription.items.data.find(
+        (it: Stripe.SubscriptionItem) => it.price.id === price_id,
+      );
+      // How many OTHER active gyms stay on the old item? (derive from DB, not
+      // from possibly-stale item.quantity)
+      const { count: othersOnOld } = await admin
+        .from("gym_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("stripe_subscription_item_id", oldItem.id)
+        .eq("status", "active")
+        .neq("id", row.id);
+      const itemsPayload: Stripe.SubscriptionUpdateParams.Item[] = [];
+      if ((othersOnOld ?? 0) > 0) {
+        itemsPayload.push({ id: oldItem.id, quantity: othersOnOld! });
+      } else {
+        itemsPayload.push({ id: oldItem.id, deleted: true });
+      }
+      if (newItem) {
+        itemsPayload.push({ id: newItem.id, quantity: (newItem.quantity ?? 1) + 1 });
+      } else {
+        itemsPayload.push({ price: price_id, quantity: 1 });
+      }
+      const updated = await stripe.subscriptions.update(row.stripe_subscription_id, {
+        items: itemsPayload,
         proration_behavior: "always_invoice",
       });
+      const targetItem = updated.items.data.find(
+        (it: Stripe.SubscriptionItem) => it.price.id === price_id,
+      );
 
       await admin
         .from("gym_subscriptions")
         .update({
           plan_id: planInfo.plan_id,
           billing_period: planInfo.period,
+          stripe_subscription_item_id: targetItem?.id ?? null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
@@ -264,24 +311,24 @@ serve(async (req: Request) => {
         return jsonResponse(409, { error: "Předplatné nelze zrušit (chybí Stripe položka)." });
       }
 
-      const subscription = await stripe.subscriptions.retrieve(row.stripe_subscription_id);
-      const itemCount = subscription.items.data.length;
+      // Quantity model: how many OTHER active gyms remain on this whole
+      // subscription, and on this gym's item specifically? (derived from DB)
+      const { count: othersOnSub } = await admin
+        .from("gym_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("stripe_subscription_id", row.stripe_subscription_id)
+        .eq("status", "active")
+        .neq("id", row.id);
+      const { count: othersOnItem } = await admin
+        .from("gym_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("stripe_subscription_item_id", row.stripe_subscription_item_id)
+        .eq("status", "active")
+        .neq("id", row.id);
 
-      if (itemCount > 1) {
-        // Remove just this gym's item; the already-paid period is not refunded.
-        await stripe.subscriptionItems.del(row.stripe_subscription_item_id, {
-          proration_behavior: "none",
-        });
-        await admin
-          .from("gym_subscriptions")
-          .update({
-            status: "cancelled",
-            cancelled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", row.id);
-      } else {
-        // Last item — cancel the whole subscription at period end.
+      const lastOnSubscription = (othersOnSub ?? 0) === 0;
+      if (lastOnSubscription) {
+        // Last gym on the subscription — cancel the whole thing at period end.
         await stripe.subscriptions.update(row.stripe_subscription_id, {
           cancel_at_period_end: true,
         });
@@ -292,6 +339,27 @@ serve(async (req: Request) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", row.id);
+      } else {
+        // Other gyms stay: decrement this gym's item quantity, or remove the
+        // item entirely when this gym was its only user. Paid period stays.
+        if ((othersOnItem ?? 0) > 0) {
+          await stripe.subscriptionItems.update(row.stripe_subscription_item_id, {
+            quantity: othersOnItem!,
+            proration_behavior: "none",
+          });
+        } else {
+          await stripe.subscriptionItems.del(row.stripe_subscription_item_id, {
+            proration_behavior: "none",
+          });
+        }
+        await admin
+          .from("gym_subscriptions")
+          .update({
+            status: "cancelled",
+            cancelled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", row.id);
       }
 
       await admin.from("subscription_events").insert({
@@ -299,7 +367,7 @@ serve(async (req: Request) => {
         event_type: "cancelled",
         metadata: {
           via: "cancel_gym",
-          last_item: itemCount <= 1,
+          last_item: lastOnSubscription,
           effective_at: row.current_period_end,
         },
       });
