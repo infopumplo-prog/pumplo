@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.6.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 
+const IMPLEMENTATION_FEE_PRICE_ID = "price_1TLJJrEvdp2FxnFOcOEOOcAI";
+
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
   httpClient: Stripe.createFetchHttpClient(),
@@ -67,6 +69,7 @@ serve(async (req: Request) => {
       phone?: string;
       price_id?: string;
       gym_id?: string;
+      promo_code?: string;
     } = await req.json().catch(() => ({}));
     const action = body.action;
 
@@ -87,7 +90,7 @@ serve(async (req: Request) => {
     // --- add_gym: attach a new subscription item (one more gym) to the owner's
     // existing subscription, invoicing the prorated remainder immediately. ---
     if (action === "add_gym") {
-      const { gym_name, address, phone, price_id } = body;
+      const { gym_name, address, phone, price_id, promo_code } = body;
       if (!gym_name || !price_id) {
         return jsonResponse(400, { error: "Chybí gym_name nebo price_id" });
       }
@@ -118,6 +121,25 @@ serve(async (req: Request) => {
       if (!activeSub?.stripe_subscription_id) {
         return jsonResponse(409, { error: "Žádné aktivní předplatné." });
       }
+      const subscriptionId: string = activeSub.stripe_subscription_id;
+      const customerId: string | null = activeSub.stripe_customer_id;
+
+      // Resolve an optional promo code up front so we can reject an invalid one
+      // before we create anything. The coupon is restricted (applies_to) to the
+      // plan products, so it never discounts the implementation fee below.
+      let promoCoupon: Stripe.Coupon | null = null;
+      if (promo_code) {
+        const codes = await stripe.promotionCodes.list({
+          code: promo_code,
+          active: true,
+          limit: 1,
+        });
+        const promo = codes.data[0];
+        if (!promo || !promo.coupon?.valid) {
+          return jsonResponse(400, { error: "Neplatný slevový kód" });
+        }
+        promoCoupon = promo.coupon;
+      }
 
       // Create the gym first (unpublished) so we have an id to bind the row to.
       const { data: gym, error: gymError } = await admin
@@ -135,10 +157,20 @@ serve(async (req: Request) => {
         return jsonResponse(500, { error: "Nepodařilo se vytvořit posilovnu", detail: gymError?.message });
       }
 
+      // One-time implementation fee (500 CZK) for the new gym. Created as a
+      // pending invoice item on the subscription BEFORE the quantity change, so
+      // the always_invoice proration invoice below sweeps it into the same
+      // immediate charge (fee + proration billed once).
+      await stripe.invoiceItems.create({
+        customer: customerId ?? undefined,
+        subscription: subscriptionId,
+        price: IMPLEMENTATION_FEE_PRICE_ID,
+      });
+
       // Quantity model: one subscription item per price, quantity = gym count
       // (Stripe forbids duplicate recurring prices on one subscription).
-      // always_invoice charges the prorated remainder immediately.
-      const subscription = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
+      // always_invoice charges the prorated remainder + pending fee immediately.
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const existingItem = subscription.items.data.find(
         (it: Stripe.SubscriptionItem) => it.price.id === price_id,
       );
@@ -148,11 +180,31 @@ serve(async (req: Request) => {
             proration_behavior: "always_invoice",
           })
         : await stripe.subscriptionItems.create({
-            subscription: activeSub.stripe_subscription_id,
+            subscription: subscriptionId,
             price: price_id,
             quantity: 1,
             proration_behavior: "always_invoice",
           });
+
+      // Stack the discount for this gym: append the promo's coupon to the
+      // subscription's existing discounts (each gym adds one coupon → 2 gyms
+      // = 2× -500). Preserve any discounts already applied. Restricted coupon,
+      // so the fee above stays full price.
+      if (promoCoupon) {
+        const currentDiscounts =
+          (subscription as unknown as { discounts?: Array<string | { id: string }> })
+            .discounts ?? [];
+        const discountsPayload: Array<{ discount?: string; coupon?: string }> = [
+          ...currentDiscounts.map((d) => ({
+            discount: typeof d === "string" ? d : d.id,
+          })),
+          { coupon: promoCoupon.id },
+        ];
+        await stripe.subscriptions.update(subscriptionId, {
+          discounts: discountsPayload,
+          proration_behavior: "none",
+        } as unknown as Stripe.SubscriptionUpdateParams);
+      }
 
       const { error: subError } = await admin.from("gym_subscriptions").insert({
         gym_id: gym.id,

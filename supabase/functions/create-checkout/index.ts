@@ -99,17 +99,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Per-owner discount (e.g. NextGen deal): a coupon stored on the profile is
-    // applied to the checkout session for both flows.
-    const { data: profile } = await adminClient
-      .from("user_profiles")
-      .select("stripe_coupon_id")
-      .eq("user_id", user_id)
-      .maybeSingle();
-    const couponId = profile?.stripe_coupon_id ?? null;
-
     // Existing paying customer (any active subscription on one of their gyms):
-    // reuse their Stripe customer and waive the one-time implementation fee.
+    // reuse their Stripe customer so all their gyms bill on one customer.
     // Server-side check — the client's `additional_gym` flag alone is not trusted.
     let existingCustomerId: string | null = null;
     const { data: ownedGyms } = await adminClient
@@ -139,18 +130,21 @@ serve(async (req) => {
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       // Stripe forbids duplicate recurring prices — one line item, quantity = gym count.
-      lineItems = [{ price: price_id, quantity: ids.length }];
+      // One-time implementation fee per gym being activated.
+      lineItems = [
+        { price: price_id, quantity: ids.length },
+        { price: IMPLEMENTATION_FEE_PRICE_ID, quantity: ids.length },
+      ];
       metadata = {
         user_id,
         activate_gym_ids: ids.join(","),
       };
     } else {
-      lineItems = [{ price: price_id, quantity: 1 }];
-      // Brand-new customers pay the one-time implementation fee; existing
-      // paying owners buying another gym do not.
-      if (!existingCustomerId) {
-        lineItems.push({ price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 });
-      }
+      // Every new gym pays the one-time implementation fee (500 CZK).
+      lineItems = [
+        { price: price_id, quantity: 1 },
+        { price: IMPLEMENTATION_FEE_PRICE_ID, quantity: 1 },
+      ];
       metadata = {
         user_id,
         gym_name: gym_name!,
@@ -171,9 +165,10 @@ serve(async (req) => {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: lineItems,
-      // Stripe rejects `discounts` together with `allow_promotion_codes`, so we
-      // only ever set the coupon here and never the latter.
-      ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
+      // Discounts are entered by the customer as promo codes in checkout
+      // (e.g. NEXTGEN500). Its coupon is restricted to plan products, so it
+      // never touches the implementation fee.
+      allow_promotion_codes: true,
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
       cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
       metadata,
