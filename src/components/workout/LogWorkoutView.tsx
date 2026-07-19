@@ -2,9 +2,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check, Info, Plus, AlarmClock, PersonStanding, Video, Volume2, VolumeX, X, Timer } from 'lucide-react';
+import { ChevronDown, Check, Info, Plus, AlarmClock, PersonStanding, Video, Volume2, VolumeX, X, Timer, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
+import { useLongPress } from '@/lib/useLongPress';
 import { cn } from '@/lib/utils';
 import { getSetType, setBadgeLabel, setBadgeColor } from '@/lib/setTypes';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
@@ -61,7 +62,30 @@ interface LogWorkoutViewProps {
   onFinish: () => void;
   onMinimize: () => void;
   onExplainSetType: (type: string) => void;
+  // Per-row gym-bound swap (tap = quick, hold = full list). Optional so other
+  // callers of LogWorkoutView keep the header without a swap button.
+  onSwapQuick?: (exIdx: number) => void;
+  onSwapLong?: (exIdx: number) => void;
+  swappingIdx?: number | null;
 }
+
+// Swap icon with its own long-press (one per exercise row).
+const RowSwapButton = ({ idx, onQuick, onLong, swapping, label }: {
+  idx: number; onQuick: (i: number) => void; onLong: (i: number) => void; swapping: boolean; label: string;
+}) => {
+  const press = useLongPress(() => onLong(idx));
+  return (
+    <button
+      {...press.handlers}
+      onClick={() => { if (!press.wasLongPress()) onQuick(idx); }}
+      className={cn('p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors', swapping && 'opacity-50')}
+      style={{ touchAction: 'none' }}
+      title={label}
+    >
+      <RefreshCw className={cn('w-5 h-5', swapping && 'animate-spin')} />
+    </button>
+  );
+};
 
 const fmt = (sec: number) => {
   const s = Math.max(0, sec);
@@ -87,6 +111,7 @@ const ExerciseThumb = ({ path, onClick }: { path: string | null; onClick: () => 
 const LogWorkoutView = ({
   title, exercises, completedSetsMap, startTime, isMuted, onToggleMute,
   onCompleteSet, onUncompleteSet, onRemoveSet, onUpdateRest, onUpdateNote, onShowInfo, onAddExercise, onFinish, onMinimize, onExplainSetType,
+  onSwapQuick, onSwapLong, swappingIdx,
 }: LogWorkoutViewProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -598,6 +623,9 @@ const LogWorkoutView = ({
                   <button onClick={() => onShowInfo(ex.exercise_id)} className="flex-1 min-w-0 text-left">
                     <p className="font-bold text-[15px] text-[#5BC8F5] truncate">{exName(ex)}</p>
                   </button>
+                  {onSwapQuick && onSwapLong && (
+                    <RowSwapButton idx={idx} onQuick={onSwapQuick} onLong={onSwapLong} swapping={swappingIdx === idx} label={t('workout.swap')} />
+                  )}
                   <button onClick={() => onShowInfo(ex.exercise_id)} className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors">
                     <Info className="w-5 h-5" />
                   </button>

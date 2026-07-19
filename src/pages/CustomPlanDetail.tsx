@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
@@ -16,6 +16,10 @@ import { GestureSafeInput } from '@/components/workout/GestureSafeInput';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
+import { fetchCatalogAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
+import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
+import { useLongPress } from '@/lib/useLongPress';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
@@ -350,13 +354,19 @@ interface SortableExerciseProps {
   isIncompatible?: boolean;
   alternatives?: AlternativeExercise[];
   onSwapExercise?: (oldExerciseId: string, newExercise: AlternativeExercise) => void;
+  // Per-row swap picker (catalog-wide): tap = quick swap, hold = full list.
+  onSwapQuick?: (exercise: CustomPlanExercise) => void;
+  onSwapLong?: (exercise: CustomPlanExercise) => void;
+  isSwapping?: boolean;
 }
 
-const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const [menuOpen, setMenuOpen] = useState(false);
+  // Hold the swap icon → sheet with every catalog alternative (parent-owned).
+  const swapPress = useLongPress(() => onSwapLong?.(exercise));
 
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
@@ -415,6 +425,17 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
           {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
           {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
         </button>
+        {onSwapQuick && (
+          <button
+            {...swapPress.handlers}
+            onClick={() => { if (!swapPress.wasLongPress()) onSwapQuick(exercise); }}
+            className={cn('p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0', isSwapping && 'opacity-50')}
+            style={{ touchAction: 'none' }}
+            title={t('workout.swap')}
+          >
+            <RefreshCw className={cn('w-4 h-4', isSwapping && 'animate-spin')} />
+          </button>
+        )}
         <div className="relative shrink-0">
           <button onClick={() => setMenuOpen(o => !o)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
             <MoreVertical className="w-4 h-4" />
@@ -680,6 +701,49 @@ const CustomPlanDetail = () => {
     if (selectedWorkoutGymId) {
       const incompatible = await checkCustomPlanEquipment(id, selectedWorkoutGymId);
       setIncompatibleExercises(incompatible);
+    }
+  };
+
+  // --- Per-row catalog swap (tap = quick, hold = full list) ---
+  const [swapRow, setSwapRow] = useState<CustomPlanExercise | null>(null);
+  const [swapOptions, setSwapOptions] = useState<SwapCandidate[] | null>(null);
+  const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
+  const [isSwappingRowId, setIsSwappingRowId] = useState<string | null>(null);
+
+  // Other exercises already in the same day — excluded so a swap never suggests
+  // a movement that's already in the workout.
+  const sameDayExcludeIds = (exercise: CustomPlanExercise): string[] => {
+    const day = plan?.days.find(d => d.exercises.some(e => e.id === exercise.id));
+    return (day?.exercises || []).filter(e => e.id !== exercise.id).map(e => e.exercise_id);
+  };
+
+  // Replace a row's exercise with the picked alternative (persists via updateExercise).
+  const applyRowSwap = async (row: CustomPlanExercise, pick: SwapCandidate) => {
+    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null });
+    toast({ title: t('workout.swap_success', { name: pick.name }) });
+  };
+
+  const handleRowSwapQuick = async (exercise: CustomPlanExercise) => {
+    if (isSwappingRowId) return;
+    setIsSwappingRowId(exercise.id);
+    try {
+      const candidates = await fetchCatalogAlternatives(exercise.exercise_id, sameDayExcludeIds(exercise));
+      if (candidates.length === 0) { toast({ title: t('workout.no_replacement') }); return; }
+      await applyRowSwap(exercise, candidates[Math.floor(Math.random() * candidates.length)]);
+    } finally {
+      setIsSwappingRowId(null);
+    }
+  };
+
+  const handleRowSwapLong = async (exercise: CustomPlanExercise) => {
+    if (isSwappingRowId) return;
+    setIsSwappingRowId(exercise.id);
+    try {
+      const candidates = await fetchCatalogAlternatives(exercise.exercise_id, sameDayExcludeIds(exercise));
+      setSwapRow(exercise);
+      setSwapOptions(candidates);
+    } finally {
+      setIsSwappingRowId(null);
     }
   };
 
@@ -1147,6 +1211,9 @@ const CustomPlanDetail = () => {
                             isIncompatible={!!incompatInfo}
                             alternatives={incompatInfo?.alternatives}
                             onSwapExercise={handleSwapExercise}
+                            onSwapQuick={handleRowSwapQuick}
+                            onSwapLong={handleRowSwapLong}
+                            isSwapping={isSwappingRowId === exercise.id}
                           />
                         );
                       })}
@@ -1487,6 +1554,15 @@ const CustomPlanDetail = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Catalog swap picker + exercise detail (shared with the workout player) */}
+      <ExerciseSwapSheet
+        options={swapOptions}
+        onPick={(c) => { if (swapRow) applyRowSwap(swapRow, c); }}
+        onClose={() => { setSwapOptions(null); setSwapRow(null); }}
+        onShowInfo={setSwapInfoId}
+      />
+      <ExerciseInfoSheet exerciseId={swapInfoId} onClose={() => setSwapInfoId(null)} />
     </>
   );
 };

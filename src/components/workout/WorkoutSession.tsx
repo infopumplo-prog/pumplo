@@ -11,13 +11,11 @@ import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
 import { showSetActivity, endRestActivity, startRestActivity, consumePendingEvents, addLockScreenListener, type NextSetPayload } from '@/lib/restLiveActivity';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
-import { ExerciseInfoContent } from './ExerciseInfoContent';
-import { Info, Maximize2 } from 'lucide-react';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
@@ -25,20 +23,14 @@ import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { CompactWorkoutView } from './CompactWorkoutView';
 import { toast } from 'sonner';
 import { CooldownPlayer } from './CooldownPlayer';
+import { ExerciseSwapSheet } from './ExerciseSwapSheet';
+import { ExerciseInfoSheet } from './ExerciseInfoSheet';
+import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
 
 interface SetData {
   completed: boolean;
   weight?: number;
   reps?: number;
-}
-
-// A slot alternative offered by the swap button / hold-to-pick sheet.
-interface SwapCandidate {
-  id: string;
-  name: string;
-  name_en: string | null;
-  machine_id: string | null;
-  video_path: string | null;
 }
 
 interface ExerciseResult {
@@ -252,43 +244,17 @@ export const WorkoutSession = ({
     if (!exercise) return [];
 
     const roleId = exercise.roleId;
-    const isCardio = CARDIO_ROLE_IDS.includes(roleId);
-
     // IDs to exclude: all exercises currently in workout
     const excludeIds = liveExercises
       .map(e => e.exerciseId)
       .filter((id): id is string => !!id);
 
-    // Fetch gym machine IDs for equipment filtering
-    const { data: gymMachines } = await supabase
-      .from('gym_machines')
-      .select('machine_id')
-      .eq('gym_id', gymId);
-    const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
-
-    // Query candidates with same role
-    let query = supabase
-      .from('exercises')
-      .select('id, name, name_en, primary_role, machine_id, equipment_type, primary_muscles, secondary_muscles, category, video_path')
-      .eq('allowed_phase', 'main');
-
-    if (isCardio) {
-      query = query.eq('category', 'cardio');
-    } else {
-      query = query.eq('primary_role', roleId);
-    }
-
-    const { data: candidates, error } = await query;
-    if (error || !candidates) return [];
-
-    // Filter: exclude current exercises, must be available at gym (machine check)
-    const valid = candidates.filter(c => {
-      if (excludeIds.includes(c.id)) return false;
-      if (c.machine_id && !machineIds.has(c.machine_id)) return false;
-      return true;
+    return fetchGymBoundAlternatives({
+      primaryRole: roleId,
+      isCardio: CARDIO_ROLE_IDS.includes(roleId),
+      excludeIds,
+      gymId,
     });
-    console.log(`[Swap] Role: ${roleId}, DB candidates: ${candidates?.length}, after gym/exclude filter: ${valid.length}`);
-    return valid as SwapCandidate[];
   }, [currentExerciseIndex, liveExercises, gymId]);
 
   // Apply a chosen alternative to the current slot (DB + in-memory).
@@ -879,34 +845,8 @@ export const WorkoutSession = ({
   // Leaving the workout removes the banner.
   useEffect(() => () => { endRestActivity(); }, []);
 
-  // Exercise detail opened from the swap sheet (closes back to the list).
-  interface SwapInfo {
-    name: string; nameEn: string | null; videoUrl: string | null; category: string;
-    equipmentType: string | null; machineName: string | null;
-    primaryMuscles: string[]; secondaryMuscles: string[];
-    primaryMusclesEn: string[] | null; secondaryMusclesEn: string[] | null;
-    description: string | null; setupInstructions: string | null;
-    commonMistakes: string | null; tips: string | null;
-  }
-  const [swapInfo, setSwapInfo] = useState<SwapInfo | null>(null);
-  const openExerciseInfo = async (exerciseId: string) => {
-    const { data } = await supabase
-      .from('exercises')
-      .select('name, name_en, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
-      .eq('id', exerciseId)
-      .single();
-    if (!data) return;
-    const d = data as any;
-    setSwapInfo({
-      name: d.name, nameEn: d.name_en || null, videoUrl: d.video_path || null,
-      category: d.category || '', equipmentType: d.equipment_type || null,
-      machineName: d.machines?.name || null,
-      primaryMuscles: d.primary_muscles || [], secondaryMuscles: d.secondary_muscles || [],
-      primaryMusclesEn: d.primary_muscles_en || null, secondaryMusclesEn: d.secondary_muscles_en || null,
-      description: d.description || null, setupInstructions: d.setup_instructions || null,
-      commonMistakes: d.common_mistakes || null, tips: d.tips || null,
-    });
-  };
+  // Exercise detail opened from the swap sheet ⓘ (closes back to the sheet).
+  const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
 
   // Card the lock-screen Skip intent flips to after this rest: the first
   // pending set of the exercise the rest leads to. Passed as nextSet with
@@ -1051,123 +991,19 @@ export const WorkoutSession = ({
   // Main exercise player
   if (!currentExercise) return null;
 
-  // Hold-to-pick sheet with every valid slot alternative (shared by both views).
+  // Shared swap picker + exercise detail sheets (also used by the custom-plan
+  // builder and custom playback).
   const swapSheetJsx = (
-    <AnimatePresence>
-      {swapOptions && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
-            onClick={() => setSwapOptions(null)}
-          />
-          <motion.div
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 right-0 bottom-0 z-[81] bg-card rounded-t-3xl max-h-[70vh] flex flex-col safe-bottom"
-          >
-            <div className="flex items-center justify-between p-5 pb-3 shrink-0">
-              <h2 className="text-lg font-bold">{t('workout.swap_pick_title')}</h2>
-              <button onClick={() => setSwapOptions(null)} className="p-1.5 rounded-lg text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="overflow-y-auto pb-8">
-              {swapOptions.map(c => {
-                const thumb = getVideoThumbUrl(c.video_path);
-                return (
-                  <div key={c.id} className="w-full flex items-center gap-1 pr-3 hover:bg-muted transition-colors">
-                    <button
-                      onClick={() => { setSwapOptions(null); applySwap(c); }}
-                      className="flex-1 min-w-0 flex items-center gap-3 pl-5 py-2.5 text-left"
-                    >
-                      <div className="shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                        {thumb ? (
-                          <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
-                        ) : (
-                          <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
-                        )}
-                      </div>
-                      <span className="text-sm font-medium truncate">{(isEn && c.name_en) ? c.name_en : c.name}</span>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openExerciseInfo(c.id); }}
-                      className="p-2.5 rounded-xl text-muted-foreground shrink-0"
-                    >
-                      <Info className="w-5 h-5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-
-        </>
-      )}
-    </AnimatePresence>
+    <ExerciseSwapSheet
+      options={swapOptions}
+      onPick={applySwap}
+      onClose={() => setSwapOptions(null)}
+      onShowInfo={setSwapInfoId}
+    />
   );
 
-  // Exercise detail sheet (list-view ⓘ and swap-sheet ⓘ) — closing it returns
-  // to whatever was underneath.
   const infoSheetJsx = (
-          <AnimatePresence>
-            {swapInfo && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[85] bg-black/40"
-                  onClick={() => setSwapInfo(null)}
-                />
-                <motion.div
-                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                  className="fixed left-0 right-0 bottom-0 z-[86] bg-background rounded-t-3xl max-h-[85vh] flex flex-col safe-bottom"
-                >
-                  <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
-                    <p className="text-base font-bold truncate">{(isEn && swapInfo.nameEn) ? swapInfo.nameEn : swapInfo.name}</p>
-                    <button onClick={() => setSwapInfo(null)} className="p-1.5 rounded-lg text-muted-foreground"><X className="w-5 h-5" /></button>
-                  </div>
-                  <div className="overflow-y-auto px-5 pb-8">
-                    {swapInfo.videoUrl ? (
-                      <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
-                        <video
-                          src={swapInfo.videoUrl}
-                          playsInline autoPlay loop muted preload="auto"
-                          className="w-full h-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
-                          className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                        <p className="text-sm text-muted-foreground">{t('workout.no_video')}</p>
-                      </div>
-                    )}
-                    <ExerciseInfoContent
-                      category={swapInfo.category}
-                      equipmentType={swapInfo.equipmentType}
-                      machineName={swapInfo.machineName}
-                      primaryMuscles={swapInfo.primaryMuscles}
-                      secondaryMuscles={swapInfo.secondaryMuscles}
-                      primaryMusclesEn={swapInfo.primaryMusclesEn}
-                      secondaryMusclesEn={swapInfo.secondaryMusclesEn}
-                      description={swapInfo.description}
-                      descriptionEn={null}
-                      setupInstructions={swapInfo.setupInstructions}
-                      setupInstructionsEn={null}
-                      commonMistakes={swapInfo.commonMistakes}
-                      commonMistakesEn={null}
-                      tips={swapInfo.tips}
-                      tipsEn={null}
-                    />
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+    <ExerciseInfoSheet exerciseId={swapInfoId} onClose={() => setSwapInfoId(null)} />
   );
 
   // Compact list mode
@@ -1189,7 +1025,7 @@ export const WorkoutSession = ({
           totalExercises={liveExercises.length}
           startTime={workoutStartTime}
           restSecondsByIndex={liveExercises.map(e => getRestSecondsForCategory(goalId, e.slotCategory))}
-          onShowInfo={openExerciseInfo}
+          onShowInfo={setSwapInfoId}
           onEditSet={handleEditCompletedSet}
           onUncheckSet={handleUncheckSet}
         />

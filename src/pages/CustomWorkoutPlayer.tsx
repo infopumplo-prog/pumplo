@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -17,6 +18,10 @@ import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePic
 import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, enterVideoFullscreen } from '@/lib/videoUtils';
+import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
+import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
+import { useLongPress } from '@/lib/useLongPress';
 import { cn } from '@/lib/utils';
 import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 const REST_BETWEEN_SETS = 90; // seconds
@@ -153,6 +158,12 @@ const CustomWorkoutPlayer = () => {
   const [viewMode, setViewMode] = useState<'video' | 'list'>('list');
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [explainSetType, setExplainSetType] = useState<SetType | null>(null);
+  // Gym-bound swap picker (tap = quick swap, hold = full list) — shared with the
+  // generated workout player.
+  const [swapOptions, setSwapOptions] = useState<SwapCandidate[] | null>(null);
+  const [swapRowIdx, setSwapRowIdx] = useState<number | null>(null);
+  const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
+  const [isSwappingIdx, setIsSwappingIdx] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
@@ -824,6 +835,90 @@ const CustomWorkoutPlayer = () => {
     setAddPickerOpen(false);
   };
 
+  // --- Gym-bound swap (playback) ---
+  // Alternatives are filtered by the selected gym's machines (same as the
+  // generated player). Custom-plan slots lack a role_id, so we read the
+  // exercise's primary_role from the DB (cardio slots skip the role query).
+  const fetchAltsForIndex = useCallback(async (idx: number): Promise<SwapCandidate[]> => {
+    const ex = exercises[idx];
+    if (!ex || !selectedGymId) return [];
+    const isCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
+    let primaryRole: string | null = null;
+    if (!isCardio) {
+      const { data } = await supabase.from('exercises').select('primary_role').eq('id', ex.exercise_id).single();
+      primaryRole = (data as { primary_role: string | null } | null)?.primary_role ?? null;
+    }
+    const excludeIds = exercises.map(e => e.exercise_id).filter(Boolean);
+    return fetchGymBoundAlternatives({ primaryRole, isCardio, excludeIds, gymId: selectedGymId });
+  }, [exercises, selectedGymId]);
+
+  // Replace a slot with the picked alternative: update the running session AND
+  // persist to the plan (mirrors how rest/notes persist mid-workout). Ad-hoc
+  // rows added this session aren't in the DB, so they're only updated in memory.
+  const applySwap = useCallback(async (idx: number, pick: SwapCandidate) => {
+    const row = exercises[idx];
+    if (!row) return;
+    const { data } = await supabase
+      .from('exercises')
+      .select('name, name_en, video_path, machine_id, unit_type, category, primary_muscles, secondary_muscles')
+      .eq('id', pick.id)
+      .single();
+    const d = data as { name: string; name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string | null; category: string | null; primary_muscles: string[] | null; secondary_muscles: string[] | null } | null;
+    setExercises(prev => prev.map((e, i) => i === idx ? {
+      ...e,
+      exercise_id: pick.id,
+      exercise_name: d?.name ?? pick.name,
+      exercise_name_en: d?.name_en ?? pick.name_en ?? null,
+      video_path: d?.video_path ?? pick.video_path,
+      machine_id: d?.machine_id ?? pick.machine_id,
+      unit_type: d?.unit_type ?? e.unit_type,
+      category: d?.category ?? e.category,
+      primary_muscles: d?.primary_muscles ?? e.primary_muscles,
+      secondary_muscles: d?.secondary_muscles ?? e.secondary_muscles,
+    } : e));
+    if (!row.id.startsWith('adhoc-')) {
+      const { error } = await supabase.from('custom_plan_exercises').update({ exercise_id: pick.id }).eq('id', row.id);
+      if (error) console.warn('[custom_plan] swap not persisted:', error.message);
+    }
+    toast.success(t('workout.swap_success', { name: d?.name ?? pick.name }));
+  }, [exercises, t]);
+
+  const handleSwapQuick = useCallback(async (idx: number) => {
+    if (isSwappingIdx != null) return;
+    setIsSwappingIdx(idx);
+    try {
+      const cands = await fetchAltsForIndex(idx);
+      if (cands.length === 0) { toast.error(t('workout.no_replacement')); return; }
+      await applySwap(idx, cands[Math.floor(Math.random() * cands.length)]);
+    } finally { setIsSwappingIdx(null); }
+  }, [isSwappingIdx, fetchAltsForIndex, applySwap, t]);
+
+  const handleSwapLong = useCallback(async (idx: number) => {
+    if (isSwappingIdx != null) return;
+    setIsSwappingIdx(idx);
+    try {
+      const cands = await fetchAltsForIndex(idx);
+      setSwapRowIdx(idx);
+      setSwapOptions(cands);
+    } finally { setIsSwappingIdx(null); }
+  }, [isSwappingIdx, fetchAltsForIndex]);
+
+  // Hold the video-mode swap icon → full alternatives sheet for the current slot.
+  const videoSwapPress = useLongPress(() => { if (currentExercise) handleSwapLong(currentExerciseIndex); });
+
+  // Shared swap picker + exercise detail (rendered in both list and video modes).
+  const swapSheets = (
+    <>
+      <ExerciseSwapSheet
+        options={swapOptions}
+        onPick={(c) => { if (swapRowIdx != null) applySwap(swapRowIdx, c); }}
+        onClose={() => { setSwapOptions(null); setSwapRowIdx(null); }}
+        onShowInfo={setSwapInfoId}
+      />
+      <ExerciseInfoSheet exerciseId={swapInfoId} onClose={() => setSwapInfoId(null)} />
+    </>
+  );
+
   // --- Log Workout (Hevy) view handlers ---
   // The Hevy view owns its own sticky rest bar, so these only mutate the shared
   // completedSetsMap; playerState stays on 'exercise'.
@@ -1325,6 +1420,9 @@ const CustomWorkoutPlayer = () => {
           onFinish={() => setPlayerState('completed')}
           onMinimize={handleMinimize}
           onExplainSetType={(type) => setExplainSetType(type as SetType)}
+          onSwapQuick={handleSwapQuick}
+          onSwapLong={handleSwapLong}
+          swappingIdx={isSwappingIdx}
         />
 
         {/* Exit confirmation dialog */}
@@ -1495,6 +1593,7 @@ const CustomWorkoutPlayer = () => {
         </Drawer>
 
         {setTypeExplainDialog}
+        {swapSheets}
       </div>
     );
   }
@@ -1553,6 +1652,14 @@ const CustomWorkoutPlayer = () => {
                   <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                     {currentExerciseIndex + 1}/{totalExercises}
                   </span>
+                  <button
+                    {...videoSwapPress.handlers}
+                    onClick={() => { if (!videoSwapPress.wasLongPress()) handleSwapQuick(currentExerciseIndex); }}
+                    className={cn('p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white', isSwappingIdx === currentExerciseIndex && 'opacity-50')}
+                    style={{ pointerEvents: 'auto', touchAction: 'none' }}
+                  >
+                    <RefreshCw className={cn('w-5 h-5', isSwappingIdx === currentExerciseIndex && 'animate-spin')} />
+                  </button>
                   <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                     <List className="w-5 h-5" />
                   </button>
@@ -1879,6 +1986,7 @@ const CustomWorkoutPlayer = () => {
       />
 
       {setTypeExplainDialog}
+      {swapSheets}
     </div>
   );
 };
