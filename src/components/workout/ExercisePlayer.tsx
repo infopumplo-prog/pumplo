@@ -63,6 +63,9 @@ interface ExercisePlayerProps {
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
+  // Fired when the internal between-set rest starts/stops so the parent can
+  // avoid overwriting the rest countdown on the lock-screen Live Activity.
+  onRestActiveChange?: (active: boolean) => void;
 }
 
 export const ExercisePlayer = ({
@@ -105,12 +108,22 @@ export const ExercisePlayer = ({
   initialSetsData,
   onSetChange,
   nextExerciseName,
-  nextVideoUrl
+  nextVideoUrl,
+  onRestActiveChange
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
   // Hold on the swap button → sheet with every slot alternative.
   const swapPress = useLongPress(() => onSwapLongPress?.());
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Ref callback for the small last-set preview <video>: releases its WebKit
+  // media player when the element detaches so it doesn't count toward the iOS
+  // simultaneous-media ceiling (same reason as the main video cleanup below).
+  const previewNodeRef = useRef<HTMLVideoElement | null>(null);
+  const previewVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    if (el) { previewNodeRef.current = el; return; }
+    const v = previewNodeRef.current;
+    if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ } previewNodeRef.current = null; }
+  }, []);
   const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
     initialSetsData || Array.from({ length: totalSets }, () => ({ completed: false }))
@@ -249,6 +262,22 @@ export const ExercisePlayer = ({
       removeResume?.();
     };
   }, [showRestTimer, videoUrl, playVideo]);
+
+  // Tell the parent when the internal between-set rest is active so it doesn't
+  // push its idle "next set" card over the rest countdown on the lock screen.
+  // Also clears on unmount (e.g. exercise advance) so the flag never sticks.
+  useEffect(() => {
+    onRestActiveChange?.(showRestTimer);
+    return () => { onRestActiveChange?.(false); };
+  }, [showRestTimer, onRestActiveChange]);
+
+  // Release the WebKit media player on unmount (the player is re-keyed on every
+  // set/exercise change) so decoded video resources don't accumulate toward the
+  // iOS simultaneous-media ceiling and block later videos from loading.
+  useEffect(() => () => {
+    const v = videoRef.current;
+    if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ } }
+  }, []);
 
   const handleCompleteSet = () => {
     const weightNum = weight ? parseFloat(weight) : undefined;
@@ -432,6 +461,7 @@ export const ExercisePlayer = ({
               <div className="flex items-center gap-2 mb-3 w-fit max-w-[80vw] bg-black/40 backdrop-blur-sm rounded-xl p-1.5 pr-3">
                 {nextVideoUrl ? (
                   <video
+                    ref={previewVideoRef}
                     src={nextVideoUrl}
                     autoPlay loop muted playsInline preload="auto"
                     className="w-11 h-11 rounded-lg object-cover shrink-0"

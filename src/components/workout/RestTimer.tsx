@@ -74,6 +74,14 @@ export const RestTimer = ({ duration, onComplete, onSkip, label, nextExerciseNam
     };
   }, []);
 
+  // Release the background video's WebKit media player when the rest screen
+  // unmounts, so idle media elements don't accumulate toward the iOS
+  // simultaneous-media ceiling and block later exercise videos from loading.
+  useEffect(() => () => {
+    const v = videoRef.current;
+    if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ } }
+  }, []);
+
   // No speech during rest — exercise announcement happens when next exercise loads
 
   // Audio while the app is in the FOREGROUND: play the whole countdown (incl.

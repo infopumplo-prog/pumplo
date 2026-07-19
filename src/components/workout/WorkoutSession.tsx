@@ -108,6 +108,11 @@ export const WorkoutSession = ({
   const navigate = useNavigate();
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initialExerciseIndex);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  // True while ExercisePlayer runs its OWN between-set rest (video view). The
+  // idle-card effect uses it so it never overwrites the rest countdown; when it
+  // flips back to false the effect re-runs and repaints the upcoming-set card.
+  const [playerResting, setPlayerResting] = useState(false);
+  const handlePlayerRestActiveChange = useCallback((active: boolean) => setPlayerResting(active), []);
   const [restAdvance, setRestAdvance] = useState(true);
   // Ref mirror + navigation helper assigned later (they need refs declared
   // further down); handlers only run after the first render, so this is safe.
@@ -152,6 +157,18 @@ export const WorkoutSession = ({
   // slow connections it's already buffering and we can show it during the rest
   // (lets the user walk to the next machine). video_path is a full public URL.
   const [nextVideoUrl, setNextVideoUrl] = useState<string | null>(null);
+  // ONE reused detached <video> for cache-warming. Creating a fresh element per
+  // exercise leaked a WebKit media player each time (never released), eventually
+  // exhausting the ~16-element ceiling so mid-workout videos silently stopped
+  // loading. We release the previous element before warming the next, and on
+  // unmount, following the StationVideoPlayer cleanup pattern.
+  const warmupVideoRef = useRef<HTMLVideoElement | null>(null);
+  const releaseWarmupVideo = useCallback(() => {
+    const v = warmupVideoRef.current;
+    if (!v) return;
+    try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ }
+  }, []);
+  useEffect(() => () => releaseWarmupVideo(), [releaseWarmupVideo]);
   useEffect(() => {
     let cancelled = false;
     const nextId = liveExercises[currentExerciseIndex + 1]?.exerciseId;
@@ -161,17 +178,19 @@ export const WorkoutSession = ({
         if (cancelled) return;
         const url = data?.video_path || null;
         setNextVideoUrl(url);
-        // Warm the cache NOW (during the current exercise) via a detached video
-        // element so the rest screen shows it instantly/smoothly.
+        // Warm the cache NOW (during the current exercise) via a single reused
+        // detached video so the rest screen shows it instantly/smoothly.
         if (url) {
           try {
-            const v = document.createElement('video');
+            releaseWarmupVideo(); // free the previous exercise's warm-up first
+            const v = warmupVideoRef.current ?? document.createElement('video');
+            warmupVideoRef.current = v;
             v.preload = 'auto'; v.muted = true; v.src = url; v.load();
           } catch { /* noop */ }
         }
       });
     return () => { cancelled = true; };
-  }, [currentExerciseIndex, liveExercises]);
+  }, [currentExerciseIndex, liveExercises, releaseWarmupVideo]);
 
   // Lock screen widget — elapsed count-up timer
   useEffect(() => {
@@ -772,7 +791,7 @@ export const WorkoutSession = ({
 
   useEffect(() => {
     if (showSummary || showCooldown) { endRestActivity(); return; }
-    if (showRestTimer) return; // RestTimer owns the banner while resting
+    if (showRestTimer || playerResting) return; // a rest owns the banner (WorkoutSession or ExercisePlayer)
     // The card always shows the next set TO LOG — when the user navigates back
     // to a finished exercise, the workout's next pending set is shown instead,
     // so the ✓ on the lock screen keeps working.
@@ -791,7 +810,7 @@ export const WorkoutSession = ({
       restOverTitle: t('workout.rest_over_title'),
       restOverBody: t('workout.rest_over_body'),
     });
-  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, playerResting, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✓ / Skip from the lock screen (same behaviour as the custom workout).
   const lockCompleteRef = useRef<() => void>(() => {});
@@ -1275,6 +1294,7 @@ export const WorkoutSession = ({
         }}
         nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
         nextVideoUrl={nextVideoUrl}
+        onRestActiveChange={handlePlayerRestActiveChange}
       />
 
       {swapSheetJsx}
@@ -1336,6 +1356,7 @@ const ExercisePlayerWithVideo = ({
   onSetChange,
   nextExerciseName,
   nextVideoUrl,
+  onRestActiveChange,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -1360,6 +1381,7 @@ const ExercisePlayerWithVideo = ({
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
+  onRestActiveChange?: (active: boolean) => void;
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -1486,6 +1508,7 @@ const ExercisePlayerWithVideo = ({
       onSetChange={onSetChange}
       nextExerciseName={nextExerciseName}
       nextVideoUrl={nextVideoUrl}
+      onRestActiveChange={onRestActiveChange}
     />
   );
 };
