@@ -429,6 +429,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
           <button
             {...swapPress.handlers}
             onClick={() => { if (!swapPress.wasLongPress()) onSwapQuick(exercise); }}
+            data-coach="editor-swap"
             className={cn('p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0', isSwapping && 'opacity-50')}
             style={{ touchAction: 'none' }}
             title={t('workout.swap')}
@@ -576,6 +577,7 @@ const CustomPlanDetail = () => {
   const tourSteps = [
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.table_title'), body: t('tour.editor.table_body') },
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.swipe_title'), body: t('tour.editor.swipe_body') },
+    { target: '[data-coach="editor-swap"]', title: t('tour.editor.swap_title'), body: t('tour.editor.swap_body') },
     { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const isEn = i18n.language === 'en';

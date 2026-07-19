@@ -78,6 +78,7 @@ const RowSwapButton = ({ idx, onQuick, onLong, swapping, label }: {
     <button
       {...press.handlers}
       onClick={() => { if (!press.wasLongPress()) onQuick(idx); }}
+      data-coach={idx === 0 ? 'log-swap' : undefined}
       className={cn('p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors', swapping && 'opacity-50')}
       style={{ touchAction: 'none' }}
       title={label}
@@ -498,6 +499,7 @@ const LogWorkoutView = ({
   const logTourSteps = [
     { target: '[data-coach="log-row"]', title: t('tour.log.row_title'), body: t('tour.log.row_body') },
     { target: '[data-coach="log-row"]', title: t('tour.log.swipe_title'), body: t('tour.log.swipe_body') },
+    { target: '[data-coach="log-swap"]', title: t('tour.log.swap_title'), body: t('tour.log.swap_body') },
     { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
