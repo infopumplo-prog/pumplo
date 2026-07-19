@@ -104,7 +104,14 @@ export const WorkoutSession = ({
   // idle-card effect uses it so it never overwrites the rest countdown; when it
   // flips back to false the effect re-runs and repaints the upcoming-set card.
   const [playerResting, setPlayerResting] = useState(false);
-  const handlePlayerRestActiveChange = useCallback((active: boolean) => setPlayerResting(active), []);
+  // Ref mirror so the idle-card effect can read the rest flag SYNCHRONOUSLY in
+  // the same commit the set completes — ExercisePlayer sets this (true) in its
+  // completion handler, one render before the state-driven re-run would land.
+  const playerRestingRef = useRef(false);
+  const handlePlayerRestActiveChange = useCallback((active: boolean) => {
+    playerRestingRef.current = active;
+    setPlayerResting(active);
+  }, []);
   const [restAdvance, setRestAdvance] = useState(true);
   // Ref mirror + navigation helper assigned later (they need refs declared
   // further down); handlers only run after the first render, so this is safe.
@@ -757,7 +764,7 @@ export const WorkoutSession = ({
 
   useEffect(() => {
     if (showSummary || showCooldown) { endRestActivity(); return; }
-    if (showRestTimer || playerResting) return; // a rest owns the banner (WorkoutSession or ExercisePlayer)
+    if (showRestTimer || playerResting || playerRestingRef.current) return; // a rest owns the banner (WorkoutSession or ExercisePlayer)
     // The card always shows the next set TO LOG — when the user navigates back
     // to a finished exercise, the workout's next pending set is shown instead,
     // so the ✓ on the lock screen keeps working.

@@ -296,6 +296,11 @@ export const ExercisePlayer = ({
     if (currentSet + 1 >= totalSets) {
       onCompleteExercise(newSetsData);
     } else {
+      // Flag the between-set rest SYNCHRONOUSLY in the same event/batch as
+      // onSetChange, so the parent's idle-card effect already sees the rest as
+      // active on its next run and never pushes the "next set" card over the
+      // countdown. The showRestTimer effect below still fires the false on end.
+      onRestActiveChange?.(true);
       setShowRestTimer(true);
     }
   };
