@@ -112,6 +112,10 @@ export const WorkoutSession = ({
     playerRestingRef.current = active;
     setPlayerResting(active);
   }, []);
+  // ExercisePlayer registers its rest-skip here (video-view between-set rests
+  // are its own showRestTimer, invisible to this component's restShowingRef) —
+  // the lock-screen Skip intent would otherwise be consumed and dropped.
+  const playerSkipRestRef = useRef<(() => void) | null>(null);
   const [restAdvance, setRestAdvance] = useState(true);
   // Ref mirror + navigation helper assigned later (they need refs declared
   // further down); handlers only run after the first render, so this is safe.
@@ -788,7 +792,7 @@ export const WorkoutSession = ({
   // ✓ / Skip from the lock screen (same behaviour as the custom workout).
   const lockCompleteRef = useRef<() => void>(() => {});
   lockCompleteRef.current = () => {
-    if (restShowingRef.current || showSummary || showCooldown) return;
+    if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
     // Same target the banner shows: the viewed exercise's first incomplete
     // set, or the workout's next pending one when the viewed exercise is done.
     const target = findPendingSet(currentExerciseIndexRef.current);
@@ -807,6 +811,13 @@ export const WorkoutSession = ({
   };
   const lockSkipRef = useRef<() => void>(() => {});
   lockSkipRef.current = () => {
+    // Video-view between-set rest lives inside ExercisePlayer — close it
+    // there (its RestTimer cleanup stops beeps/notification itself).
+    if (playerRestingRef.current) {
+      playerSkipRestRef.current?.();
+      playerRestingRef.current = false;
+      return;
+    }
     if (!restShowingRef.current) return;
     stopRestBeeps();
     cancelRestEndNotification();
@@ -832,7 +843,7 @@ export const WorkoutSession = ({
             } else {
               // ✓ while a rest still runs in JS: the user already dealt with
               // the rest on the widget — close it first, never drop the set.
-              if (restShowingRef.current) { lockSkipRef.current(); await wait(350); }
+              if (restShowingRef.current || playerRestingRef.current) { lockSkipRef.current(); await wait(350); }
               lockCompleteRef.current();
             }
             await wait(350);
@@ -1138,6 +1149,7 @@ export const WorkoutSession = ({
         nextExerciseName={(isEn && liveExercises[currentExerciseIndex + 1]?.exerciseNameEn) ? liveExercises[currentExerciseIndex + 1]!.exerciseNameEn! : (liveExercises[currentExerciseIndex + 1]?.exerciseName || undefined)}
         nextVideoUrl={nextVideoUrl}
         onRestActiveChange={handlePlayerRestActiveChange}
+        skipRestRef={playerSkipRestRef}
       />
 
       {swapSheetJsx}
@@ -1200,6 +1212,7 @@ const ExercisePlayerWithVideo = ({
   nextExerciseName,
   nextVideoUrl,
   onRestActiveChange,
+  skipRestRef,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -1225,6 +1238,7 @@ const ExercisePlayerWithVideo = ({
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
   onRestActiveChange?: (active: boolean) => void;
+  skipRestRef?: React.MutableRefObject<(() => void) | null>;
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -1352,6 +1366,7 @@ const ExercisePlayerWithVideo = ({
       nextExerciseName={nextExerciseName}
       nextVideoUrl={nextVideoUrl}
       onRestActiveChange={onRestActiveChange}
+      skipRestRef={skipRestRef}
     />
   );
 };

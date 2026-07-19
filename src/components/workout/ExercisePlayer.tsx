@@ -66,6 +66,10 @@ interface ExercisePlayerProps {
   // Fired when the internal between-set rest starts/stops so the parent can
   // avoid overwriting the rest countdown on the lock-screen Live Activity.
   onRestActiveChange?: (active: boolean) => void;
+  // The lock-screen Skip intent lands in the parent (it owns the plugin
+  // listeners), but this player owns the video-view between-set rest — the
+  // parent calls this ref to close it. Null whenever no rest is running.
+  skipRestRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 export const ExercisePlayer = ({
@@ -109,7 +113,8 @@ export const ExercisePlayer = ({
   onSetChange,
   nextExerciseName,
   nextVideoUrl,
-  onRestActiveChange
+  onRestActiveChange,
+  skipRestRef
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
   // Hold on the swap button → sheet with every slot alternative.
@@ -319,6 +324,11 @@ export const ExercisePlayer = ({
       onSetChange(newSetIndex, setsData);
     }
   };
+
+  // Render-time assignment (same pattern as the parent's lock-screen refs)
+  // keeps the exposed skip in sync with showRestTimer within the same commit.
+  if (skipRestRef) skipRestRef.current = showRestTimer ? handleRestComplete : null;
+  useEffect(() => () => { if (skipRestRef) skipRestRef.current = null; }, [skipRestRef]);
 
   const handleGoBack = () => {
     if (currentSet > 0) {
