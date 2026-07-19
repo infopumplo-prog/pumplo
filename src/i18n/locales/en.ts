@@ -1232,6 +1232,10 @@ const en = {
   'notifications.not_now': 'Not now',
 
   // Station components
+  'flyer.headline': 'Your workout. Your gym.',
+  'flyer.sub': 'Pumplo builds a plan for the exact machines in your gym and guides you through every exercise with a video.',
+  'flyer.download': 'Get Pumplo',
+  'flyer.tagline': 'Your training buddy in your pocket',
   'station.no_exercises': 'No exercises',
   'station.prev_exercise': 'Previous exercise',
   'station.next_exercise': 'Next exercise',

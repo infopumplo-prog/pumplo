@@ -1229,6 +1229,10 @@ const cs = {
   'notifications.not_now': 'Teď ne',
 
   // Station components
+  'flyer.headline': 'Tvůj trénink. Tvoje posilovna.',
+  'flyer.sub': 'Pumplo ti sestaví plán přesně pro stroje ve tvé posilovně a provede tě každým cvikem s videem.',
+  'flyer.download': 'Stáhnout Pumplo',
+  'flyer.tagline': 'Tréninkový parťák do kapsy',
   'station.no_exercises': 'Žádné cviky',
   'station.prev_exercise': 'Předchozí cvik',
   'station.next_exercise': 'Další cvik',

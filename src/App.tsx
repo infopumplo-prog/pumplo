@@ -59,6 +59,7 @@ import { flushWorkoutSaveQueue } from "@/lib/workoutSaveQueue";
 import WebGate from "@/components/WebGate";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
+const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
 
 // Handles com.pumplo.app://plan/{token} deep links
 const PlanDeepLinkNavigator = () => {
@@ -219,6 +220,15 @@ const AppRoutes = () => {
     <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
+    <Route path="/go/:code" element={
+      <Suspense fallback={
+        <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+        </div>
+      }>
+        <FlyerLanding />
+      </Suspense>
+    } />
     <Route path="/s/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>

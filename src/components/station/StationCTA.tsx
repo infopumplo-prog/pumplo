@@ -1,11 +1,16 @@
 import { Dumbbell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { openAppOrStore, APP_STORE_URL } from '@/lib/appRedirect';
+import { logStoreClick } from '@/lib/qrTracking';
 
 export const StationCTA = () => {
   const { t } = useTranslation();
+  const { code } = useParams<{ code: string }>();
 
   const handleOpen = () => {
+    // Funnel analytics: the tap is logged before any redirect fires.
+    if (code) logStoreClick('station', code);
     // Mobile: open the app (or fall back to its store). Desktop: there is no
     // app, so send straight to the App Store listing.
     if (!openAppOrStore('station')) {
