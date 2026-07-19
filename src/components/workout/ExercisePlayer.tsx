@@ -249,12 +249,23 @@ export const ExercisePlayer = ({
     // Resume playback when the user returns to the app. visibilitychange covers
     // web/PWA; Capacitor 'resume' is the reliable signal in the native WKWebView.
     // iOS often rejects a play() fired exactly at resume (the webview is still
-    // waking up, and the lock-screen replay runs at the same moment) — retry a
-    // couple of times; play() on an already-playing video is a no-op.
+    // waking up, and the lock-screen replay runs at the same moment) — retry
+    // until playback actually starts. The lock-screen Skip can also remount
+    // this <video> while the webview is suspended, leaving it in a stalled
+    // fetch that play() alone never recovers — after the early retries fail
+    // without buffered data, one load() kick restarts the loader.
     const timers: number[] = [];
     const playWithRetry = () => {
-      playVideo();
-      timers.push(window.setTimeout(playVideo, 300), window.setTimeout(playVideo, 1200));
+      timers.forEach(id => clearTimeout(id));
+      timers.length = 0;
+      [0, 300, 1200, 2500, 4000].forEach((delay, i) => {
+        timers.push(window.setTimeout(() => {
+          const v = videoRef.current;
+          if (!v || !v.paused) return;
+          if (i >= 3 && v.readyState < 2) { try { v.load(); } catch { /* noop */ } }
+          playVideo();
+        }, delay));
+      });
     };
     playWithRetry();
     const onVisible = () => { if (document.visibilityState === 'visible') playWithRetry(); };
