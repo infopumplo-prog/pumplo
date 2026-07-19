@@ -2363,6 +2363,10 @@ const en = {
   'tour.player.swap_body': 'A short tap swaps in a random alternative; hold to pick from all options for this slot.',
   'tour.player.list_title': 'List view',
   'tour.player.list_body': 'Switches the whole workout to a list — see all exercises and sets at once and revisit finished ones.',
+  'tour.player.rir_title': 'Set target',
+  'tour.player.rir_body': 'The rep range and recommended effort. "In reserve" (RIR) is how many reps you could still do when you end the set — e.g. 2 in reserve means stopping two reps short of failure.',
+  'tour.player.info_title': 'Exercise details',
+  'tour.player.info_body': 'Opens the exercise description, machine setup, common mistakes and tips for the current exercise.',
 
   'tour.wlist.row_title': 'Current set',
   'tour.wlist.row_body': 'The highlighted row is up next — adjust kg and reps and tap ✓. Tap the green ✓ of a finished set to un-check and edit it.',

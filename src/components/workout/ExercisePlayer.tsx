@@ -144,10 +144,12 @@ export const ExercisePlayer = ({
   // First-workout guided tour (video player controls).
   const tour = useCoachTour('player', 1, true);
   const tourSteps = [
+    { target: '[data-coach="player-rir"]', title: t('tour.player.rir_title'), body: t('tour.player.rir_body') },
     { target: '[data-coach="player-inputs"]', title: t('tour.player.inputs_title'), body: t('tour.player.inputs_body') },
     { target: '[data-coach="player-complete"]', title: t('tour.player.complete_title'), body: t('tour.player.complete_body') },
     { target: '[data-coach="player-swap"]', title: t('tour.player.swap_title'), body: t('tour.player.swap_body') },
     { target: '[data-coach="player-list"]', title: t('tour.player.list_title'), body: t('tour.player.list_body') },
+    { target: '[data-coach="player-info"]', title: t('tour.player.info_title'), body: t('tour.player.info_body') },
     { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
 
@@ -461,6 +463,7 @@ export const ExercisePlayer = ({
             </button>
             <button
               onClick={() => setShowInfoDrawer(!showInfoDrawer)}
+              data-coach="player-info"
               className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
               style={{ pointerEvents: 'auto' }}
             >
@@ -533,7 +536,7 @@ export const ExercisePlayer = ({
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     {/* Reps + RIR display */}
-                    <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
+                    <div data-coach="player-rir" className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
                       <p className="text-white text-2xl font-bold leading-tight">
                         {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">{t('workout.reps_abbr')}</span>
                       </p>

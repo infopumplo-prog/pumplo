@@ -2346,6 +2346,10 @@ const cs = {
   'tour.player.swap_body': 'Krátký ťuk vymění cvik za náhodnou alternativu, podržením si vybereš ze všech možností pro tento slot.',
   'tour.player.list_title': 'Zobrazení pod sebou',
   'tour.player.list_body': 'Přepne celý trénink do seznamu — vidíš všechny cviky a série najednou a můžeš se vracet k hotovým.',
+  'tour.player.rir_title': 'Cíl série',
+  'tour.player.rir_body': 'Rozsah opakování a doporučená náročnost. „V rezervě" (RIR) říká, kolik opakování bys ještě zvládl, když sérii ukončíš — např. 2 v rezervě znamená skončit dvě opakování před selháním.',
+  'tour.player.info_title': 'Detail cviku',
+  'tour.player.info_body': 'Otevře popis provedení, nastavení stroje, časté chyby a tipy k aktuálnímu cviku.',
 
   'tour.wlist.row_title': 'Aktuální série',
   'tour.wlist.row_body': 'Zvýrazněný řádek je série na řadě — uprav kg a opakování a odškrtni ✓. Hotové (zelené) série můžeš ťuknutím na ✓ vrátit a upravit.',
