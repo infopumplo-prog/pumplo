@@ -194,6 +194,24 @@ const Profile = () => {
           </div>
         </motion.div>
 
+        {/* OAuth signups can land without a name (Apple hides it after the
+            first authorization) — nudge them to fill it in Settings. */}
+        {profile && !profile.first_name && !profile.last_name && (
+          <motion.div variants={itemVariants}>
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-primary/30 bg-primary/5 text-left"
+            >
+              <User className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{t('profile.add_name_title')}</p>
+                <p className="text-xs text-muted-foreground">{t('profile.add_name_desc')}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </motion.div>
+        )}
+
         {/* Menu */}
         <motion.div variants={itemVariants}>
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">

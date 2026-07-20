@@ -1232,6 +1232,8 @@ const en = {
   'notifications.not_now': 'Not now',
 
   // Station components
+  'profile.add_name_title': 'Add your name',
+  'profile.add_name_desc': 'Your trainers and gym will see your name instead of an empty profile.',
   'flyer.headline': 'Your workout. Your gym.',
   'flyer.sub': 'Pumplo builds a plan for the exact machines in your gym and guides you through every exercise with a video.',
   'flyer.download': 'Get Pumplo',

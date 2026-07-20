@@ -199,6 +199,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           token: result.response.identityToken,
         });
         if (error) return { success: false, error: error.message };
+        // Apple sends the name ONLY with the very first authorization — the ID
+        // token never carries it, so this is the single chance to store it.
+        try {
+          const given = result.response.givenName?.trim();
+          const family = result.response.familyName?.trim();
+          if (given || family) {
+            const { data: { user: u } } = await supabase.auth.getUser();
+            if (u) {
+              const { data: prof } = await supabase
+                .from('user_profiles').select('first_name, last_name')
+                .eq('user_id', u.id).maybeSingle();
+              if (prof && !prof.first_name && !prof.last_name) {
+                await supabase.from('user_profiles')
+                  .update({ first_name: given || null, last_name: family || null })
+                  .eq('user_id', u.id);
+              }
+            }
+          }
+        } catch { /* jméno navíc nesmí shodit login */ }
         return { success: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Apple přihlášení selhalo';

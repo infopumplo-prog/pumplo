@@ -1229,6 +1229,8 @@ const cs = {
   'notifications.not_now': 'Teď ne',
 
   // Station components
+  'profile.add_name_title': 'Doplň si jméno',
+  'profile.add_name_desc': 'Trenéři a posilovna tě uvidí jménem místo prázdného profilu.',
   'flyer.headline': 'Tvůj trénink. Tvoje posilovna.',
   'flyer.sub': 'Pumplo ti sestaví plán přesně pro stroje ve tvé posilovně a provede tě každým cvikem s videem.',
   'flyer.download': 'Stáhnout Pumplo',
