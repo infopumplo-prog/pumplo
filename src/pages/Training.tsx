@@ -447,6 +447,12 @@ const Training = () => {
       setGeneratedExercises(pausedWorkout.exercises);
       setWarmupExercises(pausedWorkout.warmupExercises || []);
       setSelectedWorkoutGymId(pausedWorkout.gymId);
+      // Cooldown is only built in handleStartWarmup, which resume bypasses —
+      // rebuild it from the restored exercises so a resumed workout still ends
+      // with the cooldown instead of jumping straight to the summary.
+      generateTimedExercises(pausedWorkout.exercises, 'cooldown')
+        .then(setCooldownExercises)
+        .catch(() => {});
       
       if (pausedWorkout.isInWarmup) {
         // Resume in warmup
