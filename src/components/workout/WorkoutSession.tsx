@@ -26,6 +26,7 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, type WatchAction } from '@/lib/watchWorkout';
 
 interface SetData {
   completed: boolean;
@@ -789,6 +790,27 @@ export const WorkoutSession = ({
     });
   }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, playerResting, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Push a snapshot of the current workout state to the paired watch app.
+  useEffect(() => {
+    const ex = liveExercises[currentExerciseIndex];
+    if (!ex) return;
+    if (showSummary) { updateWatchState(buildWatchWorkoutState({
+      phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+      targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
+      resting: false, restEndsAt: null, nextSetLabel: null })); return; }
+    const resting = showRestTimer || playerResting;
+    updateWatchState(buildWatchWorkoutState({
+      phase: resting ? 'rest' : 'set',
+      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
+      slotCategory: ex.slotCategory ?? null,
+      setIndex: currentSetIndex, totalSets: ex.sets,
+      targetWeight: currentExWeight, repMin: ex.repMin, repMax: ex.repMax, rir: ex.rirMax ?? ex.rirMin ?? null,
+      prevWeight: currentExWeight, prevReps: ex.repMax,
+      resting, restEndsAt: resting ? Date.now() + getRestSecondsForCategory(goalId, ex.slotCategory) * 1000 : null,
+      nextSetLabel: null,
+    }));
+  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, currentExWeight, liveExercises, isEn, goalId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ✓ / Skip from the lock screen (same behaviour as the custom workout).
   const lockCompleteRef = useRef<() => void>(() => {});
   lockCompleteRef.current = () => {
@@ -861,7 +883,7 @@ export const WorkoutSession = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leaving the workout removes the banner.
-  useEffect(() => () => { endRestActivity(); }, []);
+  useEffect(() => () => { endRestActivity(); endWatchState(); }, []);
 
   // Exercise detail opened from the swap sheet ⓘ (closes back to the sheet).
   const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
