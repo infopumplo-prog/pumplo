@@ -118,11 +118,15 @@ Deno.serve(async (req) => {
   const now = new Date();
   const horizon = new Date(now.getTime() + 8 * 86_400_000).toISOString();
 
-  // Active subscriptions renewing within the next ~8 days.
+  // Active subscriptions renewing within the next ~8 days that will NOT be
+  // auto-charged: no active Stripe subscription (grandfathered / manual /
+  // invoice). Gyms with a card (stripe_subscription_id set) renew via Stripe,
+  // which sends its own receipts and dunning — they must NOT get this nudge.
   const { data: subs, error } = await supabase
     .from("gym_subscriptions")
     .select("id, gym_id, plan_id, current_period_end, status")
     .eq("status", "active")
+    .is("stripe_subscription_id", null)
     .not("current_period_end", "is", null)
     .lte("current_period_end", horizon);
   if (error) {
