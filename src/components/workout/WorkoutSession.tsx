@@ -882,6 +882,26 @@ export const WorkoutSession = ({
     return () => { rm1(); rm2(); document.removeEventListener('visibilitychange', onVis); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Watch (companion app) actions replayed into the same handlers the
+  // in-app UI uses — logSet / skipRest only for now; goPrevSet / goNextSet /
+  // addRest15 land with plan B (set navigation / rest adjustment).
+  useEffect(() => {
+    const off = addWatchActionListener((a: WatchAction) => {
+      if (a.type === 'logSet') {
+        if (restShowingRef.current) return; // pauza běží → ignoruj log
+        const target = findPendingSet(currentExerciseIndexRef.current);
+        if (!target) return;
+        const ex = liveExercises[target.exIdx]; if (!ex) return;
+        handleCompactCompleteSet(target.exIdx, target.si, a.weight ?? undefined, a.reps);
+      } else if (a.type === 'skipRest') {
+        if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
+        if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
+      }
+      // goPrevSet / goNextSet / addRest15 — dodá plán B (navigace mezi sériemi / úprava pauzy)
+    });
+    return off;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Leaving the workout removes the banner.
   useEffect(() => () => { endRestActivity(); endWatchState(); }, []);
 
