@@ -885,20 +885,26 @@ export const WorkoutSession = ({
   // Watch (companion app) actions replayed into the same handlers the
   // in-app UI uses — logSet / skipRest only for now; goPrevSet / goNextSet /
   // addRest15 land with plan B (set navigation / rest adjustment).
+  // Ref-indirection (same pattern as lockCompleteRef/lockSkipRef above):
+  // reassigned every render so the mount-only listener effect below always
+  // calls into a closure that sees the current liveExercises/state, instead
+  // of a stale one captured at mount (e.g. right after an exercise swap).
+  const watchActionRef = useRef<(a: WatchAction) => void>(() => {});
+  watchActionRef.current = (a: WatchAction) => {
+    if (a.type === 'logSet') {
+      if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
+      const target = findPendingSet(currentExerciseIndexRef.current);
+      if (!target) return;
+      const ex = liveExercises[target.exIdx]; if (!ex) return;
+      handleCompactCompleteSet(target.exIdx, target.si, a.weight ?? undefined, a.reps);
+    } else if (a.type === 'skipRest') {
+      if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
+      if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
+    }
+    // goPrevSet / goNextSet / addRest15 — dodá plán B (navigace mezi sériemi / úprava pauzy)
+  };
   useEffect(() => {
-    const off = addWatchActionListener((a: WatchAction) => {
-      if (a.type === 'logSet') {
-        if (restShowingRef.current) return; // pauza běží → ignoruj log
-        const target = findPendingSet(currentExerciseIndexRef.current);
-        if (!target) return;
-        const ex = liveExercises[target.exIdx]; if (!ex) return;
-        handleCompactCompleteSet(target.exIdx, target.si, a.weight ?? undefined, a.reps);
-      } else if (a.type === 'skipRest') {
-        if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
-        if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
-      }
-      // goPrevSet / goNextSet / addRest15 — dodá plán B (navigace mezi sériemi / úprava pauzy)
-    });
+    const off = addWatchActionListener((a: WatchAction) => watchActionRef.current(a));
     return off;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
