@@ -54,3 +54,31 @@ export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
     nextSetLabel: i.nextSetLabel,
   };
 }
+
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
+
+export type WatchAction =
+  | { type: 'logSet'; weight: number | null; reps: number }
+  | { type: 'goPrevSet' } | { type: 'goNextSet' }
+  | { type: 'skipRest' } | { type: 'addRest15' };
+
+interface WatchWorkoutPlugin {
+  updateState(state: WatchWorkoutState): Promise<void>;
+  endState(): Promise<void>;
+  addListener(event: 'watchAction', cb: (a: WatchAction) => void): Promise<PluginListenerHandle>;
+}
+const WatchWorkout = registerPlugin<WatchWorkoutPlugin>('WatchWorkout');
+
+export async function updateWatchState(state: WatchWorkoutState): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try { await WatchWorkout.updateState(state); } catch { /* plugin missing → noop */ }
+}
+export async function endWatchState(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try { await WatchWorkout.endState(); } catch { /* noop */ }
+}
+export function addWatchActionListener(cb: (a: WatchAction) => void): () => void {
+  if (!Capacitor.isNativePlatform()) return () => {};
+  const handle = WatchWorkout.addListener('watchAction', cb);
+  return () => { handle.then(h => h.remove()).catch(() => {}); };
+}
