@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Text
+import com.pumplo.wear.ui.ActiveSetScreen
 import com.pumplo.wear.ui.PumploCyan
 import com.pumplo.wear.ui.PumploNavy
 
@@ -28,16 +29,16 @@ class MainActivity : ComponentActivity() {
         repository = WearableRepository(applicationContext)
         setContent {
             val state by repository.state.collectAsState()
-            Box(
-                modifier = Modifier.fillMaxSize().background(PumploNavy).padding(12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = state?.let { "${it.phase} ${it.exerciseName} ${it.setIndex + 1}/${it.totalSets}" }
-                        ?: "Čekám na telefon…",
-                    color = PumploCyan,
-                    textAlign = TextAlign.Center,
-                )
+            val current = state
+            if (current != null && current.phase == WatchPhase.SET) {
+                ActiveSetScreen(state = current, onAction = { repository.send(it) })
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(PumploNavy).padding(12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = current?.phase?.name ?: "Čekám na telefon…", color = PumploCyan, textAlign = TextAlign.Center)
+                }
             }
         }
     }
