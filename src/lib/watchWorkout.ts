@@ -98,3 +98,17 @@ export function resolveWatchRestEndsAt(i: RestClockInput): number | null {
   if (i.playerResting && i.playerRestEndsAt > 0) return i.playerRestEndsAt;
   return null;
 }
+
+// Váha zapsaná sérií: co poslaly hodinky > předvyplněná váha zobrazeného
+// cviku > nic (u cizího cviku nikdy nehádáme).
+export interface LoggedWeightInput {
+  actionWeight: number | null;
+  sameExercise: boolean;
+  currentExWeight: number | null;
+}
+
+export function resolveLoggedWeight(i: LoggedWeightInput): number | undefined {
+  if (i.actionWeight != null) return i.actionWeight;
+  if (i.sameExercise && i.currentExWeight != null) return i.currentExWeight;
+  return undefined;
+}

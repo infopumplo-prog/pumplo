@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWatchWorkoutState, resolveWatchRestEndsAt } from './watchWorkout';
+import { buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight } from './watchWorkout';
 
 const base = {
   phase: 'set' as const,
@@ -76,5 +76,27 @@ describe('resolveWatchRestEndsAt', () => {
   it('is stable across calls — the watch countdown must not restart on rerender', () => {
     const input = { ...idle, sessionResting: true, sessionRestEndsAt: 1_700_000_000_000 };
     expect(resolveWatchRestEndsAt(input)).toBe(resolveWatchRestEndsAt(input));
+  });
+});
+
+describe('resolveLoggedWeight', () => {
+  it('uses the weight the watch sent', () => {
+    expect(resolveLoggedWeight({ actionWeight: 42.5, sameExercise: true, currentExWeight: 40 })).toBe(42.5);
+  });
+
+  it('keeps an explicit zero (bodyweight) instead of falling back', () => {
+    expect(resolveLoggedWeight({ actionWeight: 0, sameExercise: true, currentExWeight: 40 })).toBe(0);
+  });
+
+  it('falls back to the prefilled weight on the viewed exercise', () => {
+    expect(resolveLoggedWeight({ actionWeight: null, sameExercise: true, currentExWeight: 40 })).toBe(40);
+  });
+
+  it('never guesses a weight for a different exercise', () => {
+    expect(resolveLoggedWeight({ actionWeight: null, sameExercise: false, currentExWeight: 40 })).toBeUndefined();
+  });
+
+  it('returns undefined when nothing is known', () => {
+    expect(resolveLoggedWeight({ actionWeight: null, sameExercise: true, currentExWeight: null })).toBeUndefined();
   });
 });

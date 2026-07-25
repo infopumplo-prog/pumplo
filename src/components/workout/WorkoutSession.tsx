@@ -26,7 +26,7 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
-import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, type WatchAction } from '@/lib/watchWorkout';
+import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, resolveLoggedWeight, type WatchAction } from '@/lib/watchWorkout';
 
 interface SetData {
   completed: boolean;
@@ -797,26 +797,32 @@ export const WorkoutSession = ({
     });
   }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, playerResting, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✓ / Skip from the lock screen (same behaviour as the custom workout).
-  const lockCompleteRef = useRef<() => void>(() => {});
-  lockCompleteRef.current = () => {
+  // Zaloguj další ČEKAJÍCÍ sérii. Jediná cesta pro lock-screen ✓ i pro ✓ na
+  // hodinkách — obě musí stejně navigovat na cvik, kterému série patří, a
+  // stejně doplnit váhu, jinak se list a video mirror rozejdou.
+  const completePendingSetRef = useRef<(weight?: number, reps?: number) => void>(() => {});
+  completePendingSetRef.current = (weight?: number, reps?: number) => {
     if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
-    // Same target the banner shows: the viewed exercise's first incomplete
-    // set, or the workout's next pending one when the viewed exercise is done.
     const target = findPendingSet(currentExerciseIndexRef.current);
     if (!target) return;
     const ex = liveExercises[target.exIdx];
     if (!ex) return;
     const sameExercise = target.exIdx === currentExerciseIndexRef.current;
     if (!sameExercise) {
-      // ✓ from the lock screen on a later exercise = the user moved on; follow.
+      // ✓ na sérii jiného cviku = uživatel se posunul dál; následuj ho.
       goToExerciseRef.current(target.exIdx);
       setHighestIndexReached(p => Math.max(p, target.exIdx));
     }
-    const weight = sameExercise ? (currentExWeight ?? undefined) : undefined;
-    // handleCompactCompleteSet also re-seeds the video player mirror.
-    handleCompactCompleteSet(target.exIdx, target.si, weight, ex.repMax);
+    // handleCompactCompleteSet přeseje i mirror video playeru.
+    handleCompactCompleteSet(
+      target.exIdx,
+      target.si,
+      resolveLoggedWeight({ actionWeight: weight ?? null, sameExercise, currentExWeight }),
+      reps ?? ex.repMax,
+    );
   };
+  const lockCompleteRef = useRef<() => void>(() => {});
+  lockCompleteRef.current = () => completePendingSetRef.current();
   const lockSkipRef = useRef<() => void>(() => {});
   lockSkipRef.current = () => {
     // Video-view between-set rest lives inside ExercisePlayer — close it
@@ -878,11 +884,7 @@ export const WorkoutSession = ({
   const watchActionRef = useRef<(a: WatchAction) => void>(() => {});
   watchActionRef.current = (a: WatchAction) => {
     if (a.type === 'logSet') {
-      if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
-      const target = findPendingSet(currentExerciseIndexRef.current);
-      if (!target) return;
-      const ex = liveExercises[target.exIdx]; if (!ex) return;
-      handleCompactCompleteSet(target.exIdx, target.si, a.weight ?? undefined, a.reps);
+      completePendingSetRef.current(a.weight ?? undefined, a.reps);
     } else if (a.type === 'skipRest') {
       if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
       if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
