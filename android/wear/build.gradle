@@ -1,0 +1,43 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+android {
+    namespace = "com.pumplo.wear"
+    compileSdk = rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        // Must match the phone app: the Data Layer pairs apps by package name
+        // + signing certificate. Different devices, so no install conflict.
+        applicationId "com.pumplo.app"
+        minSdkVersion 30
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildFeatures {
+        compose true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+}
+
+dependencies {
+    implementation "androidx.activity:activity-compose:$activityComposeVersion"
+    implementation "androidx.compose.ui:ui:$composeUiVersion"
+    implementation "androidx.compose.ui:ui-tooling-preview:$composeUiVersion"
+    implementation "androidx.wear.compose:compose-material:$wearComposeVersion"
+    implementation "androidx.wear.compose:compose-foundation:$wearComposeVersion"
+    implementation "com.google.android.gms:play-services-wearable:$playServicesWearableVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion"
+    debugImplementation "androidx.compose.ui:ui-tooling:$composeUiVersion"
+    testImplementation "junit:junit:$junitVersion"
+}
