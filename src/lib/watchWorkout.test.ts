@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWatchWorkoutState } from './watchWorkout';
+import { buildWatchWorkoutState, resolveWatchRestEndsAt } from './watchWorkout';
 
 const base = {
   phase: 'set' as const,
@@ -43,5 +43,38 @@ describe('buildWatchWorkoutState', () => {
   it('handles null target weight (bodyweight/first time)', () => {
     const s = buildWatchWorkoutState({ ...base, targetWeight: null, prevWeight: null });
     expect(s.targetWeight).toBeNull();
+  });
+});
+
+describe('resolveWatchRestEndsAt', () => {
+  const idle = { sessionResting: false, sessionRestEndsAt: 0, playerResting: false, playerRestEndsAt: 0 };
+
+  it('returns null when nothing is resting', () => {
+    expect(resolveWatchRestEndsAt(idle)).toBeNull();
+  });
+
+  it('uses the session clock in list view', () => {
+    expect(resolveWatchRestEndsAt({ ...idle, sessionResting: true, sessionRestEndsAt: 1_700_000_000_000 }))
+      .toBe(1_700_000_000_000);
+  });
+
+  it('uses the player clock during a video-view rest', () => {
+    expect(resolveWatchRestEndsAt({ ...idle, playerResting: true, playerRestEndsAt: 1_700_000_030_000 }))
+      .toBe(1_700_000_030_000);
+  });
+
+  it('prefers the session clock when both are set', () => {
+    expect(resolveWatchRestEndsAt({
+      sessionResting: true, sessionRestEndsAt: 111, playerResting: true, playerRestEndsAt: 222,
+    })).toBe(111);
+  });
+
+  it('treats a zero clock as no rest (never sends epoch 0 to the watch)', () => {
+    expect(resolveWatchRestEndsAt({ ...idle, sessionResting: true, sessionRestEndsAt: 0 })).toBeNull();
+  });
+
+  it('is stable across calls — the watch countdown must not restart on rerender', () => {
+    const input = { ...idle, sessionResting: true, sessionRestEndsAt: 1_700_000_000_000 };
+    expect(resolveWatchRestEndsAt(input)).toBe(resolveWatchRestEndsAt(input));
   });
 });

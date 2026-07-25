@@ -26,7 +26,7 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
-import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, type WatchAction } from '@/lib/watchWorkout';
+import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, type WatchAction } from '@/lib/watchWorkout';
 
 interface SetData {
   completed: boolean;
@@ -109,9 +109,16 @@ export const WorkoutSession = ({
   // the same commit the set completes — ExercisePlayer sets this (true) in its
   // completion handler, one render before the state-driven re-run would land.
   const playerRestingRef = useRef(false);
-  const handlePlayerRestActiveChange = useCallback((active: boolean) => {
+  // Konec pauzy, kterou si řídí ExercisePlayer (video režim). WorkoutSession
+  // ji sám nespouští, ale hodinky potřebují stejný čas jako telefon.
+  const [playerRestEndsAt, setPlayerRestEndsAt] = useState(0);
+  const handlePlayerRestActiveChange = useCallback((active: boolean, endsAt?: number) => {
     playerRestingRef.current = active;
     setPlayerResting(active);
+    // Rest start i ±15 s posílají endsAt; průběžné „pořád běží" volání ho
+    // nemá a nesmí přepsat už známé hodiny.
+    if (active) { if (endsAt) setPlayerRestEndsAt(endsAt); }
+    else setPlayerRestEndsAt(0);
   }, []);
   // ExercisePlayer registers its rest-skip here (video-view between-set rests
   // are its own showRestTimer, invisible to this component's restShowingRef) —
@@ -790,27 +797,6 @@ export const WorkoutSession = ({
     });
   }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, playerResting, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push a snapshot of the current workout state to the paired watch app.
-  useEffect(() => {
-    const ex = liveExercises[currentExerciseIndex];
-    if (!ex) return;
-    if (showSummary) { updateWatchState(buildWatchWorkoutState({
-      phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
-      targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
-      resting: false, restEndsAt: null, nextSetLabel: null })); return; }
-    const resting = showRestTimer || playerResting;
-    updateWatchState(buildWatchWorkoutState({
-      phase: resting ? 'rest' : 'set',
-      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
-      slotCategory: ex.slotCategory ?? null,
-      setIndex: currentSetIndex, totalSets: ex.sets,
-      targetWeight: currentExWeight, repMin: ex.repMin, repMax: ex.repMax, rir: ex.rirMax ?? ex.rirMin ?? null,
-      prevWeight: currentExWeight, prevReps: ex.repMax,
-      resting, restEndsAt: resting ? Date.now() + getRestSecondsForCategory(goalId, ex.slotCategory) * 1000 : null,
-      nextSetLabel: null,
-    }));
-  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, currentExWeight, liveExercises, isEn, goalId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ✓ / Skip from the lock screen (same behaviour as the custom workout).
   const lockCompleteRef = useRef<() => void>(() => {});
   lockCompleteRef.current = () => {
@@ -931,6 +917,52 @@ export const WorkoutSession = ({
       thumbUrl: sameExercise ? currentThumbUrl : (target.exIdx === currentExerciseIndex + 1 ? getVideoThumbUrl(nextVideoUrl) : null),
     };
   };
+
+  // Snapshot aktuálního tréninku pro spárované hodinky. Hodiny pauzy jsou
+  // JEDNY (viz resolveWatchRestEndsAt) — hodinky si z restEndsAt odpočítávají
+  // lokálně, takže přepočet při každém renderu by countdown resetoval.
+  useEffect(() => {
+    const ex = liveExercises[currentExerciseIndex];
+    if (!ex) return;
+    if (showSummary) {
+      updateWatchState(buildWatchWorkoutState({
+        phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
+        resting: false, restEndsAt: null, nextSetLabel: null,
+      }));
+      return;
+    }
+    if (showCooldown) {
+      updateWatchState(buildWatchWorkoutState({
+        phase: 'idle', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
+        resting: false, restEndsAt: null, nextSetLabel: null,
+      }));
+      return;
+    }
+    const restEnds = resolveWatchRestEndsAt({
+      sessionResting: showRestTimer,
+      sessionRestEndsAt: restEndsAt,
+      playerResting,
+      playerRestEndsAt,
+    });
+    // Bez známého konce pauzy nemá smysl posílat fázi rest — hodinky by
+    // ukazovaly odpočet bez času. Radši zůstane obrazovka série.
+    const resting = restEnds !== null;
+    updateWatchState(buildWatchWorkoutState({
+      phase: resting ? 'rest' : 'set',
+      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
+      slotCategory: ex.slotCategory ?? null,
+      setIndex: currentSetIndex, totalSets: ex.sets,
+      targetWeight: currentExWeight, repMin: ex.repMin, repMax: ex.repMax,
+      rir: ex.rirMax ?? ex.rirMin ?? null,
+      prevWeight: currentExWeight, prevReps: ex.repMax,
+      resting, restEndsAt: restEnds,
+      nextSetLabel: resting ? (upcomingSetPayload()?.setText ?? null) : null,
+    }));
+  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, showCooldown,
+      restEndsAt, playerRestEndsAt, currentExWeight, liveExercises, isEn, goalId, restAdvance,
+      setsDataByExercise, resultsByIndex, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // List-mode rest engine: beeps, rest-end notification and lock-screen
   // countdown for the bottom rest bar. The full-screen RestTimer (video view)
@@ -1285,7 +1317,7 @@ const ExercisePlayerWithVideo = ({
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
-  onRestActiveChange?: (active: boolean) => void;
+  onRestActiveChange?: (active: boolean, endsAt?: number) => void;
   skipRestRef?: React.MutableRefObject<(() => void) | null>;
 }) => {
   const { t, i18n } = useTranslation();

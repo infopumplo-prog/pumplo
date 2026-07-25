@@ -82,3 +82,19 @@ export function addWatchActionListener(cb: (a: WatchAction) => void): () => void
   const handle = WatchWorkout.addListener('watchAction', cb);
   return () => { handle.then(h => h.remove()).catch(() => {}); };
 }
+
+// Jedny hodiny pauzy pro snapshot na hodinky. Countdown na hodinkách běží z
+// restEndsAt lokálně — kdyby web posílal pokaždé nově dopočítaný čas, odpočet
+// by při každém rerenderu skočil zpět na plnou hodnotu.
+export interface RestClockInput {
+  sessionResting: boolean;
+  sessionRestEndsAt: number;
+  playerResting: boolean;
+  playerRestEndsAt: number;
+}
+
+export function resolveWatchRestEndsAt(i: RestClockInput): number | null {
+  if (i.sessionResting && i.sessionRestEndsAt > 0) return i.sessionRestEndsAt;
+  if (i.playerResting && i.playerRestEndsAt > 0) return i.playerRestEndsAt;
+  return null;
+}

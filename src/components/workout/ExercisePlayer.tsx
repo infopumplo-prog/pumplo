@@ -65,7 +65,9 @@ interface ExercisePlayerProps {
   nextVideoUrl?: string | null;
   // Fired when the internal between-set rest starts/stops so the parent can
   // avoid overwriting the rest countdown on the lock-screen Live Activity.
-  onRestActiveChange?: (active: boolean) => void;
+  // endsAt (epoch ms) is passed on start and on every ±15 s adjust, so the
+  // parent (and through it the watch) shares ONE rest clock with this player.
+  onRestActiveChange?: (active: boolean, endsAt?: number) => void;
   // The lock-screen Skip intent lands in the parent (it owns the plugin
   // listeners), but this player owns the video-view between-set rest — the
   // parent calls this ref to close it. Null whenever no rest is running.
@@ -134,6 +136,10 @@ export const ExercisePlayer = ({
     initialSetsData || Array.from({ length: totalSets }, () => ({ completed: false }))
   );
   const [showRestTimer, setShowRestTimer] = useState(false);
+  // Shared clock for the between-set rest (epoch ms). The ref mirror lets
+  // adjustRest compute the next value without a stale closure.
+  const [restEndsAt, setRestEndsAt] = useState(0);
+  const restEndsAtRef = useRef(0);
   const [videoError, setVideoError] = useState(false);
   const [weight, setWeight] = useState<string>(lastWeight ? `${lastWeight}` : '');
   const [reps, setReps] = useState<string>(`${repMax}`);
@@ -318,13 +324,27 @@ export const ExercisePlayer = ({
       // onSetChange, so the parent's idle-card effect already sees the rest as
       // active on its next run and never pushes the "next set" card over the
       // countdown. The showRestTimer effect below still fires the false on end.
-      onRestActiveChange?.(true);
+      const restEnds = Date.now() + restBetweenSets * 1000;
+      restEndsAtRef.current = restEnds;
+      setRestEndsAt(restEnds);
+      onRestActiveChange?.(true, restEnds);
       setShowRestTimer(true);
     }
   };
 
+  // ±15 s musí posunout JEDNY hodiny: lokální stav, RestTimer i rodiče
+  // (a přes něj hodinky), jinak by každá plocha odpočítávala něco jiného.
+  const adjustRest = useCallback((delta: number) => {
+    const next = Math.max(Date.now(), restEndsAtRef.current + delta * 1000);
+    restEndsAtRef.current = next;
+    setRestEndsAt(next);
+    onRestActiveChange?.(true, next);
+  }, [onRestActiveChange]);
+
   const handleRestComplete = () => {
     setShowRestTimer(false);
+    restEndsAtRef.current = 0;
+    setRestEndsAt(0);
     const newSetIndex = currentSet + 1;
     setCurrentSet(newSetIndex);
     // Pre-fill weight from previous set for convenience (keep current reps default)
@@ -355,6 +375,8 @@ export const ExercisePlayer = ({
     return (
       <RestTimer
         duration={restBetweenSets}
+        endsAt={restEndsAt || undefined}
+        onAdjust={adjustRest}
         onComplete={handleRestComplete}
         label={t('workout.rest_before_set', { n: currentSet + 2 })}
         nextSet={{
