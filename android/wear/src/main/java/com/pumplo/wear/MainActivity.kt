@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -18,6 +19,7 @@ import androidx.wear.compose.material.Text
 import com.pumplo.wear.ui.ActiveSetScreen
 import com.pumplo.wear.ui.PumploCyan
 import com.pumplo.wear.ui.PumploNavy
+import com.pumplo.wear.ui.RestScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -30,15 +32,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by repository.state.collectAsState()
             val current = state
-            if (current != null && current.phase == WatchPhase.SET) {
-                ActiveSetScreen(state = current, onAction = { repository.send(it) })
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(PumploNavy).padding(12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(text = current?.phase?.name ?: "Čekám na telefon…", color = PumploCyan, textAlign = TextAlign.Center)
-                }
+            when {
+                current == null -> WaitingBox()
+                current.phase == WatchPhase.REST -> RestScreen(state = current, onAction = { repository.send(it) })
+                current.phase == WatchPhase.SET -> ActiveSetScreen(state = current, onAction = { repository.send(it) })
+                else -> WaitingBox()
             }
         }
     }
@@ -51,5 +49,16 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         repository.stop()
         super.onStop()
+    }
+}
+
+// Temporary placeholder — Task 8 replaces this with PumploWatchApp.
+@Composable
+private fun WaitingBox() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(PumploNavy).padding(12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = "Čekám na telefon…", color = PumploCyan, textAlign = TextAlign.Center)
     }
 }
