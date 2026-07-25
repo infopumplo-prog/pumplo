@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight } from './watchWorkout';
+import { buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep } from './watchWorkout';
 
 const base = {
   phase: 'set' as const,
@@ -98,5 +98,33 @@ describe('resolveLoggedWeight', () => {
 
   it('returns undefined when nothing is known', () => {
     expect(resolveLoggedWeight({ actionWeight: null, sameExercise: true, currentExWeight: null })).toBeUndefined();
+  });
+});
+
+describe('resolveSetStep', () => {
+  const mid = { exerciseIndex: 1, setIndex: 1, totalSets: 3, exerciseCount: 4 };
+
+  it('moves to the next set inside the exercise', () => {
+    expect(resolveSetStep(mid, 'next')).toEqual({ exerciseIndex: 1, setIndex: 2 });
+  });
+
+  it('moves to the previous set inside the exercise', () => {
+    expect(resolveSetStep(mid, 'prev')).toEqual({ exerciseIndex: 1, setIndex: 0 });
+  });
+
+  it('rolls over to the next exercise after the last set', () => {
+    expect(resolveSetStep({ ...mid, setIndex: 2 }, 'next')).toEqual({ exerciseIndex: 2, setIndex: 0 });
+  });
+
+  it('rolls back to the previous exercise before the first set', () => {
+    expect(resolveSetStep({ ...mid, setIndex: 0 }, 'prev')).toEqual({ exerciseIndex: 0, setIndex: 0 });
+  });
+
+  it('stops at the end of the workout', () => {
+    expect(resolveSetStep({ exerciseIndex: 3, setIndex: 2, totalSets: 3, exerciseCount: 4 }, 'next')).toBeNull();
+  });
+
+  it('stops at the very beginning', () => {
+    expect(resolveSetStep({ exerciseIndex: 0, setIndex: 0, totalSets: 3, exerciseCount: 4 }, 'prev')).toBeNull();
   });
 });

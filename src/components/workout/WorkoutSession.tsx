@@ -26,7 +26,7 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
-import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, resolveLoggedWeight, type WatchAction } from '@/lib/watchWorkout';
+import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type WatchAction } from '@/lib/watchWorkout';
 
 interface SetData {
   completed: boolean;
@@ -124,6 +124,8 @@ export const WorkoutSession = ({
   // are its own showRestTimer, invisible to this component's restShowingRef) —
   // the lock-screen Skip intent would otherwise be consumed and dropped.
   const playerSkipRestRef = useRef<(() => void) | null>(null);
+  // ExercisePlayer sem zaregistruje úpravu své pauzy (+15 s z hodinek).
+  const playerAdjustRestRef = useRef<((delta: number) => void) | null>(null);
   const [restAdvance, setRestAdvance] = useState(true);
   // Ref mirror + navigation helper assigned later (they need refs declared
   // further down); handlers only run after the first render, so this is safe.
@@ -561,6 +563,8 @@ export const WorkoutSession = ({
   // can be stale, refs never are.
   const currentExerciseIndexRef = useRef(currentExerciseIndex);
   currentExerciseIndexRef.current = currentExerciseIndex;
+  const currentSetIndexRef = useRef(currentSetIndex);
+  currentSetIndexRef.current = currentSetIndex;
   const resultsRef = useRef(resultsByIndex);
   resultsRef.current = resultsByIndex;
   const restShowingRef = useRef(false);
@@ -874,9 +878,36 @@ export const WorkoutSession = ({
     return () => { rm1(); rm2(); document.removeEventListener('visibilitychange', onVis); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const adjustListRest = (delta: number) => {
+    setRestEndsAt(prev => Math.max(Date.now(), prev + delta * 1000));
+  };
+
+  // ‹ / › z hodinek: posun po sériích v rámci cviku, na kraji na sousední cvik.
+  const stepSetRef = useRef<(direction: 'prev' | 'next') => void>(() => {});
+  stepSetRef.current = (direction) => {
+    const exIdx = currentExerciseIndexRef.current;
+    const ex = liveExercises[exIdx];
+    if (!ex) return;
+    const step = resolveSetStep({
+      exerciseIndex: exIdx,
+      setIndex: currentSetIndexRef.current,
+      totalSets: ex.sets,
+      exerciseCount: liveExercises.length,
+    }, direction);
+    if (!step) return;
+    if (step.exerciseIndex !== exIdx) {
+      // goToExerciseRef si index série naseeduje sám z odlogovaných sérií.
+      goToExerciseRef.current(step.exerciseIndex);
+      setHighestIndexReached(p => Math.max(p, step.exerciseIndex));
+      return;
+    }
+    setCurrentSetIndex(step.setIndex);
+    currentSetIndexRef.current = step.setIndex;
+    setPlayerSync(n => n + 1);
+  };
+
   // Watch (companion app) actions replayed into the same handlers the
-  // in-app UI uses — logSet / skipRest only for now; goPrevSet / goNextSet /
-  // addRest15 land with plan B (set navigation / rest adjustment).
+  // in-app UI uses — logSet / skipRest / goPrevSet / goNextSet / addRest15.
   // Ref-indirection (same pattern as lockCompleteRef/lockSkipRef above):
   // reassigned every render so the mount-only listener effect below always
   // calls into a closure that sees the current liveExercises/state, instead
@@ -888,8 +919,14 @@ export const WorkoutSession = ({
     } else if (a.type === 'skipRest') {
       if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
       if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
+    } else if (a.type === 'addRest15') {
+      if (playerRestingRef.current) { playerAdjustRestRef.current?.(15); return; }
+      if (restShowingRef.current) adjustListRest(15);
+    } else if (a.type === 'goPrevSet') {
+      stepSetRef.current('prev');
+    } else if (a.type === 'goNextSet') {
+      stepSetRef.current('next');
     }
-    // goPrevSet / goNextSet / addRest15 — dodá plán B (navigace mezi sériemi / úprava pauzy)
   };
   useEffect(() => {
     const off = addWatchActionListener((a: WatchAction) => watchActionRef.current(a));
@@ -1013,9 +1050,6 @@ export const WorkoutSession = ({
     };
   }, [showRestTimer, viewMode, restEndsAt, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const adjustListRest = (delta: number) => {
-    setRestEndsAt(prev => Math.max(Date.now(), prev + delta * 1000));
-  };
   restCompleteRef.current = handleRestComplete;
 
   const handleCompactSelectExercise = useCallback((index: number) => {
@@ -1232,6 +1266,7 @@ export const WorkoutSession = ({
         nextVideoUrl={nextVideoUrl}
         onRestActiveChange={handlePlayerRestActiveChange}
         skipRestRef={playerSkipRestRef}
+        adjustRestRef={playerAdjustRestRef}
       />
 
       {swapSheetJsx}
@@ -1295,6 +1330,7 @@ const ExercisePlayerWithVideo = ({
   nextVideoUrl,
   onRestActiveChange,
   skipRestRef,
+  adjustRestRef,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -1321,6 +1357,7 @@ const ExercisePlayerWithVideo = ({
   nextVideoUrl?: string | null;
   onRestActiveChange?: (active: boolean, endsAt?: number) => void;
   skipRestRef?: React.MutableRefObject<(() => void) | null>;
+  adjustRestRef?: React.MutableRefObject<((delta: number) => void) | null>;
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -1449,6 +1486,7 @@ const ExercisePlayerWithVideo = ({
       nextVideoUrl={nextVideoUrl}
       onRestActiveChange={onRestActiveChange}
       skipRestRef={skipRestRef}
+      adjustRestRef={adjustRestRef}
     />
   );
 };

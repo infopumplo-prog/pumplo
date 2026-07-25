@@ -112,3 +112,24 @@ export function resolveLoggedWeight(i: LoggedWeightInput): number | undefined {
   if (i.sameExercise && i.currentExWeight != null) return i.currentExWeight;
   return undefined;
 }
+
+// Krok ‹ / › z hodinek: nejdřív po sériích uvnitř cviku, na kraji přeskoč na
+// sousední cvik. Vrací null, když už není kam jít.
+export interface SetStepInput {
+  exerciseIndex: number;
+  setIndex: number;
+  totalSets: number;
+  exerciseCount: number;
+}
+export interface SetStepResult { exerciseIndex: number; setIndex: number; }
+
+export function resolveSetStep(i: SetStepInput, direction: 'prev' | 'next'): SetStepResult | null {
+  if (direction === 'next') {
+    if (i.setIndex + 1 < i.totalSets) return { exerciseIndex: i.exerciseIndex, setIndex: i.setIndex + 1 };
+    if (i.exerciseIndex + 1 < i.exerciseCount) return { exerciseIndex: i.exerciseIndex + 1, setIndex: 0 };
+    return null;
+  }
+  if (i.setIndex > 0) return { exerciseIndex: i.exerciseIndex, setIndex: i.setIndex - 1 };
+  if (i.exerciseIndex > 0) return { exerciseIndex: i.exerciseIndex - 1, setIndex: 0 };
+  return null;
+}

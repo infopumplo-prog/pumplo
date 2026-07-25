@@ -72,6 +72,9 @@ interface ExercisePlayerProps {
   // listeners), but this player owns the video-view between-set rest — the
   // parent calls this ref to close it. Null whenever no rest is running.
   skipRestRef?: React.MutableRefObject<(() => void) | null>;
+  // Stejný princip jako skipRestRef: „+15 s" z hodinek přijde do rodiče, ale
+  // video-view pauzu vlastní tenhle player. Null, když žádná pauza neběží.
+  adjustRestRef?: React.MutableRefObject<((delta: number) => void) | null>;
 }
 
 export const ExercisePlayer = ({
@@ -116,7 +119,8 @@ export const ExercisePlayer = ({
   nextExerciseName,
   nextVideoUrl,
   onRestActiveChange,
-  skipRestRef
+  skipRestRef,
+  adjustRestRef
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
   // Hold on the swap button → sheet with every slot alternative.
@@ -362,6 +366,8 @@ export const ExercisePlayer = ({
   // keeps the exposed skip in sync with showRestTimer within the same commit.
   if (skipRestRef) skipRestRef.current = showRestTimer ? handleRestComplete : null;
   useEffect(() => () => { if (skipRestRef) skipRestRef.current = null; }, [skipRestRef]);
+  if (adjustRestRef) adjustRestRef.current = showRestTimer ? adjustRest : null;
+  useEffect(() => () => { if (adjustRestRef) adjustRestRef.current = null; }, [adjustRestRef]);
 
   const handleGoBack = () => {
     if (currentSet > 0) {
