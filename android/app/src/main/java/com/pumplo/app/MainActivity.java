@@ -9,9 +9,11 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         // App-local plugins — must be registered before super.onCreate() loads
         // the bridge. RestActivity = ongoing rest-timer notification;
-        // InstagramShare = native "Share to Instagram Stories" handoff.
+        // InstagramShare = native "Share to Instagram Stories" handoff;
+        // WatchWorkout = Wear OS Data Layer bridge for the workout session.
         registerPlugin(RestActivityPlugin.class);
         registerPlugin(InstagramSharePlugin.class);
+        registerPlugin(WatchWorkoutPlugin.class);
         super.onCreate(savedInstanceState);
         // Edge-to-edge: app content goes behind status bar and nav bar,
         // so env(safe-area-inset-*) returns correct values in the WebView.
