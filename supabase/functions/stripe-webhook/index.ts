@@ -186,6 +186,20 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
+  // Idempotency guard: a redelivered checkout.session.completed for the same
+  // Stripe subscription must not create a second gym/subscription. The
+  // subscription id is stable across redeliveries of the same event, so a
+  // prior successful run leaves a matching row behind — treat that as a no-op.
+  const { data: existingSub } = await supabase
+    .from("gym_subscriptions")
+    .select("id, gym_id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+  if (existingSub) {
+    console.log(`checkout.session.completed already processed for subscription ${subscription.id} (gym ${existingSub.gym_id}) — skipping duplicate.`);
+    return;
+  }
+
   // 1. Create the gym
   const { data: gym, error: gymError } = await supabase
     .from("gyms")
@@ -521,7 +535,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   // belongs to it and reconcile each against its matching Stripe item.
   const { data: gymSubs } = await supabase
     .from("gym_subscriptions")
-    .select("id, gym_id, plan_id, status, stripe_subscription_item_id")
+    .select("id, gym_id, plan_id, status, stripe_subscription_item_id, billing_period")
     .eq("stripe_subscription_id", subscription.id);
   if (!gymSubs || gymSubs.length === 0) return;
 
@@ -553,12 +567,15 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     if (matchedSubs.length === 0 && gymSubs.length === 1) matchedSubs.push(gymSubs[0]);
     for (const gymSub of matchedSubs) {
     const oldPlan = gymSub.plan_id;
-    if (oldPlan === planInfo.plan_id) continue; // No plan change for this gym
-
-    const eventType = (planOrder[planInfo.plan_id as keyof typeof planOrder] || 0) >
-      (planOrder[oldPlan as keyof typeof planOrder] || 0)
-      ? "upgraded"
-      : "downgraded";
+    const oldPeriod = gymSub.billing_period;
+    const planChanged = oldPlan !== planInfo.plan_id;
+    const periodChanged = oldPeriod !== planInfo.period;
+    // Compare the (plan_id, billing_period) PAIR, not plan_id alone — the
+    // founder offer keeps plan_id: "premium" across both schedule phases and
+    // only billing_period flips ('quarterly' -> 'monthly'). Comparing plan_id
+    // alone would never fire for that transition and the row would say
+    // 'quarterly' forever while Stripe bills monthly.
+    if (!planChanged && !periodChanged) continue;
 
     await supabase
       .from("gym_subscriptions")
@@ -568,6 +585,19 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", gymSub.id);
+
+    if (!planChanged) {
+      // Period-only change (e.g. founder-offer quarter -> monthly rollover) —
+      // not a plan upgrade/downgrade, so no subscription_events row and no
+      // plan-limit re-check (limits are keyed on plan_id, which is unchanged).
+      console.log(`Gym ${gymSub.gym_id} billing_period changed ${oldPeriod} -> ${planInfo.period} (plan unchanged: ${oldPlan})`);
+      continue;
+    }
+
+    const eventType = (planOrder[planInfo.plan_id as keyof typeof planOrder] || 0) >
+      (planOrder[oldPlan as keyof typeof planOrder] || 0)
+      ? "upgraded"
+      : "downgraded";
 
     await supabase.from("subscription_events").insert({
       gym_id: gymSub.gym_id,

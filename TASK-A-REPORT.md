@@ -138,3 +138,124 @@ All three need to be filled in together once David creates the quarterly Price a
 - `supabase/migrations/20260728_founder_offer_quarterly.sql` (new)
 - `supabase/functions/create-checkout/index.ts`
 - `supabase/functions/stripe-webhook/index.ts`
+
+---
+
+# Fix round 1 (code review findings)
+
+Four findings from the review, all fixed in this round, same worktree/branch.
+
+## 1. `billing_period` went stale after the schedule flips to monthly
+
+`handleSubscriptionUpdated` in `stripe-webhook/index.ts` guarded on `plan_id` alone
+(`if (oldPlan === planInfo.plan_id) continue;`). The founder offer's schedule keeps
+`plan_id: "premium"` across both phases — only `billing_period` changes
+(`'quarterly'` → `'monthly'`) — so that guard always skipped the write for this
+transition, leaving the row permanently wrong.
+
+Fix: added `billing_period` to the `gymSubs` select, and now compare the
+`(plan_id, billing_period)` pair:
+```ts
+const planChanged = oldPlan !== planInfo.plan_id;
+const periodChanged = oldPeriod !== planInfo.period;
+if (!planChanged && !periodChanged) continue;
+```
+The row update (`plan_id`, `billing_period`, `updated_at`) always runs when either
+changed. `subscription_events` insert and the downgrade plan-limit re-check now only
+run `if (planChanged)` — a period-only change is not an upgrade/downgrade (there's no
+`event_type` for that in the `subscription_events` CHECK constraint, and re-checking
+plan limits makes no sense when the plan itself didn't change). A period-only change
+is logged via `console.log` instead.
+
+Checked for spurious writes on ordinary monthly/annual subscriptions: `PRICE_TO_PLAN`
+maps a fixed `period` per price id, so for a ordinary subscription whose price doesn't
+change, `planInfo.period` matches what's already stored — no accidental rewrite.
+
+## 2. TOCTOU race — one owner could claim the founder discount on more than one "first" gym
+
+`isEligibleForFounderOffer` reads `gyms.owner_id = userId`, which is empty for a
+brand-new user (the gym isn't created until the webhook fires later). Two concurrent
+`create-checkout` calls for two new-gym registrations would both read "eligible".
+
+Fix: added an atomic reservation, per the reviewer's guidance.
+- New migration `supabase/migrations/20260728120000_founder_offer_claims.sql`:
+  `founder_offer_claims(user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE
+  CASCADE, checkout_session_id TEXT, claimed_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
+  RLS enabled with no policies (service-role-only access, matching how `create-checkout`
+  reaches it). Applied via the Management API and read back (see Verification).
+- New `reserveFounderOfferClaim(adminClient, userId)` in `create-checkout/index.ts`:
+  inserts a row **before** creating the Stripe session; the PK is what makes this
+  atomic — only the first of two concurrent inserts can succeed. Called right after
+  `isEligibleForFounderOffer` passes; on failure, same 400 Czech message as the
+  eligibility rejection (doesn't leak which specific check failed).
+- **Reservation-expiry behaviour chosen**: stale-claim reclaim by TTL, not a
+  session-expiry webhook listener. `FOUNDER_CLAIM_TTL_MS = 24h`, matching Stripe
+  Checkout's own default subscription-mode session expiry — so a claim never outlives
+  a genuinely live checkout, only an abandoned one. The reclaim path
+  (`UPDATE ... WHERE user_id = ? AND claimed_at < staleThreshold`) is itself race-safe:
+  Postgres re-evaluates the `WHERE` against the committed row, so only one of two
+  concurrent reclaim attempts can actually update it (verified this is the standard
+  read-committed UPDATE semantics, not just an assumption).
+- Bonus hardening beyond what was strictly asked: if `stripe.checkout.sessions.create`
+  throws *after* the claim was reserved, the claim is deleted before rethrowing — so a
+  transient Stripe error doesn't lock a legitimate customer out for up to 24h. On
+  success, the claim row is updated with the real `checkout_session_id` (best-effort,
+  non-blocking) purely for observability/audit.
+
+## 3. Redelivered `checkout.session.completed` could double-write gym + subscription
+
+Added a guard right before "1. Create the gym" in the new-gym path of
+`handleCheckoutComplete` in `stripe-webhook/index.ts`:
+```ts
+const { data: existingSub } = await supabase
+  .from("gym_subscriptions")
+  .select("id, gym_id")
+  .eq("stripe_subscription_id", subscription.id)
+  .maybeSingle();
+if (existingSub) { console.log(...); return; }
+```
+`subscription.id` is stable across redeliveries of the same event (it's `session.subscription`,
+retrieved fresh each time but referring to the same Stripe object), so a prior successful
+run leaves a matching row behind and this makes redelivery a no-op instead of a duplicate
+gym/subscription. Kept tight and additive — did not restructure the handler, and the
+`activate_gym_ids`/`custom_gym_ids` paths above it were already idempotent via `upsert(...,
+{ onConflict: "gym_id" })` so weren't touched.
+
+## 4. No server-side enforcement of the 31.12.2026 deadline
+
+Added `FOUNDER_OFFER_DEADLINE = new Date('2026-12-31T22:59:59.999Z')` in
+`create-checkout/index.ts` (top of file, next to the other founder-offer constants) —
+this is 23:59:59.999 Europe/Prague on 31.12.2026 expressed in UTC (Prague is CET/UTC+1
+that late in the year, no DST). Checked first in the founder-offer gate:
+`if (Date.now() > FOUNDER_OFFER_DEADLINE.getTime())` → 400 `"Zakladatelská nabídka
+skončila 31. 12. 2026."`. This is enforced independent of whether the Stripe price/coupon
+get unpublished.
+
+## Verification (re-run after all four fixes)
+
+```
+$ npx tsc --noEmit                                            # 0 output, exit 0
+$ deno check supabase/functions/create-checkout/index.ts     # Check ... (clean)
+$ deno check supabase/functions/stripe-webhook/index.ts      # Check ... (clean)
+```
+
+Migration schema read-back for `founder_offer_claims` (via Supabase Management API,
+project `udqwjqgdsjobdufdxbpn`):
+```
+columns: user_id uuid NOT NULL, checkout_session_id text NULL, claimed_at timestamptz NOT NULL default now()
+constraints: founder_offer_claims_pkey PRIMARY KEY (user_id)
+             founder_offer_claims_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+relrowsecurity: true
+```
+
+## Files touched this round
+- `supabase/migrations/20260728120000_founder_offer_claims.sql` (new)
+- `supabase/functions/create-checkout/index.ts`
+- `supabase/functions/stripe-webhook/index.ts`
+
+## Still open / unchanged from round 1
+- Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
+  `subscription_plans.stripe_price_quarterly_id`) — untouched, still need real values.
+- Reviewer's coupon note (`applies_to.products` restricted to Neomezený) is a Stripe
+  dashboard configuration step when the coupon is created, not a code change — already
+  captured in the plan doc's David-facing warning.

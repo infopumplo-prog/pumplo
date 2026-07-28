@@ -10,6 +10,17 @@ const IMPLEMENTATION_FEE_PRICE_ID = 'price_1TLJJrEvdp2FxnFOcOEOOcAI';
 // (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
 const FOUNDER_COUPON_ID = 'TODO_COUPON_ZAKLADATELSKA';
 
+// Zakladatelská nabídka registration deadline: end of day 31.12.2026,
+// Europe/Prague (CET, UTC+1 — no DST that late in the year). Enforced here
+// server-side so the offer can't outlive its dates even if someone forgets
+// to unpublish/disable the Stripe price or coupon.
+const FOUNDER_OFFER_DEADLINE = new Date('2026-12-31T22:59:59.999Z');
+
+// Reservation TTL for founder_offer_claims: matches Stripe Checkout's own
+// default session expiry (24h) for subscription-mode sessions, so a claim
+// only outlives a genuinely abandoned checkout, never a live one.
+const FOUNDER_CLAIM_TTL_MS = 24 * 60 * 60 * 1000;
+
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
   httpClient: Stripe.createFetchHttpClient(),
@@ -51,6 +62,45 @@ async function isEligibleForFounderOffer(
     return false;
   }
   return (subs ?? []).length === 0;
+}
+
+// Atomic reservation for the founder offer. isEligibleForFounderOffer() alone
+// is a TOCTOU race: for a brand-new user, gym_subscriptions is empty (the gym
+// doesn't exist until the webhook fires), so two concurrent create-checkout
+// calls for the same new registration would both read "eligible". The
+// founder_offer_claims.user_id PRIMARY KEY is what actually makes this safe —
+// only the first of two concurrent inserts can succeed.
+//
+// A stale claim (older than FOUNDER_CLAIM_TTL_MS, matching Stripe Checkout's
+// own 24h session default) is reclaimable so an abandoned checkout doesn't
+// permanently lock a user out of an offer they never completed. The reclaim
+// UPDATE is itself race-safe: its WHERE clause re-checks staleness against
+// the committed row, so only one of two concurrent reclaim attempts can win.
+// deno-lint-ignore no-explicit-any
+async function reserveFounderOfferClaim(
+  adminClient: any,
+  userId: string,
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  const { error: insertError } = await adminClient
+    .from("founder_offer_claims")
+    .insert({ user_id: userId, claimed_at: nowIso });
+  if (!insertError) return true;
+
+  // Insert failed — most likely a PK conflict (an existing claim). Only
+  // reclaim it if it's stale; otherwise this is a genuine second attempt.
+  const staleThresholdIso = new Date(Date.now() - FOUNDER_CLAIM_TTL_MS).toISOString();
+  const { data: reclaimed, error: reclaimError } = await adminClient
+    .from("founder_offer_claims")
+    .update({ claimed_at: nowIso, checkout_session_id: null })
+    .eq("user_id", userId)
+    .lt("claimed_at", staleThresholdIso)
+    .select("user_id");
+  if (reclaimError) {
+    console.error("reserveFounderOfferClaim: reclaim query failed:", reclaimError);
+    return false;
+  }
+  return (reclaimed ?? []).length > 0;
 }
 
 serve(async (req) => {
@@ -151,7 +201,15 @@ serve(async (req) => {
     // flow (to je právě ten gaming vektor, který toto pravidlo blokuje) a
     // platí jen na čtvrtletní cenu Neomezeného.
     const founderOfferRequested = founder_offer === true;
+    // Tracks whether this request holds a founder_offer_claims reservation —
+    // used later to release it if session creation fails, and to attach the
+    // real session id once we have one.
+    let founderClaimReserved = false;
     if (founderOfferRequested) {
+      if (Date.now() > FOUNDER_OFFER_DEADLINE.getTime()) {
+        return new Response(JSON.stringify({ error: "Zakladatelská nabídka skončila 31. 12. 2026." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       if (isActivateFlow || additional_gym) {
         return new Response(JSON.stringify({ error: "Zakladatelská nabídka je jen pro první posilovnu." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -165,6 +223,15 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Zakladatelská nabídka je jen pro první posilovnu." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+      // Atomic reservation — closes the TOCTOU race above (isEligibleForFounderOffer
+      // reads an empty gym_subscriptions for a brand-new user, so two concurrent
+      // requests could otherwise both pass it).
+      const reserved = await reserveFounderOfferClaim(adminClient, user_id);
+      if (!reserved) {
+        return new Response(JSON.stringify({ error: "Zakladatelská nabídka je jen pro první posilovnu." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      founderClaimReserved = true;
     }
 
     // Existing paying customer (any active subscription on one of their gyms):
@@ -258,7 +325,37 @@ serve(async (req) => {
       sessionParams.allow_promotion_codes = true;
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams);
+    } catch (err) {
+      // Session creation failed after we reserved the claim — release it so a
+      // transient Stripe error doesn't permanently lock this user out of the
+      // offer (the reclaim-on-staleness path would otherwise be the only way
+      // back in, up to FOUNDER_CLAIM_TTL_MS later).
+      if (founderClaimReserved) {
+        const { error: releaseError } = await adminClient
+          .from("founder_offer_claims")
+          .delete()
+          .eq("user_id", user_id);
+        if (releaseError) {
+          console.error("Failed to release founder_offer_claims after Stripe error:", releaseError);
+        }
+      }
+      throw err;
+    }
+
+    if (founderClaimReserved) {
+      // Best-effort — the claim already did its job (blocking concurrent
+      // reservations); recording the session id here is only for observability.
+      const { error: attachError } = await adminClient
+        .from("founder_offer_claims")
+        .update({ checkout_session_id: session.id })
+        .eq("user_id", user_id);
+      if (attachError) {
+        console.error("Failed to attach session id to founder_offer_claims:", attachError);
+      }
+    }
 
     return new Response(
       JSON.stringify({ url: session.url, session_id: session.id }),
