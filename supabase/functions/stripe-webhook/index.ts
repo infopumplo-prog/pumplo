@@ -24,6 +24,11 @@ const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
   "price_1TshbLEvdp2FxnFOXQJlLdqb": { plan_id: "premium", period: "annual" },
   // NextGen deal: discounted Start (-500 Kč, 2 branches on one subscription)
   "price_1TshckEvdp2FxnFO5QO5zDFB": { plan_id: "start", period: "monthly" },
+  // Zakladatelská nabídka (founder offer): quarterly-prepaid Neomezený for
+  // first-time owners. TODO: replace with the real quarterly Stripe price id
+  // once David creates it (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
+  // Must also be set on subscription_plans.stripe_price_quarterly_id in the DB.
+  "price_1Ty6lqEvdp2FxnFO1KHDskkW": { plan_id: "premium", period: "quarterly" },
   // legacy prices (pre-2026-07 tiers) — keep mapping for existing subscriptions
   "price_1TKxyrEvdp2FxnFO3TTdE9mS": { plan_id: "start", period: "monthly" },
   "price_1TKxysEvdp2FxnFOCXjuXt8g": { plan_id: "start", period: "annual" },
@@ -86,6 +91,23 @@ serve(async (req) => {
     status: 200,
   });
 });
+
+// Releases a webhook_new_gym_claims reservation after a failure that leaves
+// no completed gym+subscription behind — without this, a claim taken before
+// a transient DB error (the writes most likely to hit one) would be
+// permanent: the customer already paid, Stripe's subscription is active, but
+// no gym would ever be created, and Stripe wouldn't retry (this handler
+// always returns 200). Not called on the success path — a completed claim is
+// meant to stay forever, that's what makes redelivery a no-op.
+async function releaseWebhookNewGymClaim(subscriptionId: string) {
+  const { error } = await supabase
+    .from("webhook_new_gym_claims")
+    .delete()
+    .eq("stripe_subscription_id", subscriptionId);
+  if (error) {
+    console.error(`Failed to release webhook_new_gym_claims for subscription ${subscriptionId} — this will permanently block retries until manually cleared:`, error);
+  }
+}
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // --- Activate path: gyms already exist (owner has them, no subscription
@@ -181,6 +203,49 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
+  // Idempotency guard: a redelivered OR genuinely concurrent
+  // checkout.session.completed for the same Stripe subscription must not
+  // create a second gym/subscription. A SELECT-then-INSERT check isn't
+  // atomic under true concurrency — two simultaneous deliveries can both see
+  // "no existing row" before either commits — so this claims the subscription
+  // via a PRIMARY KEY insert instead: only the first of two concurrent
+  // inserts can succeed. The claim is taken BEFORE the gym is created, so a
+  // losing request never creates a gym at all (no orphan gym possible).
+  // Scoped to webhook_new_gym_claims (not gym_subscriptions.stripe_subscription_id)
+  // because the activate_gym_ids/custom_gym_ids paths above legitimately
+  // share one stripe_subscription_id across several gym_subscriptions rows.
+  const { error: claimError } = await supabase
+    .from("webhook_new_gym_claims")
+    .insert({ stripe_subscription_id: subscription.id });
+  if (claimError) {
+    if (claimError.code === "23505") {
+      // PK conflict — a claim already exists. Tell benign duplicate delivery
+      // apart from a stuck claim left behind by a half-finished run: if a
+      // gym_subscriptions row exists for this subscription, the earlier run
+      // completed and this is just a normal redelivery/replay. If not, the
+      // claim is stuck (release logic below failed to run or failed itself)
+      // and this needs a human, so make it loud rather than blending into
+      // the same log line as the benign case.
+      const { data: completedSub, error: lookupError } = await supabase
+        .from("gym_subscriptions")
+        .select("id")
+        .eq("stripe_subscription_id", subscription.id)
+        .maybeSingle();
+      if (lookupError) {
+        // Don't misdiagnose a transient lookup failure as a stuck claim —
+        // report it as what it actually is.
+        console.error(`Failed to check gym_subscriptions while diagnosing claim conflict for subscription ${subscription.id}:`, lookupError);
+      } else if (completedSub) {
+        console.log(`checkout.session.completed already processed for subscription ${subscription.id} — skipping duplicate.`);
+      } else {
+        console.error(`STUCK CLAIM: webhook_new_gym_claims has subscription ${subscription.id} claimed but no matching gym_subscriptions row exists. A prior run failed after claiming but before completing. Needs manual investigation — delete the webhook_new_gym_claims row for this subscription to unblock a retry.`);
+      }
+    } else {
+      console.error(`Failed to claim webhook_new_gym_claims for subscription ${subscription.id}:`, claimError);
+    }
+    return;
+  }
+
   // 1. Create the gym
   const { data: gym, error: gymError } = await supabase
     .from("gyms")
@@ -197,6 +262,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   if (gymError) {
     console.error("Failed to create gym:", gymError);
+    // Release the claim — nothing was created, so a retry/manual replay
+    // should be free to try again instead of hitting a permanent PK conflict.
+    await releaseWebhookNewGymClaim(subscription.id);
     return;
   }
 
@@ -227,6 +295,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
 
   // 3. Create gym subscription
+  const isFounderOffer = session.metadata?.founder_offer === "true";
   const { error: subError } = await supabase.from("gym_subscriptions").insert({
     gym_id: gym.id,
     plan_id: planInfo.plan_id,
@@ -237,11 +306,34 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     stripe_customer_id: session.customer as string,
     current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    is_founder_offer: isFounderOffer,
   });
 
   if (subError) {
     console.error("Failed to create subscription:", subError);
+    // Clean up the gym we just created — without a matching subscription row
+    // it would otherwise become a permanent orphan once the claim below is
+    // released and a retry creates a brand-new gym instead of reusing this one.
+    const { error: gymCleanupError } = await supabase.from("gyms").delete().eq("id", gym.id);
+    if (gymCleanupError) {
+      // Cleanup failed — the orphan gym is still there. Releasing the claim
+      // now would let the next delivery insert cleanly (no PK conflict) and
+      // silently create a SECOND gym for this owner, with nothing left to
+      // detect it. Leave the claim held instead: the next delivery hits the
+      // PK conflict above, finds no matching gym_subscriptions row, and logs
+      // the loud STUCK CLAIM error — which is the right outcome for a
+      // partial state that needs a human to fix the leftover gym by hand.
+      console.error(`Failed to clean up orphaned gym ${gym.id} after subscription insert failure — leaving claim held to avoid a silent duplicate gym:`, gymCleanupError);
+      return;
+    }
+    await releaseWebhookNewGymClaim(subscription.id);
     return;
+  }
+
+  // 3b. Zakladatelská nabídka: convert the fresh subscription into a schedule
+  // so it rolls to the standard monthly Neomezený price after the paid quarter.
+  if (isFounderOffer) {
+    await applyFounderOfferSchedule(subscription);
   }
 
   // 4. Log event
@@ -347,6 +439,64 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   console.log(`Gym "${gymName}" created with ${planInfo.plan_id} plan for user ${userId}`);
 }
 
+// Zakladatelská nabídka: convert the just-paid quarterly subscription into a
+// Stripe subscription schedule with two phases — phase 1 is the quarter the
+// customer already paid for (snapshotted as-is from the subscription), phase
+// 2 rolls to the standard monthly Neomezený price with no iteration limit
+// (an open-ended final phase runs indefinitely; end_behavior "release" hands
+// the subscription back to normal billing if it were ever bounded later).
+//
+// Idempotency: a redelivered checkout.session.completed must not create a
+// second schedule. Stripe records the schedule id on the subscription once
+// converted, so we check that live state rather than any local flag —
+// this stays correct even if this function is invoked twice for the same
+// underlying Stripe subscription.
+async function applyFounderOfferSchedule(subscription: Stripe.Subscription) {
+  if (subscription.schedule) {
+    console.log("Founder offer: schedule already exists for", subscription.id, "— skipping.");
+    return;
+  }
+
+  const { data: premiumPlan, error: planErr } = await supabase
+    .from("subscription_plans")
+    .select("stripe_price_monthly_id")
+    .eq("id", "premium")
+    .maybeSingle();
+  const monthlyPriceId = premiumPlan?.stripe_price_monthly_id;
+  if (planErr || !monthlyPriceId) {
+    console.error("Founder offer: missing premium stripe_price_monthly_id, cannot build phase 2:", planErr);
+    return;
+  }
+
+  try {
+    const schedule = await stripe.subscriptionSchedules.create({ from_subscription: subscription.id });
+    const quarterPhase = schedule.phases[0];
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: "release",
+      phases: [
+        {
+          // Fáze 1: zaplacený kvartál — beze změny, jak ho Stripe vytvořil z
+          // existující subscription.
+          items: quarterPhase.items.map((it: Stripe.SubscriptionSchedule.Phase.Item) => ({
+            price: typeof it.price === "string" ? it.price : it.price.id,
+            quantity: it.quantity ?? 1,
+          })),
+          start_date: quarterPhase.start_date,
+          end_date: quarterPhase.end_date,
+        },
+        {
+          // Fáze 2: měsíčně za plnou cenu Neomezeného, bez omezení iterací
+          // (poslední fáze bez iterations/end_date běží neomezeně).
+          items: [{ price: monthlyPriceId, quantity: 1 }],
+        },
+      ],
+    });
+    console.log("Founder offer: subscription schedule created for", subscription.id);
+  } catch (err) {
+    console.error("Founder offer: failed to create/update subscription schedule for", subscription.id, err);
+  }
+}
+
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const subscriptionId = invoice.subscription as string;
   if (!subscriptionId) return;
@@ -450,7 +600,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   // belongs to it and reconcile each against its matching Stripe item.
   const { data: gymSubs } = await supabase
     .from("gym_subscriptions")
-    .select("id, gym_id, plan_id, status, stripe_subscription_item_id")
+    .select("id, gym_id, plan_id, status, stripe_subscription_item_id, billing_period")
     .eq("stripe_subscription_id", subscription.id);
   if (!gymSubs || gymSubs.length === 0) return;
 
@@ -482,12 +632,15 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     if (matchedSubs.length === 0 && gymSubs.length === 1) matchedSubs.push(gymSubs[0]);
     for (const gymSub of matchedSubs) {
     const oldPlan = gymSub.plan_id;
-    if (oldPlan === planInfo.plan_id) continue; // No plan change for this gym
-
-    const eventType = (planOrder[planInfo.plan_id as keyof typeof planOrder] || 0) >
-      (planOrder[oldPlan as keyof typeof planOrder] || 0)
-      ? "upgraded"
-      : "downgraded";
+    const oldPeriod = gymSub.billing_period;
+    const planChanged = oldPlan !== planInfo.plan_id;
+    const periodChanged = oldPeriod !== planInfo.period;
+    // Compare the (plan_id, billing_period) PAIR, not plan_id alone — the
+    // founder offer keeps plan_id: "premium" across both schedule phases and
+    // only billing_period flips ('quarterly' -> 'monthly'). Comparing plan_id
+    // alone would never fire for that transition and the row would say
+    // 'quarterly' forever while Stripe bills monthly.
+    if (!planChanged && !periodChanged) continue;
 
     await supabase
       .from("gym_subscriptions")
@@ -497,6 +650,19 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", gymSub.id);
+
+    if (!planChanged) {
+      // Period-only change (e.g. founder-offer quarter -> monthly rollover) —
+      // not a plan upgrade/downgrade, so no subscription_events row and no
+      // plan-limit re-check (limits are keyed on plan_id, which is unchanged).
+      console.log(`Gym ${gymSub.gym_id} billing_period changed ${oldPeriod} -> ${planInfo.period} (plan unchanged: ${oldPlan})`);
+      continue;
+    }
+
+    const eventType = (planOrder[planInfo.plan_id as keyof typeof planOrder] || 0) >
+      (planOrder[oldPlan as keyof typeof planOrder] || 0)
+      ? "upgraded"
+      : "downgraded";
 
     await supabase.from("subscription_events").insert({
       gym_id: gymSub.gym_id,
