@@ -28,7 +28,7 @@ const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
   // first-time owners. TODO: replace with the real quarterly Stripe price id
   // once David creates it (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
   // Must also be set on subscription_plans.stripe_price_quarterly_id in the DB.
-  "price_TODO_QUARTERLY": { plan_id: "premium", period: "quarterly" },
+  "price_1Ty6lqEvdp2FxnFO1KHDskkW": { plan_id: "premium", period: "quarterly" },
   // legacy prices (pre-2026-07 tiers) — keep mapping for existing subscriptions
   "price_1TKxyrEvdp2FxnFO3TTdE9mS": { plan_id: "start", period: "monthly" },
   "price_1TKxysEvdp2FxnFOCXjuXt8g": { plan_id: "start", period: "annual" },

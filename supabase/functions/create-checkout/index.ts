@@ -8,7 +8,11 @@ const IMPLEMENTATION_FEE_PRICE_ID = 'price_1TLJJrEvdp2FxnFOcOEOOcAI';
 // restricted at the Stripe dashboard level to the Neomezený (premium) product.
 // TODO: replace with the real coupon id once David creates it in Stripe
 // (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
-const FOUNDER_COUPON_ID = 'TODO_COUPON_ZAKLADATELSKA';
+// Zakladatelská nabídka: 50 % once, omezený na produkt Neomezeného
+// (prod_UJbAeLUTiTMxYH / "Pumplo Premium") — to omezení je zásadní, jinak by
+// sleva sáhla i na jednorázový poplatek za Pumplo kit. Ověřitelné jen
+// v dashboardu; restricted klíče pole applies_to v odpovědi nevracejí.
+const FOUNDER_COUPON_ID = 'xzEIf1AW';
 
 // Zakladatelská nabídka registration deadline: end of day 31.12.2026,
 // Europe/Prague (CET, UTC+1 — no DST that late in the year). Enforced here
