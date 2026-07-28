@@ -41,3 +41,4 @@ dist-ssr
 .claude
 deno.lock
 .worktrees/
+TASK-*-REPORT.md
