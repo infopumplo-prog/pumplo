@@ -291,48 +291,53 @@ serve(async (req) => {
       };
     }
 
-    const customerId = existingCustomerId ??
-      (await stripe.customers.create({
-        metadata: { user_id, ...(gym_name ? { gym_name } : {}) },
-      })).id;
-
-    // Stripe forbids passing both `discounts` and `allow_promotion_codes` on
-    // the same Checkout Session, so the two paths are mutually exclusive.
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: "subscription",
-      customer: customerId,
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
-      cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
-      metadata,
-      subscription_data: {
-        metadata: {
-          user_id,
-          ...(gym_name ? { gym_name } : {}),
-        },
-      },
-    };
-
-    if (founderOfferRequested) {
-      // Founder coupon applies automatically — the implementation fee line
-      // item above is a separate, non-discountable price so it stays full price.
-      sessionParams.discounts = [{ coupon: FOUNDER_COUPON_ID }];
-    } else {
-      // Discounts are entered by the customer as promo codes in checkout
-      // (e.g. NEXTGEN500). Its coupon is restricted to plan products, so it
-      // never touches the implementation fee.
-      sessionParams.allow_promotion_codes = true;
-    }
-
+    // Everything from here through session creation is wrapped so that ANY
+    // failure (customer creation, not just session creation) releases a held
+    // founder_offer_claims reservation — otherwise a transient Stripe error
+    // between reservation and checkout would leak the claim for up to
+    // FOUNDER_CLAIM_TTL_MS.
     let session: Stripe.Checkout.Session;
     try {
+      const customerId = existingCustomerId ??
+        (await stripe.customers.create({
+          metadata: { user_id, ...(gym_name ? { gym_name } : {}) },
+        })).id;
+
+      // Stripe forbids passing both `discounts` and `allow_promotion_codes` on
+      // the same Checkout Session, so the two paths are mutually exclusive.
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        mode: "subscription",
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
+        cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
+        metadata,
+        subscription_data: {
+          metadata: {
+            user_id,
+            ...(gym_name ? { gym_name } : {}),
+          },
+        },
+      };
+
+      if (founderOfferRequested) {
+        // Founder coupon applies automatically — the implementation fee line
+        // item above is a separate, non-discountable price so it stays full price.
+        sessionParams.discounts = [{ coupon: FOUNDER_COUPON_ID }];
+      } else {
+        // Discounts are entered by the customer as promo codes in checkout
+        // (e.g. NEXTGEN500). Its coupon is restricted to plan products, so it
+        // never touches the implementation fee.
+        sessionParams.allow_promotion_codes = true;
+      }
+
       session = await stripe.checkout.sessions.create(sessionParams);
     } catch (err) {
-      // Session creation failed after we reserved the claim — release it so a
-      // transient Stripe error doesn't permanently lock this user out of the
-      // offer (the reclaim-on-staleness path would otherwise be the only way
-      // back in, up to FOUNDER_CLAIM_TTL_MS later).
+      // Failed after we reserved the claim — release it so a transient
+      // Stripe error doesn't permanently lock this user out of the offer
+      // (the reclaim-on-staleness path would otherwise be the only way back
+      // in, up to FOUNDER_CLAIM_TTL_MS later).
       if (founderClaimReserved) {
         const { error: releaseError } = await adminClient
           .from("founder_offer_claims")

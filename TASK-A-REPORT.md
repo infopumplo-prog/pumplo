@@ -259,3 +259,100 @@ relrowsecurity: true
 - Reviewer's coupon note (`applies_to.products` restricted to Neomezený) is a Stripe
   dashboard configuration step when the coupon is created, not a code change — already
   captured in the plan doc's David-facing warning.
+
+---
+
+# Fix round 2 (re-review: finding 3 not actually addressed for true concurrency)
+
+## What the re-review found
+
+Round 1's fix for finding 3 was a SELECT-then-INSERT check on `gym_subscriptions.stripe_subscription_id`.
+Correct point raised: that closes the *sequential redelivery* case (Stripe retries after a
+timeout) but not genuine concurrency — two truly simultaneous deliveries can both run the
+SELECT before either commits the INSERT, both see `null`, and both create a fresh `gyms` row
+(distinct UUIDs), so `gym_subscriptions.gym_id`'s existing `UNIQUE` constraint can't catch it
+either. Needed a real DB-level guarantee, not a better read.
+
+## Duplicate check (done before touching schema, as instructed)
+
+Queried the live `gym_subscriptions` table via the Management API before adding anything:
+
+```
+Duplicate non-null stripe_subscription_id values: none (empty result)
+Total rows: 3 | non-null stripe_subscription_id: 0 | null: 3
+```
+
+All three existing rows (Eurogym Olomouc, NextGen Gym – Camilla Sitteho, NextGen Gym – U
+Solných mlýnů) currently have `stripe_subscription_id: null` — these were set up directly,
+not through a Stripe checkout that populated this column. No duplicates, so a unique index
+would apply cleanly against current data. NULLs are fine either way (Postgres treats each NULL
+as distinct in a UNIQUE constraint).
+
+## Why the suggested "UNIQUE + upsert(onConflict)" fix was NOT used as proposed
+
+Before writing the migration I re-read `handleCheckoutComplete` and confirmed (lines ~100-165)
+that the `activate_gym_ids` and `custom_gym_ids` paths **intentionally** write multiple
+`gym_subscriptions` rows that all share the same `stripe_subscription_id` — this is the "N
+gyms on one subscription, one line item, quantity = N" model used for real deals (NextGen is
+exactly this: 2 gyms, 1 subscription). Both loops do
+`.upsert({..., stripe_subscription_id: subscription.id, ...}, { onConflict: "gym_id" })` per
+gym id. A table-wide `UNIQUE` constraint on `gym_subscriptions.stripe_subscription_id` would
+make the *second* iteration of either loop fail outright for any real multi-gym deal —
+this is live, currently-used functionality, not a hypothetical.
+
+## Fix actually implemented
+
+Added a dedicated claims table, mirroring the `founder_offer_claims` pattern that the re-review
+already validated as genuinely race-safe, but scoped to a table that only the new-gym-registration
+path touches (never `activate_gym_ids`/`custom_gym_ids`), so it can't conflict with the legitimate
+multi-gym-per-subscription model:
+
+- New migration `supabase/migrations/20260728130000_webhook_new_gym_claims.sql`:
+  `webhook_new_gym_claims(stripe_subscription_id TEXT PRIMARY KEY, claimed_at TIMESTAMPTZ NOT
+  NULL DEFAULT now())`, RLS enabled with no policies (service-role-only, same as
+  `founder_offer_claims`). Applied via the Management API and read back (see Verification).
+- `stripe-webhook/index.ts`: replaced the round-1 SELECT-then-INSERT guard with an atomic
+  `INSERT` into `webhook_new_gym_claims` **before** the gym is created. Only the first of two
+  concurrent/duplicate deliveries for the same subscription can insert (PK conflict → Postgres
+  error code `23505`, handled as an expected no-op with a `console.log`); any other insert error
+  is logged as an actual error (distinct code path) so a real DB problem isn't silently swallowed
+  the same way as an expected conflict.
+- **No orphan-gym risk by construction**: because the claim is taken *before* `gyms` is ever
+  inserted, a losing concurrent request never creates a gym in the first place — there's nothing
+  to clean up and no ordering/error-handling gap to worry about (the reviewer's "half-written
+  record" concern doesn't apply to this design, since gym creation is now gated behind the claim
+  rather than happening unconditionally first).
+
+## Minor point (claim leak between reservation and Stripe call) — also fixed
+
+Widened the try/catch in `create-checkout/index.ts` so it now wraps `stripe.customers.create()`
+*and* `stripe.checkout.sessions.create()`, not just the latter. Previously, if customer creation
+threw after a founder-offer claim was reserved, the claim would leak for up to
+`FOUNDER_CLAIM_TTL_MS` (24h) with nothing to release it. Now any failure in that whole region
+triggers the same claim-release-then-rethrow path.
+
+## Verification (re-run after round 2)
+
+```
+$ npx tsc --noEmit                                            # 0 output, exit 0
+$ deno check supabase/functions/create-checkout/index.ts     # Check ... (clean)
+$ deno check supabase/functions/stripe-webhook/index.ts      # Check ... (clean)
+```
+
+Migration schema read-back for `webhook_new_gym_claims` (Management API, project
+`udqwjqgdsjobdufdxbpn`):
+```
+columns: stripe_subscription_id text NOT NULL, claimed_at timestamptz NOT NULL default now()
+constraints: webhook_new_gym_claims_pkey PRIMARY KEY (stripe_subscription_id)
+relrowsecurity: true
+```
+
+## Files touched this round
+- `supabase/migrations/20260728130000_webhook_new_gym_claims.sql` (new)
+- `supabase/functions/stripe-webhook/index.ts`
+- `supabase/functions/create-checkout/index.ts`
+
+## Still open / unchanged
+- Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
+  `subscription_plans.stripe_price_quarterly_id`) — still need real values once David creates
+  the Stripe objects.

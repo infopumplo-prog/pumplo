@@ -186,17 +186,26 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Idempotency guard: a redelivered checkout.session.completed for the same
-  // Stripe subscription must not create a second gym/subscription. The
-  // subscription id is stable across redeliveries of the same event, so a
-  // prior successful run leaves a matching row behind — treat that as a no-op.
-  const { data: existingSub } = await supabase
-    .from("gym_subscriptions")
-    .select("id, gym_id")
-    .eq("stripe_subscription_id", subscription.id)
-    .maybeSingle();
-  if (existingSub) {
-    console.log(`checkout.session.completed already processed for subscription ${subscription.id} (gym ${existingSub.gym_id}) — skipping duplicate.`);
+  // Idempotency guard: a redelivered OR genuinely concurrent
+  // checkout.session.completed for the same Stripe subscription must not
+  // create a second gym/subscription. A SELECT-then-INSERT check isn't
+  // atomic under true concurrency — two simultaneous deliveries can both see
+  // "no existing row" before either commits — so this claims the subscription
+  // via a PRIMARY KEY insert instead: only the first of two concurrent
+  // inserts can succeed. The claim is taken BEFORE the gym is created, so a
+  // losing request never creates a gym at all (no orphan gym possible).
+  // Scoped to webhook_new_gym_claims (not gym_subscriptions.stripe_subscription_id)
+  // because the activate_gym_ids/custom_gym_ids paths above legitimately
+  // share one stripe_subscription_id across several gym_subscriptions rows.
+  const { error: claimError } = await supabase
+    .from("webhook_new_gym_claims")
+    .insert({ stripe_subscription_id: subscription.id });
+  if (claimError) {
+    if (claimError.code === "23505") {
+      console.log(`checkout.session.completed already claimed for subscription ${subscription.id} — skipping duplicate.`);
+    } else {
+      console.error(`Failed to claim webhook_new_gym_claims for subscription ${subscription.id}:`, claimError);
+    }
     return;
   }
 
