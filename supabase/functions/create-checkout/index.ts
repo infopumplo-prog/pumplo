@@ -4,6 +4,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno
 
 const IMPLEMENTATION_FEE_PRICE_ID = 'price_1TLJJrEvdp2FxnFOcOEOOcAI';
 
+// Zakladatelská nabídka (founder offer): 50% off coupon, duration "once",
+// restricted at the Stripe dashboard level to the Neomezený (premium) product.
+// TODO: replace with the real coupon id once David creates it in Stripe
+// (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
+const FOUNDER_COUPON_ID = 'TODO_COUPON_ZAKLADATELSKA';
+
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2023-10-16",
   httpClient: Stripe.createFetchHttpClient(),
@@ -13,6 +19,39 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Server-side-only eligibility check for the zakladatelská nabídka (founder
+// offer): true only when the owner has NO row at all in gym_subscriptions
+// (any status, including cancelled) for any gym they own. A client passing
+// founder_offer: true never proves entitlement — this is the sole source of
+// truth. Fails closed (false) on any query error.
+// deno-lint-ignore no-explicit-any
+async function isEligibleForFounderOffer(
+  adminClient: any,
+  userId: string,
+): Promise<boolean> {
+  const { data: ownedGyms, error: gymsError } = await adminClient
+    .from("gyms")
+    .select("id")
+    .eq("owner_id", userId);
+  if (gymsError) {
+    console.error("isEligibleForFounderOffer: gyms query failed:", gymsError);
+    return false;
+  }
+  const gymIds = (ownedGyms ?? []).map((g: { id: string }) => g.id);
+  if (gymIds.length === 0) return true;
+
+  const { data: subs, error: subsError } = await adminClient
+    .from("gym_subscriptions")
+    .select("id")
+    .in("gym_id", gymIds)
+    .limit(1);
+  if (subsError) {
+    console.error("isEligibleForFounderOffer: gym_subscriptions query failed:", subsError);
+    return false;
+  }
+  return (subs ?? []).length === 0;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -46,6 +85,7 @@ serve(async (req) => {
       cancel_url,
       additional_gym,
       activate_gym_ids,
+      founder_offer,
     }: {
       price_id?: string;
       gym_name?: string;
@@ -56,6 +96,7 @@ serve(async (req) => {
       cancel_url?: string;
       additional_gym?: boolean;
       activate_gym_ids?: string[];
+      founder_offer?: boolean;
     } = await req.json();
     const user_id = user.id; // verified identity, never trust a body-supplied user_id
 
@@ -87,16 +128,43 @@ serve(async (req) => {
     // (stops a client from passing an arbitrary/cheaper price_id).
     const { data: plans } = await adminClient
       .from("subscription_plans")
-      .select("stripe_price_monthly_id, stripe_price_annual_id")
+      .select("stripe_price_monthly_id, stripe_price_annual_id, stripe_price_quarterly_id")
       .eq("is_active", true);
     const allowedPrices = new Set<string>();
+    const quarterlyPrices = new Set<string>();
     for (const p of plans ?? []) {
       if (p.stripe_price_monthly_id) allowedPrices.add(p.stripe_price_monthly_id);
       if (p.stripe_price_annual_id) allowedPrices.add(p.stripe_price_annual_id);
+      if (p.stripe_price_quarterly_id) {
+        allowedPrices.add(p.stripe_price_quarterly_id);
+        quarterlyPrices.add(p.stripe_price_quarterly_id);
+      }
     }
     if (!allowedPrices.has(price_id)) {
       return new Response(JSON.stringify({ error: "Neplatný plán" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // --- Zakladatelská nabídka (founder offer) eligibility gate ---
+    // Nárok se ověřuje VÝHRADNĚ serverově — klient smí jen požádat o nabídku,
+    // nikdy si ji sám nevynutí. Nabídka je vyloučená z activate/additional_gym
+    // flow (to je právě ten gaming vektor, který toto pravidlo blokuje) a
+    // platí jen na čtvrtletní cenu Neomezeného.
+    const founderOfferRequested = founder_offer === true;
+    if (founderOfferRequested) {
+      if (isActivateFlow || additional_gym) {
+        return new Response(JSON.stringify({ error: "Zakladatelská nabídka je jen pro první posilovnu." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (!quarterlyPrices.has(price_id)) {
+        return new Response(JSON.stringify({ error: "Zakladatelská nabídka platí jen pro čtvrtletní cenu Neomezeného plánu." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const eligible = await isEligibleForFounderOffer(adminClient, user_id);
+      if (!eligible) {
+        return new Response(JSON.stringify({ error: "Zakladatelská nabídka je jen pro první posilovnu." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // Existing paying customer (any active subscription on one of their gyms):
@@ -152,6 +220,7 @@ serve(async (req) => {
         phone: phone || "",
         machine_ids: machine_ids ? JSON.stringify(machine_ids) : "[]",
         additional_gym: additional_gym ? "true" : "",
+        ...(founderOfferRequested ? { founder_offer: "true" } : {}),
       };
     }
 
@@ -160,15 +229,13 @@ serve(async (req) => {
         metadata: { user_id, ...(gym_name ? { gym_name } : {}) },
       })).id;
 
-    const session = await stripe.checkout.sessions.create({
+    // Stripe forbids passing both `discounts` and `allow_promotion_codes` on
+    // the same Checkout Session, so the two paths are mutually exclusive.
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       customer: customerId,
       payment_method_types: ["card"],
       line_items: lineItems,
-      // Discounts are entered by the customer as promo codes in checkout
-      // (e.g. NEXTGEN500). Its coupon is restricted to plan products, so it
-      // never touches the implementation fee.
-      allow_promotion_codes: true,
       success_url: success_url || "https://pumplo-admin.vercel.app/login?checkout=success",
       cancel_url: cancel_url || "https://pumplo-admin.vercel.app/register?checkout=cancelled",
       metadata,
@@ -178,7 +245,20 @@ serve(async (req) => {
           ...(gym_name ? { gym_name } : {}),
         },
       },
-    });
+    };
+
+    if (founderOfferRequested) {
+      // Founder coupon applies automatically — the implementation fee line
+      // item above is a separate, non-discountable price so it stays full price.
+      sessionParams.discounts = [{ coupon: FOUNDER_COUPON_ID }];
+    } else {
+      // Discounts are entered by the customer as promo codes in checkout
+      // (e.g. NEXTGEN500). Its coupon is restricted to plan products, so it
+      // never touches the implementation fee.
+      sessionParams.allow_promotion_codes = true;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(
       JSON.stringify({ url: session.url, session_id: session.id }),

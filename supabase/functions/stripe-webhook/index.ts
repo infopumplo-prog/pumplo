@@ -24,6 +24,11 @@ const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
   "price_1TshbLEvdp2FxnFOXQJlLdqb": { plan_id: "premium", period: "annual" },
   // NextGen deal: discounted Start (-500 Kč, 2 branches on one subscription)
   "price_1TshckEvdp2FxnFO5QO5zDFB": { plan_id: "start", period: "monthly" },
+  // Zakladatelská nabídka (founder offer): quarterly-prepaid Neomezený for
+  // first-time owners. TODO: replace with the real quarterly Stripe price id
+  // once David creates it (see docs/superpowers/plans/2026-07-28-zakladatelska-nabidka.md).
+  // Must also be set on subscription_plans.stripe_price_quarterly_id in the DB.
+  "price_TODO_QUARTERLY": { plan_id: "premium", period: "quarterly" },
   // legacy prices (pre-2026-07 tiers) — keep mapping for existing subscriptions
   "price_1TKxyrEvdp2FxnFO3TTdE9mS": { plan_id: "start", period: "monthly" },
   "price_1TKxysEvdp2FxnFOCXjuXt8g": { plan_id: "start", period: "annual" },
@@ -227,6 +232,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
 
   // 3. Create gym subscription
+  const isFounderOffer = session.metadata?.founder_offer === "true";
   const { error: subError } = await supabase.from("gym_subscriptions").insert({
     gym_id: gym.id,
     plan_id: planInfo.plan_id,
@@ -237,11 +243,18 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     stripe_customer_id: session.customer as string,
     current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    is_founder_offer: isFounderOffer,
   });
 
   if (subError) {
     console.error("Failed to create subscription:", subError);
     return;
+  }
+
+  // 3b. Zakladatelská nabídka: convert the fresh subscription into a schedule
+  // so it rolls to the standard monthly Neomezený price after the paid quarter.
+  if (isFounderOffer) {
+    await applyFounderOfferSchedule(subscription);
   }
 
   // 4. Log event
@@ -345,6 +358,64 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
 
   console.log(`Gym "${gymName}" created with ${planInfo.plan_id} plan for user ${userId}`);
+}
+
+// Zakladatelská nabídka: convert the just-paid quarterly subscription into a
+// Stripe subscription schedule with two phases — phase 1 is the quarter the
+// customer already paid for (snapshotted as-is from the subscription), phase
+// 2 rolls to the standard monthly Neomezený price with no iteration limit
+// (an open-ended final phase runs indefinitely; end_behavior "release" hands
+// the subscription back to normal billing if it were ever bounded later).
+//
+// Idempotency: a redelivered checkout.session.completed must not create a
+// second schedule. Stripe records the schedule id on the subscription once
+// converted, so we check that live state rather than any local flag —
+// this stays correct even if this function is invoked twice for the same
+// underlying Stripe subscription.
+async function applyFounderOfferSchedule(subscription: Stripe.Subscription) {
+  if (subscription.schedule) {
+    console.log("Founder offer: schedule already exists for", subscription.id, "— skipping.");
+    return;
+  }
+
+  const { data: premiumPlan, error: planErr } = await supabase
+    .from("subscription_plans")
+    .select("stripe_price_monthly_id")
+    .eq("id", "premium")
+    .maybeSingle();
+  const monthlyPriceId = premiumPlan?.stripe_price_monthly_id;
+  if (planErr || !monthlyPriceId) {
+    console.error("Founder offer: missing premium stripe_price_monthly_id, cannot build phase 2:", planErr);
+    return;
+  }
+
+  try {
+    const schedule = await stripe.subscriptionSchedules.create({ from_subscription: subscription.id });
+    const quarterPhase = schedule.phases[0];
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: "release",
+      phases: [
+        {
+          // Fáze 1: zaplacený kvartál — beze změny, jak ho Stripe vytvořil z
+          // existující subscription.
+          items: quarterPhase.items.map((it: Stripe.SubscriptionSchedule.Phase.Item) => ({
+            price: typeof it.price === "string" ? it.price : it.price.id,
+            quantity: it.quantity ?? 1,
+          })),
+          start_date: quarterPhase.start_date,
+          end_date: quarterPhase.end_date,
+        },
+        {
+          // Fáze 2: měsíčně za plnou cenu Neomezeného, bez omezení iterací
+          // (poslední fáze bez iterations/end_date běží neomezeně).
+          items: [{ price: monthlyPriceId, quantity: 1 }],
+        },
+      ],
+    });
+    console.log("Founder offer: subscription schedule created for", subscription.id);
+  } catch (err) {
+    console.error("Founder offer: failed to create/update subscription schedule for", subscription.id, err);
+  }
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
