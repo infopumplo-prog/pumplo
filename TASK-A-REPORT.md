@@ -356,3 +356,76 @@ relrowsecurity: true
 - Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
   `subscription_plans.stripe_price_quarterly_id`) — still need real values once David creates
   the Stripe objects.
+
+---
+
+# Fix round 3 (re-review: round-2 fix had no release/reclaim path at all)
+
+## What the re-review found
+
+Round 2's `webhook_new_gym_claims` genuinely closed the concurrency race (confirmed correct),
+but the table had no release path whatsoever — unlike `founder_offer_claims`. If the claim
+insert succeeded and then either the `gyms` insert or the `gym_subscriptions` insert failed
+(both a plain `return` on error, and both realistic transient-Supabase-blip targets), the claim
+became permanent. Worse: `handleCheckoutComplete` never throws on those paths, so `serve()`
+still returns HTTP 200 and Stripe considers the event delivered — no retry. A paying customer
+would be left with an active Stripe subscription and no gym, forever, with the only visible
+trace being a `console.log` that reads identically to a normal duplicate-delivery skip.
+
+## Fix implemented
+
+**Chose explicit release on the two known failure branches over a try/finally guard.** Walked
+the whole path from the claim insert to the last successful write to confirm there's no other
+early exit in between: the claim insert itself (206-243), the `gyms` insert (245-265), the
+non-fatal role/license steps (267-291, neither returns early — `roleError`/`licError` are
+logged but don't abort), and the `gym_subscriptions` insert (293-...). Only the `gymError` and
+`subError` branches are unaccounted-for exits, matching what the reviewer identified.
+
+Rejected try/finally: a plain `finally` around this region would delete the claim on EVERY
+exit, including the success path — and the whole point of `webhook_new_gym_claims` is that a
+completed claim stays forever (that's what makes a later legitimate redelivery a no-op instead
+of recreating the gym). Making that safe would need a `completed` flag gating the `finally`
+body anyway, which is no simpler than just patching the two known branches, and patching them
+directly is what the reviewer's instructions asked for as sufficient. No TTL reclaim added —
+also per instructions, unneeded machinery for this case (unlike `founder_offer_claims`, which
+genuinely needs a self-service reclaim path for abandoned browser checkouts; a webhook failure
+here should surface to a human, not silently expire).
+
+Implemented:
+- New `releaseWebhookNewGymClaim(subscriptionId)` helper, right above `handleCheckoutComplete`.
+  Deletes the `webhook_new_gym_claims` row for that subscription id; logs loudly if the delete
+  itself fails (that scenario really would need a TTL or manual fix, but is now at least visible
+  in logs rather than silent).
+- `gymError` branch: calls the release helper before returning. Nothing was created yet, so
+  releasing is safe and unconditionally correct.
+- `subError` branch: **also deletes the just-created `gyms` row before releasing the claim** —
+  this goes one step beyond what was strictly asked, but closes a residual orphan-gym risk the
+  literal instruction would otherwise reintroduce: releasing the claim without cleaning up the
+  gym means a legitimate retry (which only re-checks the claim, not "does a gym already exist
+  for this owner") would create a brand-new second gym, leaving the first as a genuine orphan.
+  Deleting the gym first means retrying after a subscription-insert failure lands on a clean
+  slate — no orphan gym, no leaked claim.
+- Claim-insert PK-conflict branch: now distinguishes a benign duplicate delivery (a matching
+  `gym_subscriptions` row exists — logs at `console.log`, unchanged behavior) from a **stuck
+  claim** (no matching row — logs at `console.error` with the subscription id and an explicit
+  "needs manual investigation, delete the claim row to unblock" instruction), so a stuck claim
+  is now loud instead of blending into the benign-duplicate log line.
+
+## Verification (re-run after round 3)
+
+```
+$ npx tsc --noEmit                                            # 0 output, exit 0 (from worktree root)
+$ deno check supabase/functions/stripe-webhook/index.ts      # Check ... (clean)
+$ deno check supabase/functions/create-checkout/index.ts     # Check ... (clean, unchanged this round)
+```
+
+No schema change this round — `webhook_new_gym_claims` itself is unchanged from round 2; only
+`stripe-webhook/index.ts` logic changed.
+
+## Files touched this round
+- `supabase/functions/stripe-webhook/index.ts` only.
+
+## Still open / unchanged
+- Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
+  `subscription_plans.stripe_price_quarterly_id`) — still need real values once David creates
+  the Stripe objects.

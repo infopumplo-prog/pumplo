@@ -92,6 +92,23 @@ serve(async (req) => {
   });
 });
 
+// Releases a webhook_new_gym_claims reservation after a failure that leaves
+// no completed gym+subscription behind — without this, a claim taken before
+// a transient DB error (the writes most likely to hit one) would be
+// permanent: the customer already paid, Stripe's subscription is active, but
+// no gym would ever be created, and Stripe wouldn't retry (this handler
+// always returns 200). Not called on the success path — a completed claim is
+// meant to stay forever, that's what makes redelivery a no-op.
+async function releaseWebhookNewGymClaim(subscriptionId: string) {
+  const { error } = await supabase
+    .from("webhook_new_gym_claims")
+    .delete()
+    .eq("stripe_subscription_id", subscriptionId);
+  if (error) {
+    console.error(`Failed to release webhook_new_gym_claims for subscription ${subscriptionId} — this will permanently block retries until manually cleared:`, error);
+  }
+}
+
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // --- Activate path: gyms already exist (owner has them, no subscription
   // yet). Quantity model: the subscription has ONE item per price with
@@ -202,7 +219,23 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     .insert({ stripe_subscription_id: subscription.id });
   if (claimError) {
     if (claimError.code === "23505") {
-      console.log(`checkout.session.completed already claimed for subscription ${subscription.id} — skipping duplicate.`);
+      // PK conflict — a claim already exists. Tell benign duplicate delivery
+      // apart from a stuck claim left behind by a half-finished run: if a
+      // gym_subscriptions row exists for this subscription, the earlier run
+      // completed and this is just a normal redelivery/replay. If not, the
+      // claim is stuck (release logic below failed to run or failed itself)
+      // and this needs a human, so make it loud rather than blending into
+      // the same log line as the benign case.
+      const { data: completedSub } = await supabase
+        .from("gym_subscriptions")
+        .select("id")
+        .eq("stripe_subscription_id", subscription.id)
+        .maybeSingle();
+      if (completedSub) {
+        console.log(`checkout.session.completed already processed for subscription ${subscription.id} — skipping duplicate.`);
+      } else {
+        console.error(`STUCK CLAIM: webhook_new_gym_claims has subscription ${subscription.id} claimed but no matching gym_subscriptions row exists. A prior run failed after claiming but before completing. Needs manual investigation — delete the webhook_new_gym_claims row for this subscription to unblock a retry.`);
+      }
     } else {
       console.error(`Failed to claim webhook_new_gym_claims for subscription ${subscription.id}:`, claimError);
     }
@@ -225,6 +258,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   if (gymError) {
     console.error("Failed to create gym:", gymError);
+    // Release the claim — nothing was created, so a retry/manual replay
+    // should be free to try again instead of hitting a permanent PK conflict.
+    await releaseWebhookNewGymClaim(subscription.id);
     return;
   }
 
@@ -271,6 +307,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   if (subError) {
     console.error("Failed to create subscription:", subError);
+    // Clean up the gym we just created — without a matching subscription row
+    // it would otherwise become a permanent orphan once the claim below is
+    // released and a retry creates a brand-new gym instead of reusing this one.
+    const { error: gymCleanupError } = await supabase.from("gyms").delete().eq("id", gym.id);
+    if (gymCleanupError) {
+      console.error(`Failed to clean up orphaned gym ${gym.id} after subscription insert failure:`, gymCleanupError);
+    }
+    await releaseWebhookNewGymClaim(subscription.id);
     return;
   }
 
