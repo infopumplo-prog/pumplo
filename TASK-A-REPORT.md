@@ -429,3 +429,51 @@ No schema change this round — `webhook_new_gym_claims` itself is unchanged fro
 - Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
   `subscription_plans.stripe_price_quarterly_id`) — still need real values once David creates
   the Stripe objects.
+
+---
+
+# Fix round 4 (final): double-failure gap + unchecked lookup
+
+Two small findings, both in `stripe-webhook/index.ts`.
+
+## 1. (blocking) `subError` + `gymCleanupError` double-failure reintroduced the bug
+
+Previously, when the gym-cleanup DELETE (added in round 3, on the `subError` path) itself
+failed, the code logged the cleanup error but then called `releaseWebhookNewGymClaim`
+**unconditionally** anyway. That left the orphan gym in place while also re-opening the
+claim: the next delivery's insert would succeed with no PK conflict, silently creating a
+*second* gym for the same owner — and since the release was "successful" by design, nothing
+would ever flag it. Confirmed via the reviewer's note that `gyms.owner_id` lost its UNIQUE
+constraint in migration `20260110205809_*` (multiple gyms per owner is intentional), so
+there's no other DB-level backstop.
+
+Fix: only release the claim when the gym cleanup actually succeeded. If `gymCleanupError` is
+set, return early **without** releasing — the orphan gym plus the still-held claim means the
+next delivery hits the PK conflict, finds no matching `gym_subscriptions` row, and lands on
+the round-3 STUCK CLAIM `console.error`, which is exactly the right way to surface a partial
+state that now needs a human to clean up the leftover gym by hand.
+
+## 2. Unchecked SELECT in the PK-conflict branch
+
+The `gym_subscriptions` lookup used to diagnose a claim conflict (added in round 3) didn't
+check its own `error`. Added an explicit `lookupError` check: on a failed lookup, it's now
+reported as a lookup failure (`console.error`) instead of falling through to `completedSub`
+being `undefined` and firing a false STUCK CLAIM alarm on what could be a perfectly benign
+duplicate delivery.
+
+## Verification
+
+```
+$ npx tsc --noEmit                                            # 0 output, exit 0 (from worktree root)
+$ deno check supabase/functions/stripe-webhook/index.ts      # Check ... (clean)
+$ deno check supabase/functions/create-checkout/index.ts     # Check ... (clean, unchanged this round)
+```
+
+## Files touched this round
+- `supabase/functions/stripe-webhook/index.ts` only (two small, localized edits).
+
+## Still open / unchanged
+- Same three Stripe-ID placeholders (`FOUNDER_COUPON_ID`, `price_TODO_QUARTERLY`,
+  `subscription_plans.stripe_price_quarterly_id`) — still need real values once David creates
+  the Stripe objects. Everything else in this backend workstream has now been through four
+  review rounds with no outstanding findings.

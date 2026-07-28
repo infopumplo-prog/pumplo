@@ -226,12 +226,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       // claim is stuck (release logic below failed to run or failed itself)
       // and this needs a human, so make it loud rather than blending into
       // the same log line as the benign case.
-      const { data: completedSub } = await supabase
+      const { data: completedSub, error: lookupError } = await supabase
         .from("gym_subscriptions")
         .select("id")
         .eq("stripe_subscription_id", subscription.id)
         .maybeSingle();
-      if (completedSub) {
+      if (lookupError) {
+        // Don't misdiagnose a transient lookup failure as a stuck claim —
+        // report it as what it actually is.
+        console.error(`Failed to check gym_subscriptions while diagnosing claim conflict for subscription ${subscription.id}:`, lookupError);
+      } else if (completedSub) {
         console.log(`checkout.session.completed already processed for subscription ${subscription.id} — skipping duplicate.`);
       } else {
         console.error(`STUCK CLAIM: webhook_new_gym_claims has subscription ${subscription.id} claimed but no matching gym_subscriptions row exists. A prior run failed after claiming but before completing. Needs manual investigation — delete the webhook_new_gym_claims row for this subscription to unblock a retry.`);
@@ -312,7 +316,15 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     // released and a retry creates a brand-new gym instead of reusing this one.
     const { error: gymCleanupError } = await supabase.from("gyms").delete().eq("id", gym.id);
     if (gymCleanupError) {
-      console.error(`Failed to clean up orphaned gym ${gym.id} after subscription insert failure:`, gymCleanupError);
+      // Cleanup failed — the orphan gym is still there. Releasing the claim
+      // now would let the next delivery insert cleanly (no PK conflict) and
+      // silently create a SECOND gym for this owner, with nothing left to
+      // detect it. Leave the claim held instead: the next delivery hits the
+      // PK conflict above, finds no matching gym_subscriptions row, and logs
+      // the loud STUCK CLAIM error — which is the right outcome for a
+      // partial state that needs a human to fix the leftover gym by hand.
+      console.error(`Failed to clean up orphaned gym ${gym.id} after subscription insert failure — leaving claim held to avoid a silent duplicate gym:`, gymCleanupError);
+      return;
     }
     await releaseWebhookNewGymClaim(subscription.id);
     return;
