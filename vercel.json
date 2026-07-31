@@ -7,6 +7,11 @@
       "has": [{ "type": "host", "value": "pumplo-nine.vercel.app" }],
       "destination": "https://app.pumplo.com/:path*",
       "permanent": false
+    },
+    {
+      "source": "/go/:code",
+      "destination": "https://auth.pumplo.com/functions/v1/log-qr?go=1&code=:code",
+      "permanent": false
     }
   ],
   "headers": [
