@@ -31,24 +31,15 @@ export const openAppOrStore = (path: string): boolean => {
     return true;
   }
 
-  // iOS: try the app scheme. If the page is still visible after a moment the
-  // app didn't open (not installed), so fall back to the App Store.
-  let appOpened = false;
-  const markOpened = () => { appOpened = true; };
-  document.addEventListener('visibilitychange', markOpened);
-  window.addEventListener('pagehide', markOpened);
-  window.addEventListener('blur', markOpened);
-
-  window.location.href = `com.pumplo.app://${path}`;
-
-  window.setTimeout(() => {
-    document.removeEventListener('visibilitychange', markOpened);
-    window.removeEventListener('pagehide', markOpened);
-    window.removeEventListener('blur', markOpened);
-    if (!appOpened && document.visibilityState === 'visible') {
-      window.location.href = APP_STORE_URL;
-    }
-  }, 1500);
+  // iOS: the custom scheme is unusable here. When the app isn't installed,
+  // Safari answers `com.pumplo.app://…` with a blocking "address is invalid"
+  // alert that fires instantly — before any timeout-based store fallback can
+  // run — so the visitor sees an error instead of the app. Sending iOS to the
+  // App Store costs installed users one extra tap ("Open" on the listing) and
+  // shows everyone else exactly what they need. Universal Links are the real
+  // fix and need an apple-app-site-association file plus an `applinks:`
+  // entitlement in a new build; until that ships, the store is the safe route.
+  window.location.href = APP_STORE_URL;
   return true;
 };
 
