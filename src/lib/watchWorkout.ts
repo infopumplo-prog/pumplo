@@ -20,6 +20,17 @@ export interface WatchWorkoutState {
   cardioTotalSeconds: number;
   cardioEndsAt: number | null;   // null = ještě nespuštěno
   cardioPausedAt: number | null; // null = běží
+  // Seznam cviků na hodinkách (obrazovka po vzoru Hevy).
+  workoutTitle: string;
+  workoutStartedAt: number | null; // razítko v ms; hodinky si čas počítají samy
+  exercisesJson: string;
+}
+
+export interface WatchExerciseItem {
+  name: string;
+  setsDone: number;
+  setsTotal: number;
+  thumbUrl: string | null;
 }
 
 export interface BuildInput {
@@ -41,6 +52,9 @@ export interface BuildInput {
   cardioTotalSeconds?: number;
   cardioEndsAt?: number | null;
   cardioPausedAt?: number | null;
+  workoutTitle?: string;
+  workoutStartedAt?: number | null;
+  exercises?: WatchExerciseItem[];
 }
 
 export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
@@ -64,6 +78,10 @@ export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
     cardioTotalSeconds: i.cardioTotalSeconds ?? 0,
     cardioEndsAt: i.cardioEndsAt ?? null,
     cardioPausedAt: i.cardioPausedAt ?? null,
+    workoutTitle: i.workoutTitle ?? '',
+    workoutStartedAt: i.workoutStartedAt ?? null,
+    // Seznam jede JSONem v jednom poli — kontrakt propouští jen ploché hodnoty.
+    exercisesJson: JSON.stringify(i.exercises ?? []),
   };
 }
 
@@ -74,6 +92,7 @@ export type WatchAction =
   | { type: 'goPrevSet' } | { type: 'goNextSet' }
   | { type: 'skipRest' } | { type: 'addRest15' }
   | { type: 'cardioToggle' }
+  | { type: 'goToExercise'; index: number }
   | { type: 'startWorkout'; kind: 'resume' | 'plan' | 'custom'; planId?: string; dayId?: string };
 
 interface WatchWorkoutPlugin {

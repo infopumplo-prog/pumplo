@@ -48,6 +48,9 @@ enum WatchPayload {
             return payload
         case "goPrevSet", "goNextSet", "skipRest", "addRest15", "cardioToggle":
             return ["type": type]
+        case "goToExercise":
+            guard let index = (message["index"] as? NSNumber)?.intValue, index >= 0 else { return nil }
+            return ["type": type, "index": index]
         case "startWorkout":
             guard let kind = message["kind"] as? String,
                   ["resume", "plan", "custom"].contains(kind) else { return nil }

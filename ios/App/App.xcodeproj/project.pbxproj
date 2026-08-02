@@ -37,6 +37,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		7E14B0F85B17B069C500EFAE /* WatchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5CE9F6B5BBB72E53F95EC9 /* WatchPayload.swift */; };
 		7F4917E4F5706FBCF6E2958E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 163B8C610A2C0023914ACF74 /* Foundation.framework */; };
+		8FA06341B361D7431818C0EA /* WatchExerciseList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */; };
 		A7D94370A8E395633D5969D2 /* EdgeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386DC46D709083AB08219595 /* EdgeViews.swift */; };
 		BC36BDEA6A5114E81E0B84D2 /* WatchWorkoutSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */; };
 		CAE56DB6621063EBC94E3A6C /* DragStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */; };
@@ -113,6 +114,7 @@
 		2E3176A965F1B9E121ED8366 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		386DC46D709083AB08219595 /* EdgeViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EdgeViews.swift; sourceTree = "<group>"; };
+		4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchExerciseList.swift; sourceTree = "<group>"; };
 		4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchMenu.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -215,6 +217,7 @@
 				C3BC91FA3C98EA6E0074236E /* CardioView.swift */,
 				4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */,
 				03FD5CC3541FA768F278CE8E /* MenuView.swift */,
+				4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */,
 			);
 			name = "PumploWatch Watch App";
 			path = "PumploWatch Watch App";
@@ -460,6 +463,7 @@
 				E5535B61C273E44966EF685E /* CardioView.swift in Sources */,
 				397C75F43979CB400D1E5CED /* WatchMenu.swift in Sources */,
 				CEB431BF9A298900D6624501 /* MenuView.swift in Sources */,
+				8FA06341B361D7431818C0EA /* WatchExerciseList.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

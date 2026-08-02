@@ -27,13 +27,18 @@ struct WatchWorkoutSnapshot: Equatable {
     var cardioPausedAt: Double?
     // Nabídka tréninků; telefon ji přibaluje ke každému snapshotu.
     var menuJson: String?
+    // Seznam cviků aktuálního tréninku + hlavička nad ním.
+    var workoutTitle: String
+    var workoutStartedAt: Double?
+    var exercisesJson: String?
 
     static let idle = WatchWorkoutSnapshot(
         seq: 0, phase: .idle, exerciseName: "", slotCategory: nil,
         setIndex: 0, totalSets: 0, targetWeight: nil, targetReps: 0,
         repMin: 0, repMax: 0, rir: nil, prevWeight: nil, prevReps: nil,
         weightStep: 0.5, resting: false, restEndsAt: nil, nextSetLabel: nil,
-        cardioTotalSeconds: 0, cardioEndsAt: nil, cardioPausedAt: nil, menuJson: nil)
+        cardioTotalSeconds: 0, cardioEndsAt: nil, cardioPausedAt: nil, menuJson: nil,
+        workoutTitle: "", workoutStartedAt: nil, exercisesJson: nil)
 
     // Chybějící klíč znamená null — plugin NSNull cestou zahazuje.
     static func decode(_ dict: [String: Any]) -> WatchWorkoutSnapshot? {
@@ -60,7 +65,10 @@ struct WatchWorkoutSnapshot: Equatable {
             cardioTotalSeconds: number("cardioTotalSeconds")?.intValue ?? 0,
             cardioEndsAt: number("cardioEndsAt")?.doubleValue,
             cardioPausedAt: number("cardioPausedAt")?.doubleValue,
-            menuJson: dict["menuJson"] as? String)
+            menuJson: dict["menuJson"] as? String,
+            workoutTitle: dict["workoutTitle"] as? String ?? "",
+            workoutStartedAt: number("workoutStartedAt")?.doubleValue,
+            exercisesJson: dict["exercisesJson"] as? String)
     }
 
     // Krok korunky. Nula by rozbila zaokrouhlování, proto pojistka.
@@ -117,6 +125,19 @@ struct WatchWorkoutSnapshot: Equatable {
     }
 
     var isCardioPaused: Bool { cardioPausedAt != nil || cardioEndsAt == nil }
+
+    var exercises: [WatchExerciseItem] {
+        guard let exercisesJson else { return [] }
+        return WatchExerciseList.decode(exercisesJson)
+    }
+
+    // Čas od začátku tréninku. Telefon posílá jen razítko startu, hodinky si
+    // ho počítají samy — dopočítávaná hodnota by měnila snapshot při každém
+    // renderu telefonu.
+    func elapsedSeconds(now: Date = Date()) -> Int {
+        guard let workoutStartedAt else { return 0 }
+        return max(0, Int(now.timeIntervalSince1970 - workoutStartedAt / 1000))
+    }
 }
 
 enum WatchFormat {

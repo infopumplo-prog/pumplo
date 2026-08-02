@@ -232,3 +232,29 @@ describe('buildWatchMenu', () => {
     expect(m.truncated).toBe(false);
   });
 });
+
+describe('buildWatchWorkoutState — seznam cviků', () => {
+  it('serialises the exercise list and passes the header through', () => {
+    const s = buildWatchWorkoutState({
+      ...base,
+      workoutTitle: 'Trénink A',
+      workoutStartedAt: 1700000000000,
+      exercises: [
+        { name: 'Dřep', setsDone: 2, setsTotal: 4, thumbUrl: 'https://x/thumb.jpg' },
+        { name: 'Tlak na prsa', setsDone: 0, setsTotal: 3, thumbUrl: null },
+      ],
+    });
+    expect(s.workoutTitle).toBe('Trénink A');
+    expect(s.workoutStartedAt).toBe(1700000000000);
+    expect(JSON.parse(s.exercisesJson)).toEqual([
+      { name: 'Dřep', setsDone: 2, setsTotal: 4, thumbUrl: 'https://x/thumb.jpg' },
+      { name: 'Tlak na prsa', setsDone: 0, setsTotal: 3, thumbUrl: null },
+    ]);
+  });
+  it('sends an empty list when the caller has no exercises', () => {
+    const s = buildWatchWorkoutState(base);
+    expect(s.exercisesJson).toBe('[]');
+    expect(s.workoutTitle).toBe('');
+    expect(s.workoutStartedAt).toBeNull();
+  });
+});

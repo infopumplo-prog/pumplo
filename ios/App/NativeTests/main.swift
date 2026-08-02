@@ -154,3 +154,23 @@ expect(WatchFormat.clock(5) == "0:05", "clock pads seconds")
 
 if failures > 0 { print("\(failures) failing"); exit(1) }
 print("all native tests passed")
+
+// MARK: - seznam cviků
+
+let goTo = WatchPayload.action(from: ["type": "goToExercise", "index": 3])
+expect((goTo?["index"] as? Int) == 3, "action keeps the exercise index")
+expect(WatchPayload.action(from: ["type": "goToExercise"]) == nil, "action rejects goToExercise without an index")
+expect(WatchPayload.action(from: ["type": "goToExercise", "index": -1]) == nil, "action rejects a negative index")
+
+let listed = WatchWorkoutSnapshot.decode([
+    "phase": "set", "workoutTitle": "Trénink A", "workoutStartedAt": 1_700_000_000_000.0,
+    "exercisesJson": #"[{"name":"Dřep","setsDone":2,"setsTotal":4,"thumbUrl":"https://x/t.jpg"}]"#,
+])
+expect(listed?.workoutTitle == "Trénink A", "decode keeps the workout title")
+expect(listed?.exercises.count == 1, "decode parses the exercise list")
+expect(listed?.exercises.first?.progressLabel == "2 z 4 sérií", "exercise row shows set progress")
+expect(listed?.exercises.first?.isDone == false, "an unfinished exercise is not done")
+expect(listed?.elapsedSeconds(now: Date(timeIntervalSince1970: 1_700_000_090)) == 90,
+       "elapsed time counts from the start stamp")
+expect(WatchWorkoutSnapshot.decode(["phase": "set"])?.exercises.isEmpty == true,
+       "a snapshot without a list decodes to no exercises")
