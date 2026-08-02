@@ -1,7 +1,7 @@
 import SwiftUI
 
-// Fáze určuje obrazovku. Aktivní série a pauza přijdou v dalších krocích,
-// zatím se vypíše, co dorazilo — ověření, že transport funguje.
+// Fáze určuje obrazovku. Stav i akce jdou přes WatchConnector — hodinky samy
+// o tréninku nerozhodují, zdrojem pravdy zůstává web na telefonu.
 struct RootView: View {
     @StateObject private var connector = WatchConnector()
 
@@ -19,18 +19,16 @@ struct RootView: View {
         } else {
             switch connector.snapshot.phase {
             case .set:
-                VStack(spacing: 4) {
-                    Text(connector.snapshot.exerciseName)
-                        .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
-                    Text(connector.snapshot.headerLabel)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(PumploTheme.cyan)
-                }
+                ActiveSetView(
+                    snapshot: connector.snapshot,
+                    onLog: { weight, reps in connector.send(action: "logSet", weight: weight, reps: reps) },
+                    onPrev: { connector.send(action: "goPrevSet") },
+                    onNext: { connector.send(action: "goNextSet") })
             case .rest:
-                Text(WatchFormat.clock(connector.snapshot.remainingSeconds()))
-                    .font(.system(size: 26, weight: .black))
-                    .foregroundStyle(.white)
+                RestView(
+                    snapshot: connector.snapshot,
+                    onAdd15: { connector.send(action: "addRest15") },
+                    onSkip: { connector.send(action: "skipRest") })
             case .summary:
                 DoneView()
             case .idle:
