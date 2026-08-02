@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
+import { signUpErrorMessage } from '@/lib/authErrors';
 import pumploWordmark from '@/assets/pumplo-wordmark.png';
 
 const ResetPassword = () => {
@@ -40,7 +41,7 @@ const ResetPassword = () => {
     setIsSubmitting(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(signUpErrorMessage(updateError));
       return;
     }
 

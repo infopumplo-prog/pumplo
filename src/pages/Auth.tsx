@@ -142,7 +142,6 @@ const Auth = () => {
         } else {
           setError(result.error || t('auth.register_failed'));
         }
-        setIsSubmitting(false);
         return;
       }
 
@@ -250,8 +249,10 @@ const Auth = () => {
     } catch (err) {
       console.error('Registration error:', err);
       setError(t('auth.something_wrong'));
-      setIsRegistering(false);
     } finally {
+      // Zámek se musí pustit na KAŽDÉ cestě ven — jinak AuthRoute schová
+      // formulář i s chybovou hláškou za nekonečný spinner.
+      setIsRegistering(false);
       setIsSubmitting(false);
     }
   };

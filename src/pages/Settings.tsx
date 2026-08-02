@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { signUpErrorMessage } from '@/lib/authErrors';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {
@@ -181,7 +182,10 @@ const Settings = () => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: unknown) {
-      toast({ title: t('toast.error'), description: (error as Error).message || t('toast.password_change_failed'), variant: 'destructive' });
+      const description = error instanceof Error
+        ? signUpErrorMessage(error as { code?: string; message: string })
+        : t('toast.password_change_failed');
+      toast({ title: t('toast.error'), description, variant: 'destructive' });
     } finally {
       setIsChangingPassword(false);
     }

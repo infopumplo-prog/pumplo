@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -7,6 +7,8 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from '@/integrations/supabase/client';
 import { updateWatchAuth } from '@/lib/watchWorkout';
+import { createRegistrationLock } from '@/lib/registrationLock';
+import { signUpErrorMessage } from '@/lib/authErrors';
 
 interface AuthContextType {
   user: User | null;
@@ -47,9 +49,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegisteringState] = useState(false);
   const [pendingPasswordReset, setPendingPasswordReset] = useState(false);
   const clearPasswordReset = () => setPendingPasswordReset(false);
+
+  // Zámek se pustí sám i tehdy, když ho volající zapomene uvolnit — uživatel
+  // nikdy nesmí zůstat na nekonečném spinneru místo přihlašovací obrazovky.
+  const registrationLock = useMemo(
+    () => createRegistrationLock(setIsRegisteringState),
+    [],
+  );
+  useEffect(() => registrationLock.dispose, [registrationLock]);
+  const setIsRegistering = (value: boolean) =>
+    value ? registrationLock.acquire() : registrationLock.release();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -152,13 +164,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (error) {
-      if (error.message.includes('User already registered')) {
-        return { success: false, error: 'Uživatel s tímto emailem již existuje' };
-      }
-      if (error.message.includes('Password should be at least 6 characters')) {
-        return { success: false, error: 'Heslo musí mít alespoň 6 znaků' };
-      }
-      return { success: false, error: error.message };
+      return { success: false, error: signUpErrorMessage(error) };
     }
 
     // Return userId for immediate use (no need to call getUser separately)

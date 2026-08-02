@@ -173,11 +173,14 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading: authLoading, isRegistering } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
 
-  if (authLoading || roleLoading || isRegistering) {
+  if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
 
-  if (user) {
+  // Během registrace se `user` objeví dřív, než je hotový profil a plán —
+  // přesměrování domů musí počkat. Formulář ale musí zůstat namontovaný:
+  // výměna za spinner by zahodila stav dotazníku i chybovou hlášku.
+  if (user && !isRegistering) {
     return <Navigate to="/" replace />;
   }
 
