@@ -937,6 +937,7 @@ const en = {
   'messages.gym_fallback': 'Gym',
   'messages.trainer_fallback': 'Trainer',
   'messages.to_all': 'Everyone',
+  'messages.version_label': 'Version {{version}}',
   'messages.for_you': 'For you',
   'messages.no_preview': 'No messages',
   'messages.just_now': 'Just now',

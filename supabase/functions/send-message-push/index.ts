@@ -21,6 +21,44 @@ const FALLBACK: Record<Lang, { trainer: string; gym: string; newMsg: string }> =
   en: { trainer: "Trainer", gym: "Gym", newMsg: "New message" },
 };
 
+// Uvítací zpráva je šablona s {{name}} — jméno se dosazuje až při doručení,
+// protože e-mailová registrace ho vyplní až po vzniku účtu.
+const NAME_TOKEN = /\s*\{\{name\}\}/g;
+
+function fillName(text: string, firstName: string): string {
+  if (firstName) return text.replace(NAME_TOKEN, ` ${firstName}`).replace(/^\s+/, "");
+  // Bez jména by zbylo "Ahoj ," — zahodíme i mezeru před interpunkcí.
+  return text.replace(NAME_TOKEN, "").replace(/\s+([,.!?])/g, "$1");
+}
+
+/** Novinky se jménem nepracují; kdyby v textu placeholder zbyl, ať ho uživatel nevidí. */
+function stripPlaceholders(text: string): string {
+  return fillName(text, "");
+}
+
+// Porovnání verzí appky — zrcadlo src/lib/appVersionCompare.ts (testy jsou tam).
+function compareVersions(a: string, b: string): number {
+  const parts = (v: string) => v.split(".").map((p) => {
+    const n = parseInt(p, 10);
+    return Number.isFinite(n) ? n : 0;
+  });
+  const pa = parts(a);
+  const pb = parts(b);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da !== db) return da < db ? -1 : 1;
+  }
+  return 0;
+}
+
+/** Zařízení bez hlášené verze je ze cílené zprávy vynechané — právě ono ji neumí zobrazit. */
+function meetsMinVersion(deviceVersion: string | null, minVersion: string | null): boolean {
+  if (!minVersion) return true;
+  if (!deviceVersion) return false;
+  return compareVersions(deviceVersion, minVersion) >= 0;
+}
+
 function preview(text: string, max = 140): string {
   const t = (text || "").replace(/\s+/g, " ").trim();
   return t.length > max ? t.slice(0, max - 1) + "…" : t;
@@ -199,6 +237,73 @@ async function handleGymMessage(supabase: SupabaseClient<any>, rowId: string, re
   }
 }
 
+// Pumplo -> všem: novinka po vydání. Adresáti jsou všichni, kdo mají
+// zaregistrované zařízení; `deliver` sám přeskočí ty bez tokenu.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleAppMessage(supabase: SupabaseClient<any>, rowId: string, results: Results): Promise<void> {
+  const { data: msg } = await supabase
+    .from("app_messages")
+    .select("id, kind, title, body, title_en, body_en, is_active, min_app_version")
+    .eq("id", rowId).single();
+  if (!msg || !msg.is_active || msg.kind !== "release") return;
+
+  // Push jde přes FCM bez ohledu na nainstalovanou verzi, ale zprávu zobrazuje
+  // až kód z updatu. Neaktualizovanému zařízení proto notifikaci neposíláme —
+  // uživatel by klepnul a v appce nic nenašel. Zpráva na něj počká v seznamu.
+  const { data: tokens } = await supabase
+    .from("device_tokens").select("user_id, app_version");
+  const eligible = (tokens ?? []).filter(
+    (t: { app_version: string | null }) => meetsMinVersion(t.app_version, msg.min_app_version),
+  );
+  const skippedOldBuild = (tokens ?? []).length - eligible.length;
+  if (skippedOldBuild > 0) {
+    console.log(`app_messages: ${skippedOldBuild} zařízení přeskočeno kvůli staré verzi appky`);
+  }
+
+  // Jedno zařízení na uživatele stačí — deliver adresuje uživatele, ne token.
+  const recipients = [...new Set(eligible.map((t: { user_id: string }) => t.user_id))];
+  if (recipients.length === 0) return;
+
+  // Jazyky jedním dotazem — jinak by rozeslání všem znamenalo dotaz na uživatele.
+  const { data: profiles } = await supabase
+    .from("user_profiles").select("user_id, language").in("user_id", recipients);
+  const langById = new Map<string, Lang>(
+    (profiles ?? []).map((p: { user_id: string; language: string | null }) => [p.user_id, pickLang(p.language)]),
+  );
+
+  const makeTitle = (lang: Lang) => (lang === "en" && msg.title_en ? msg.title_en : msg.title);
+  for (const r of recipients) {
+    const body = langById.get(r) === "en" && msg.body_en ? msg.body_en : msg.body;
+    // senderId je prázdný — systémová zpráva nemá odesílatele, kterého by šlo přeskočit.
+    await deliver(supabase, r, "", makeTitle, stripPlaceholders(body), "/messages", results);
+  }
+}
+
+// Uvítání jednoho nového uživatele, spuštěné registrací jeho prvního zařízení.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleWelcome(supabase: SupabaseClient<any>, userId: string, results: Results): Promise<void> {
+  const { data: msg } = await supabase
+    .from("app_messages")
+    .select("id, title, body, title_en, body_en")
+    .eq("kind", "welcome").eq("is_active", true)
+    .order("published_at", { ascending: false })
+    .limit(1).maybeSingle();
+  if (!msg) return;
+
+  const lang = await getLang(supabase, userId);
+  const name = await getDisplayName(supabase, userId);
+  const firstName = (name ?? "").split(" ")[0];
+
+  const title = lang === "en" && msg.title_en ? msg.title_en : msg.title;
+  const bodyRaw = lang === "en" && msg.body_en ? msg.body_en : msg.body;
+  await deliver(
+    supabase, userId, "",
+    () => fillName(title, firstName, lang),
+    fillName(bodyRaw, firstName, lang),
+    "/messages", results,
+  );
+}
+
 // conversation message: push to whichever participant did NOT send it.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleDirectMessage(supabase: SupabaseClient<any>, rowId: string, results: Results): Promise<void> {
@@ -298,7 +403,8 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  if (table !== "gym_messages" && table !== "direct_messages" && table !== "user_feedback") {
+  const KNOWN = ["gym_messages", "direct_messages", "user_feedback", "app_messages", "app_welcome"];
+  if (!KNOWN.includes(table)) {
     return new Response(JSON.stringify({ error: `Unknown table: ${table}` }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -319,6 +425,9 @@ Deno.serve(async (req) => {
       if (tbl === "gym_messages") await handleGymMessage(supabase, id, results);
       else if (tbl === "direct_messages") await handleDirectMessage(supabase, id, results);
       else if (tbl === "user_feedback") await handleFeedback(supabase, id, results);
+      else if (tbl === "app_messages") await handleAppMessage(supabase, id, results);
+      // row_id nese user_id — uvítání spouští registrace zařízení, ne vznik zprávy.
+      else if (tbl === "app_welcome") await handleWelcome(supabase, id, results);
     } catch (e) {
       console.error("send-message-push error:", e);
     }

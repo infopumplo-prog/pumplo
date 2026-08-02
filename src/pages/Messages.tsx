@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Mail, Inbox, Users, User, MessageCircle } from 'lucide-react';
 import { useGymMessages } from '@/hooks/useGymMessages';
+import { useAppMessages } from '@/hooks/useAppMessages';
+import AppMessagesSection from '@/components/messages/AppMessagesSection';
 import { useConversations } from '@/hooks/useConversations';
 import { MessageDetailDrawer } from '@/components/messages/MessageDetailDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -36,6 +38,11 @@ const Messages = () => {
     return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' });
   };
   const { messages, isLoading: gymLoading, markAsRead, unreadCount: gymUnread } = useGymMessages();
+  const {
+    messages: appMessages,
+    markAsRead: markAppMessageAsRead,
+    unreadCount: appUnread,
+  } = useAppMessages();
   const { conversations, isLoading: convLoading, unreadDMCount } = useConversations();
   const [selectedMessage, setSelectedMessage] = useState<typeof messages[0] | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -85,8 +92,8 @@ const Messages = () => {
             >
               <Mail className="w-3.5 h-3.5" />
               {t('messages.tab_gym')}
-              {gymUnread > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">{gymUnread}</span>
+              {gymUnread + appUnread > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">{gymUnread + appUnread}</span>
               )}
             </button>
             <button
@@ -111,11 +118,17 @@ const Messages = () => {
           {/* GYM MESSAGES TAB */}
           {activeTab === 'gym' && (
             <>
+              <AppMessagesSection
+                messages={appMessages}
+                onMarkAsRead={markAppMessageAsRead}
+                formatDate={formatRelativeDate}
+              />
+
               {gymLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : messages.length === 0 ? (
+              ) : messages.length === 0 && appMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
                     <Inbox className="w-8 h-8 text-muted-foreground" />

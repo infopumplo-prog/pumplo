@@ -934,6 +934,7 @@ const cs = {
   'messages.gym_fallback': 'Posilovna',
   'messages.trainer_fallback': 'Trenér',
   'messages.to_all': 'Všem',
+  'messages.version_label': 'Verze {{version}}',
   'messages.for_you': 'Pro tebe',
   'messages.no_preview': 'Žádné zprávy',
   'messages.just_now': 'Právě teď',

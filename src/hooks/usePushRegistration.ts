@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,11 +13,20 @@ const platform = (): 'ios' | 'android' | null => {
 async function saveToken(userId: string, token: string) {
   const plat = platform();
   if (!plat) return;
+  // Verze se posílá kvůli cílení zpráv: novinku smí dostat jen build, který ji
+  // umí zobrazit. Když se ji nepodaří zjistit, zůstane null a zařízení se do
+  // cílených zpráv nepočítá.
+  let appVersion: string | null = null;
+  try {
+    appVersion = (await App.getInfo()).version ?? null;
+  } catch {
+    /* starší build nebo nepodporovaná platforma */
+  }
   // device_tokens is newer than the generated Supabase types — cast the client.
   await (supabase as unknown as { from: (t: string) => { upsert: (v: unknown, o: unknown) => Promise<{ error: unknown }> } })
     .from('device_tokens')
     .upsert(
-      { user_id: userId, token, platform: plat, updated_at: new Date().toISOString() },
+      { user_id: userId, token, platform: plat, app_version: appVersion, updated_at: new Date().toISOString() },
       { onConflict: 'token' },
     );
 }
