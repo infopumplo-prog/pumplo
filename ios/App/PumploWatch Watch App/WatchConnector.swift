@@ -7,6 +7,18 @@ import WatchConnectivity
 final class WatchConnector: NSObject, ObservableObject {
     @Published private(set) var snapshot: WatchWorkoutSnapshot = .idle
     @Published private(set) var hasSnapshot = false
+    @Published private(set) var menu: WatchMenu = .empty
+    @Published private(set) var startState: StartState = .idle
+
+    // Spouštění tréninku z hodinek. Telefon se dá jen probudit, ne vytáhnout do
+    // popředí — když do timeoutu nedorazí snapshot, přiznáme to.
+    enum StartState: Equatable {
+        case idle
+        case sending(since: Date)
+        case failed(String)
+    }
+
+    static let startTimeout: TimeInterval = 6
 
     private var lastSeq: Double = -1
 
@@ -34,6 +46,34 @@ final class WatchConnector: NSObject, ObservableObject {
         }
     }
 
+    func startWorkout(_ item: WatchMenuItem) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        // startWorkout se NIKDY nefrontuje — trénink spuštěný za dvacet minut,
+        // až se spojení vrátí, je horší než žádný.
+        guard session.activationState == .activated, session.isReachable else {
+            startState = .failed("Telefon není v dosahu")
+            return
+        }
+        var message: [String: Any] = ["type": "startWorkout", "kind": item.kind]
+        if let planId = item.planId { message["planId"] = planId }
+        if let dayId = item.dayId { message["dayId"] = dayId }
+        startState = .sending(since: Date())
+        session.sendMessage(message, replyHandler: nil, errorHandler: { [weak self] _ in
+            DispatchQueue.main.async { self?.startState = .failed("Otevři Pumplo v telefonu") }
+        })
+    }
+
+    // Volá tikot z MenuView — po timeoutu se čekání překlopí do hlášky.
+    func checkStartTimeout(now: Date = Date()) {
+        guard case .sending(let since) = startState else { return }
+        if now.timeIntervalSince(since) >= Self.startTimeout {
+            startState = .failed("Otevři Pumplo v telefonu")
+        }
+    }
+
+    func clearStartState() { startState = .idle }
+
     private func apply(_ dict: [String: Any]) {
         guard let next = WatchWorkoutSnapshot.decode(dict) else { return }
         guard next.seq >= lastSeq else { return }
@@ -41,6 +81,13 @@ final class WatchConnector: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.snapshot = next
             self.hasSnapshot = next.phase != .idle
+            // Poslední neprázdnou nabídku si držíme — snapshot bez menuJson
+            // (nebo s rozbitým) ji nesmí smazat.
+            if let json = next.menuJson, let decoded = WatchMenu.decode(json) {
+                self.menu = decoded
+            }
+            // Trénink naběhl → čekání na start skončilo.
+            if next.phase != .idle { self.startState = .idle }
         }
     }
 }

@@ -14,8 +14,18 @@ struct RootView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if !connector.hasSnapshot {
-            WaitingView()
+        // Trénink neběží → nabídka, kterou telefon poslal dopředu. Dokud
+        // nedorazila (čerstvě nainstalované hodinky), zůstává „Čekám na telefon".
+        if !connector.hasSnapshot || connector.snapshot.phase == .idle {
+            if connector.menu.items.isEmpty {
+                WaitingView()
+            } else {
+                MenuView(menu: connector.menu,
+                         startState: connector.startState,
+                         onStart: { connector.startWorkout($0) },
+                         onRetry: { connector.clearStartState() },
+                         onTick: { connector.checkStartTimeout() })
+            }
         } else {
             switch connector.snapshot.phase {
             case .set:
@@ -37,7 +47,8 @@ struct RootView: View {
             case .summary:
                 DoneView()
             case .idle:
-                WaitingView()
+                // Nedosažitelná větev — idle řeší podmínka výše.
+                EmptyView()
             }
         }
     }
