@@ -14,7 +14,16 @@ struct ActiveSetView: View {
     @State private var reps: Double = 0
     @FocusState private var focused: Field?
 
+    // ScrollView, protože nad obrazovkou stojí navigační lišta se šipkou zpět a
+    // bez rolování se spodní tlačítka na malém displeji ořežou — přesně kvůli
+    // tomu nešla zmáčknout fajfka.
     var body: some View {
+        ScrollView {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 5) {
             Text(snapshot.exerciseName)
                 .font(.system(size: 15, weight: .black))

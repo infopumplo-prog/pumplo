@@ -39,7 +39,9 @@ struct SpinnerField: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         // minimumDistance 3 nechá krátké ťuknutí projít jako tap, ne jako tah.
-        .gesture(
+        // highPriorityGesture, aby tah po poli nesebralo rolování obrazovky —
+        // ActiveSetView je kvůli navigační liště ve ScrollView.
+        .highPriorityGesture(
             DragGesture(minimumDistance: 3)
                 .onChanged { value in
                     // Tah zároveň převezme fokus, aby korunka i prst vždycky

@@ -53,7 +53,13 @@ struct RootView: View {
                         connector.send(action: "goToExercise", index: index)
                         showingDetail = true
                     })
-                    .navigationDestination(isPresented: $showingDetail) { detail }
+                    .navigationDestination(isPresented: $showingDetail) {
+                        // Prázdný nadpis: šipka zpět zůstane, ale lišta nesežere
+                        // výšku, kterou obrazovka série potřebuje na tlačítka.
+                        detail
+                            .navigationTitle("")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
             }
             // Trénink právě naběhl → rovnou do série, seznam je jedno ťuknutí zpět.
             .onAppear { showingDetail = true }
