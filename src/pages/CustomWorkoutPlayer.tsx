@@ -132,6 +132,9 @@ const CustomWorkoutPlayer = () => {
   // Gym chosen already on the plan page (selector + location gate ran there) —
   // don't ask again, jump straight to day selection.
   const gymParam = searchParams.get('gym');
+  // Den poslaný z hodinek — bez něj by ťuknutí na hodinkách stejně skončilo
+  // u ručního výběru dne na displeji telefonu.
+  const dayParam = searchParams.get('day');
 
   // State
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
@@ -573,6 +576,12 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!plan || resumeApplied) return;
     if (playerState !== 'select_day') return;
+
+    if (dayParam && plan.days.some(d => d.id === dayParam)) {
+      setResumeApplied(true);
+      handleStartDay(dayParam);
+      return;
+    }
 
     if (resumeMode && pausedWorkout && pausedWorkout.planId === id) {
       setResumeApplied(true);
