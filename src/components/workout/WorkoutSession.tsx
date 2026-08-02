@@ -28,6 +28,8 @@ import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
 import { resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type BuildInput, type WatchAction } from '@/lib/watchWorkout';
 import { useWatchBridge } from '@/hooks/useWatchBridge';
+// Pauzy podle kategorie jsou sdílené pravidlo se serverovou funkcí pro hodinky.
+import { getRestSecondsForCategory } from '@/lib/planRules';
 
 interface SetData {
   completed: boolean;
@@ -59,25 +61,6 @@ interface WorkoutSessionProps {
   cooldownExercises?: import('./WarmupPlayer').WarmupExercise[];
 }
 
-// Per-category rest times (seconds) per goal
-// Trainer rules v3: main gets full rest, secondary reduced, isolation/core short
-const getRestSecondsForCategory = (goalId: string, slotCategory?: string | null): number => {
-  const cat = slotCategory || 'secondary';
-  switch (goalId) {
-    case 'strength':
-      if (cat === 'main') return 300;              // 5 min
-      if (cat === 'secondary') return 180;          // 3 min
-      return 120;                                   // isolation/core/conditioning: 2 min
-    case 'muscle_gain':
-      if (cat === 'main') return 180;              // 3 min
-      if (cat === 'secondary') return 120;          // 2 min
-      return 90;                                    // isolation/core/conditioning: 1.5 min
-    case 'fat_loss':
-    case 'general_fitness':
-    default:
-      return 60;                                    // 1 min for all categories
-  }
-};
 
 
 export const WorkoutSession = ({

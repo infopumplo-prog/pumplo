@@ -261,19 +261,5 @@ export interface WorkoutPlanV2 extends WorkoutPlan {
  * RIR (Reps In Reserve) guidance by week
  * UI guidance only, not algorithm changes
  */
-export const RIR_BY_WEEK: Record<number, { rir: number; label: string; description: string }> = {
-  1: { rir: 3, label: 'RIR 3', description: 'Pohodlné - mohli byste udělat ještě 3 opakování' },
-  2: { rir: 3, label: 'RIR 3', description: 'Pohodlné - mohli byste udělat ještě 3 opakování' },
-  3: { rir: 2, label: 'RIR 2', description: 'Náročné - mohli byste udělat ještě 2 opakování' },
-  4: { rir: 2, label: 'RIR 2', description: 'Náročné - mohli byste udělat ještě 2 opakování' },
-  5: { rir: 1, label: 'RIR 1', description: 'Velmi těžké - mohli byste udělat ještě 1 opakování' },
-  6: { rir: 1, label: 'RIR 1', description: 'Velmi těžké - mohli byste udělat ještě 1 opakování' },
-  7: { rir: 5, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
-  8: { rir: 5, label: 'Deload', description: 'Regenerační týden - snižte váhu o 30-40%' },
-};
-
-export const getRIRGuidance = (weekNumber: number): { rir: number; label: string; description: string } => {
-  // Cycle through 8-week blocks
-  const adjustedWeek = ((weekNumber - 1) % 8) + 1;
-  return RIR_BY_WEEK[adjustedWeek] || RIR_BY_WEEK[1];
-};
+// RIR podle týdne je sdílené pravidlo (viz planRules.ts).
+export { RIR_BY_WEEK, getRIRGuidance } from './planRules';
