@@ -73,10 +73,12 @@ export type WatchAction =
   | { type: 'logSet'; weight: number | null; reps: number }
   | { type: 'goPrevSet' } | { type: 'goNextSet' }
   | { type: 'skipRest' } | { type: 'addRest15' }
-  | { type: 'cardioToggle' };
+  | { type: 'cardioToggle' }
+  | { type: 'startWorkout'; kind: 'resume' | 'plan' | 'custom'; planId?: string; dayId?: string };
 
 interface WatchWorkoutPlugin {
   updateState(state: WatchWorkoutState): Promise<void>;
+  updateMenu(options: { menuJson: string }): Promise<void>;
   endState(): Promise<void>;
   addListener(event: 'watchAction', cb: (a: WatchAction) => void): Promise<PluginListenerHandle>;
 }
@@ -217,4 +219,44 @@ export function buildCustomWatchState(i: CustomWatchInput): BuildInput | null {
   }
 
   return { phase: 'set', ...common, resting: false, restEndsAt: null, nextSetLabel: null };
+}
+
+// Nabídka tréninků pro hodinky. Jede jako JSON v jednom textovém poli
+// (menuJson), protože WatchPayload.sanitize propouští jen ploché hodnoty.
+export const WATCH_MENU_LIMIT = 20;
+
+export interface WatchMenuItem {
+  kind: 'resume' | 'plan' | 'custom';
+  label: string;
+  planId?: string;
+  dayId?: string;
+}
+
+export interface WatchMenu {
+  items: WatchMenuItem[];
+  truncated: boolean;
+}
+
+export interface WatchMenuInput {
+  resumeLabel: string | null;
+  hasPlanWorkout: boolean;
+  planLabel: string;
+  customDays: { planId: string; planName: string; dayId: string; dayName: string }[];
+}
+
+export function buildWatchMenu(i: WatchMenuInput): WatchMenu {
+  const items: WatchMenuItem[] = [];
+  if (i.resumeLabel) items.push({ kind: 'resume', label: i.resumeLabel });
+  if (i.hasPlanWorkout) items.push({ kind: 'plan', label: i.planLabel });
+  for (const d of i.customDays) {
+    items.push({ kind: 'custom', label: `${d.planName} · ${d.dayName}`, planId: d.planId, dayId: d.dayId });
+  }
+  return { items: items.slice(0, WATCH_MENU_LIMIT), truncated: items.length > WATCH_MENU_LIMIT };
+}
+
+// Nabídka se posílá zvlášť od snapshotu — plugin si ji drží a přibaluje ke
+// každému stavu, takže ji hodinky mají i po restartu appky.
+export async function updateWatchMenu(menu: WatchMenu): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try { await WatchWorkout.updateMenu({ menuJson: JSON.stringify(menu) }); } catch { /* noop */ }
 }

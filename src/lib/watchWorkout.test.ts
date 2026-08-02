@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCustomWatchState, buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep } from './watchWorkout';
+import { buildCustomWatchState, buildWatchMenu, WATCH_MENU_LIMIT, buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep } from './watchWorkout';
 
 const base = {
   phase: 'set' as const,
@@ -202,5 +202,33 @@ describe('buildCustomWatchState', () => {
   });
   it('goes idle while the user is still picking a gym or a day', () => {
     expect(buildCustomWatchState({ ...customBase, playerState: 'select_day' })!.phase).toBe('idle');
+  });
+});
+
+describe('buildWatchMenu', () => {
+  const days = [
+    { planId: 'p1', planName: 'Push Pull', dayId: 'd1', dayName: 'Push' },
+    { planId: 'p1', planName: 'Push Pull', dayId: 'd2', dayName: 'Pull' },
+  ];
+  it('puts resume first, then the plan workout, then custom days', () => {
+    const m = buildWatchMenu({ resumeLabel: 'Rozdělaný trénink', hasPlanWorkout: true, planLabel: 'Dnešní trénink', customDays: days });
+    expect(m.items.map(i => i.kind)).toEqual(['resume', 'plan', 'custom', 'custom']);
+    expect(m.items[2].label).toBe('Push Pull · Push');
+    expect(m.items[2].planId).toBe('p1');
+    expect(m.items[2].dayId).toBe('d1');
+  });
+  it('omits resume when there is nothing to resume', () => {
+    const m = buildWatchMenu({ resumeLabel: null, hasPlanWorkout: true, planLabel: 'Dnešní trénink', customDays: [] });
+    expect(m.items.map(i => i.kind)).toEqual(['plan']);
+  });
+  it('caps the list and reports that it was cut', () => {
+    const many = Array.from({ length: 30 }, (_, n) => ({ planId: 'p', planName: 'P', dayId: `d${n}`, dayName: `D${n}` }));
+    const m = buildWatchMenu({ resumeLabel: null, hasPlanWorkout: false, planLabel: '', customDays: many });
+    expect(m.items).toHaveLength(WATCH_MENU_LIMIT);
+    expect(m.truncated).toBe(true);
+  });
+  it('is not truncated when everything fits', () => {
+    const m = buildWatchMenu({ resumeLabel: null, hasPlanWorkout: false, planLabel: '', customDays: days });
+    expect(m.truncated).toBe(false);
   });
 });

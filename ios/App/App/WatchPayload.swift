@@ -48,6 +48,13 @@ enum WatchPayload {
             return payload
         case "goPrevSet", "goNextSet", "skipRest", "addRest15", "cardioToggle":
             return ["type": type]
+        case "startWorkout":
+            guard let kind = message["kind"] as? String,
+                  ["resume", "plan", "custom"].contains(kind) else { return nil }
+            var payload: [String: Any] = ["type": type, "kind": kind]
+            if let planId = message["planId"] as? String { payload["planId"] = planId }
+            if let dayId = message["dayId"] as? String { payload["dayId"] = dayId }
+            return payload
         default:
             return nil
         }

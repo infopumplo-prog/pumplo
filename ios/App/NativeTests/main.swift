@@ -98,6 +98,22 @@ expect(sparse?.stepValue == 0.5, "stepValue keeps the 0.5 kg contract")
 expect(WatchWorkoutSnapshot.decode(["phase": "nonsense"]) == nil, "decode rejects an unknown phase")
 expect(WatchWorkoutSnapshot.decode(["exerciseName": "x"]) == nil, "decode rejects a payload without a phase")
 
+// MARK: - nabídka
+
+let start = WatchPayload.action(from: ["type": "startWorkout", "kind": "custom", "planId": "p1", "dayId": "d1"])
+expect(start?["kind"] as? String == "custom", "action keeps the startWorkout kind")
+expect(start?["planId"] as? String == "p1", "action keeps the plan id")
+expect(WatchPayload.action(from: ["type": "startWorkout", "kind": "nonsense"]) == nil,
+       "action rejects an unknown startWorkout kind")
+expect(WatchPayload.action(from: ["type": "startWorkout"]) == nil,
+       "action rejects startWorkout without a kind")
+
+let menu = WatchMenu.decode(#"{"items":[{"kind":"plan","label":"Dnešní trénink"}],"truncated":false}"#)
+expect(menu?.items.count == 1, "menu decodes its items")
+expect(menu?.items.first?.label == "Dnešní trénink", "menu keeps the label")
+expect(menu?.items.first?.planId == nil, "menu allows items without a plan id")
+expect(WatchMenu.decode("nonsense") == nil, "menu rejects broken json")
+
 // MARK: - kardio
 
 expect(WatchPayload.action(from: ["type": "cardioToggle"])?["type"] as? String == "cardioToggle",

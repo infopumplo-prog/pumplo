@@ -18,6 +18,7 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "WatchWorkout"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "updateState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateMenu", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endState", returnType: CAPPluginReturnPromise)
     ]
 
@@ -25,6 +26,10 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
     // aplikace nikdy neklesne pod hodnotu, kterou hodinky už viděly.
     private var seq: Double = Date().timeIntervalSince1970 * 1000
     private var lastSnapshot: [String: Any]?
+
+    // Nabídka tréninků je "sticky" — jezdí s KAŽDÝM snapshotem, aby ji hodinky
+    // měly i po restartu appky, kdy dostanou jen poslední applicationContext.
+    private var menuJson: String?
 
     public override func load() {
         guard WCSession.isSupported() else { return }
@@ -36,6 +41,14 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func updateState(_ call: CAPPluginCall) {
         let raw = (call.options as? [String: Any]) ?? [:]
         push(snapshot: WatchPayload.sanitize(raw))
+        call.resolve()
+    }
+
+    @objc func updateMenu(_ call: CAPPluginCall) {
+        menuJson = call.getString("menuJson")
+        // Znovu odešle poslední stav i s nabídkou; když trénink neběží, jde ven
+        // prázdný idle snapshot, na který se hodinky zachytí.
+        push(snapshot: lastSnapshot ?? ["phase": "idle", "resting": false])
         call.resolve()
     }
 
@@ -53,6 +66,7 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
         seq += 1
         var payload = snapshot
         payload["seq"] = seq
+        if let menuJson { payload["menuJson"] = menuJson }
         let urgent = WatchPayload.isUrgent(previous: lastSnapshot, next: payload)
         lastSnapshot = payload
 
