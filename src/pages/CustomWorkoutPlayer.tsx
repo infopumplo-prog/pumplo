@@ -30,6 +30,8 @@ const REST_BETWEEN_EXERCISES = 120; // seconds
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
+import { buildCustomWatchState, type WatchAction } from '@/lib/watchWorkout';
+import { useWatchBridge } from '@/hooks/useWatchBridge';
 
 interface ExerciseWithVideo {
   id: string;
@@ -798,6 +800,62 @@ const CustomWorkoutPlayer = () => {
     setRestSeconds(0);
     advanceAfterRest();
   };
+
+  // Hodinky. Stav se skládá čistou funkcí (buildCustomWatchState), akce se
+  // přehrávají do TÝCHŽ handlerů, které volá UI v appce — žádná tréninková
+  // logika navíc.
+  const lastCompletedSet = completedSetsMap.get(currentExerciseIndex)?.slice(-1)[0] ?? null;
+  const watchState = buildCustomWatchState({
+    playerState,
+    isCardio: isCurrentCardio,
+    exerciseName: (isEn && currentExercise?.exercise_name_en)
+      ? currentExercise.exercise_name_en
+      : (currentExercise?.exercise_name || ''),
+    currentSet,
+    totalSets: currentExercise?.sets ?? 0,
+    targetWeight: currentExercise?.weight_per_set?.[currentSet - 1] ?? currentExercise?.weight_kg ?? null,
+    targetReps: currentExercise?.reps_per_set?.[currentSet - 1] ?? currentExercise?.reps ?? 0,
+    prevWeight: lastCompletedSet?.weight ?? null,
+    prevReps: lastCompletedSet?.reps ?? null,
+    restEndsAt: playerState === 'rest' ? restEndTimeRef.current : 0,
+    cardioTotalSeconds,
+    cardioEndsAt: cardioEndTimeRef.current,
+    cardioPausedAt: cardioPausedAtRef.current ?? 0,
+    nextExerciseName: exercises[currentExerciseIndex + 1]?.exercise_name ?? null,
+  });
+
+  const handleWatchAction = (a: WatchAction) => {
+    if (a.type === 'logSet') {
+      if (a.weight != null) setWeight(String(a.weight));
+      setReps(String(a.reps));
+      // Hodnoty z hodinek se do handleCompleteSet dostanou přes stav vstupů,
+      // proto se zápis odloží o tick — jinak by handler četl starou hodnotu.
+      setTimeout(() => handleCompleteSetRef.current(), 0);
+    } else if (a.type === 'skipRest') {
+      if (playerState === 'rest') handleSkipRest();
+    } else if (a.type === 'addRest15') {
+      if (playerState === 'rest') {
+        restEndTimeRef.current += 15000;
+        setRestSeconds(Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000)));
+        setCurrentRestTotal(prev => prev + 15);
+      }
+    } else if (a.type === 'cardioToggle') {
+      if (isCurrentCardio && playerState === 'exercise') handleCardioPauseToggle();
+    } else if (a.type === 'goPrevSet') {
+      if (currentSet > 1) setCurrentSet(currentSet - 1);
+      else if (currentExerciseIndex > 0) { setCurrentExerciseIndex(currentExerciseIndex - 1); setCurrentSet(1); }
+    } else if (a.type === 'goNextSet') {
+      if (currentSet < (currentExercise?.sets ?? 1)) setCurrentSet(currentSet + 1);
+      else if (currentExerciseIndex < exercises.length - 1) { setCurrentExerciseIndex(currentExerciseIndex + 1); setCurrentSet(1); }
+    }
+  };
+
+  // handleCompleteSet čte rozepsané vstupy, a odložené volání z hodinek by přes
+  // přímou referenci sáhlo do closure z minulého renderu.
+  const handleCompleteSetRef = useRef(handleCompleteSet);
+  handleCompleteSetRef.current = handleCompleteSet;
+
+  useWatchBridge(watchState, handleWatchAction);
 
   const handleToggleMute = () => {
     const next = !isMuted;

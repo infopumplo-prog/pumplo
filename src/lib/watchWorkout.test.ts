@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep } from './watchWorkout';
+import { buildCustomWatchState, buildWatchWorkoutState, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep } from './watchWorkout';
 
 const base = {
   phase: 'set' as const,
@@ -148,5 +148,59 @@ describe('buildWatchWorkoutState — cardio', () => {
     expect(s.cardioTotalSeconds).toBe(0);
     expect(s.cardioEndsAt).toBeNull();
     expect(s.cardioPausedAt).toBeNull();
+  });
+});
+
+const customBase = {
+  playerState: 'exercise' as const,
+  isCardio: false,
+  exerciseName: 'Dřep',
+  currentSet: 2,
+  totalSets: 4,
+  targetWeight: 60,
+  targetReps: 10,
+  prevWeight: 57.5,
+  prevReps: 10,
+  restEndsAt: 0,
+  cardioTotalSeconds: 0,
+  cardioEndsAt: 0,
+  cardioPausedAt: 0,
+  nextExerciseName: null,
+};
+
+describe('buildCustomWatchState', () => {
+  it('maps a strength set, converting the 1-based set number', () => {
+    const s = buildCustomWatchState(customBase)!;
+    expect(s.phase).toBe('set');
+    expect(s.setIndex).toBe(1);
+    expect(s.totalSets).toBe(4);
+    expect(s.targetWeight).toBe(60);
+    expect(s.repMin).toBe(10);
+    expect(s.repMax).toBe(10);
+    expect(s.rir).toBeNull();
+  });
+  it('maps rest with the end timestamp', () => {
+    const s = buildCustomWatchState({ ...customBase, playerState: 'rest', restEndsAt: 1700000000000, nextExerciseName: 'Tlak na prsa' })!;
+    expect(s.phase).toBe('rest');
+    expect(s.resting).toBe(true);
+    expect(s.restEndsAt).toBe(1700000000000);
+    expect(s.nextSetLabel).toBe('Tlak na prsa');
+  });
+  it('drops the rest phase when the end time is unknown', () => {
+    const s = buildCustomWatchState({ ...customBase, playerState: 'rest', restEndsAt: 0 })!;
+    expect(s.phase).toBe('set');
+  });
+  it('maps a cardio exercise', () => {
+    const s = buildCustomWatchState({ ...customBase, isCardio: true, cardioTotalSeconds: 600, cardioEndsAt: 1700000600000, cardioPausedAt: 0 })!;
+    expect(s.phase).toBe('cardio');
+    expect(s.cardioTotalSeconds).toBe(600);
+    expect(s.cardioEndsAt).toBe(1700000600000);
+    expect(s.cardioPausedAt).toBeNull();
+  });
+  it('reports the finished workout', () => {
+    expect(buildCustomWatchState({ ...customBase, playerState: 'completed' })!.phase).toBe('summary');
+  });
+  it('goes idle while the user is still picking a gym or a day', () => {
+    expect(buildCustomWatchState({ ...customBase, playerState: 'select_day' })!.phase).toBe('idle');
   });
 });

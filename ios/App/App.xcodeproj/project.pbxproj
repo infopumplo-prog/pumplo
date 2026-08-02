@@ -40,6 +40,7 @@
 		BC36BDEA6A5114E81E0B84D2 /* WatchWorkoutSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */; };
 		CAE56DB6621063EBC94E3A6C /* DragStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */; };
 		D2E4236B1E596218B866D833 /* RestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE5D68F5BE9A7254E5C6E572 /* RestView.swift */; };
+		E5535B61C273E44966EF685E /* CardioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3BC91FA3C98EA6E0074236E /* CardioView.swift */; };
 		E9C709E1783AEAD62DEBA6D0 /* PumploWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F3127E5ED4F34FF75D256610 /* PumploWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEADCACB120E93330585495 /* PumploWatchApp.swift */; };
 		F473295A2A718BC7426951D5 /* ActiveSetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5256854733A673FB3A428D14 /* ActiveSetView.swift */; };
@@ -121,6 +122,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		9AEADCACB120E93330585495 /* PumploWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PumploWatchApp.swift; sourceTree = "<group>"; };
 		A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PumploWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C3BC91FA3C98EA6E0074236E /* CardioView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardioView.swift; sourceTree = "<group>"; };
 		D27C3095B25AF7319FC57809 /* WatchConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnector.swift; sourceTree = "<group>"; };
 		DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSnapshot.swift; sourceTree = "<group>"; };
 		DDD9EECCC0C6DAA3453EE15A /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -206,6 +208,7 @@
 				FE5D68F5BE9A7254E5C6E572 /* RestView.swift */,
 				2B3F6DC1F92E4D0609142017 /* SpinnerField.swift */,
 				F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */,
+				C3BC91FA3C98EA6E0074236E /* CardioView.swift */,
 			);
 			name = "PumploWatch Watch App";
 			path = "PumploWatch Watch App";
@@ -448,6 +451,7 @@
 				D2E4236B1E596218B866D833 /* RestView.swift in Sources */,
 				07E91F657757808399D40766 /* SpinnerField.swift in Sources */,
 				CAE56DB6621063EBC94E3A6C /* DragStepper.swift in Sources */,
+				E5535B61C273E44966EF685E /* CardioView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

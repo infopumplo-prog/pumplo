@@ -29,6 +29,11 @@ struct RootView: View {
                     snapshot: connector.snapshot,
                     onAdd15: { connector.send(action: "addRest15") },
                     onSkip: { connector.send(action: "skipRest") })
+            case .cardio:
+                CardioView(
+                    snapshot: connector.snapshot,
+                    onToggle: { connector.send(action: "cardioToggle") },
+                    onDone: { connector.send(action: "goNextSet") })
             case .summary:
                 DoneView()
             case .idle:

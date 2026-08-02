@@ -146,3 +146,75 @@ export function resolveSetStep(i: SetStepInput, direction: 'prev' | 'next'): Set
   if (i.exerciseIndex > 0) return { exerciseIndex: i.exerciseIndex - 1, setIndex: 0 };
   return null;
 }
+
+// Vlastní trénink (CustomWorkoutPlayer) → snapshot pro hodinky. Čistá funkce,
+// aby se dala testovat bez renderu komponenty.
+//
+// Vlastní plán nemá rozmezí opakování ani RIR, proto repMin === repMax a
+// rir === null. Časy jsou razítka v ms; 0 znamená „nemáme".
+export interface CustomWatchInput {
+  playerState: 'select_gym' | 'select_day' | 'equipment_warning' | 'exercise' | 'rest' | 'completed';
+  isCardio: boolean;
+  exerciseName: string;
+  currentSet: number; // 1-based, jak ho drží přehrávač
+  totalSets: number;
+  targetWeight: number | null;
+  targetReps: number;
+  prevWeight: number | null;
+  prevReps: number | null;
+  restEndsAt: number;
+  cardioTotalSeconds: number;
+  cardioEndsAt: number;
+  cardioPausedAt: number;
+  nextExerciseName: string | null;
+}
+
+export function buildCustomWatchState(i: CustomWatchInput): BuildInput | null {
+  const blank = {
+    exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+    targetWeight: null, repMin: 0, repMax: 0, rir: null,
+    prevWeight: null, prevReps: null, resting: false, restEndsAt: null,
+    nextSetLabel: null,
+  };
+
+  if (i.playerState === 'completed') return { phase: 'summary', ...blank };
+  if (i.playerState !== 'exercise' && i.playerState !== 'rest') {
+    // Výběr posilovny nebo dne — hodinky ať zatím ukazují nabídku.
+    return { phase: 'idle', ...blank };
+  }
+
+  const common = {
+    exerciseName: i.exerciseName,
+    slotCategory: i.isCardio ? 'conditioning' : null,
+    setIndex: Math.max(0, i.currentSet - 1),
+    totalSets: i.totalSets,
+    targetWeight: i.targetWeight,
+    repMin: i.targetReps,
+    repMax: i.targetReps,
+    rir: null,
+    prevWeight: i.prevWeight,
+    prevReps: i.prevReps,
+  };
+
+  // Bez známého konce pauzy nemá smysl posílat fázi rest — hodinky by
+  // ukazovaly odpočet bez času.
+  if (i.playerState === 'rest' && i.restEndsAt > 0) {
+    return {
+      phase: 'rest', ...common,
+      resting: true, restEndsAt: i.restEndsAt,
+      nextSetLabel: i.nextExerciseName,
+    };
+  }
+
+  if (i.isCardio) {
+    return {
+      phase: 'cardio', ...common,
+      resting: false, restEndsAt: null, nextSetLabel: null,
+      cardioTotalSeconds: i.cardioTotalSeconds,
+      cardioEndsAt: i.cardioEndsAt > 0 ? i.cardioEndsAt : null,
+      cardioPausedAt: i.cardioPausedAt > 0 ? i.cardioPausedAt : null,
+    };
+  }
+
+  return { phase: 'set', ...common, resting: false, restEndsAt: null, nextSetLabel: null };
+}
