@@ -217,5 +217,104 @@ expect(noRotation?.expiresAt == 4_600, "refresh falls back to expires_in")
 expect(WatchAuth.parseRefresh(#"{"error":"invalid"}"#.data(using: .utf8)!, previous: previous, now: 0) == nil,
        "refresh rejects an error response")
 
+// MARK: - samostatný trénink na hodinkách
+
+func makeExercise(_ name: String, sets: Int, rest: Int = 60, cardio: Bool = false,
+                  duration: Int? = nil) -> WatchApiExercise {
+    WatchApiExercise(exerciseId: "e-\(name)", name: name, nameEn: nil, slotCategory: "main",
+                     sets: sets, repMin: 8, repMax: 12, rir: 2, targetWeight: 40,
+                     restSeconds: rest, isCardio: cardio, durationSeconds: duration,
+                     thumbUrl: nil, repsPerSet: nil, weightPerSet: nil, restPerSet: nil)
+}
+
+let twoExercises = WatchApiWorkout(
+    title: "Trénink A", kind: "plan", planId: "p", dayId: nil, gymId: "g",
+    dayLetter: "A", goalId: "strength",
+    exercises: [makeExercise("Dřep", sets: 2), makeExercise("Tlak", sets: 1)])
+
+let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+
+var local = LocalWorkout(workout: twoExercises, startedAt: t0)
+expect(local.snapshot(now: t0).phase == .set, "a fresh workout starts on the set screen")
+expect(local.snapshot(now: t0).totalSets == 2, "snapshot carries the set count")
+expect(local.snapshot(now: t0).workoutTitle == "Trénink A", "snapshot carries the title")
+
+local.logSet(weight: 40, reps: 10, now: t0)
+expect(local.snapshot(now: t0).phase == .rest, "logging a set starts the rest")
+expect(local.snapshot(now: t0).restEndsAt == (t0.timeIntervalSince1970 + 60) * 1000,
+       "rest ends one minute later for this exercise")
+expect(local.snapshot(now: t0).exercises.first?.setsDone == 1, "the list counts the logged set")
+
+local.addRest(15)
+expect(local.snapshot(now: t0).restEndsAt == (t0.timeIntervalSince1970 + 75) * 1000,
+       "adding 15 s moves the end of the rest")
+
+local.skipRest()
+expect(local.snapshot(now: t0).phase == .set, "skipping the rest goes back to the set screen")
+expect(local.snapshot(now: t0).setIndex == 1, "and moves to the second set")
+
+local.logSet(weight: 42.5, reps: 8, now: t0)
+local.skipRest()
+expect(local.snapshot(now: t0).currentExerciseIndex == 1, "the last set moves to the next exercise")
+expect(local.snapshot(now: t0).setIndex == 0, "the new exercise starts at its first set")
+expect(local.snapshot(now: t0).prevWeight == nil, "the new exercise has no previous set yet")
+
+local.logSet(weight: 60, reps: 5, now: t0)
+expect(local.snapshot(now: t0).phase == .summary, "the last set of the last exercise finishes the workout")
+
+// Pauza, která doběhne sama
+var ticking = LocalWorkout(workout: twoExercises, startedAt: t0)
+ticking.logSet(weight: 40, reps: 10, now: t0)
+ticking.restFinishedIfDue(now: t0.addingTimeInterval(30))
+expect(ticking.snapshot(now: t0).phase == .rest, "an unfinished rest keeps running")
+ticking.restFinishedIfDue(now: t0.addingTimeInterval(61))
+expect(ticking.snapshot(now: t0).phase == .set, "a rest that ran out advances on its own")
+
+// Skok na cvik ze seznamu
+var jumping = LocalWorkout(workout: twoExercises, startedAt: t0)
+jumping.goToExercise(1)
+expect(jumping.snapshot(now: t0).currentExerciseIndex == 1, "tapping the list jumps to the exercise")
+jumping.goToExercise(9)
+expect(jumping.snapshot(now: t0).currentExerciseIndex == 1, "an index outside the workout is ignored")
+jumping.goPrevSet()
+expect(jumping.snapshot(now: t0).currentExerciseIndex == 0, "back from the first set steps an exercise")
+
+// Kardio
+let cardioWorkout = WatchApiWorkout(
+    title: "Vlastní", kind: "custom", planId: "p", dayId: "d", gymId: nil,
+    dayLetter: nil, goalId: nil,
+    exercises: [makeExercise("Pás", sets: 1, cardio: true, duration: 600)])
+var localCardio = LocalWorkout(workout: cardioWorkout, startedAt: t0)
+expect(localCardio.snapshot(now: t0).phase == .cardio, "a cardio exercise shows the cardio screen")
+expect(localCardio.snapshot(now: t0).remainingCardioSeconds(now: t0) == 600, "cardio starts at its full length")
+localCardio.toggleCardio(now: t0)
+expect(localCardio.snapshot(now: t0).remainingCardioSeconds(now: t0.addingTimeInterval(100)) == 500,
+       "running cardio counts down")
+localCardio.toggleCardio(now: t0.addingTimeInterval(100))
+expect(localCardio.snapshot(now: t0).remainingCardioSeconds(now: t0.addingTimeInterval(400)) == 500,
+       "paused cardio holds its remaining time")
+localCardio.toggleCardio(now: t0.addingTimeInterval(400))
+expect(localCardio.snapshot(now: t0).remainingCardioSeconds(now: t0.addingTimeInterval(500)) == 400,
+       "resumed cardio does not lose the paused time")
+
+// Dotazy na watch-api
+let menuReq = WatchApi.menuRequest(baseUrl: "https://x/functions/v1/watch-api", anonKey: "k", accessToken: "t")
+expect(menuReq?.url?.absoluteString == "https://x/functions/v1/watch-api/menu", "menu hits /menu")
+expect(menuReq?.value(forHTTPHeaderField: "Authorization") == "Bearer t", "requests carry the user token")
+let customReq = WatchApi.customWorkoutRequest(baseUrl: "https://x/functions/v1/watch-api",
+                                              anonKey: "k", accessToken: "t", planId: "p1", dayId: "d1")
+expect(customReq?.url?.absoluteString.contains("kind=custom&planId=p1&dayId=d1") == true,
+       "a custom workout asks for its plan and day")
+
+let workoutJson = #"{"title":"Trénink A","kind":"plan","planId":"p","exercises":[{"name":"Dřep","sets":3,"repMin":8,"repMax":12,"restSeconds":120,"isCardio":false}]}"#
+let decodedWorkout = WatchApi.decodeWorkout(workoutJson.data(using: .utf8)!)
+expect(decodedWorkout?.exercises.count == 1, "workout json decodes its exercises")
+expect(decodedWorkout?.exercises.first?.restSeconds == 120, "workout json keeps the rest length")
+expect(WatchApi.decodeWorkout("nonsense".data(using: .utf8)!) == nil, "broken workout json is rejected")
+
+let menuJson = #"{"plan":{"label":"Trénink A","dayLetter":"A","exerciseCount":6},"customDays":[{"planId":"p","dayId":"d","label":"Push Pull · Push"}]}"#
+expect(WatchApi.decodeMenu(menuJson.data(using: .utf8)!)?.customDays.first?.label == "Push Pull · Push",
+       "menu json decodes the custom days")
+
 if failures > 0 { print("\(failures) failing"); exit(1) }
 print("all native tests passed")
