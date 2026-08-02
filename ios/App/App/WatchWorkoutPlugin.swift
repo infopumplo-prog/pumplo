@@ -19,6 +19,7 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "updateState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updateMenu", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateAuth", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endState", returnType: CAPPluginReturnPromise)
     ]
 
@@ -49,6 +50,32 @@ public class WatchWorkoutPlugin: CAPPlugin, CAPBridgedPlugin {
         // Znovu odešle poslední stav i s nabídkou; když trénink neběží, jde ven
         // prázdný idle snapshot, na který se hodinky zachytí.
         push(snapshot: lastSnapshot ?? ["phase": "idle", "resting": false])
+        call.resolve()
+    }
+
+    // Předání přihlášení hodinkám. Jde frontou (transferUserInfo), ne
+    // applicationContextem: relace se musí doručit i tehdy, když hodinky spaly,
+    // a nesmí ji přebít pozdější snapshot tréninku.
+    @objc func updateAuth(_ call: CAPPluginCall) {
+        guard WCSession.isSupported() else { return call.resolve() }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return call.resolve() }
+
+        if let accessToken = call.getString("accessToken"),
+           let refreshToken = call.getString("refreshToken"),
+           let userId = call.getString("userId"),
+           !accessToken.isEmpty, !refreshToken.isEmpty, !userId.isEmpty {
+            session.transferUserInfo([
+                "type": "auth",
+                "accessToken": accessToken,
+                "refreshToken": refreshToken,
+                "expiresAt": call.getDouble("expiresAt") ?? 0,
+                "userId": userId,
+            ])
+        } else {
+            // Odhlášení v telefonu musí zneplatnit i hodinky.
+            session.transferUserInfo(["type": "authCleared"])
+        }
         call.resolve()
     }
 

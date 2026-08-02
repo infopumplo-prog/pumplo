@@ -6,6 +6,7 @@ import { Browser } from '@capacitor/browser';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from '@/integrations/supabase/client';
+import { updateWatchAuth } from '@/lib/watchWorkout';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Předání relace hodinkám pro samostatný režim. Nesmí nikdy shodit přihlášení
+// v telefonu — nespárované hodinky ani chybějící plugin nejsou chyba.
+const pushSessionToWatch = async (session: Session | null): Promise<void> => {
+  try {
+    if (!session?.access_token || !session.refresh_token || !session.user?.id) {
+      await updateWatchAuth(null);
+      return;
+    }
+    await updateWatchAuth({
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      // Supabase dává expires_at v sekundách; když chybí, dopočítáme z expires_in.
+      expiresAt: session.expires_at ?? (Date.now() / 1000 + (session.expires_in ?? 3600)),
+      userId: session.user.id,
+    });
+  } catch { /* hodinky nejsou povinné */ }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -37,6 +56,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
+        // Hodinky si drží vlastní přihlášení — posíláme jim ho při každé změně
+        // relace, aby nikdy nedržely mrtvý token, dokud je telefon po ruce.
+        void pushSessionToWatch(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
         if (event === 'PASSWORD_RECOVERY') {
@@ -48,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      void pushSessionToWatch(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });

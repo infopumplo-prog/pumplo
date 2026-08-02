@@ -7,6 +7,7 @@ import SwiftUI
 // vrství — šipkou zpět se uživatel kdykoliv vrátí na seznam.
 struct RootView: View {
     @StateObject private var connector = WatchConnector()
+    @StateObject private var auth = WatchAuthStore()
     @State private var showingDetail = false
 
     var body: some View {
@@ -14,7 +15,15 @@ struct RootView: View {
             PumploTheme.navy.ignoresSafeArea()
             content
         }
-        .onAppear { connector.activate() }
+        .onAppear {
+            // Přihlášení předává telefon jednorázově; hodinky si ho pak drží
+            // samy, takže se načítá z Keychainu ještě před spojením.
+            auth.load()
+            connector.onAuth = { auth.accept($0) }
+            connector.onAuthCleared = { auth.clear() }
+            connector.activate()
+            Task { await auth.verifyAccess() }
+        }
     }
 
     private var isIdle: Bool { !connector.hasSnapshot || connector.snapshot.phase == .idle }
@@ -23,7 +32,10 @@ struct RootView: View {
         // Trénink neběží → nabídka, kterou telefon poslal dopředu. Dokud
         // nedorazila (čerstvě nainstalované hodinky), zůstává „Čekám na telefon".
         if isIdle {
-            if connector.menu.items.isEmpty {
+            if auth.state == .signedOut {
+                // Bez přihlášení nemá samostatný režim jak sáhnout na server.
+                SignedOutView()
+            } else if connector.menu.items.isEmpty {
                 WaitingView()
             } else {
                 MenuView(menu: connector.menu,

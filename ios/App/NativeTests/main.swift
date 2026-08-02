@@ -172,5 +172,50 @@ expect(listed?.elapsedSeconds(now: Date(timeIntervalSince1970: 1_700_000_090)) =
 expect(WatchWorkoutSnapshot.decode(["phase": "set"])?.exercises.isEmpty == true,
        "a snapshot without a list decodes to no exercises")
 
+// MARK: - přihlášení hodinek
+
+let authInfo: [String: Any] = [
+    "type": "auth", "accessToken": "acc", "refreshToken": "ref",
+    "expiresAt": 1_700_003_600.0, "userId": "u1",
+]
+expect(WatchAuthToken.decode(userInfo: authInfo)?.accessToken == "acc", "auth decodes a full session")
+expect(WatchAuthToken.decode(userInfo: authInfo)?.userId == "u1", "auth keeps the user id")
+expect(WatchAuthToken.decode(userInfo: ["type": "auth", "accessToken": "acc"]) == nil,
+       "auth rejects a half session")
+expect(WatchAuthToken.decode(userInfo: ["type": "auth", "accessToken": "", "refreshToken": "r",
+                                        "expiresAt": 1.0, "userId": "u"]) == nil,
+       "auth rejects an empty access token")
+expect(WatchAuthToken.decode(userInfo: ["type": "snapshot"]) == nil, "auth ignores other messages")
+expect(WatchAuthToken.isClearMessage(userInfo: ["type": "authCleared"]), "auth recognises a logout")
+
+expect(WatchAuth.needsRefresh(expiresAt: 1_700_000_000, now: 1_699_999_800),
+       "a token expiring within the margin needs a refresh")
+expect(!WatchAuth.needsRefresh(expiresAt: 1_700_000_000, now: 1_699_996_000),
+       "a token with plenty of time does not")
+expect(WatchAuth.needsRefresh(expiresAt: 1_699_000_000, now: 1_700_000_000),
+       "an expired token needs a refresh")
+
+let refreshReq = WatchAuth.refreshRequest(baseUrl: "https://auth.pumplo.com", anonKey: "key", refreshToken: "ref")
+expect(refreshReq?.url?.absoluteString == "https://auth.pumplo.com/auth/v1/token?grant_type=refresh_token",
+       "refresh hits the Supabase token endpoint")
+expect(refreshReq?.value(forHTTPHeaderField: "apikey") == "key", "refresh sends the anon key")
+expect(refreshReq?.httpMethod == "POST", "refresh is a POST")
+
+let previous = WatchAuthToken(accessToken: "old", refreshToken: "oldRef", expiresAt: 1, userId: "u1")
+let refreshed = WatchAuth.parseRefresh(
+    #"{"access_token":"new","refresh_token":"newRef","expires_at":1700000000}"#.data(using: .utf8)!,
+    previous: previous, now: 0)
+expect(refreshed?.accessToken == "new", "refresh parses the new access token")
+expect(refreshed?.refreshToken == "newRef", "refresh parses the rotated refresh token")
+expect(refreshed?.expiresAt == 1_700_000_000, "refresh parses the expiry")
+expect(refreshed?.userId == "u1", "refresh keeps the user id when the response omits it")
+
+let noRotation = WatchAuth.parseRefresh(
+    #"{"access_token":"new","expires_in":3600}"#.data(using: .utf8)!, previous: previous, now: 1_000)
+expect(noRotation?.refreshToken == "oldRef", "refresh keeps the old token when none is rotated")
+expect(noRotation?.expiresAt == 4_600, "refresh falls back to expires_in")
+expect(WatchAuth.parseRefresh(#"{"error":"invalid"}"#.data(using: .utf8)!, previous: previous, now: 0) == nil,
+       "refresh rejects an error response")
+
 if failures > 0 { print("\(failures) failing"); exit(1) }
 print("all native tests passed")

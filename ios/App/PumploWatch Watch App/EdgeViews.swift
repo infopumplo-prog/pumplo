@@ -19,6 +19,27 @@ struct WaitingView: View {
     }
 }
 
+// Hodinky zatím nedostaly přihlášení, nebo propadlo. Samostatný režim bez něj
+// nemá jak sáhnout na server — a tiché prázdno je horší než jasná věta.
+struct SignedOutView: View {
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(PumploTheme.cyan)
+            Text("Přihlas se v telefonu")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+            Text("Otevři Pumplo v telefonu, hodinky si přihlášení převezmou samy")
+                .font(.system(size: 10))
+                .foregroundStyle(PumploTheme.dim)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 8)
+    }
+}
+
 // Trénink dokončen (phase == summary).
 struct DoneView: View {
     var body: some View {

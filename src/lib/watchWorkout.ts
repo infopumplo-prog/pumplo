@@ -101,6 +101,7 @@ export type WatchAction =
 interface WatchWorkoutPlugin {
   updateState(state: WatchWorkoutState): Promise<void>;
   updateMenu(options: { menuJson: string }): Promise<void>;
+  updateAuth(options: { accessToken?: string; refreshToken?: string; expiresAt?: number; userId?: string }): Promise<void>;
   endState(): Promise<void>;
   addListener(event: 'watchAction', cb: (a: WatchAction) => void): Promise<PluginListenerHandle>;
 }
@@ -274,6 +275,16 @@ export function buildWatchMenu(i: WatchMenuInput): WatchMenu {
     items.push({ kind: 'custom', label: `${d.planName} · ${d.dayName}`, planId: d.planId, dayId: d.dayId });
   }
   return { items: items.slice(0, WATCH_MENU_LIMIT), truncated: items.length > WATCH_MENU_LIMIT };
+}
+
+// Přihlášení pro samostatný režim hodinek. Hodinky si relaci uloží do Keychainu
+// a dál si ji obnovují samy — telefon je potřeba jen tady, jednou.
+// Bez argumentu = odhlášení, které musí zneplatnit i hodinky.
+export async function updateWatchAuth(session: {
+  accessToken: string; refreshToken: string; expiresAt: number; userId: string;
+} | null): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try { await WatchWorkout.updateAuth(session ?? {}); } catch { /* noop */ }
 }
 
 // Nabídka se posílá zvlášť od snapshotu — plugin si ji drží a přibaluje ke

@@ -10,6 +10,11 @@ final class WatchConnector: NSObject, ObservableObject {
     @Published private(set) var menu: WatchMenu = .empty
     @Published private(set) var startState: StartState = .idle
 
+    // Přihlášení předané telefonem. Connector ho jen přebírá a předává dál —
+    // ukládání a obnovu řeší WatchAuthStore.
+    var onAuth: ((WatchAuthToken) -> Void)?
+    var onAuthCleared: (() -> Void)?
+
     // Spouštění tréninku z hodinek. Telefon se dá jen probudit, ne vytáhnout do
     // popředí — když do timeoutu nedorazí snapshot, přiznáme to.
     enum StartState: Equatable {
@@ -100,6 +105,18 @@ extension WatchConnector: WCSessionDelegate {
         // Appka otevřená uprostřed tréninku: poslední kontext už tu je.
         let context = session.receivedApplicationContext
         if !context.isEmpty { apply(context) }
+    }
+
+    // Přihlášení chodí frontou (transferUserInfo) — musí dorazit i tehdy, když
+    // hodinky zrovna spaly, na rozdíl od snapshotu, kde platí jen ten poslední.
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        if let token = WatchAuthToken.decode(userInfo: userInfo) {
+            DispatchQueue.main.async { self.onAuth?(token) }
+            return
+        }
+        if WatchAuthToken.isClearMessage(userInfo: userInfo) {
+            DispatchQueue.main.async { self.onAuthCleared?() }
+        }
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
