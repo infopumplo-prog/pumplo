@@ -746,6 +746,21 @@ export const WorkoutSession = ({
     return () => { cancelled = true; };
   }, [currentExercise?.exerciseId]);
 
+  // Náhledy VŠECH cviků tréninku — potřebuje je seznam na hodinkách. Jeden
+  // dotaz na celý trénink, ne dotaz na cvik.
+  const [thumbUrlById, setThumbUrlById] = useState<Map<string, string | null>>(new Map());
+  useEffect(() => {
+    const ids = Array.from(new Set(liveExercises.map(ex => ex.exerciseId).filter((id): id is string => !!id)));
+    if (ids.length === 0) return;
+    let cancelled = false;
+    supabase.from('exercises').select('id, video_path').in('id', ids).then(({ data }) => {
+      if (cancelled || !data) return;
+      setThumbUrlById(new Map(data.map(r => [r.id, getVideoThumbUrl(r.video_path || null)])));
+    });
+    return () => { cancelled = true; };
+    // Stačí podle složení cviků — výměna cviku seznam přenačte.
+  }, [liveExercises.map(ex => ex.exerciseId).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Suggested weight for the upcoming set: last completed set this session,
   // else the most recent logged weight for the exercise (same prefill order as
   // the list view).
@@ -924,6 +939,8 @@ export const WorkoutSession = ({
       stepSetRef.current('prev');
     } else if (a.type === 'goNextSet') {
       stepSetRef.current('next');
+    } else if (a.type === 'goToExercise') {
+      if (a.index >= 0 && a.index < liveExercises.length) goToExerciseRef.current(a.index);
     }
   };
 
@@ -954,6 +971,20 @@ export const WorkoutSession = ({
   // Snapshot aktuálního tréninku pro spárované hodinky. Hodiny pauzy jsou
   // JEDNY (viz resolveWatchRestEndsAt) — hodinky si z restEndsAt odpočítávají
   // lokálně, takže přepočet při každém renderu by countdown resetoval.
+  // Seznam cviků pro hodinky. Hotové série se počítají ze stejné mapy, ze které
+  // je bere seznam v appce, takže se čísla nemůžou rozejít.
+  const watchExercises = liveExercises.map((ex, idx) => ({
+    name: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
+    setsDone: (setsDataByExercise.get(idx) ?? []).filter(s => s.completed).length,
+    setsTotal: ex.sets,
+    thumbUrl: ex.exerciseId ? (thumbUrlById.get(ex.exerciseId) ?? null) : null,
+  }));
+  const watchHeader = {
+    workoutTitle: t('admin.day_letter', { letter: dayLetter }),
+    workoutStartedAt: workoutStartTime.getTime(),
+    exercises: watchExercises,
+  };
+
   const watchState: BuildInput | null = (() => {
     const ex = liveExercises[currentExerciseIndex];
     if (!ex) return null;
@@ -963,8 +994,8 @@ export const WorkoutSession = ({
       prevWeight: null, prevReps: null, resting: false, restEndsAt: null,
       nextSetLabel: null,
     };
-    if (showSummary) return { phase: 'summary', ...blank };
-    if (showCooldown) return { phase: 'idle', ...blank };
+    if (showSummary) return { phase: 'summary', ...blank, ...watchHeader };
+    if (showCooldown) return { phase: 'idle', ...blank, ...watchHeader };
 
     const restEnds = resolveWatchRestEndsAt({
       sessionResting: showRestTimer,
@@ -985,6 +1016,7 @@ export const WorkoutSession = ({
       prevWeight: currentExWeight, prevReps: ex.repMax,
       resting, restEndsAt: restEnds,
       nextSetLabel: resting ? (upcomingSetPayload()?.setText ?? null) : null,
+      ...watchHeader,
     };
   })();
 

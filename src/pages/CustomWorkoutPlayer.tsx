@@ -17,7 +17,7 @@ import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl, enterVideoFullscreen } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
 import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
 import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
@@ -814,6 +814,14 @@ const CustomWorkoutPlayer = () => {
   // přehrávají do TÝCHŽ handlerů, které volá UI v appce — žádná tréninková
   // logika navíc.
   const lastCompletedSet = completedSetsMap.get(currentExerciseIndex)?.slice(-1)[0] ?? null;
+  // Seznam cviků pro hodinky. Náhledy si hodinky stáhnou samy z veřejné adresy,
+  // telefon posílá jen odkaz.
+  const watchExercises = exercises.map((ex, idx) => ({
+    name: (isEn && ex.exercise_name_en) ? ex.exercise_name_en : ex.exercise_name,
+    setsDone: (completedSetsMap.get(idx) ?? []).filter(s => s.completed).length,
+    setsTotal: ex.sets,
+    thumbUrl: getVideoThumbUrl(ex.video_path ?? null),
+  }));
   const watchState = buildCustomWatchState({
     playerState,
     isCardio: isCurrentCardio,
@@ -832,6 +840,13 @@ const CustomWorkoutPlayer = () => {
     cardioPausedAt: cardioPausedAtRef.current ?? 0,
     nextExerciseName: exercises[currentExerciseIndex + 1]?.exercise_name ?? null,
   });
+  const watchStateWithList = watchState && {
+    ...watchState,
+    workoutTitle: [plan?.name, plan?.days.find(d => d.id === selectedDayId)?.name]
+      .filter(Boolean).join(' · ') || (plan?.name ?? ''),
+    workoutStartedAt: startTime.getTime(),
+    exercises: watchExercises,
+  };
 
   const handleWatchAction = (a: WatchAction) => {
     if (a.type === 'logSet') {
@@ -856,6 +871,8 @@ const CustomWorkoutPlayer = () => {
     } else if (a.type === 'goNextSet') {
       if (currentSet < (currentExercise?.sets ?? 1)) setCurrentSet(currentSet + 1);
       else if (currentExerciseIndex < exercises.length - 1) { setCurrentExerciseIndex(currentExerciseIndex + 1); setCurrentSet(1); }
+    } else if (a.type === 'goToExercise') {
+      if (a.index >= 0 && a.index < exercises.length) { setCurrentExerciseIndex(a.index); setCurrentSet(1); }
     }
   };
 
@@ -864,7 +881,7 @@ const CustomWorkoutPlayer = () => {
   const handleCompleteSetRef = useRef(handleCompleteSet);
   handleCompleteSetRef.current = handleCompleteSet;
 
-  useWatchBridge(watchState, handleWatchAction);
+  useWatchBridge(watchStateWithList, handleWatchAction);
 
   const handleToggleMute = () => {
     const next = !isMuted;
