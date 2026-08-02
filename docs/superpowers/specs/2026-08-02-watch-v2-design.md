@@ -147,10 +147,12 @@ Telefon příkaz zpracuje v **`useWatchMenu`** (globálně, ne v přehrávači �
 | `kind` | Cíl |
 |---|---|
 | `resume` | `/training?resume=true` nebo `/custom-workout/:planId?resume=true` |
-| `plan` | `/training?start=true` |
+| `plan` | `/training?start=true&watch=true` |
 | `custom` | `/custom-workout/:planId?gym=<selected_gym_id>&day=<dayId>` |
 
 `CustomWorkoutPlayer` dnes umí parametry `resume` a `gym`, ale **ne `day`** — den se vždycky vybírá ručně. Přibude tedy podpora `?day=<dayId>`, která výběr dne přeskočí. Bez ní by ťuknutí na hodinkách stejně skončilo u výběru na telefonu, čímž by celá funkce ztratila smysl.
+
+Stejná past je u plánového tréninku a zjistila se až při zkoušce na zápěstí (2. 8. 2026): `?start=true` trénink **nespouští**, jen otevře náhled se seznamem cviků, který se musí na telefonu potvrdit, a po něm ještě rozehřátí. Z hodinek proto jde `?start=true&watch=true` — parametr `watch` přeskočí náhled i rozehřátí a jde rovnou do první série. Cooldown se dogeneruje na pozadí, protože v běžném toku ho připravuje právě rozehřátí.
 
 Posilovna se bere z `profile.selected_gym_id`. Když žádná uložená není, telefon ukáže výběr posilovny a hodinky napíšou, že se to musí dokončit v telefonu.
 
