@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
@@ -204,6 +204,26 @@ const SaveQueueFlusher = () => {
   return null;
 };
 
+// Gym data (pricing, opening hours, photos) is edited in the admin app, so a phone that has been
+// sitting in the background would otherwise keep showing whatever it cached. Refetch on resume and
+// when the network comes back.
+const GymDataRefresher = () => {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () => { queryClient.invalidateQueries({ queryKey: ['published-gyms'] }); };
+    window.addEventListener('online', refresh);
+    let listener: Promise<{ remove: () => void }> | null = null;
+    if (Capacitor.isNativePlatform()) {
+      listener = CapApp.addListener('resume', refresh);
+    }
+    return () => {
+      window.removeEventListener('online', refresh);
+      listener?.then(h => h.remove());
+    };
+  }, [queryClient]);
+  return null;
+};
+
 const AppRoutes = () => {
   usePushRegistration();
   usePushNavigation();
@@ -212,6 +232,7 @@ const AppRoutes = () => {
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
     <SaveQueueFlusher />
+    <GymDataRefresher />
   <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
