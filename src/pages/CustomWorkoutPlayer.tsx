@@ -846,6 +846,7 @@ const CustomWorkoutPlayer = () => {
       .filter(Boolean).join(' · ') || (plan?.name ?? ''),
     workoutStartedAt: startTime.getTime(),
     exercises: watchExercises,
+    currentExerciseIndex,
   };
 
   const handleWatchAction = (a: WatchAction) => {

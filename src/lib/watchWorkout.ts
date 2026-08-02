@@ -24,6 +24,7 @@ export interface WatchWorkoutState {
   workoutTitle: string;
   workoutStartedAt: number | null; // razítko v ms; hodinky si čas počítají samy
   exercisesJson: string;
+  currentExerciseIndex: number;    // který řádek seznamu zvýraznit
 }
 
 export interface WatchExerciseItem {
@@ -55,6 +56,7 @@ export interface BuildInput {
   workoutTitle?: string;
   workoutStartedAt?: number | null;
   exercises?: WatchExerciseItem[];
+  currentExerciseIndex?: number;
 }
 
 export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
@@ -82,6 +84,7 @@ export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
     workoutStartedAt: i.workoutStartedAt ?? null,
     // Seznam jede JSONem v jednom poli — kontrakt propouští jen ploché hodnoty.
     exercisesJson: JSON.stringify(i.exercises ?? []),
+    currentExerciseIndex: i.currentExerciseIndex ?? 0,
   };
 }
 

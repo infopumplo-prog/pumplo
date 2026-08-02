@@ -983,6 +983,7 @@ export const WorkoutSession = ({
     workoutTitle: t('admin.day_letter', { letter: dayLetter }),
     workoutStartedAt: workoutStartTime.getTime(),
     exercises: watchExercises,
+    currentExerciseIndex,
   };
 
   const watchState: BuildInput | null = (() => {

@@ -29,7 +29,7 @@ final class WatchConnector: NSObject, ObservableObject {
         session.activate()
     }
 
-    func send(action: String, weight: Double? = nil, reps: Int? = nil) {
+    func send(action: String, weight: Double? = nil, reps: Int? = nil, index: Int? = nil) {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
@@ -37,6 +37,7 @@ final class WatchConnector: NSObject, ObservableObject {
         var message: [String: Any] = ["type": action]
         if let weight { message["weight"] = weight }
         if let reps { message["reps"] = reps }
+        if let index { message["index"] = index }
 
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil, errorHandler: { _ in })

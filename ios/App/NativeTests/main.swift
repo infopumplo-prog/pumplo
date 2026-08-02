@@ -152,9 +152,6 @@ expect(WatchFormat.weight(0) == "0", "zero weight renders as 0")
 expect(WatchFormat.clock(75) == "1:15", "clock formats minutes and seconds")
 expect(WatchFormat.clock(5) == "0:05", "clock pads seconds")
 
-if failures > 0 { print("\(failures) failing"); exit(1) }
-print("all native tests passed")
-
 // MARK: - seznam cviků
 
 let goTo = WatchPayload.action(from: ["type": "goToExercise", "index": 3])
@@ -174,3 +171,6 @@ expect(listed?.elapsedSeconds(now: Date(timeIntervalSince1970: 1_700_000_090)) =
        "elapsed time counts from the start stamp")
 expect(WatchWorkoutSnapshot.decode(["phase": "set"])?.exercises.isEmpty == true,
        "a snapshot without a list decodes to no exercises")
+
+if failures > 0 { print("\(failures) failing"); exit(1) }
+print("all native tests passed")

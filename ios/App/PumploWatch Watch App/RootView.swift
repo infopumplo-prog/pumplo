@@ -2,8 +2,12 @@ import SwiftUI
 
 // Fáze určuje obrazovku. Stav i akce jdou přes WatchConnector — hodinky samy
 // o tréninku nerozhodují, zdrojem pravdy zůstává web na telefonu.
+//
+// Během tréninku je kořenem SEZNAM cviků a série, pauza i kardio se na něj
+// vrství — šipkou zpět se uživatel kdykoliv vrátí na seznam.
 struct RootView: View {
     @StateObject private var connector = WatchConnector()
+    @State private var showingDetail = false
 
     var body: some View {
         ZStack {
@@ -13,10 +17,12 @@ struct RootView: View {
         .onAppear { connector.activate() }
     }
 
+    private var isIdle: Bool { !connector.hasSnapshot || connector.snapshot.phase == .idle }
+
     @ViewBuilder private var content: some View {
         // Trénink neběží → nabídka, kterou telefon poslal dopředu. Dokud
         // nedorazila (čerstvě nainstalované hodinky), zůstává „Čekám na telefon".
-        if !connector.hasSnapshot || connector.snapshot.phase == .idle {
+        if isIdle {
             if connector.menu.items.isEmpty {
                 WaitingView()
             } else {
@@ -27,29 +33,49 @@ struct RootView: View {
                          onTick: { connector.checkStartTimeout() })
             }
         } else {
-            switch connector.snapshot.phase {
-            case .set:
-                ActiveSetView(
+            NavigationStack {
+                ExerciseListView(
                     snapshot: connector.snapshot,
-                    onLog: { weight, reps in connector.send(action: "logSet", weight: weight, reps: reps) },
-                    onPrev: { connector.send(action: "goPrevSet") },
-                    onNext: { connector.send(action: "goNextSet") })
-            case .rest:
-                RestView(
-                    snapshot: connector.snapshot,
-                    onAdd15: { connector.send(action: "addRest15") },
-                    onSkip: { connector.send(action: "skipRest") })
-            case .cardio:
-                CardioView(
-                    snapshot: connector.snapshot,
-                    onToggle: { connector.send(action: "cardioToggle") },
-                    onDone: { connector.send(action: "goNextSet") })
-            case .summary:
-                DoneView()
-            case .idle:
-                // Nedosažitelná větev — idle řeší podmínka výše.
-                EmptyView()
+                    currentIndex: connector.snapshot.currentExerciseIndex,
+                    onSelect: { index in
+                        connector.send(action: "goToExercise", index: index)
+                        showingDetail = true
+                    })
+                    .navigationDestination(isPresented: $showingDetail) { detail }
             }
+            // Trénink právě naběhl → rovnou do série, seznam je jedno ťuknutí zpět.
+            .onAppear { showingDetail = true }
+            // Pauza a kardio se musí ukázat samy, i když uživatel kouká na
+            // seznam — jinak by mu utekl odpočet.
+            .onChange(of: connector.snapshot.phase) { _, phase in
+                if phase == .rest || phase == .cardio || phase == .summary { showingDetail = true }
+            }
+        }
+    }
+
+    @ViewBuilder private var detail: some View {
+        switch connector.snapshot.phase {
+        case .set:
+            ActiveSetView(
+                snapshot: connector.snapshot,
+                onLog: { weight, reps in connector.send(action: "logSet", weight: weight, reps: reps) },
+                onPrev: { connector.send(action: "goPrevSet") },
+                onNext: { connector.send(action: "goNextSet") })
+        case .rest:
+            RestView(
+                snapshot: connector.snapshot,
+                onAdd15: { connector.send(action: "addRest15") },
+                onSkip: { connector.send(action: "skipRest") })
+        case .cardio:
+            CardioView(
+                snapshot: connector.snapshot,
+                onToggle: { connector.send(action: "cardioToggle") },
+                onDone: { connector.send(action: "goNextSet") })
+        case .summary:
+            DoneView()
+        case .idle:
+            // Nedosažitelná větev — idle řeší podmínka výše.
+            EmptyView()
         }
     }
 }

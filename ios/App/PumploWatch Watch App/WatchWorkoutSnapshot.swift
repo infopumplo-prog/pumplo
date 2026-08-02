@@ -31,6 +31,7 @@ struct WatchWorkoutSnapshot: Equatable {
     var workoutTitle: String
     var workoutStartedAt: Double?
     var exercisesJson: String?
+    var currentExerciseIndex: Int
 
     static let idle = WatchWorkoutSnapshot(
         seq: 0, phase: .idle, exerciseName: "", slotCategory: nil,
@@ -38,7 +39,7 @@ struct WatchWorkoutSnapshot: Equatable {
         repMin: 0, repMax: 0, rir: nil, prevWeight: nil, prevReps: nil,
         weightStep: 0.5, resting: false, restEndsAt: nil, nextSetLabel: nil,
         cardioTotalSeconds: 0, cardioEndsAt: nil, cardioPausedAt: nil, menuJson: nil,
-        workoutTitle: "", workoutStartedAt: nil, exercisesJson: nil)
+        workoutTitle: "", workoutStartedAt: nil, exercisesJson: nil, currentExerciseIndex: 0)
 
     // Chybějící klíč znamená null — plugin NSNull cestou zahazuje.
     static func decode(_ dict: [String: Any]) -> WatchWorkoutSnapshot? {
@@ -68,7 +69,8 @@ struct WatchWorkoutSnapshot: Equatable {
             menuJson: dict["menuJson"] as? String,
             workoutTitle: dict["workoutTitle"] as? String ?? "",
             workoutStartedAt: number("workoutStartedAt")?.doubleValue,
-            exercisesJson: dict["exercisesJson"] as? String)
+            exercisesJson: dict["exercisesJson"] as? String,
+            currentExerciseIndex: number("currentExerciseIndex")?.intValue ?? 0)
     }
 
     // Krok korunky. Nula by rozbila zaokrouhlování, proto pojistka.
