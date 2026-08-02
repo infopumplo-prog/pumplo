@@ -49,6 +49,21 @@
     <!-- Mobile Specific -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="format-detection" content="telephone=no" />
+
+    <!-- Téma se nasazuje před prvním vykreslením, jinak by tmavý režim probliknul bíle. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('pumplo-theme');
+          var dark = stored === 'dark' || ((!stored || stored === 'system') &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {
+          /* localStorage může být zakázaný — appka pak startuje ve světlém režimu. */
+        }
+      })();
+    </script>
   </head>
 
   <body>

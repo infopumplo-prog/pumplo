@@ -1106,7 +1106,7 @@ export const WorkoutSession = ({
               className="fixed left-0 right-0 z-[70] px-3"
               style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
             >
-              <div className="mx-auto max-w-md bg-[#1A2744] text-white rounded-2xl shadow-xl px-3 py-2.5">
+              <div className="mx-auto max-w-md bg-action text-white rounded-2xl shadow-xl px-3 py-2.5">
                 <div className="flex items-center gap-2">
                   <button onClick={() => adjustListRest(-15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">-15 s</button>
                   <div className="flex-1 text-center">

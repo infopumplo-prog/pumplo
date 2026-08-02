@@ -373,7 +373,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
             >
               <Button
                 onClick={handleAdd}
-                className="w-full h-14 rounded-2xl text-base font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg"
+                className="w-full h-14 rounded-2xl text-base font-bold bg-action hover:bg-action/90 text-white shadow-lg"
               >
                 {t('exercise_picker.add')} {selected.size} {exerciseWord(selected.size)}
               </Button>

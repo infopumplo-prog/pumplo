@@ -764,7 +764,7 @@ const LogWorkoutView = ({
             className="fixed left-0 right-0 z-40 px-3"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
           >
-            <div className={cn('mx-auto max-w-md text-white rounded-2xl shadow-xl px-3 py-2.5', rest.mode === 'work' ? 'bg-[#0E3A52]' : 'bg-[#1A2744]')}>
+            <div className={cn('mx-auto max-w-md text-white rounded-2xl shadow-xl px-3 py-2.5', rest.mode === 'work' ? 'bg-[#0E3A52]' : 'bg-action')}>
               {rest.mode === 'work' && workCtxRef.current && (
                 <p className="text-[11px] font-semibold text-[#5BC8F5] text-center mb-0.5 truncate">
                   {exName(workCtxRef.current.ex)}

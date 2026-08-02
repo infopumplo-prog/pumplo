@@ -1364,7 +1364,7 @@ const CustomPlanDetail = () => {
                   setShowGymSelector(true);
                 }
               }}
-              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg shadow-[#1A2744]/25"
+              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-action hover:bg-action/90 text-white shadow-lg shadow-action/25"
             >
               <Play className="w-5 h-5" />
               {t('custom_plan.start_workout')}
@@ -1510,7 +1510,7 @@ const CustomPlanDetail = () => {
               <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainType].labelKey)}</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainType].explainKey)}</p>
-            <button onClick={() => setExplainType(null)} className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors">
+            <button onClick={() => setExplainType(null)} className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors">
               {t('set_type.explain_ok')}
             </button>
           </motion.div>
@@ -1549,7 +1549,7 @@ const CustomPlanDetail = () => {
                   setShowGymSelector(true);
                 }
               }}
-              className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors disabled:opacity-40"
+              className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors disabled:opacity-40"
             >
               {t('custom_plan.title_required_save')}
             </button>

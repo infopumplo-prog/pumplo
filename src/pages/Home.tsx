@@ -19,6 +19,7 @@ import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
+import ThemeIntroSheet from '@/components/ThemeIntroSheet';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -291,8 +292,8 @@ const Home = () => {
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'pumplo'
-                    ? "border-[#5BC8F5] text-[#1A2744]"
-                    : "border-transparent text-[#6B7280]"
+                    ? "border-[#5BC8F5] text-foreground"
+                    : "border-transparent text-muted-foreground"
                 )}
               >
                 <Zap className="w-3.5 h-3.5" />
@@ -317,8 +318,8 @@ const Home = () => {
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'custom'
-                    ? "border-[#5BC8F5] text-[#1A2744]"
-                    : "border-transparent text-[#6B7280]"
+                    ? "border-[#5BC8F5] text-foreground"
+                    : "border-transparent text-muted-foreground"
                 )}
               >
                 <Dumbbell className="w-3.5 h-3.5" />
@@ -560,7 +561,7 @@ const Home = () => {
                     <motion.div variants={itemVariants}>
                       <StartWorkoutButton
                         selectedGymId={profile?.selected_gym_id || null}
-                        className="[&_button]:bg-[#1A2744] [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-[#1A2744]/25"
+                        className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
                       />
                     </motion.div>
                   )}
@@ -595,6 +596,8 @@ const Home = () => {
         </Drawer>
       </div>
       <CoachTour screenId="home" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
+      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen} />
     </PageTransition>;
 };
 export default Home;

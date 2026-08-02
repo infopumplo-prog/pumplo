@@ -7,7 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "rea
 import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
-import { StatusBar, Style } from "@capacitor/status-bar";
+import { StatusBar } from "@capacitor/status-bar";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -298,7 +299,7 @@ const App = () => {
 
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: true });
-      StatusBar.setStyle({ style: Style.Dark });
+      // Styl textu status baru řídí ThemeProvider podle aktivního tématu.
     }
   }, []);
 
@@ -315,6 +316,7 @@ const App = () => {
 
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           {showUpdateBanner && <UpdateBanner onUpdate={handleUpdate} />}
@@ -327,6 +329,7 @@ const App = () => {
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };

@@ -1124,7 +1124,7 @@ const CustomWorkoutPlayer = () => {
           <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainSetType].labelKey)}</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainSetType].explainKey)}</p>
-        <button onClick={() => setExplainSetType(null)} className="w-full py-3 rounded-xl bg-[#1A2744] text-white font-semibold hover:bg-[#1A2744]/90 transition-colors">
+        <button onClick={() => setExplainSetType(null)} className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors">
           {t('set_type.explain_ok')}
         </button>
       </motion.div>

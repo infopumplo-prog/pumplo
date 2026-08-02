@@ -311,8 +311,7 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
   return (
     <div
       ref={mapContainerRef}
-      className="w-full h-full overflow-hidden relative z-0"
-      style={{ background: '#f0f0f0' }}
+      className="w-full h-full overflow-hidden relative z-0 bg-muted"
     />
   );
 };

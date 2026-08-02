@@ -1,10 +1,12 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // Dřív to viselo na next-themes, který v projektu nemá provider — toasty tak
+  // ignorovaly ruční volbu tématu. Bereme rozřešené téma z našeho kontextu.
+  const { theme } = useTheme();
 
   return (
     <Sonner

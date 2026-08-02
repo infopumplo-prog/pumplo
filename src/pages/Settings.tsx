@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -40,6 +41,7 @@ const Settings = () => {
   } = usePushNotifications();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+  const { preference, setPreference } = useTheme();
 
   // First-visit hints.
   const tour = useCoachTour('settings', 1, true);
@@ -609,6 +611,43 @@ const Settings = () => {
                   🇬🇧 English
                 </button>
               </div>
+            </div>
+          </motion.div>
+
+          {/* Appearance Section */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                <Moon className="w-5 h-5 text-indigo-500" />
+              </div>
+              <h2 className="text-lg font-semibold">{t('settings.appearance')}</h2>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex gap-2">
+                {([
+                  { value: 'light', label: t('settings.theme_light'), icon: Sun },
+                  { value: 'dark', label: t('settings.theme_dark'), icon: Moon },
+                  { value: 'system', label: t('settings.theme_system'), icon: Smartphone },
+                ] as const).map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setPreference(value)}
+                    className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl font-medium text-xs transition-colors ${
+                      preference === value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {preference === 'system' && (
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  {t('settings.theme_system_hint')}
+                </p>
+              )}
             </div>
           </motion.div>
 
