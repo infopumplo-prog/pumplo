@@ -26,7 +26,7 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
-import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, type WatchAction } from '@/lib/watchWorkout';
+import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type WatchAction } from '@/lib/watchWorkout';
 
 interface SetData {
   completed: boolean;
@@ -109,14 +109,23 @@ export const WorkoutSession = ({
   // the same commit the set completes — ExercisePlayer sets this (true) in its
   // completion handler, one render before the state-driven re-run would land.
   const playerRestingRef = useRef(false);
-  const handlePlayerRestActiveChange = useCallback((active: boolean) => {
+  // Konec pauzy, kterou si řídí ExercisePlayer (video režim). WorkoutSession
+  // ji sám nespouští, ale hodinky potřebují stejný čas jako telefon.
+  const [playerRestEndsAt, setPlayerRestEndsAt] = useState(0);
+  const handlePlayerRestActiveChange = useCallback((active: boolean, endsAt?: number) => {
     playerRestingRef.current = active;
     setPlayerResting(active);
+    // Rest start i ±15 s posílají endsAt; průběžné „pořád běží" volání ho
+    // nemá a nesmí přepsat už známé hodiny.
+    if (active) { if (endsAt) setPlayerRestEndsAt(endsAt); }
+    else setPlayerRestEndsAt(0);
   }, []);
   // ExercisePlayer registers its rest-skip here (video-view between-set rests
   // are its own showRestTimer, invisible to this component's restShowingRef) —
   // the lock-screen Skip intent would otherwise be consumed and dropped.
   const playerSkipRestRef = useRef<(() => void) | null>(null);
+  // ExercisePlayer sem zaregistruje úpravu své pauzy (+15 s z hodinek).
+  const playerAdjustRestRef = useRef<((delta: number) => void) | null>(null);
   const [restAdvance, setRestAdvance] = useState(true);
   // Ref mirror + navigation helper assigned later (they need refs declared
   // further down); handlers only run after the first render, so this is safe.
@@ -554,6 +563,8 @@ export const WorkoutSession = ({
   // can be stale, refs never are.
   const currentExerciseIndexRef = useRef(currentExerciseIndex);
   currentExerciseIndexRef.current = currentExerciseIndex;
+  const currentSetIndexRef = useRef(currentSetIndex);
+  currentSetIndexRef.current = currentSetIndex;
   const resultsRef = useRef(resultsByIndex);
   resultsRef.current = resultsByIndex;
   const restShowingRef = useRef(false);
@@ -790,47 +801,32 @@ export const WorkoutSession = ({
     });
   }, [currentExerciseIndex, currentSetIndex, setsDataByExercise, resultsByIndex, showRestTimer, playerResting, showSummary, showCooldown, liveExercises, currentThumbUrl, viewMode, isEn, t, currentExWeight, goalId, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push a snapshot of the current workout state to the paired watch app.
-  useEffect(() => {
-    const ex = liveExercises[currentExerciseIndex];
-    if (!ex) return;
-    if (showSummary) { updateWatchState(buildWatchWorkoutState({
-      phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
-      targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
-      resting: false, restEndsAt: null, nextSetLabel: null })); return; }
-    const resting = showRestTimer || playerResting;
-    updateWatchState(buildWatchWorkoutState({
-      phase: resting ? 'rest' : 'set',
-      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
-      slotCategory: ex.slotCategory ?? null,
-      setIndex: currentSetIndex, totalSets: ex.sets,
-      targetWeight: currentExWeight, repMin: ex.repMin, repMax: ex.repMax, rir: ex.rirMax ?? ex.rirMin ?? null,
-      prevWeight: currentExWeight, prevReps: ex.repMax,
-      resting, restEndsAt: resting ? Date.now() + getRestSecondsForCategory(goalId, ex.slotCategory) * 1000 : null,
-      nextSetLabel: null,
-    }));
-  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, currentExWeight, liveExercises, isEn, goalId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ✓ / Skip from the lock screen (same behaviour as the custom workout).
-  const lockCompleteRef = useRef<() => void>(() => {});
-  lockCompleteRef.current = () => {
+  // Zaloguj další ČEKAJÍCÍ sérii. Jediná cesta pro lock-screen ✓ i pro ✓ na
+  // hodinkách — obě musí stejně navigovat na cvik, kterému série patří, a
+  // stejně doplnit váhu, jinak se list a video mirror rozejdou.
+  const completePendingSetRef = useRef<(weight?: number, reps?: number) => void>(() => {});
+  completePendingSetRef.current = (weight?: number, reps?: number) => {
     if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
-    // Same target the banner shows: the viewed exercise's first incomplete
-    // set, or the workout's next pending one when the viewed exercise is done.
     const target = findPendingSet(currentExerciseIndexRef.current);
     if (!target) return;
     const ex = liveExercises[target.exIdx];
     if (!ex) return;
     const sameExercise = target.exIdx === currentExerciseIndexRef.current;
     if (!sameExercise) {
-      // ✓ from the lock screen on a later exercise = the user moved on; follow.
+      // ✓ na sérii jiného cviku = uživatel se posunul dál; následuj ho.
       goToExerciseRef.current(target.exIdx);
       setHighestIndexReached(p => Math.max(p, target.exIdx));
     }
-    const weight = sameExercise ? (currentExWeight ?? undefined) : undefined;
-    // handleCompactCompleteSet also re-seeds the video player mirror.
-    handleCompactCompleteSet(target.exIdx, target.si, weight, ex.repMax);
+    // handleCompactCompleteSet přeseje i mirror video playeru.
+    handleCompactCompleteSet(
+      target.exIdx,
+      target.si,
+      resolveLoggedWeight({ actionWeight: weight ?? null, sameExercise, currentExWeight }),
+      reps ?? ex.repMax,
+    );
   };
+  const lockCompleteRef = useRef<() => void>(() => {});
+  lockCompleteRef.current = () => completePendingSetRef.current();
   const lockSkipRef = useRef<() => void>(() => {});
   lockSkipRef.current = () => {
     // Video-view between-set rest lives inside ExercisePlayer — close it
@@ -882,9 +878,36 @@ export const WorkoutSession = ({
     return () => { rm1(); rm2(); document.removeEventListener('visibilitychange', onVis); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const adjustListRest = (delta: number) => {
+    setRestEndsAt(prev => Math.max(Date.now(), prev + delta * 1000));
+  };
+
+  // ‹ / › z hodinek: posun po sériích v rámci cviku, na kraji na sousední cvik.
+  const stepSetRef = useRef<(direction: 'prev' | 'next') => void>(() => {});
+  stepSetRef.current = (direction) => {
+    const exIdx = currentExerciseIndexRef.current;
+    const ex = liveExercises[exIdx];
+    if (!ex) return;
+    const step = resolveSetStep({
+      exerciseIndex: exIdx,
+      setIndex: currentSetIndexRef.current,
+      totalSets: ex.sets,
+      exerciseCount: liveExercises.length,
+    }, direction);
+    if (!step) return;
+    if (step.exerciseIndex !== exIdx) {
+      // goToExerciseRef si index série naseeduje sám z odlogovaných sérií.
+      goToExerciseRef.current(step.exerciseIndex);
+      setHighestIndexReached(p => Math.max(p, step.exerciseIndex));
+      return;
+    }
+    setCurrentSetIndex(step.setIndex);
+    currentSetIndexRef.current = step.setIndex;
+    setPlayerSync(n => n + 1);
+  };
+
   // Watch (companion app) actions replayed into the same handlers the
-  // in-app UI uses — logSet / skipRest only for now; goPrevSet / goNextSet /
-  // addRest15 land with plan B (set navigation / rest adjustment).
+  // in-app UI uses — logSet / skipRest / goPrevSet / goNextSet / addRest15.
   // Ref-indirection (same pattern as lockCompleteRef/lockSkipRef above):
   // reassigned every render so the mount-only listener effect below always
   // calls into a closure that sees the current liveExercises/state, instead
@@ -892,16 +915,18 @@ export const WorkoutSession = ({
   const watchActionRef = useRef<(a: WatchAction) => void>(() => {});
   watchActionRef.current = (a: WatchAction) => {
     if (a.type === 'logSet') {
-      if (restShowingRef.current || playerRestingRef.current || showSummary || showCooldown) return;
-      const target = findPendingSet(currentExerciseIndexRef.current);
-      if (!target) return;
-      const ex = liveExercises[target.exIdx]; if (!ex) return;
-      handleCompactCompleteSet(target.exIdx, target.si, a.weight ?? undefined, a.reps);
+      completePendingSetRef.current(a.weight ?? undefined, a.reps);
     } else if (a.type === 'skipRest') {
       if (playerRestingRef.current) { playerSkipRestRef.current?.(); playerRestingRef.current = false; return; }
       if (restShowingRef.current) { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); restShowingRef.current = false; }
+    } else if (a.type === 'addRest15') {
+      if (playerRestingRef.current) { playerAdjustRestRef.current?.(15); return; }
+      if (restShowingRef.current) adjustListRest(15);
+    } else if (a.type === 'goPrevSet') {
+      stepSetRef.current('prev');
+    } else if (a.type === 'goNextSet') {
+      stepSetRef.current('next');
     }
-    // goPrevSet / goNextSet / addRest15 — dodá plán B (navigace mezi sériemi / úprava pauzy)
   };
   useEffect(() => {
     const off = addWatchActionListener((a: WatchAction) => watchActionRef.current(a));
@@ -931,6 +956,52 @@ export const WorkoutSession = ({
       thumbUrl: sameExercise ? currentThumbUrl : (target.exIdx === currentExerciseIndex + 1 ? getVideoThumbUrl(nextVideoUrl) : null),
     };
   };
+
+  // Snapshot aktuálního tréninku pro spárované hodinky. Hodiny pauzy jsou
+  // JEDNY (viz resolveWatchRestEndsAt) — hodinky si z restEndsAt odpočítávají
+  // lokálně, takže přepočet při každém renderu by countdown resetoval.
+  useEffect(() => {
+    const ex = liveExercises[currentExerciseIndex];
+    if (!ex) return;
+    if (showSummary) {
+      updateWatchState(buildWatchWorkoutState({
+        phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
+        resting: false, restEndsAt: null, nextSetLabel: null,
+      }));
+      return;
+    }
+    if (showCooldown) {
+      updateWatchState(buildWatchWorkoutState({
+        phase: 'idle', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
+        resting: false, restEndsAt: null, nextSetLabel: null,
+      }));
+      return;
+    }
+    const restEnds = resolveWatchRestEndsAt({
+      sessionResting: showRestTimer,
+      sessionRestEndsAt: restEndsAt,
+      playerResting,
+      playerRestEndsAt,
+    });
+    // Bez známého konce pauzy nemá smysl posílat fázi rest — hodinky by
+    // ukazovaly odpočet bez času. Radši zůstane obrazovka série.
+    const resting = restEnds !== null;
+    updateWatchState(buildWatchWorkoutState({
+      phase: resting ? 'rest' : 'set',
+      exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
+      slotCategory: ex.slotCategory ?? null,
+      setIndex: currentSetIndex, totalSets: ex.sets,
+      targetWeight: currentExWeight, repMin: ex.repMin, repMax: ex.repMax,
+      rir: ex.rirMax ?? ex.rirMin ?? null,
+      prevWeight: currentExWeight, prevReps: ex.repMax,
+      resting, restEndsAt: restEnds,
+      nextSetLabel: resting ? (upcomingSetPayload()?.setText ?? null) : null,
+    }));
+  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, showCooldown,
+      restEndsAt, playerRestEndsAt, currentExWeight, liveExercises, isEn, goalId, restAdvance,
+      setsDataByExercise, resultsByIndex, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // List-mode rest engine: beeps, rest-end notification and lock-screen
   // countdown for the bottom rest bar. The full-screen RestTimer (video view)
@@ -979,9 +1050,6 @@ export const WorkoutSession = ({
     };
   }, [showRestTimer, viewMode, restEndsAt, resumeTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const adjustListRest = (delta: number) => {
-    setRestEndsAt(prev => Math.max(Date.now(), prev + delta * 1000));
-  };
   restCompleteRef.current = handleRestComplete;
 
   const handleCompactSelectExercise = useCallback((index: number) => {
@@ -1198,6 +1266,7 @@ export const WorkoutSession = ({
         nextVideoUrl={nextVideoUrl}
         onRestActiveChange={handlePlayerRestActiveChange}
         skipRestRef={playerSkipRestRef}
+        adjustRestRef={playerAdjustRestRef}
       />
 
       {swapSheetJsx}
@@ -1261,6 +1330,7 @@ const ExercisePlayerWithVideo = ({
   nextVideoUrl,
   onRestActiveChange,
   skipRestRef,
+  adjustRestRef,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
@@ -1285,8 +1355,9 @@ const ExercisePlayerWithVideo = ({
   onSetChange?: (setIndex: number, setsData: SetData[]) => void;
   nextExerciseName?: string;
   nextVideoUrl?: string | null;
-  onRestActiveChange?: (active: boolean) => void;
+  onRestActiveChange?: (active: boolean, endsAt?: number) => void;
   skipRestRef?: React.MutableRefObject<(() => void) | null>;
+  adjustRestRef?: React.MutableRefObject<((delta: number) => void) | null>;
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -1415,6 +1486,7 @@ const ExercisePlayerWithVideo = ({
       nextVideoUrl={nextVideoUrl}
       onRestActiveChange={onRestActiveChange}
       skipRestRef={skipRestRef}
+      adjustRestRef={adjustRestRef}
     />
   );
 };

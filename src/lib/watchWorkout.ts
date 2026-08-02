@@ -82,3 +82,54 @@ export function addWatchActionListener(cb: (a: WatchAction) => void): () => void
   const handle = WatchWorkout.addListener('watchAction', cb);
   return () => { handle.then(h => h.remove()).catch(() => {}); };
 }
+
+// Jedny hodiny pauzy pro snapshot na hodinky. Countdown na hodinkách běží z
+// restEndsAt lokálně — kdyby web posílal pokaždé nově dopočítaný čas, odpočet
+// by při každém rerenderu skočil zpět na plnou hodnotu.
+export interface RestClockInput {
+  sessionResting: boolean;
+  sessionRestEndsAt: number;
+  playerResting: boolean;
+  playerRestEndsAt: number;
+}
+
+export function resolveWatchRestEndsAt(i: RestClockInput): number | null {
+  if (i.sessionResting && i.sessionRestEndsAt > 0) return i.sessionRestEndsAt;
+  if (i.playerResting && i.playerRestEndsAt > 0) return i.playerRestEndsAt;
+  return null;
+}
+
+// Váha zapsaná sérií: co poslaly hodinky > předvyplněná váha zobrazeného
+// cviku > nic (u cizího cviku nikdy nehádáme).
+export interface LoggedWeightInput {
+  actionWeight: number | null;
+  sameExercise: boolean;
+  currentExWeight: number | null;
+}
+
+export function resolveLoggedWeight(i: LoggedWeightInput): number | undefined {
+  if (i.actionWeight != null) return i.actionWeight;
+  if (i.sameExercise && i.currentExWeight != null) return i.currentExWeight;
+  return undefined;
+}
+
+// Krok ‹ / › z hodinek: nejdřív po sériích uvnitř cviku, na kraji přeskoč na
+// sousední cvik. Vrací null, když už není kam jít.
+export interface SetStepInput {
+  exerciseIndex: number;
+  setIndex: number;
+  totalSets: number;
+  exerciseCount: number;
+}
+export interface SetStepResult { exerciseIndex: number; setIndex: number; }
+
+export function resolveSetStep(i: SetStepInput, direction: 'prev' | 'next'): SetStepResult | null {
+  if (direction === 'next') {
+    if (i.setIndex + 1 < i.totalSets) return { exerciseIndex: i.exerciseIndex, setIndex: i.setIndex + 1 };
+    if (i.exerciseIndex + 1 < i.exerciseCount) return { exerciseIndex: i.exerciseIndex + 1, setIndex: 0 };
+    return null;
+  }
+  if (i.setIndex > 0) return { exerciseIndex: i.exerciseIndex, setIndex: i.setIndex - 1 };
+  if (i.exerciseIndex > 0) return { exerciseIndex: i.exerciseIndex - 1, setIndex: 0 };
+  return null;
+}

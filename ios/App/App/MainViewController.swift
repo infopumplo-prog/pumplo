@@ -9,5 +9,6 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(RestAudioPlugin())
         bridge?.registerPluginInstance(RestActivityPlugin())
         bridge?.registerPluginInstance(InstagramSharePlugin())
+        bridge?.registerPluginInstance(WatchWorkoutPlugin())
     }
 }
