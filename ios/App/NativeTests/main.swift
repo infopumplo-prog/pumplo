@@ -98,6 +98,27 @@ expect(sparse?.stepValue == 0.5, "stepValue keeps the 0.5 kg contract")
 expect(WatchWorkoutSnapshot.decode(["phase": "nonsense"]) == nil, "decode rejects an unknown phase")
 expect(WatchWorkoutSnapshot.decode(["exerciseName": "x"]) == nil, "decode rejects a payload without a phase")
 
+// MARK: - kardio
+
+expect(WatchPayload.action(from: ["type": "cardioToggle"])?["type"] as? String == "cardioToggle",
+       "action passes cardioToggle through")
+expect(WatchPayload.isUrgent(previous: ["phase": "cardio", "cardioPausedAt": 1.0],
+                             next: ["phase": "cardio"]),
+       "isUrgent true when cardio is resumed")
+expect(WatchPayload.isUrgent(previous: ["phase": "cardio", "cardioEndsAt": 1.0],
+                             next: ["phase": "cardio", "cardioEndsAt": 2.0]),
+       "isUrgent true when the cardio clock moves")
+
+let cardio = WatchWorkoutSnapshot.decode([
+    "phase": "cardio", "cardioTotalSeconds": 600,
+    "cardioEndsAt": 1_700_000_600_000.0, "cardioPausedAt": 1_700_000_300_000.0,
+])
+expect(cardio?.phase == .cardio, "decode understands the cardio phase")
+expect(cardio?.remainingCardioSeconds() == 300, "paused cardio counts from the pause, not from now")
+
+let notStarted = WatchWorkoutSnapshot.decode(["phase": "cardio", "cardioTotalSeconds": 600])
+expect(notStarted?.remainingCardioSeconds() == 600, "cardio that never started shows its full length")
+
 // MARK: - DragStepper
 
 expect(DragStepper.pointsPerStep == 8, "one step per 8 points of drag")

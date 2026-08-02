@@ -26,7 +26,14 @@ enum WatchPayload {
         if (previous["phase"] as? String) != (next["phase"] as? String) { return true }
         let previousEnd = (previous["restEndsAt"] as? NSNumber)?.doubleValue
         let nextEnd = (next["restEndsAt"] as? NSNumber)?.doubleValue
-        return previousEnd != nextEnd
+        if previousEnd != nextEnd { return true }
+        // Start i pauza kardia musí dorazit hned, ne až líným applicationContextem.
+        let previousCardio = (previous["cardioEndsAt"] as? NSNumber)?.doubleValue
+        let nextCardio = (next["cardioEndsAt"] as? NSNumber)?.doubleValue
+        if previousCardio != nextCardio { return true }
+        let previousPause = (previous["cardioPausedAt"] as? NSNumber)?.doubleValue
+        let nextPause = (next["cardioPausedAt"] as? NSNumber)?.doubleValue
+        return previousPause != nextPause
     }
 
     // Hodinky -> telefon. Propouští jen známé tvary, aby novější watch build
@@ -39,7 +46,7 @@ enum WatchPayload {
             if let weight = (message["weight"] as? NSNumber)?.doubleValue { payload["weight"] = weight }
             payload["reps"] = (message["reps"] as? NSNumber)?.intValue ?? 0
             return payload
-        case "goPrevSet", "goNextSet", "skipRest", "addRest15":
+        case "goPrevSet", "goNextSet", "skipRest", "addRest15", "cardioToggle":
             return ["type": type]
         default:
             return nil

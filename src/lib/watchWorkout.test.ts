@@ -128,3 +128,25 @@ describe('resolveSetStep', () => {
     expect(resolveSetStep({ exerciseIndex: 0, setIndex: 0, totalSets: 3, exerciseCount: 4 }, 'prev')).toBeNull();
   });
 });
+
+describe('buildWatchWorkoutState — cardio', () => {
+  it('passes cardio fields through', () => {
+    const s = buildWatchWorkoutState({
+      ...base,
+      phase: 'cardio',
+      cardioTotalSeconds: 600,
+      cardioEndsAt: 1700000000000,
+      cardioPausedAt: null,
+    });
+    expect(s.phase).toBe('cardio');
+    expect(s.cardioTotalSeconds).toBe(600);
+    expect(s.cardioEndsAt).toBe(1700000000000);
+    expect(s.cardioPausedAt).toBeNull();
+  });
+  it('defaults cardio fields to empty when the caller omits them', () => {
+    const s = buildWatchWorkoutState(base);
+    expect(s.cardioTotalSeconds).toBe(0);
+    expect(s.cardioEndsAt).toBeNull();
+    expect(s.cardioPausedAt).toBeNull();
+  });
+});

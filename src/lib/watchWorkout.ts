@@ -1,5 +1,5 @@
 export interface WatchWorkoutState {
-  phase: 'set' | 'rest' | 'summary' | 'idle';
+  phase: 'set' | 'rest' | 'cardio' | 'summary' | 'idle';
   exerciseName: string;
   slotCategory: string | null;
   setIndex: number;
@@ -15,6 +15,11 @@ export interface WatchWorkoutState {
   resting: boolean;
   restEndsAt: number | null;
   nextSetLabel: string | null;
+  // Kardio cvik (jen vlastní trénink). Časy jsou razítka v ms, ne zbývající
+  // sekundy — dopočet na hodinkách je pak stabilní i mezi rendery telefonu.
+  cardioTotalSeconds: number;
+  cardioEndsAt: number | null;   // null = ještě nespuštěno
+  cardioPausedAt: number | null; // null = běží
 }
 
 export interface BuildInput {
@@ -32,6 +37,10 @@ export interface BuildInput {
   resting: boolean;
   restEndsAt: number | null;
   nextSetLabel: string | null;
+  // Volitelné — plánový trénink kardio nemá a nemá důvod je vyplňovat.
+  cardioTotalSeconds?: number;
+  cardioEndsAt?: number | null;
+  cardioPausedAt?: number | null;
 }
 
 export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
@@ -52,6 +61,9 @@ export function buildWatchWorkoutState(i: BuildInput): WatchWorkoutState {
     resting: i.resting,
     restEndsAt: i.restEndsAt,
     nextSetLabel: i.nextSetLabel,
+    cardioTotalSeconds: i.cardioTotalSeconds ?? 0,
+    cardioEndsAt: i.cardioEndsAt ?? null,
+    cardioPausedAt: i.cardioPausedAt ?? null,
   };
 }
 
@@ -60,7 +72,8 @@ import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor
 export type WatchAction =
   | { type: 'logSet'; weight: number | null; reps: number }
   | { type: 'goPrevSet' } | { type: 'goNextSet' }
-  | { type: 'skipRest' } | { type: 'addRest15' };
+  | { type: 'skipRest' } | { type: 'addRest15' }
+  | { type: 'cardioToggle' };
 
 interface WatchWorkoutPlugin {
   updateState(state: WatchWorkoutState): Promise<void>;

@@ -3,7 +3,7 @@ import Foundation
 // Zrcadlo WatchWorkoutState z src/lib/watchWorkout.ts. Jen Foundation (žádné
 // SwiftUI ani WatchConnectivity), aby se dekodér dal testovat harnessem.
 struct WatchWorkoutSnapshot: Equatable {
-    enum Phase: String { case set, rest, summary, idle }
+    enum Phase: String { case set, rest, cardio, summary, idle }
 
     var seq: Double
     var phase: Phase
@@ -22,12 +22,16 @@ struct WatchWorkoutSnapshot: Equatable {
     var resting: Bool
     var restEndsAt: Double?
     var nextSetLabel: String?
+    var cardioTotalSeconds: Int
+    var cardioEndsAt: Double?
+    var cardioPausedAt: Double?
 
     static let idle = WatchWorkoutSnapshot(
         seq: 0, phase: .idle, exerciseName: "", slotCategory: nil,
         setIndex: 0, totalSets: 0, targetWeight: nil, targetReps: 0,
         repMin: 0, repMax: 0, rir: nil, prevWeight: nil, prevReps: nil,
-        weightStep: 0.5, resting: false, restEndsAt: nil, nextSetLabel: nil)
+        weightStep: 0.5, resting: false, restEndsAt: nil, nextSetLabel: nil,
+        cardioTotalSeconds: 0, cardioEndsAt: nil, cardioPausedAt: nil)
 
     // Chybějící klíč znamená null — plugin NSNull cestou zahazuje.
     static func decode(_ dict: [String: Any]) -> WatchWorkoutSnapshot? {
@@ -50,7 +54,10 @@ struct WatchWorkoutSnapshot: Equatable {
             weightStep: number("weightStep")?.doubleValue ?? 0.5,
             resting: number("resting")?.boolValue ?? false,
             restEndsAt: number("restEndsAt")?.doubleValue,
-            nextSetLabel: dict["nextSetLabel"] as? String)
+            nextSetLabel: dict["nextSetLabel"] as? String,
+            cardioTotalSeconds: number("cardioTotalSeconds")?.intValue ?? 0,
+            cardioEndsAt: number("cardioEndsAt")?.doubleValue,
+            cardioPausedAt: number("cardioPausedAt")?.doubleValue)
     }
 
     // Krok korunky. Nula by rozbila zaokrouhlování, proto pojistka.
@@ -97,6 +104,16 @@ struct WatchWorkoutSnapshot: Equatable {
         guard let restEndsAt else { return 0 }
         return max(0, Int(ceil(restEndsAt / 1000 - now.timeIntervalSince1970)))
     }
+
+    // Kardio: dokud nebylo spuštěné, ukazuje se celá délka; při pauze se počítá
+    // od okamžiku pauzy, aby číslo na displeji stálo.
+    func remainingCardioSeconds(now: Date = Date()) -> Int {
+        guard let cardioEndsAt else { return max(0, cardioTotalSeconds) }
+        let reference = cardioPausedAt ?? (now.timeIntervalSince1970 * 1000)
+        return max(0, Int(ceil((cardioEndsAt - reference) / 1000)))
+    }
+
+    var isCardioPaused: Bool { cardioPausedAt != nil || cardioEndsAt == nil }
 }
 
 enum WatchFormat {
