@@ -26,7 +26,8 @@ import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
-import { buildWatchWorkoutState, updateWatchState, endWatchState, addWatchActionListener, resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type WatchAction } from '@/lib/watchWorkout';
+import { resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type BuildInput, type WatchAction } from '@/lib/watchWorkout';
+import { useWatchBridge } from '@/hooks/useWatchBridge';
 
 interface SetData {
   completed: boolean;
@@ -908,12 +909,9 @@ export const WorkoutSession = ({
 
   // Watch (companion app) actions replayed into the same handlers the
   // in-app UI uses — logSet / skipRest / goPrevSet / goNextSet / addRest15.
-  // Ref-indirection (same pattern as lockCompleteRef/lockSkipRef above):
-  // reassigned every render so the mount-only listener effect below always
-  // calls into a closure that sees the current liveExercises/state, instead
-  // of a stale one captured at mount (e.g. right after an exercise swap).
-  const watchActionRef = useRef<(a: WatchAction) => void>(() => {});
-  watchActionRef.current = (a: WatchAction) => {
+  // useWatchBridge drží ref-indirekci, takže tahle funkce může být obyčejná —
+  // listener vždycky volá tu z aktuálního renderu, ne zastaralou z mountu.
+  const handleWatchAction = (a: WatchAction) => {
     if (a.type === 'logSet') {
       completePendingSetRef.current(a.weight ?? undefined, a.reps);
     } else if (a.type === 'skipRest') {
@@ -928,13 +926,9 @@ export const WorkoutSession = ({
       stepSetRef.current('next');
     }
   };
-  useEffect(() => {
-    const off = addWatchActionListener((a: WatchAction) => watchActionRef.current(a));
-    return off;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Leaving the workout removes the banner.
-  useEffect(() => () => { endRestActivity(); endWatchState(); }, []);
+  // Leaving the workout removes the banner. (Hodinky uklízí useWatchBridge.)
+  useEffect(() => () => { endRestActivity(); }, []);
 
   // Exercise detail opened from the swap sheet ⓘ (closes back to the sheet).
   const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
@@ -960,25 +954,18 @@ export const WorkoutSession = ({
   // Snapshot aktuálního tréninku pro spárované hodinky. Hodiny pauzy jsou
   // JEDNY (viz resolveWatchRestEndsAt) — hodinky si z restEndsAt odpočítávají
   // lokálně, takže přepočet při každém renderu by countdown resetoval.
-  useEffect(() => {
+  const watchState: BuildInput | null = (() => {
     const ex = liveExercises[currentExerciseIndex];
-    if (!ex) return;
-    if (showSummary) {
-      updateWatchState(buildWatchWorkoutState({
-        phase: 'summary', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
-        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
-        resting: false, restEndsAt: null, nextSetLabel: null,
-      }));
-      return;
-    }
-    if (showCooldown) {
-      updateWatchState(buildWatchWorkoutState({
-        phase: 'idle', exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
-        targetWeight: null, repMin: 0, repMax: 0, rir: null, prevWeight: null, prevReps: null,
-        resting: false, restEndsAt: null, nextSetLabel: null,
-      }));
-      return;
-    }
+    if (!ex) return null;
+    const blank = {
+      exerciseName: '', slotCategory: null, setIndex: 0, totalSets: 0,
+      targetWeight: null, repMin: 0, repMax: 0, rir: null,
+      prevWeight: null, prevReps: null, resting: false, restEndsAt: null,
+      nextSetLabel: null,
+    };
+    if (showSummary) return { phase: 'summary', ...blank };
+    if (showCooldown) return { phase: 'idle', ...blank };
+
     const restEnds = resolveWatchRestEndsAt({
       sessionResting: showRestTimer,
       sessionRestEndsAt: restEndsAt,
@@ -988,7 +975,7 @@ export const WorkoutSession = ({
     // Bez známého konce pauzy nemá smysl posílat fázi rest — hodinky by
     // ukazovaly odpočet bez času. Radši zůstane obrazovka série.
     const resting = restEnds !== null;
-    updateWatchState(buildWatchWorkoutState({
+    return {
       phase: resting ? 'rest' : 'set',
       exerciseName: (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn! : (ex.exerciseName || ''),
       slotCategory: ex.slotCategory ?? null,
@@ -998,10 +985,10 @@ export const WorkoutSession = ({
       prevWeight: currentExWeight, prevReps: ex.repMax,
       resting, restEndsAt: restEnds,
       nextSetLabel: resting ? (upcomingSetPayload()?.setText ?? null) : null,
-    }));
-  }, [currentExerciseIndex, currentSetIndex, showRestTimer, playerResting, showSummary, showCooldown,
-      restEndsAt, playerRestEndsAt, currentExWeight, liveExercises, isEn, goalId, restAdvance,
-      setsDataByExercise, resultsByIndex, t]); // eslint-disable-line react-hooks/exhaustive-deps
+    };
+  })();
+
+  useWatchBridge(watchState, handleWatchAction);
 
   // List-mode rest engine: beeps, rest-end notification and lock-screen
   // countdown for the bottom rest bar. The full-screen RestTimer (video view)
