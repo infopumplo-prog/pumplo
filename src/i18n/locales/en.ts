@@ -86,6 +86,7 @@ const en = {
   'home.sets': 'sets',
   'home.kg_total': 'kg total',
   'home.today_workout': "Today's workout",
+  'watch.plan_workout': 'Pumplo workout',
   'home.next_workout': 'Next workout',
   'home.today_completed': "Today's workout done",
   'home.business': 'Business',

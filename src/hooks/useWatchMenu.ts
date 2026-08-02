@@ -60,7 +60,7 @@ export function useWatchMenu(): void {
         ? `${t('custom_plan.continue_workout')}: ${pausedWorkout.planName}`
         : null,
       hasPlanWorkout: true,
-      planLabel: t('home.today_workout'),
+      planLabel: t('watch.plan_workout'),
       customDays: days,
     });
     const serialized = JSON.stringify(menu);
@@ -80,7 +80,10 @@ export function useWatchMenu(): void {
       return;
     }
     if (a.kind === 'plan') {
-      navigate('/training?start=true');
+      // watch=true přeskočí náhled cviků i rozehřátí — obojí jsou obrazovky
+      // telefonu a znamenala by přesně to sáhnutí po telefonu, kterému se
+      // spouštěním z hodinek vyhýbáme.
+      navigate('/training?start=true&watch=true');
       return;
     }
     if (a.kind === 'custom' && a.planId && a.dayId) {

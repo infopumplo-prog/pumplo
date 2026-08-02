@@ -86,6 +86,9 @@ const cs = {
   'home.sets': 'sérií',
   'home.kg_total': 'kg celkem',
   'home.today_workout': 'Dnešní trénink',
+  // Nabídka na hodinkách — vedle vlastních tréninků musí být jasné, že tenhle
+  // je z Pumplo plánu.
+  'watch.plan_workout': 'Pumplo trénink',
   'home.next_workout': 'Další trénink',
   'home.today_completed': 'Dnešní trénink dokončen',
   'home.business': 'Business',

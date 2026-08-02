@@ -168,6 +168,22 @@ const Training = () => {
   const [autoStartTriggered, setAutoStartTriggered] = useState(false);
   const [pendingAutoStartGymId, setPendingAutoStartGymId] = useState<string | null>(null);
   const handleRegeneratePlanRef = useRef<(gymOverride?: string) => void>(() => {});
+  // Spuštění z hodinek přeskakuje náhled i rozehřátí — obojí jsou obrazovky
+  // telefonu a stály by přesně to sáhnutí po telefonu, kvůli kterému se trénink
+  // spouští z hodinek. Drží se ve stavu, protože parametr z URL se hned maže.
+  const [autoStartFromWatch, setAutoStartFromWatch] = useState(false);
+  const generateTimedExercisesRef = useRef<(exs: WorkoutExercise[], phase: 'warmup' | 'cooldown') => Promise<WarmupExercise[]>>(
+    async () => []);
+
+  // Spuštění z hodinek jde rovnou do první série. Cooldown se dogeneruje na
+  // pozadí, aby po tréninku nechyběl — v běžném toku ho připraví rozehřátí.
+  const startWorkoutFromWatch = useCallback((exercises: WorkoutExercise[]) => {
+    setShowWorkoutPreview(false);
+    setIsWorkoutActive(true);
+    generateTimedExercisesRef.current(exercises, 'cooldown')
+      .then(setCooldownExercises)
+      .catch(() => { /* bez cooldownu se trénink nesmí zaseknout */ });
+  }, []);
 
   // Resume workout state
   const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
@@ -394,9 +410,12 @@ const Training = () => {
       !profileLoading
     ) {
       setAutoStartTriggered(true);
+      const fromWatch = searchParams.get('watch') === 'true';
+      setAutoStartFromWatch(fromWatch);
       // Clear the URL params
       searchParams.delete('start');
       searchParams.delete('gymId');
+      searchParams.delete('watch');
       setSearchParams(searchParams, { replace: true });
 
       const exercisesFromPlan = getCurrentDayExercises()
@@ -405,7 +424,11 @@ const Training = () => {
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(gymIdParam);
-        setShowWorkoutPreview(true);
+        if (fromWatch) {
+          startWorkoutFromWatch(exercisesFromPlan);
+        } else {
+          setShowWorkoutPreview(true);
+        }
       } else if (plan.exercises.length === 0) {
         // Bare plan (questionnaire done, first gym just picked): fill the
         // plan from this gym's equipment, then auto-start below.
@@ -424,10 +447,11 @@ const Training = () => {
     if (exercisesFromPlan.length > 0) {
       setGeneratedExercises(exercisesFromPlan);
       setSelectedWorkoutGymId(pendingAutoStartGymId);
-      setShowWorkoutPreview(true);
+      if (autoStartFromWatch) startWorkoutFromWatch(exercisesFromPlan);
+      else setShowWorkoutPreview(true);
       setPendingAutoStartGymId(null);
     }
-  }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartGymId, getCurrentDayExercises]);
+  }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartGymId, getCurrentDayExercises, autoStartFromWatch]);
 
   // Auto-resume paused workout when navigating from Home with ?resume=true
   useEffect(() => {
@@ -941,7 +965,11 @@ const Training = () => {
       return selectCooldownExercises(exercisesData as any, targetMuscles);
     }
   }, [plan?.splitType, plan?.currentDayLetter]);
-  
+
+  // Ref-indirekce: efekt auto-startu stojí nad touhle definicí, takže ji nesmí
+  // mít v poli závislostí (stejný důvod jako u handleRegeneratePlanRef).
+  generateTimedExercisesRef.current = generateTimedExercises;
+
   // Handle starting warmup from preview
   const handleStartWarmup = useCallback(async () => {
     setIsGeneratingWarmup(true);
