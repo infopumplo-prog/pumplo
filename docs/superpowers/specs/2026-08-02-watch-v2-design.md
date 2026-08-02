@@ -214,3 +214,46 @@ Když jsou hodinky mimo dosah telefonu, `WatchConnector.send` dnes akci zařadí
 - **Svislé tažení versus systémová gesta** — ověřit na zápěstí, ne v simulátoru.
 - **Dvě cesty do jednoho hooku** (`WorkoutSession` a `CustomWorkoutPlayer` mají jinak stavěné stavy) svádí k tomu udělat z hooku další místo s tréninkovou logikou. Hook nesmí vědět nic o cvicích — jen bere hotový stav a předává akce.
 - **Změny jdou do nativního buildu 1.2.3**, viz `~/Vaults/pumplo/provoz/build-1.2.3-fronta.md`. Web sám o sobě nic nedoručí.
+
+---
+
+## D — seznam cviků na hodinkách (doplněno 2. 8. 2026 po zkoušce na zápěstí)
+
+Vzor: Hevy. Hodinky ukážou cviky pod sebou, u každého malý náhled, a ťuknutím se otevře konkrétní cvik s kily a opakováními. Šipkou zpět se jde kdykoliv na seznam. V hlavičce běží čas od začátku tréninku.
+
+### D.1 Navigace
+
+Kořenem hodinkové appky během tréninku je **seznam cviků**, ne obrazovka série. Detail (série, pauza, kardio) se na něj **navrství** a vrací se šipkou zpět.
+
+- Spuštění tréninku otevře rovnou detail aktuálního cviku — seznam je pak jedno ťuknutí zpět. (David chce začít cvičit, ne vybírat.)
+- Změna fáze na pauzu nebo kardio detail otevře sama, i když uživatel zrovna kouká na seznam — jinak by mu utekl odpočet.
+- Ťuknutí na řádek pošle telefonu `goToExercise` s indexem a otevře detail.
+
+### D.2 Řádek seznamu
+
+Náhled cviku (malý čtvereček), název, a pod ním „x z y sérií". Aktuální cvik má cyan rámeček, hotové cviky fajfku.
+
+### D.3 Náhledy se stahují na hodinkách, ne přes telefon
+
+Náhledy cviků leží v Supabase Storage jako **veřejné** JPEGy (`exercise-videos/<složka>/thumb.jpg`, ověřeno 2. 8. 2026: HTTP 200, ~20 kB, bez podpisu). Hodinky si je proto stáhnou samy přes `AsyncImage`; posílat obrázky přes WatchConnectivity by bylo pomalé a zbytečné. Telefon posílá jen odkaz.
+
+Když se náhled nestáhne (hodinky bez sítě a telefon daleko), zůstane šedý čtvereček s ikonou — seznam nesmí kvůli obrázku zamrznout ani zůstat prázdný.
+
+### D.4 Rozšíření kontraktu
+
+| Pole | Typ | Význam |
+|---|---|---|
+| `workoutTitle` | `string` | název tréninku do hlavičky seznamu |
+| `workoutStartedAt` | `number \| null` | začátek tréninku v ms; hodinky si čas počítají samy |
+| `exercisesJson` | `string` | seznam cviků jako JSON |
+
+Položka seznamu: `{ name, setsDone, setsTotal, thumbUrl }`. Pořadí v poli je pořadím ve cviku, index se posílá zpět v `goToExercise`.
+
+Nová akce hodinky → telefon: `goToExercise` s celočíselným `index`.
+
+**Čas se posílá jako razítko začátku, ne jako počet vteřin** — ze stejného důvodu jako u pauzy a kardia: dopočítávaná hodnota by se měnila při každém renderu telefonu a snapshot by jezdil pořád dokola.
+
+### D.5 Odkud se berou data
+
+- **Vlastní trénink:** `exercises` už `video_path` obsahuje, hotové série drží `completedSetsMap`, začátek `startTime`.
+- **Plánový trénink:** `liveExercises` video cesty **nemá** — dotáhne se jedním dotazem `exercises.select('id, video_path').in('id', ids)` při startu tréninku. Hotové série drží `setsDataByExercise`, začátek `workoutStartTime`, skok na cvik už umí `goToExerciseRef`.
