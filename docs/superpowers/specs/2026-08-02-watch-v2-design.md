@@ -92,12 +92,13 @@ Akce z hodinek se mapují na **stávající** handlery, žádná nová tréninko
 
 Vlastní trénink má cviky na čas (`unit_type === 'time_min'` nebo `category === 'cardio'`, viz ř. 216), které plánový trénink nezná vůbec. Snapshot pro ně dnes nemá co poslat.
 
-**Kontrakt dostane novou fázi `cardio`** a dvě pole:
+**Kontrakt dostane novou fázi `cardio`** a tři pole:
 
-- `cardioEndsAt: number | null` — časové razítko konce, ze stávajícího `cardioEndTimeRef`
-- `cardioPaused: boolean` — ze stávajícího `cardioPaused`
+- `cardioTotalSeconds: number` — celková délka cviku
+- `cardioEndsAt: number | null` — časové razítko konce, ze stávajícího `cardioEndTimeRef`; `null` = ještě nespuštěno
+- `cardioPausedAt: number | null` — kdy se pauzlo; `null` = běží
 
-Když je kardio pozastavené, `cardioEndsAt` nese čas, do kterého by doběhlo, kdyby se pustilo teď — hodinky tak umí ukázat zbývající čas i ve stavu pauzy, aniž by musely znát celkovou délku zvlášť.
+Všechna tři jsou stabilní hodnoty, které se mezi rendery telefonu nemění, a hodinky si z nich zbývající čas dopočítají samy: dokud kardio neběželo, ukážou celkovou délku; při pauze počítají od okamžiku pauzy; jinak od teď. Posílat rovnou dopočítaný zbývající čas by znamenalo nový snapshot při každém renderu.
 
 **Nová obrazovka `CardioView.swift`** — sourozenec `RestView`: název cviku, zbývající čas, ubývající prstenec, jedno tlačítko start/pauza (`cardioToggle`) a tlačítko hotovo (`goNextSet`). Na nule stejná haptika jako na konci pauzy.
 
@@ -168,8 +169,9 @@ Když jsou hodinky mimo dosah telefonu, `WatchConnector.send` dnes akci zařadí
 | Pole | Typ | Význam |
 |---|---|---|
 | `phase` | + `'cardio'` | nová fáze vedle `set`, `rest`, `summary`, `idle` |
-| `cardioEndsAt` | `number \| null` | konec kardio odpočtu |
-| `cardioPaused` | `boolean` | kardio je pozastavené |
+| `cardioTotalSeconds` | `number` | celková délka kardio cviku |
+| `cardioEndsAt` | `number \| null` | konec kardio odpočtu; `null` = nespuštěno |
+| `cardioPausedAt` | `number \| null` | okamžik pauzy; `null` = běží |
 | `menuJson` | `string` | nabídka tréninků jako JSON |
 
 **Hodinky → telefon** (`WatchPayload.action`):
@@ -179,7 +181,7 @@ Když jsou hodinky mimo dosah telefonu, `WatchConnector.send` dnes akci zařadí
 | `cardioToggle` | — |
 | `startWorkout` | `kind`, volitelně `planId`, `dayId` |
 
-`WatchPayload.action` propouští jen známé tvary, takže starší telefonní build novější watch build nerozbije — nové akce prostě zahodí. `isUrgent` se rozšíří o změnu `cardioEndsAt` a `cardioPaused`, aby start a pauza kardia dorazily hned, ne až líným `applicationContextem`.
+`WatchPayload.action` propouští jen známé tvary, takže starší telefonní build novější watch build nerozbije — nové akce prostě zahodí. `isUrgent` se rozšíří o změnu `cardioEndsAt` a `cardioPausedAt`, aby start a pauza kardia dorazily hned, ne až líným `applicationContextem`.
 
 ---
 
