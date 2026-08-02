@@ -4,8 +4,10 @@
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 // Rotace dní je pravidlo sdílené se serverovou funkcí pro hodinky — žije
-// v supabase/functions/_shared/planRules.ts, tady se jen znovu vyváží.
-export { getCurrentDayLetter, getNextDayLetter } from './planRules';
+// v supabase/functions/_shared/planRules.ts. Import (ne pouhý re-export):
+// getCurrentDayLetter se používá i tady v getWeeklySchedule.
+import { getCurrentDayLetter, getNextDayLetter } from './planRules';
+export { getCurrentDayLetter, getNextDayLetter };
 
 /**
  * Získá písmeno dne podle indexu a počtu dní v rotaci
