@@ -98,6 +98,15 @@ expect(sparse?.stepValue == 0.5, "stepValue keeps the 0.5 kg contract")
 expect(WatchWorkoutSnapshot.decode(["phase": "nonsense"]) == nil, "decode rejects an unknown phase")
 expect(WatchWorkoutSnapshot.decode(["exerciseName": "x"]) == nil, "decode rejects a payload without a phase")
 
+// MARK: - DragStepper
+
+expect(DragStepper.pointsPerStep == 8, "one step per 8 points of drag")
+expect(DragStepper.totalSteps(translationHeight: -16) == 2, "dragging up adds steps")
+expect(DragStepper.totalSteps(translationHeight: 16) == -2, "dragging down subtracts steps")
+expect(DragStepper.totalSteps(translationHeight: -7) == 0, "a drag shorter than one step does nothing")
+expect(DragStepper.totalSteps(translationHeight: -160) == 20, "a full-screen drag is 20 steps")
+expect(DragStepper.totalSteps(translationHeight: 0) == 0, "no drag, no steps")
+
 // MARK: - WatchFormat
 
 expect(WatchFormat.weight(40) == "40", "whole weights have no decimals")

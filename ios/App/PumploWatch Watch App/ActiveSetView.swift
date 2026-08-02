@@ -31,7 +31,9 @@ struct ActiveSetView: View {
             HStack(spacing: 6) {
                 SpinnerField(title: "KG",
                              text: WatchFormat.weight(weight),
-                             isActive: focused == .weight) { focused = .weight }
+                             isActive: focused == .weight,
+                             onTap: { focused = .weight },
+                             onDelta: { bumpWeight($0) })
                     .focusable()
                     .focused($focused, equals: .weight)
                     .digitalCrownRotation($weight, from: 0, through: 500, by: snapshot.stepValue,
@@ -40,7 +42,9 @@ struct ActiveSetView: View {
 
                 SpinnerField(title: "OPAK.",
                              text: "\(Int(reps))",
-                             isActive: focused == .reps) { focused = .reps }
+                             isActive: focused == .reps,
+                             onTap: { focused = .reps },
+                             onDelta: { bumpReps($0) })
                     .focusable()
                     .focused($focused, equals: .reps)
                     .digitalCrownRotation($reps, from: 1, through: 100, by: 1,
@@ -94,5 +98,17 @@ struct ActiveSetView: View {
         weight = snapshot.prefillWeight
         reps = Double(snapshot.prefillReps)
         focused = .weight
+    }
+
+    // Meze i krok drží stejné hodnoty jako korunka výše — prst a korunka se
+    // nesmí chovat jinak.
+    private func bumpWeight(_ steps: Int) {
+        let step = snapshot.stepValue
+        let next = weight + Double(steps) * step
+        weight = min(500, max(0, (next / step).rounded() * step))
+    }
+
+    private func bumpReps(_ steps: Int) {
+        reps = min(100, max(1, reps + Double(steps)))
     }
 }
