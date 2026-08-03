@@ -40,8 +40,13 @@ struct SignedOutView: View {
     }
 }
 
-// Trénink dokončen (phase == summary).
+// Trénink dokončen (phase == summary). V samostatném režimu ukazuje stav
+// ukládání a tlačítko zpět na nabídku; v zrcadlovém režimu ukládá telefon,
+// takže se nic z toho nezobrazuje (statusText i onClose jsou nil).
 struct DoneView: View {
+    var statusText: String? = nil
+    var onClose: (() -> Void)? = nil
+
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: "checkmark.seal.fill")
@@ -50,9 +55,16 @@ struct DoneView: View {
             Text("Hotovo!")
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(.white)
-            Text("Trénink máš za sebou")
+            Text(statusText ?? "Trénink máš za sebou")
                 .font(.system(size: 11))
                 .foregroundStyle(PumploTheme.dim)
+                .multilineTextAlignment(.center)
+            if let onClose {
+                Button("Zavřít", action: onClose)
+                    .font(.system(size: 13, weight: .bold))
+                    .tint(PumploTheme.cyan)
+                    .padding(.top, 4)
+            }
         }
     }
 }

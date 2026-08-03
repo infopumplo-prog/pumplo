@@ -9,7 +9,7 @@ import Foundation
 //
 // Čisté Foundation, žádná síť ani ukládání: engine se dá celý otestovat
 // harnessem, což je u počítání sérií a pauz to nejdůležitější.
-struct LocalWorkout {
+struct LocalWorkout: Codable {
     struct LoggedSet: Codable, Equatable {
         let weight: Double?
         let reps: Int
@@ -17,6 +17,9 @@ struct LocalWorkout {
 
     let workout: WatchApiWorkout
     let startedAt: Date
+    // Idempotence uložení: UUID vzniká se začátkem tréninku a přežívá i pád
+    // appky (Codable) — opakované odeslání z fronty trénink nezdvojí.
+    let clientSessionId: String
 
     private(set) var exerciseIndex = 0
     private(set) var setNumber = 1               // 1-based, jako v appce
@@ -26,9 +29,11 @@ struct LocalWorkout {
     private(set) var cardioPausedAt: Date?
     private(set) var finished = false
 
-    init(workout: WatchApiWorkout, startedAt: Date = Date()) {
+    init(workout: WatchApiWorkout, startedAt: Date = Date(),
+         clientSessionId: String = UUID().uuidString) {
         self.workout = workout
         self.startedAt = startedAt
+        self.clientSessionId = clientSessionId
     }
 
     var current: WatchApiExercise? {

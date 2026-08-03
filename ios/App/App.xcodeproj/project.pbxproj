@@ -25,6 +25,7 @@
 		179E935FF316132CDDECEDBF /* WatchConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27C3095B25AF7319FC57809 /* WatchConnector.swift */; };
 		1D7A76DA2E749E0E8E777143 /* WatchWorkoutPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242DAC88F765EC5BE13CA8D6 /* WatchWorkoutPlugin.swift */; };
 		1F47366440293CB7A546CA5D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD9EECCC0C6DAA3453EE15A /* Theme.swift */; };
+		2F9F7B665D52D63D984039C0 /* PumploWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		37C5651FFB544F7B2BDFDC6E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E3176A965F1B9E121ED8366 /* Assets.xcassets */; };
 		397C75F43979CB400D1E5CED /* WatchMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */; };
@@ -37,6 +38,7 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		56CD64F522BFA1D2100F3769 /* StandaloneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */; };
 		6D6AA145F695FF57D26480EA /* StandaloneModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D6C003E4AB5F0460DCDA2F /* StandaloneModel.swift */; };
 		7297D73D14EEAC213FEAB17B /* StandaloneMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047F40241652F1257EBC1AF3 /* StandaloneMenuView.swift */; };
 		7E14B0F85B17B069C500EFAE /* WatchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5CE9F6B5BBB72E53F95EC9 /* WatchPayload.swift */; };
@@ -50,7 +52,6 @@
 		DB2919492CBE47336B8A0AF4 /* WatchConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 579DAC71DE88D95E63DCB6E6 /* WatchConfig.swift */; };
 		E11A8DAEDC6E719735D11F5E /* WatchApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D083781E4E4664E64B04F8 /* WatchApi.swift */; };
 		E5535B61C273E44966EF685E /* CardioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3BC91FA3C98EA6E0074236E /* CardioView.swift */; };
-		E9C709E1783AEAD62DEBA6D0 /* PumploWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ED8F0FD20FBAC6FF1A9E808F /* LocalWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7AAEC7BD3487BBD43D653CE /* LocalWorkout.swift */; };
 		F3127E5ED4F34FF75D256610 /* PumploWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEADCACB120E93330585495 /* PumploWatchApp.swift */; };
 		F473295A2A718BC7426951D5 /* ActiveSetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5256854733A673FB3A428D14 /* ActiveSetView.swift */; };
@@ -65,7 +66,7 @@
 			remoteGlobalIDString = 06553C792FFD57B300A92F27;
 			remoteInfo = PumploWidgetsExtension;
 		};
-		BDB4141AF8C072D894B94A8B /* PBXContainerItemProxy */ = {
+		28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
 			proxyType = 1;
@@ -92,6 +93,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
+				2F9F7B665D52D63D984039C0 /* PumploWatch Watch App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -136,6 +138,7 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		5256854733A673FB3A428D14 /* ActiveSetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveSetView.swift; sourceTree = "<group>"; };
 		579DAC71DE88D95E63DCB6E6 /* WatchConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConfig.swift; sourceTree = "<group>"; };
+		69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StandaloneStore.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		9AEADCACB120E93330585495 /* PumploWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PumploWatchApp.swift; sourceTree = "<group>"; };
 		A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PumploWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -241,6 +244,7 @@
 				047F40241652F1257EBC1AF3 /* StandaloneMenuView.swift */,
 				A8D6C003E4AB5F0460DCDA2F /* StandaloneModel.swift */,
 				22D083781E4E4664E64B04F8 /* WatchApi.swift */,
+				69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */,
 			);
 			name = "PumploWatch Watch App";
 			path = "PumploWatch Watch App";
@@ -357,6 +361,7 @@
 			);
 			dependencies = (
 				06553C8B2FFD57B500A92F27 /* PBXTargetDependency */,
+				70A7ADFC93A0CEB39234ED72 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -494,6 +499,7 @@
 				7297D73D14EEAC213FEAB17B /* StandaloneMenuView.swift in Sources */,
 				6D6AA145F695FF57D26480EA /* StandaloneModel.swift in Sources */,
 				E11A8DAEDC6E719735D11F5E /* WatchApi.swift in Sources */,
+				56CD64F522BFA1D2100F3769 /* StandaloneStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,11 +511,11 @@
 			target = 06553C792FFD57B300A92F27 /* PumploWidgetsExtension */;
 			targetProxy = 06553C8A2FFD57B500A92F27 /* PBXContainerItemProxy */;
 		};
-		3D7F09D6B235680B095BA324 /* PBXTargetDependency */ = {
+		70A7ADFC93A0CEB39234ED72 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "PumploWatch Watch App";
 			target = 3031224A16F18CD9A6AF386B /* PumploWatch Watch App */;
-			targetProxy = BDB4141AF8C072D894B94A8B /* PBXContainerItemProxy */;
+			targetProxy = 28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -782,7 +788,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DF748BR59G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -790,7 +796,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumplo.app;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -808,7 +814,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DF748BR59G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -816,7 +822,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumplo.app;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;

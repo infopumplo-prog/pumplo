@@ -43,6 +43,12 @@ struct RootView: View {
             }
         }
         .onReceive(ticker) { _ in standalone.tick() }
+        // Souběh: telefon se musí dozvědět, že na hodinkách běží vlastní
+        // trénink — při pokusu o start pak upozorní. send() frontuje přes
+        // transferUserInfo, takže zpráva dojde i bez přímého spojení.
+        .onChange(of: standalone.isRunning) { _, running in
+            connector.send(action: running ? "standaloneStarted" : "standaloneEnded")
+        }
     }
 
     // Snapshot, podle kterého se kreslí obrazovky. Vlastní trénink vyhrává.
@@ -130,8 +136,11 @@ struct RootView: View {
                 onToggle: { toggleCardio() },
                 onDone: { goNextSet() })
         case .summary:
-            DoneView()
-                .onDisappear { standalone.endWorkout() }
+            if isStandalone {
+                DoneView(statusText: uploadStatusText, onClose: { standalone.endWorkout() })
+            } else {
+                DoneView()
+            }
         case .idle:
             EmptyView()
         }
@@ -140,6 +149,15 @@ struct RootView: View {
     // MARK: - Akce míří tam, odkud trénink pochází
 
     private var isStandalone: Bool { standalone.isRunning }
+
+    private var uploadStatusText: String? {
+        switch standalone.uploadState {
+        case .saving: return "Ukládám…"
+        case .saved: return "Trénink uložen"
+        case .queued: return "Uloží se, až bude signál"
+        case .idle: return nil
+        }
+    }
 
     private func logSet(weight: Double, reps: Int) {
         if isStandalone { standalone.logSet(weight: weight, reps: reps) }

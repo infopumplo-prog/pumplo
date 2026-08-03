@@ -109,4 +109,64 @@ enum WatchApi {
     static func decodeWorkout(_ data: Data) -> WatchApiWorkout? {
         try? JSONDecoder().decode(WatchApiWorkout.self, from: data)
     }
+
+    // MARK: - Uložení dokončeného tréninku (POST /complete)
+
+    struct CompletionSet: Codable {
+        let weight: Double?
+        let reps: Int
+        let completed: Bool
+    }
+
+    struct CompletionExercise: Codable {
+        let exerciseId: String?
+        let exerciseName: String
+        let sets: [CompletionSet]
+    }
+
+    struct CompletionBody: Codable {
+        let clientSessionId: String
+        let kind: String
+        let planId: String?
+        let gymId: String?
+        let goalId: String?
+        let dayLetter: String?
+        let startedAt: String
+        let completedAt: String
+        let exercises: [CompletionExercise]
+    }
+
+    // Čistá funkce kvůli harnessu: z enginu poskládá tělo requestu. Posílají
+    // se jen zapsané série — na hodinkách nejde zapsat nedokončená.
+    static func completionBody(for local: LocalWorkout, completedAt: Date = Date()) -> Data? {
+        let iso = ISO8601DateFormatter()
+        let exercises = local.workout.exercises.enumerated().compactMap { index, ex -> CompletionExercise? in
+            let sets = (local.logged[index] ?? []).map {
+                CompletionSet(weight: $0.weight, reps: $0.reps, completed: true)
+            }
+            guard !sets.isEmpty else { return nil }
+            return CompletionExercise(exerciseId: ex.exerciseId, exerciseName: ex.name, sets: sets)
+        }
+        let body = CompletionBody(
+            clientSessionId: local.clientSessionId,
+            kind: local.workout.kind,
+            planId: local.workout.planId,
+            gymId: local.workout.gymId,
+            goalId: local.workout.goalId,
+            dayLetter: local.workout.dayLetter,
+            startedAt: iso.string(from: local.startedAt),
+            completedAt: iso.string(from: completedAt),
+            exercises: exercises)
+        return try? JSONEncoder().encode(body)
+    }
+
+    static func completeRequest(baseUrl: String, anonKey: String, accessToken: String,
+                                body: Data) -> URLRequest? {
+        guard var request = request(url: "\(baseUrl)/complete", anonKey: anonKey, accessToken: accessToken)
+        else { return nil }
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        return request
+    }
 }
