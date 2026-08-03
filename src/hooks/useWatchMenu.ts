@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { addWatchActionListener, buildWatchMenu, noteStandaloneAction, updateWatchMenu, type WatchAction } from '@/lib/watchWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useAuth } from '@/contexts/AuthContext';
+import { pushSessionToWatch, useAuth } from '@/contexts/AuthContext';
 
 interface MenuDay { planId: string; planName: string; dayId: string; dayName: string }
 
@@ -75,6 +75,12 @@ export function useWatchMenu(): void {
   startRef.current = (a: WatchAction) => {
     // Vlajka souběhu se čte při startu tréninku v obou přehrávačích.
     noteStandaloneAction(a);
+    // Hodinky si říkají o aktuální přihlášení (start appky, tlačítko
+    // Obnovit z telefonu) — bez toho by po změně účtu držely ten starý.
+    if (a.type === 'requestAuth') {
+      void supabase.auth.getSession().then(({ data: { session } }) => pushSessionToWatch(session));
+      return;
+    }
     if (a.type !== 'startWorkout') return;
     if (a.kind === 'resume') {
       if (pausedWorkout) navigate(`/custom-workout/${pausedWorkout.planId}?resume=true`);

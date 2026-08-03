@@ -29,7 +29,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Předání relace hodinkám pro samostatný režim. Nesmí nikdy shodit přihlášení
 // v telefonu — nespárované hodinky ani chybějící plugin nejsou chyba.
-const pushSessionToWatch = async (session: Session | null): Promise<void> => {
+// Export kvůli useWatchMenu: hodinky si o relaci umí říct akcí requestAuth.
+export const pushSessionToWatch = async (session: Session | null): Promise<void> => {
   try {
     if (!session?.access_token || !session.refresh_token || !session.user?.id) {
       await updateWatchAuth(null);

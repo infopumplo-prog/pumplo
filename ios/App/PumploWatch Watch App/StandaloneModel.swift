@@ -42,6 +42,9 @@ final class StandaloneModel: ObservableObject {
 
     var isRunning: Bool { workout != nil }
 
+    // Odhlášení (nebo změna účtu) v telefonu: nabídka patřila starému účtu.
+    func clearMenu() { menu = nil }
+
     var snapshot: WatchWorkoutSnapshot? { workout?.snapshot() }
 
     func loadMenu() async {

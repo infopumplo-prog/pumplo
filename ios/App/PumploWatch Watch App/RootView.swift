@@ -34,9 +34,19 @@ struct RootView: View {
             // Přihlášení předává telefon jednorázově; hodinky si ho pak drží
             // samy, takže se načítá z Keychainu ještě před spojením.
             auth.load()
-            connector.onAuth = { auth.accept($0) }
-            connector.onAuthCleared = { auth.clear() }
+            connector.onAuth = { token in
+                // Jiný účet než ten v Keychainu → nabídka starého účtu je
+                // k ničemu, přenačíst. Obyčejná rotace tokenu menu nechává.
+                let changedUser = auth.userId != token.userId
+                auth.accept(token)
+                if changedUser { Task { await standalone.loadMenu() } }
+            }
+            connector.onAuthCleared = { auth.clear(); standalone.clearMenu() }
             connector.activate()
+            // Řekni si o aktuální přihlášení — telefon ho posílá sám jen při
+            // změně relace a ta zpráva se mohla ztratit (hodinky bez appky,
+            // spící spojení). Fronta požadavek doručí, až bude telefon poblíž.
+            connector.send(action: "requestAuth")
             Task {
                 await auth.verifyAccess()
                 await standalone.loadMenu()
@@ -79,7 +89,14 @@ struct RootView: View {
                 error: standalone.error,
                 onPlan: { Task { await standalone.startPlanWorkout() } },
                 onCustom: { day in Task { await standalone.startCustomWorkout(planId: day.planId, dayId: day.dayId) } },
-                onRetry: { standalone.clearError(); Task { await standalone.loadMenu() } })
+                onRetry: { standalone.clearError(); Task { await standalone.loadMenu() } },
+                onSync: {
+                    // Ruční srovnání s telefonem: vyžádá si aktuální přihlášení
+                    // a hned přenačte nabídku; případný nový účet ji přenačte
+                    // podruhé, až token doletí.
+                    connector.send(action: "requestAuth")
+                    Task { await standalone.loadMenu() }
+                })
         } else if !connector.menu.items.isEmpty {
             MenuView(menu: connector.menu,
                      startState: connector.startState,

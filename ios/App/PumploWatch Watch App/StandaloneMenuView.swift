@@ -9,6 +9,7 @@ struct StandaloneMenuView: View {
     let onPlan: () -> Void
     let onCustom: (WatchApiMenuDay) -> Void
     let onRetry: () -> Void
+    let onSync: () -> Void
 
     var body: some View {
         if isLoading {
@@ -50,6 +51,11 @@ struct StandaloneMenuView: View {
                 Button { onCustom(day) } label: {
                     row(icon: "list.bullet", title: day.label, subtitle: nil)
                 }
+            }
+            // Záchrana pro rozjeté stavy: natáhne přihlášení i nabídku znovu
+            // z telefonu (jiný účet, nový plán, ztracená zpráva).
+            Button(action: onSync) {
+                row(icon: "arrow.triangle.2.circlepath", title: "Obnovit z telefonu", subtitle: nil)
             }
         }
     }

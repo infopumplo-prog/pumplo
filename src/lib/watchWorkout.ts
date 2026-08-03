@@ -97,7 +97,8 @@ export type WatchAction =
   | { type: 'cardioToggle' }
   | { type: 'goToExercise'; index: number }
   | { type: 'startWorkout'; kind: 'resume' | 'plan' | 'custom'; planId?: string; dayId?: string }
-  | { type: 'standaloneStarted' } | { type: 'standaloneEnded' };
+  | { type: 'standaloneStarted' } | { type: 'standaloneEnded' }
+  | { type: 'requestAuth' };
 
 interface WatchWorkoutPlugin {
   updateState(state: WatchWorkoutState): Promise<void>;

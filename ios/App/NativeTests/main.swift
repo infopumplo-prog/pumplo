@@ -118,6 +118,8 @@ expect(WatchMenu.decode("nonsense") == nil, "menu rejects broken json")
 
 expect(WatchPayload.action(from: ["type": "cardioToggle"])?["type"] as? String == "cardioToggle",
        "action passes cardioToggle through")
+expect(WatchPayload.action(from: ["type": "requestAuth"])?["type"] as? String == "requestAuth",
+       "action passes requestAuth through")
 expect(WatchPayload.isUrgent(previous: ["phase": "cardio", "cardioPausedAt": 1.0],
                              next: ["phase": "cardio"]),
        "isUrgent true when cardio is resumed")
