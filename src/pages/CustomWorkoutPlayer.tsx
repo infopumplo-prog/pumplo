@@ -30,7 +30,7 @@ const REST_BETWEEN_EXERCISES = 120; // seconds
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
-import { buildCustomWatchState, type WatchAction } from '@/lib/watchWorkout';
+import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction } from '@/lib/watchWorkout';
 import { useWatchBridge } from '@/hooks/useWatchBridge';
 
 interface ExerciseWithVideo {
@@ -567,6 +567,11 @@ const CustomWorkoutPlayer = () => {
 
   // Start day
   const handleStartDay = (dayId: string) => {
+    // Souběh s hodinkami: v jednu chvíli běží trénink jen na jednom místě.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
     unlockAudio(); // Unlock audio on user gesture for mobile browsers
     setSelectedDayId(dayId);
     loadDayExercises(dayId);
@@ -576,6 +581,13 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!plan || resumeApplied) return;
     if (playerState !== 'select_day') return;
+
+    // Souběh s hodinkami: dokud tam běží samostatný trénink, telefon žádný
+    // nespouští ani neobnovuje. Rozdělaný trénink zůstává uložený na později.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
 
     if (dayParam && plan.days.some(d => d.id === dayParam)) {
       setResumeApplied(true);

@@ -46,7 +46,8 @@ enum WatchPayload {
             if let weight = (message["weight"] as? NSNumber)?.doubleValue { payload["weight"] = weight }
             payload["reps"] = (message["reps"] as? NSNumber)?.intValue ?? 0
             return payload
-        case "goPrevSet", "goNextSet", "skipRest", "addRest15", "cardioToggle":
+        case "goPrevSet", "goNextSet", "skipRest", "addRest15", "cardioToggle",
+             "standaloneStarted", "standaloneEnded":
             return ["type": type]
         case "goToExercise":
             guard let index = (message["index"] as? NSNumber)?.intValue, index >= 0 else { return nil }

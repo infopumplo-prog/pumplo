@@ -96,7 +96,8 @@ export type WatchAction =
   | { type: 'skipRest' } | { type: 'addRest15' }
   | { type: 'cardioToggle' }
   | { type: 'goToExercise'; index: number }
-  | { type: 'startWorkout'; kind: 'resume' | 'plan' | 'custom'; planId?: string; dayId?: string };
+  | { type: 'startWorkout'; kind: 'resume' | 'plan' | 'custom'; planId?: string; dayId?: string }
+  | { type: 'standaloneStarted' } | { type: 'standaloneEnded' };
 
 interface WatchWorkoutPlugin {
   updateState(state: WatchWorkoutState): Promise<void>;
@@ -119,6 +120,21 @@ export function addWatchActionListener(cb: (a: WatchAction) => void): () => void
   if (!Capacitor.isNativePlatform()) return () => {};
   const handle = WatchWorkout.addListener('watchAction', cb);
   return () => { handle.then(h => h.remove()).catch(() => {}); };
+}
+
+// Souběh telefon×hodinky: v jednu chvíli má trénink běžet jen na jednom
+// místě. Hodinky hlásí start/konec vlastního tréninku a telefon si drží
+// vlajku, aby mohl při pokusu o start upozornit. Vlajka je jen v paměti —
+// po restartu appky ji obnoví další zpráva z hodinek.
+let standaloneActive = false;
+
+export function noteStandaloneAction(action: WatchAction): void {
+  if (action.type === 'standaloneStarted') standaloneActive = true;
+  if (action.type === 'standaloneEnded') standaloneActive = false;
+}
+
+export function isStandaloneWatchWorkoutActive(): boolean {
+  return standaloneActive;
 }
 
 // Jedny hodiny pauzy pro snapshot na hodinky. Countdown na hodinkách běží z

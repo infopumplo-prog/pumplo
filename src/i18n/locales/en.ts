@@ -401,6 +401,7 @@ const en = {
   'workout.abandon_desc': 'Workout saved. Go to home screen?',
   'workout.save_queued': "Couldn't save the workout right now — it will sync automatically once you're back online. Nothing is lost.",
   'workout.abandon_confirm': 'End workout?',
+  'workout.watch_workout_active': 'A workout is running on your watch. Finish it there, or end it on the watch first.',
 
   // Onboarding
   'onboarding.days_title': 'Which days do you usually train?',

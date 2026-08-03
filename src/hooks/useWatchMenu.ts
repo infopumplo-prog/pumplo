@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
-import { addWatchActionListener, buildWatchMenu, updateWatchMenu, type WatchAction } from '@/lib/watchWorkout';
+import { addWatchActionListener, buildWatchMenu, noteStandaloneAction, updateWatchMenu, type WatchAction } from '@/lib/watchWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,6 +73,8 @@ export function useWatchMenu(): void {
   // jinak by routoval podle zastaralého profilu nebo rozdělaného tréninku.
   const startRef = useRef<(a: WatchAction) => void>(() => {});
   startRef.current = (a: WatchAction) => {
+    // Vlajka souběhu se čte při startu tréninku v obou přehrávačích.
+    noteStandaloneAction(a);
     if (a.type !== 'startWorkout') return;
     if (a.kind === 'resume') {
       if (pausedWorkout) navigate(`/custom-workout/${pausedWorkout.planId}?resume=true`);

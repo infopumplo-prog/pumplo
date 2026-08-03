@@ -38,6 +38,7 @@ import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer'
 import { getTrainingFocus, selectWarmupExercises, selectCooldownExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { isStandaloneWatchWorkoutActive } from '@/lib/watchWorkout';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { OpeningHours } from '@/hooks/useGym';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
@@ -418,6 +419,13 @@ const Training = () => {
       searchParams.delete('watch');
       setSearchParams(searchParams, { replace: true });
 
+      // Souběh s hodinkami: start z telefonu se blokuje. Start vyžádaný přímo
+      // z hodinek projde — během vlastního tréninku hodinky nabídku neukazují.
+      if (!fromWatch && isStandaloneWatchWorkoutActive()) {
+        toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+        return;
+      }
+
       const exercisesFromPlan = getCurrentDayExercises()
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
 
@@ -466,7 +474,14 @@ const Training = () => {
       // Clear the URL param
       searchParams.delete('resume');
       setSearchParams(searchParams, { replace: true });
-      
+
+      // Souběh s hodinkami: rozdělaný trénink zůstane uložený, obnoví se, až
+      // trénink na hodinkách skončí.
+      if (isStandaloneWatchWorkoutActive()) {
+        toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+        return;
+      }
+
       // Restore exercises from paused state
       setGeneratedExercises(pausedWorkout.exercises);
       setWarmupExercises(pausedWorkout.warmupExercises || []);
@@ -885,6 +900,11 @@ const Training = () => {
 
   // Otevře GymSelector před startem tréninku
   const handleStartWorkout = () => {
+    // Souběh s hodinkami: v jednu chvíli běží trénink jen na jednom místě.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
     prefetchGymLocation(); // warm the GPS fix while the user picks a gym
     setShowGymSelectorForStart(true);
   };

@@ -403,6 +403,7 @@ const cs = {
   'workout.abandon_desc': 'Trénink je uložen. Přejít na hlavní stránku?',
   'workout.save_queued': 'Trénink se teď nepodařilo uložit — uloží se automaticky, jakmile budeš online. Nic se neztratilo.',
   'workout.abandon_confirm': 'Ukončit trénink?',
+  'workout.watch_workout_active': 'Trénink běží na hodinkách. Dokonči ho tam, nebo ho na hodinkách ukonči.',
 
   // Onboarding
   'onboarding.days_title': 'Ve které dny obvykle chodíš cvičit?',
