@@ -26,9 +26,9 @@ const json = (body: unknown, status = 200) =>
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-const daysBack = (n: number): string[] => {
+const daysBack = (n: number, skip = 0): string[] => {
   const out: string[] = [];
-  for (let i = 1; i <= n; i++) {
+  for (let i = skip + 1; i <= skip + n; i++) {
     const d = new Date();
     d.setUTCDate(d.getUTCDate() - i);
     out.push(isoDay(d));
@@ -249,10 +249,13 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  // Jednorázový historický backfill: {"days": 120} v těle. Default drží cron.
+  // Jednorázový historický backfill: {"days": 90, "skip": 180} v těle
+  // (skip = kolik nejnovějších dní přeskočit — pro stažení historie po
+  // kusech pod 150s limitem). Default drží cron.
   const body = await req.json().catch(() => ({}));
   const backfill = Math.min(Math.max(parseInt(body?.days, 10) || BACKFILL_DAYS, 1), 365);
-  const days = daysBack(backfill);
+  const skip = Math.min(Math.max(parseInt(body?.skip, 10) || 0, 0), 365);
+  const days = daysBack(backfill, skip);
   const errors: string[] = [];
   // deno-lint-ignore no-explicit-any
   const rows = new Map<string, any>();
@@ -262,19 +265,21 @@ Deno.serve(async (req) => {
     return rows.get(k);
   };
 
-  // Apple — prodeje po dnech
+  // Apple — prodeje po dnech (dávky po 10, ať se dlouhý backfill vejde do limitu)
   try {
     const token = await ascToken();
-    for (const day of days) {
-      try {
-        const s = await ascSalesDay(token, day);
-        Object.assign(row(day, "ios"), {
-          downloads: s.downloads,
-          redownloads: s.redownloads,
-        });
-      } catch (e) {
-        errors.push(String(e));
-      }
+    for (let i = 0; i < days.length; i += 10) {
+      await Promise.all(days.slice(i, i + 10).map(async (day) => {
+        try {
+          const s = await ascSalesDay(token, day);
+          Object.assign(row(day, "ios"), {
+            downloads: s.downloads,
+            redownloads: s.redownloads,
+          });
+        } catch (e) {
+          errors.push(String(e));
+        }
+      }));
     }
     // App Analytics (může být prázdné, dokud Apple nezačne generovat)
     try {
