@@ -34,6 +34,8 @@ struct LocalWorkout: Codable {
         self.workout = workout
         self.startedAt = startedAt
         self.clientSessionId = clientSessionId
+        // Trénink může začínat rozcvičkou — její odpočet běží hned.
+        autoStartAux(now: startedAt)
     }
 
     var current: WatchApiExercise? {
@@ -46,7 +48,7 @@ struct LocalWorkout: Codable {
     // MARK: - Akce (stejná jména jako akce z hodinek v zrcadlovém režimu)
 
     mutating func logSet(weight: Double?, reps: Int, now: Date = Date()) {
-        guard let current, !finished else { return }
+        guard let current, !finished, !current.isTimedAux else { return }
         logged[exerciseIndex, default: []].append(LoggedSet(weight: weight, reps: reps))
 
         let isLastSet = setNumber >= current.sets
@@ -82,15 +84,16 @@ struct LocalWorkout: Codable {
         advanceAfterRest()
     }
 
-    mutating func goToExercise(_ index: Int) {
+    mutating func goToExercise(_ index: Int, now: Date = Date()) {
         guard index >= 0 && index < workout.exercises.count else { return }
         exerciseIndex = index
         setNumber = 1
         restEndsAt = nil
         resetCardio()
+        autoStartAux(now: now)
     }
 
-    mutating func goNextSet() {
+    mutating func goNextSet(now: Date = Date()) {
         guard let current else { return }
         restEndsAt = nil
         if setNumber < current.sets {
@@ -99,10 +102,14 @@ struct LocalWorkout: Codable {
             exerciseIndex += 1
             setNumber = 1
             resetCardio()
+            autoStartAux(now: now)
+        } else if current.isTimedAux {
+            // „Hotovo" na poslední položce cooldownu trénink uzavírá.
+            finished = true
         }
     }
 
-    mutating func goPrevSet() {
+    mutating func goPrevSet(now: Date = Date()) {
         restEndsAt = nil
         if setNumber > 1 {
             setNumber -= 1
@@ -110,7 +117,54 @@ struct LocalWorkout: Codable {
             exerciseIndex -= 1
             setNumber = 1
             resetCardio()
+            autoStartAux(now: now)
         }
+    }
+
+    /// Doběhl odpočet položky rozcvičky/cooldownu — jde se dál samo, jako
+    /// ve WarmupPlayeru v telefonu. Pauza odpočet drží na místě.
+    mutating func timedAuxFinishedIfDue(now: Date = Date()) {
+        guard let current, current.isTimedAux, cardioPausedAt == nil,
+              let cardioEndsAt, now >= cardioEndsAt else { return }
+        if exerciseIndex < workout.exercises.count - 1 {
+            exerciseIndex += 1
+            setNumber = 1
+            restEndsAt = nil
+            resetCardio()
+            autoStartAux(now: now)
+        } else {
+            finished = true
+            restEndsAt = nil
+            resetCardio()
+        }
+    }
+
+    /// Přeskočí zbytek rozcvičky (na první hlavní cvik) nebo cooldownu
+    /// (rovnou na souhrn). Na hlavním cviku nedělá nic.
+    mutating func skipSection(now: Date = Date()) {
+        guard let current, current.isTimedAux else { return }
+        let section = current.section
+        var index = exerciseIndex
+        while index < workout.exercises.count && workout.exercises[index].section == section {
+            index += 1
+        }
+        restEndsAt = nil
+        resetCardio()
+        if index < workout.exercises.count {
+            exerciseIndex = index
+            setNumber = 1
+            autoStartAux(now: now)
+        } else {
+            finished = true
+        }
+    }
+
+    // Časované položky se nespouští ručně jako kardio — odpočet běží od
+    // chvíle, kdy na ně dojde řada.
+    private mutating func autoStartAux(now: Date) {
+        guard let current, current.isTimedAux else { return }
+        cardioEndsAt = now.addingTimeInterval(TimeInterval(current.durationSeconds ?? 0))
+        cardioPausedAt = nil
     }
 
     mutating func toggleCardio(now: Date = Date()) {
@@ -130,7 +184,7 @@ struct LocalWorkout: Codable {
         }
     }
 
-    private mutating func advanceAfterRest() {
+    private mutating func advanceAfterRest(now: Date = Date()) {
         restEndsAt = nil
         resetCardio()
         guard let current else { return }
@@ -139,6 +193,7 @@ struct LocalWorkout: Codable {
         } else if exerciseIndex < workout.exercises.count - 1 {
             exerciseIndex += 1
             setNumber = 1
+            autoStartAux(now: now)
         } else {
             finished = true
         }

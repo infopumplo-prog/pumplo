@@ -5,6 +5,12 @@ import {
   getRestSecondsForCategory,
   getRIRGuidance,
 } from "../_shared/planRules.ts";
+import {
+  getTrainingFocus,
+  selectCooldownExercises,
+  selectWarmupExercises,
+  type WarmupPoolExercise,
+} from "../_shared/warmupRules.ts";
 
 // Backend samostatných hodinek. Hodinky nemají webovou vrstvu appky, takže
 // pravidla plánu (který den, jaké RIR, jak dlouhá pauza) musí někdo složit —
@@ -53,8 +59,67 @@ interface PlanContext {
   dayName: string | null;
   dayCount: number;
   currentDayIndex: number;
+  splitType: string;
   exercises: Array<Record<string, unknown>>;
 }
+
+// Rozcvička a cooldown pro hodinky: 6 + 6 časovaných položek po 30 s, vybraných
+// stejnými pravidly jako v appce (warmupRules zrcadlí warmupCooldownSelection).
+// Hodinky je ukazují vždy — přeskočení je na uživateli. Selhání výběru nesmí
+// položit trénink, proto se chyby jen logují a vrací se prázdné sekce.
+const timedEntry = (e: WarmupPoolExercise, section: string): Record<string, unknown> => ({
+  exerciseId: e.id,
+  name: e.name,
+  nameEn: e.name_en ?? null,
+  slotCategory: null,
+  sets: 1,
+  repMin: 0,
+  repMax: 0,
+  rir: null,
+  targetWeight: null,
+  restSeconds: 0,
+  isCardio: true,
+  durationSeconds: 30,
+  thumbUrl: thumbUrlFor(e.video_path ?? null),
+  section,
+});
+
+const buildAuxSections = async (
+  supabase: DB,
+  mainExerciseIds: string[],
+  focus: "upper" | "lower" | "full",
+): Promise<{ warmup: Array<Record<string, unknown>>; cooldown: Array<Record<string, unknown>> }> => {
+  try {
+    const targetMuscles: string[] = [];
+    if (mainExerciseIds.length > 0) {
+      const { data: muscles } = await supabase
+        .from("exercises")
+        .select("primary_muscles, secondary_muscles")
+        .in("id", mainExerciseIds);
+      for (const m of muscles ?? []) {
+        targetMuscles.push(...(m.primary_muscles ?? []), ...(m.secondary_muscles ?? []));
+      }
+    }
+
+    const poolColumns = "id, name, name_en, primary_muscles, video_path, body_region";
+    const [warmPool, coolPool] = await Promise.all([
+      supabase.from("exercises").select(poolColumns).eq("allowed_phase", "warmup"),
+      supabase.from("exercises").select(poolColumns).eq("allowed_phase", "cooldown"),
+    ]);
+    if (warmPool.error) console.error("warmup pool query failed", warmPool.error);
+    if (coolPool.error) console.error("cooldown pool query failed", coolPool.error);
+
+    return {
+      warmup: selectWarmupExercises(warmPool.data ?? [], focus, targetMuscles)
+        .map((e) => timedEntry(e, "warmup")),
+      cooldown: selectCooldownExercises(coolPool.data ?? [], targetMuscles)
+        .map((e) => timedEntry(e, "cooldown")),
+    };
+  } catch (error) {
+    console.error("aux sections failed", error);
+    return { warmup: [], cooldown: [] };
+  }
+};
 
 // Sestaví dnešní den z Pumplo plánu. Zrcadlí useWorkoutPlan.fetchActivePlan —
 // včetně samoopravy počítadla dní a deload týdne, protože jinak by hodinky
@@ -193,6 +258,7 @@ const loadPlanContext = async (
         isCardio: false,
         durationSeconds: null,
         thumbUrl: thumbUrlFor((joined?.video_path as string) ?? null),
+        section: "main",
       };
     });
 
@@ -204,6 +270,7 @@ const loadPlanContext = async (
     dayName: dayNameByLetter[dayLetter] ?? null,
     dayCount,
     currentDayIndex,
+    splitType,
     exercises: dayExercises,
   };
 };
@@ -257,6 +324,7 @@ const loadCustomWorkout = async (
       repsPerSet: (e.reps_per_set as number[] | null) ?? null,
       weightPerSet: (e.weight_per_set as number[] | null) ?? null,
       restPerSet: (e.rest_per_set as number[] | null) ?? null,
+      section: "main",
     };
   });
 
@@ -330,11 +398,27 @@ Deno.serve(async (req) => {
         if (!planId || !dayId) return json({ error: "missing planId or dayId" }, 400);
         const workout = await loadCustomWorkout(supabase, user.id, planId, dayId);
         if (!workout) return json({ error: "not found" }, 404);
-        return json(workout);
+        // Vlastní trénink nemá split ani písmeno dne → rozcvička na celé tělo.
+        const customAux = await buildAuxSections(
+          supabase,
+          (workout.exercises as Array<Record<string, unknown>>)
+            .map((e) => e.exerciseId as string)
+            .filter(Boolean),
+          "full",
+        );
+        return json({
+          ...workout,
+          exercises: [...customAux.warmup, ...workout.exercises, ...customAux.cooldown],
+        });
       }
 
       const planContext = await loadPlanContext(supabase, user.id);
       if (!planContext) return json({ error: "no active plan" }, 404);
+      const aux = await buildAuxSections(
+        supabase,
+        planContext.exercises.map((e) => e.exerciseId as string).filter(Boolean),
+        getTrainingFocus(planContext.splitType, planContext.dayLetter),
+      );
       return json({
         title: planContext.dayName ?? `Trénink ${planContext.dayLetter}`,
         kind: "plan",
@@ -342,7 +426,7 @@ Deno.serve(async (req) => {
         gymId: planContext.gymId,
         dayLetter: planContext.dayLetter,
         goalId: planContext.goalId,
-        exercises: planContext.exercises,
+        exercises: [...aux.warmup, ...planContext.exercises, ...aux.cooldown],
       });
     }
 

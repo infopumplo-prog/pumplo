@@ -146,7 +146,24 @@ final class StandaloneModel: ObservableObject {
             persist()
             finishIfDone()
         }
+        // Rozcvička/cooldown běží samy — doběhlá položka se posune bez ťuknutí
+        // a doběhlý cooldown trénink rovnou uloží.
+        let indexBefore = workout?.exerciseIndex
+        workout?.timedAuxFinishedIfDue()
+        if workout?.exerciseIndex != indexBefore || workout?.finished == true {
+            persist()
+            finishIfDone()
+        }
     }
+
+    /// „Přeskočit vše" na rozcvičce/cooldownu.
+    func skipSection() {
+        workout?.skipSection()
+        persist()
+        finishIfDone()
+    }
+
+    var currentIsAux: Bool { workout?.current?.isTimedAux == true }
 
     // MARK: - Uložení dokončeného tréninku
 

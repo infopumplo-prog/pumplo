@@ -299,6 +299,55 @@ localCardio.toggleCardio(now: t0.addingTimeInterval(400))
 expect(localCardio.snapshot(now: t0).remainingCardioSeconds(now: t0.addingTimeInterval(500)) == 400,
        "resumed cardio does not lose the paused time")
 
+// Rozcvička a cooldown: časované položky před a za hlavním tréninkem.
+// Ukazují se vždy, běží samy (30 s), jdou přeskočit a do uložení nepatří.
+func makeTimed(_ name: String, section: String) -> WatchApiExercise {
+    WatchApiExercise(exerciseId: "t-\(name)", name: name, nameEn: nil, slotCategory: nil,
+                     sets: 1, repMin: 0, repMax: 0, rir: nil, targetWeight: nil,
+                     restSeconds: 0, isCardio: true, durationSeconds: 30,
+                     thumbUrl: nil, repsPerSet: nil, weightPerSet: nil, restPerSet: nil,
+                     section: section)
+}
+let sectioned = WatchApiWorkout(
+    title: "Trénink B", kind: "plan", planId: "p", dayId: nil, gymId: "g",
+    dayLetter: "B", goalId: "strength",
+    exercises: [makeTimed("Kroužení pažemi", section: "warmup"),
+                makeTimed("Plank", section: "warmup"),
+                makeExercise("Dřep", sets: 1),
+                makeTimed("Protažení", section: "cooldown")])
+
+var aux = LocalWorkout(workout: sectioned, startedAt: t0)
+expect(aux.snapshot(now: t0).phase == .cardio, "a warmup item shows the timed screen")
+expect(aux.snapshot(now: t0).remainingCardioSeconds(now: t0) == 30, "the warmup clock starts by itself")
+aux.timedAuxFinishedIfDue(now: t0.addingTimeInterval(31))
+expect(aux.snapshot(now: t0).currentExerciseIndex == 1, "a finished warmup item advances on its own")
+expect(aux.snapshot(now: t0).remainingCardioSeconds(now: t0.addingTimeInterval(31)) == 30,
+       "the next warmup item restarts the clock")
+aux.logSet(weight: 40, reps: 10, now: t0)
+expect(aux.snapshot(now: t0).exercises[1].setsDone == 0, "a warmup item never logs a set")
+aux.skipSection(now: t0.addingTimeInterval(40))
+expect(aux.snapshot(now: t0).currentExerciseIndex == 2, "skipping the warmup jumps to the first main exercise")
+expect(aux.snapshot(now: t0).phase == .set, "the main exercise shows the set screen")
+aux.logSet(weight: 60, reps: 10, now: t0)
+aux.skipRest()
+expect(aux.snapshot(now: t0).currentExerciseIndex == 3, "the workout continues into the cooldown")
+expect(aux.snapshot(now: t0).phase == .cardio, "the cooldown is a timed screen")
+aux.skipSection(now: t0.addingTimeInterval(100))
+expect(aux.snapshot(now: t0).phase == .summary, "skipping the cooldown finishes the workout")
+
+let auxBody = WatchApi.completionBody(for: aux, completedAt: t0)
+    .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+expect(auxBody.contains("Dřep") && !auxBody.contains("Plank"), "completion sends only the main sets")
+
+var pausedAux = LocalWorkout(workout: sectioned, startedAt: t0)
+pausedAux.toggleCardio(now: t0.addingTimeInterval(10))
+pausedAux.timedAuxFinishedIfDue(now: t0.addingTimeInterval(60))
+expect(pausedAux.snapshot(now: t0).currentExerciseIndex == 0, "a paused warmup does not advance")
+
+let sectionDecoded = WatchApi.decodeWorkout(#"{"title":"T","kind":"plan","exercises":[{"name":"X","sets":1,"repMin":0,"repMax":0,"restSeconds":0,"isCardio":true,"durationSeconds":30,"section":"warmup"}]}"#.data(using: .utf8)!)
+expect(sectionDecoded?.exercises.first?.section == "warmup", "workout json decodes the section")
+expect(cardioWorkout.exercises.first?.section == nil, "an exercise without a section stays main")
+
 // Dotazy na watch-api
 let menuReq = WatchApi.menuRequest(baseUrl: "https://x/functions/v1/watch-api", anonKey: "k", accessToken: "t")
 expect(menuReq?.url?.absoluteString == "https://x/functions/v1/watch-api/menu", "menu hits /menu")

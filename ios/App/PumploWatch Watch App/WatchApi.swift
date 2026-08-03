@@ -21,6 +21,12 @@ struct WatchApiExercise: Codable, Equatable {
     let repsPerSet: [Int]?
     let weightPerSet: [Double]?
     let restPerSet: [Int]?
+    // "warmup" | "main" | "cooldown"; chybějící = main (starší server).
+    var section: String? = nil
+
+    // Časovaná položka rozcvičky/cooldownu: běží sama, neloguje série
+    // a do uloženého tréninku nepatří.
+    var isTimedAux: Bool { section == "warmup" || section == "cooldown" }
 
     // Cílová váha pro konkrétní sérii (1-based), s pádem zpět na cvik.
     func targetWeight(forSet setNumber: Int) -> Double? {

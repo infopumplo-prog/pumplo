@@ -8,6 +8,8 @@ struct CardioView: View {
     let snapshot: WatchWorkoutSnapshot
     let onToggle: () -> Void
     let onDone: () -> Void
+    // Jen u rozcvičky/cooldownu: přeskočí celou sekci, ne jednu položku.
+    var onSkipAll: (() -> Void)? = nil
 
     @State private var remaining = 0
     @State private var total = 0
@@ -49,6 +51,13 @@ struct CardioView: View {
                     .buttonStyle(.bordered)
                     .tint(.white.opacity(0.2))
                     .font(.system(size: 12, weight: .bold))
+            }
+
+            if let onSkipAll {
+                Button("Přeskočit vše", action: onSkipAll)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(PumploTheme.dim)
             }
         }
         .padding(.horizontal, 4)

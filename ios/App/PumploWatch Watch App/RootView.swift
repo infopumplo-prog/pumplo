@@ -151,7 +151,9 @@ struct RootView: View {
             CardioView(
                 snapshot: snapshot,
                 onToggle: { toggleCardio() },
-                onDone: { goNextSet() })
+                onDone: { goNextSet() },
+                onSkipAll: (isStandalone && standalone.currentIsAux)
+                    ? { standalone.skipSection() } : nil)
         case .summary:
             if isStandalone {
                 DoneView(statusText: uploadStatusText, onClose: { standalone.endWorkout() })
