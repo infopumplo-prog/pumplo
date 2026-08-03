@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   getCurrentDayLetter,
+  getNextDayLetter,
   getRestSecondsForCategory,
   getRIRGuidance,
 } from "../_shared/planRules.ts";
@@ -50,6 +51,8 @@ interface PlanContext {
   gymId: string | null;
   dayLetter: string;
   dayName: string | null;
+  dayCount: number;
+  currentDayIndex: number;
   exercises: Array<Record<string, unknown>>;
 }
 
@@ -175,6 +178,8 @@ const loadPlanContext = async (
     gymId: (plan.gym_id as string) ?? null,
     dayLetter,
     dayName: dayNameByLetter[dayLetter] ?? null,
+    dayCount,
+    currentDayIndex,
     exercises: dayExercises,
   };
 };
@@ -315,6 +320,105 @@ Deno.serve(async (req) => {
         goalId: planContext.goalId,
         exercises: planContext.exercises,
       });
+    }
+
+    if (route === "complete" && req.method === "POST") {
+      // Uloží odcvičený trénink přesně jako telefon (useWorkoutHistory
+      // .saveWorkoutSession): jeden řádek workout_sessions, dávka setů per
+      // cvik kvůli pořadí v historii, a u plánového tréninku posun
+      // current_day_index. Idempotentní přes clientSessionId — opakované
+      // odeslání z offline fronty hodinek nesmí založit trénink dvakrát.
+      const body = await req.json().catch(() => null);
+      if (!body || typeof body.clientSessionId !== "string" || !Array.isArray(body.exercises)) {
+        return json({ error: "bad body" }, 400);
+      }
+
+      const existing = await supabase
+        .from("workout_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("client_session_id", body.clientSessionId)
+        .maybeSingle();
+      if (existing.data?.id) return json({ sessionId: existing.data.id, deduped: true });
+
+      let totalSets = 0, totalReps = 0, totalWeight = 0;
+      for (const ex of body.exercises) {
+        for (const set of ex.sets ?? []) {
+          if (!set.completed) continue;
+          totalSets++;
+          totalReps += set.reps ?? 0;
+          totalWeight += (set.weight ?? 0) * (set.reps ?? 0);
+        }
+      }
+
+      const startedAt = typeof body.startedAt === "string" ? body.startedAt : new Date().toISOString();
+      const completedAt = typeof body.completedAt === "string" ? body.completedAt : new Date().toISOString();
+      const durationSeconds = Math.max(0, Math.floor(
+        (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000,
+      ));
+
+      const { data: session, error: sessionError } = await supabase
+        .from("workout_sessions")
+        .insert({
+          user_id: user.id,
+          client_session_id: body.clientSessionId,
+          plan_id: body.planId ?? null,
+          gym_id: body.gymId ?? null,
+          // goal_id je NOT NULL; vlastní trénink bez cíle dostane totéž
+          // zástupné general_fitness jako CustomWorkoutPlayer v telefonu.
+          goal_id: body.goalId ?? "general_fitness",
+          day_letter: body.dayLetter ?? "CU",
+          started_at: startedAt,
+          completed_at: completedAt,
+          duration_seconds: durationSeconds,
+          total_sets: totalSets,
+          total_reps: totalReps,
+          total_weight_kg: totalWeight,
+          is_bonus: false,
+        })
+        .select("id")
+        .single();
+      if (sessionError) {
+        // Souběh dvou odeslání: unikátní index vrátí duplicitu — dohledej ji.
+        const dup = await supabase
+          .from("workout_sessions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("client_session_id", body.clientSessionId)
+          .maybeSingle();
+        if (dup.data?.id) return json({ sessionId: dup.data.id, deduped: true });
+        throw sessionError;
+      }
+
+      for (const ex of body.exercises) {
+        const rows = (ex.sets ?? []).map((set: DB, index: number) => ({
+          session_id: session.id,
+          exercise_id: ex.exerciseId ?? null,
+          exercise_name: ex.exerciseName ?? "",
+          set_number: index + 1,
+          weight_kg: set.weight ?? null,
+          reps: set.reps ?? null,
+          completed: !!set.completed,
+        }));
+        if (rows.length === 0) continue;
+        const { error: setsError } = await supabase.from("workout_session_sets").insert(rows);
+        if (setsError) throw setsError;
+      }
+
+      // Plánový trénink posouvá rotaci — bez toho by appka druhý den
+      // nabízela tentýž den (viz useWorkoutPlan.advanceToNextDay).
+      if (body.kind === "plan") {
+        const ctx = await loadPlanContext(supabase, user.id);
+        if (ctx) {
+          const { nextIndex } = getNextDayLetter(ctx.dayCount, ctx.currentDayIndex);
+          await supabase
+            .from("user_profiles")
+            .update({ current_day_index: nextIndex })
+            .eq("user_id", user.id);
+        }
+      }
+
+      return json({ sessionId: session.id });
     }
 
     return json({ error: "unknown route" }, 404);
