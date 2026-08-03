@@ -152,8 +152,28 @@ const loadPlanContext = async (
   const weekNumber = Math.floor((completedCount ?? 0) / Math.max(daysPerWeek, 1)) + 1;
   isDeloadWeek = getRIRGuidance(weekNumber).label === "Deload";
 
-  const dayExercises = rows
-    .filter((e: DB) => e.day_letter === dayLetter && e.exercise_id)
+  const dayRows = rows.filter((e: DB) => e.day_letter === dayLetter && e.exercise_id);
+
+  // Předvyplnění váhy: poslední zapsaná váha uživatele u každého cviku —
+  // stejný zdroj jako v appce (poslední řádek workout_session_sets cviku;
+  // RLS omezuje na vlastní tréninky).
+  const lastWeightByExercise: Record<string, number> = {};
+  await Promise.all(
+    [...new Set(dayRows.map((e: DB) => e.exercise_id as string))].map(async (exerciseId) => {
+      const { data: lastSet } = await supabase
+        .from("workout_session_sets")
+        .select("weight_kg")
+        .eq("exercise_id", exerciseId)
+        .not("weight_kg", "is", null)
+        .gt("weight_kg", 0)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastSet?.weight_kg) lastWeightByExercise[exerciseId] = Number(lastSet.weight_kg);
+    }),
+  );
+
+  const dayExercises = dayRows
     .map((e: DB) => {
       const key = `${e.day_letter}:${e.slot_order}`;
       const joined = e.exercises as Record<string, unknown> | null;
@@ -168,7 +188,7 @@ const loadPlanContext = async (
         repMin: (e.rep_min as number) || 8,
         repMax: (e.rep_max as number) || 12,
         rir,
-        targetWeight: null,
+        targetWeight: lastWeightByExercise[e.exercise_id as string] ?? null,
         restSeconds: getRestSecondsForCategory(plan.goal_id as string, slotCategory),
         isCardio: false,
         durationSeconds: null,
