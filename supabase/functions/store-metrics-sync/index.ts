@@ -249,7 +249,10 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const days = daysBack(BACKFILL_DAYS);
+  // Jednorázový historický backfill: {"days": 120} v těle. Default drží cron.
+  const body = await req.json().catch(() => ({}));
+  const backfill = Math.min(Math.max(parseInt(body?.days, 10) || BACKFILL_DAYS, 1), 365);
+  const days = daysBack(backfill);
   const errors: string[] = [];
   // deno-lint-ignore no-explicit-any
   const rows = new Map<string, any>();
