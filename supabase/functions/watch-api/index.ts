@@ -79,12 +79,16 @@ const loadPlanContext = async (
 
   let currentDayIndex = profile?.current_day_index ?? 0;
 
-  const { data: exercises } = await supabase
+  // Pozor: sloupce vyjmenovávat jen ty, které existují — chybný název položí
+  // celý dotaz a bez logu by to vypadalo jako prázdný plán (slot_category
+  // v téhle tabulce NENÍ, bere se ze šablon dne).
+  const { data: exercises, error: exercisesError } = await supabase
     .from("user_workout_exercises")
-    .select("id, day_letter, slot_order, role_id, exercise_id, sets, rep_min, rep_max, slot_category, exercises (id, name, name_en, video_path)")
+    .select("id, day_letter, slot_order, role_id, exercise_id, sets, rep_min, rep_max, exercises (id, name, name_en, video_path)")
     .eq("plan_id", plan.id)
     .order("day_letter")
     .order("slot_order");
+  if (exercisesError) console.error("user_workout_exercises query failed", exercisesError);
 
   const rows = exercises ?? [];
   const dayCount = new Set(rows.map((e: DB) => e.day_letter as string)).size
@@ -153,7 +157,7 @@ const loadPlanContext = async (
     .map((e: DB) => {
       const key = `${e.day_letter}:${e.slot_order}`;
       const joined = e.exercises as Record<string, unknown> | null;
-      const slotCategory = (e.slot_category as string) || slotCategoryByKey[key] || null;
+      const slotCategory = slotCategoryByKey[key] || null;
       const rir = isDeloadWeek ? 5 : (rirByKey[key]?.max ?? rirByKey[key]?.min ?? null);
       return {
         exerciseId: e.exercise_id,
