@@ -310,6 +310,7 @@ export type Database = {
           id: string
           is_compound: boolean | null
           machine_id: string | null
+          owner_id: string | null
           name: string
           name_en: string | null
           primary_muscles: string[]
@@ -344,6 +345,7 @@ export type Database = {
           id?: string
           is_compound?: boolean | null
           machine_id?: string | null
+          owner_id?: string | null
           name: string
           name_en?: string | null
           primary_muscles?: string[]
@@ -378,6 +380,7 @@ export type Database = {
           id?: string
           is_compound?: boolean | null
           machine_id?: string | null
+          owner_id?: string | null
           name?: string
           name_en?: string | null
           primary_muscles?: string[]

@@ -77,6 +77,59 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
   const [selected, setSelected] = useState<Map<string, PickerExercise>>(new Map());
   const [sheet, setSheet] = useState<null | 'equipment' | 'muscle'>(null);
 
+  // Vlastní cvik (Daniel, 7. 8.): jméno + jednotky + partie. Ukládá se přímo do
+  // katalogu s owner_id — RLS ho ukáže jen majiteli, player i statistiky
+  // fungují beze změn.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [cName, setCName] = useState('');
+  const [cUnits, setCUnits] = useState<'weight_reps' | 'reps' | 'time_min'>('weight_reps');
+  const [cMuscle, setCMuscle] = useState<string>('chest');
+  const [cSaving, setCSaving] = useState(false);
+  const [cError, setCError] = useState('');
+
+  const MUSCLE_TO_CATEGORY: Record<string, string> = {
+    chest: 'chest', back: 'back', shoulders: 'shoulders',
+    biceps: 'arms', triceps: 'arms', arms: 'arms',
+    legs: 'legs', glutes: 'legs', calves: 'legs', core: 'core',
+  };
+
+  const createCustomExercise = async () => {
+    const name = cName.trim();
+    if (!name) return;
+    setCSaving(true); setCError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t('exercise_picker.custom_not_signed_in'));
+      const { data, error } = await supabase.from('exercises').insert({
+        name,
+        owner_id: user.id,
+        category: MUSCLE_TO_CATEGORY[cMuscle] ?? 'full_body',
+        primary_muscles: [t(`exercise_picker.muscle_${cMuscle}`)],
+        unit_type: cUnits === 'time_min' ? 'time_min' : 'reps',
+        exercise_with_weights: cUnits === 'weight_reps',
+        equipment_type: cUnits === 'weight_reps' ? 'free_weight' : 'bodyweight',
+        slot_type: 'main',
+        is_compound: false,
+      }).select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type, allowed_phase').single();
+      if (error) throw error;
+      const ex: PickerExercise = {
+        id: data.id, name: data.name, name_en: data.name_en ?? null,
+        primary_muscles: data.primary_muscles || [], primary_muscles_en: data.primary_muscles_en ?? null,
+        equipment_type: data.equipment_type ?? null, video_path: data.video_path ?? null,
+        category: data.category || '', machine_id: data.machine_id ?? null,
+        unit_type: data.unit_type || 'reps', allowed_phase: data.allowed_phase ?? null,
+      };
+      setAllExercises(prev => [...prev, ex].sort((a, b) => a.name.localeCompare(b.name)));
+      // Nový cvik rovnou vybrat — člověk ho vytvářel, protože ho chce přidat.
+      setSelected(prev => new Map(prev).set(ex.id, ex));
+      setCreateOpen(false); setCName('');
+    } catch (e) {
+      setCError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCSaving(false);
+    }
+  };
+
   // Exercise info sheet (opened by tapping the thumbnail). Details are fetched
   // on demand so the list query stays light.
   interface ExerciseInfo {
@@ -318,6 +371,53 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
 
         {/* Exercise list */}
         <div className="flex-1 overflow-y-auto px-4 pb-28 overscroll-contain">
+          {!createOpen ? (
+            <button
+              onClick={() => { setCreateOpen(true); if (query.trim()) setCName(query.trim()); }}
+              className="w-full mb-2 py-2.5 rounded-xl border border-dashed border-[#5BC8F5]/60 text-[#5BC8F5] text-sm font-medium"
+            >
+              + {t('exercise_picker.custom_create')}
+            </button>
+          ) : (
+            <div className="mb-3 p-3 rounded-xl border border-border bg-card space-y-3">
+              <input
+                value={cName}
+                onChange={(e) => setCName(e.target.value)}
+                placeholder={t('exercise_picker.custom_name_ph')}
+                className="w-full px-3 py-2 rounded-lg bg-muted text-sm outline-none"
+                autoFocus
+              />
+              <div className="flex gap-1.5">
+                {([['weight_reps', t('exercise_picker.custom_units_weight')], ['reps', t('exercise_picker.custom_units_reps')], ['time_min', t('exercise_picker.custom_units_time')]] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setCUnits(val)}
+                    className={cn('flex-1 py-2 rounded-lg text-xs font-medium border',
+                      cUnits === val ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-muted border-border text-muted-foreground')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {muscleGroups.map(g => (
+                  <button key={g.key} onClick={() => setCMuscle(g.key)}
+                    className={cn('px-2.5 py-1.5 rounded-lg text-xs font-medium border',
+                      cMuscle === g.key ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-muted border-border text-muted-foreground')}>
+                    {t(`exercise_picker.muscle_${g.key}`)}
+                  </button>
+                ))}
+              </div>
+              {cError && <p className="text-xs text-destructive">{cError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => { setCreateOpen(false); setCError(''); }}
+                  className="flex-1 py-2 rounded-lg text-sm text-muted-foreground bg-muted">
+                  {t('workout.cancel')}
+                </button>
+                <button onClick={createCustomExercise} disabled={cSaving || !cName.trim()}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-[#5BC8F5] disabled:opacity-50">
+                  {cSaving ? '…' : t('exercise_picker.custom_save')}
+                </button>
+              </div>
+            </div>
+          )}
           {loading && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.loading_exercises')}</div>}
           {!loading && filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.no_results')}</div>}
           <div className="space-y-1">
