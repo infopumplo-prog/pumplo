@@ -410,6 +410,10 @@ const en = {
   'workout.watch_workout_active': 'A workout is running on your watch. Finish it there, or end it on the watch first.',
 
   // Onboarding
+  'onboarding.split_title': 'Plan type (split)',
+  'onboarding.split_auto': 'Automatic ({{split}})',
+  'onboarding.split_auto_hint': 'We pick based on your days',
+  'onboarding.split_days_count': '{{n}} workout types',
   'onboarding.days_title': 'Which days do you usually train?',
   'onboarding.days_subtitle': 'Just your schedule for reminders.',
   'onboarding.demographics_title': 'About you',

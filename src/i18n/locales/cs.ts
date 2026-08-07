@@ -412,6 +412,10 @@ const cs = {
   'workout.watch_workout_active': 'Trénink běží na hodinkách. Dokonči ho tam, nebo ho na hodinkách ukonči.',
 
   // Onboarding
+  'onboarding.split_title': 'Typ plánu (split)',
+  'onboarding.split_auto': 'Automaticky ({{split}})',
+  'onboarding.split_auto_hint': 'Doporučíme podle počtu dnů',
+  'onboarding.split_days_count': '{{n}} typy tréninků',
   'onboarding.days_title': 'Ve které dny obvykle chodíš cvičit?',
   'onboarding.days_subtitle': 'Slouží jen jako tvůj rozvrh pro připomínky.',
   'onboarding.demographics_title': 'O tobě',

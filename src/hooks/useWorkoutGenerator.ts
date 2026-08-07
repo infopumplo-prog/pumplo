@@ -22,7 +22,8 @@ import {
   PlanInputsSnapshot,
   ValidationReport,
   SplitType,
-  getSplitFromFrequency
+  getSplitFromFrequency,
+  SplitType
 } from '@/lib/trainingGoals';
 import {
   SelectionContext,
@@ -495,12 +496,19 @@ export const useWorkoutGenerator = () => {
       const exerciseHistory = await fetchExerciseHistory(user.id, 7);
       console.log('[WorkoutGenerator v2.0] Exercise history entries:', exerciseHistory.size);
 
-      // Determine split type from frequency (not goal) per PUMPLO methodology
-      const splitType = getSplitFromFrequency(
+      // Split: user's manual choice wins; otherwise derived from frequency
+      // per PUMPLO methodology.
+      const { data: splitRow } = await supabase
+        .from('user_profiles')
+        .select('split_override')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const splitOverride = (splitRow?.split_override ?? null) as SplitType | null;
+      const splitType = splitOverride ?? getSplitFromFrequency(
         trainingDays.length > 0 ? trainingDays.length : 3, // Default to 3 days if not specified
         userLevel
       );
-      console.log('[WorkoutGenerator v2.0] Split type (from frequency):', splitType);
+      console.log('[WorkoutGenerator v2.0] Split type:', splitType, splitOverride ? '(manual override)' : '(from frequency)');
 
       // Fetch day templates by split type and goal
       const templates = await fetchDayTemplates(splitType, goalId);

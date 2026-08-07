@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, Target, Zap } from 'lucide-react';
-import { TrainingGoalId, UserLevel, getSplitFromFrequency, SPLIT_INFO, MVP_GOALS } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, resolveSplit, SplitType, SPLIT_INFO, MVP_GOALS } from '@/lib/trainingGoals';
 import { DAYS } from '@/lib/onboardingTypes';
 import { useTranslation } from 'react-i18next';
 
@@ -8,11 +8,12 @@ interface OnboardingOutcomeStepProps {
   goal: TrainingGoalId;
   level: UserLevel;
   trainingDays: string[];
+  splitOverride?: SplitType | null;
 }
 
-const OnboardingOutcomeStep = ({ goal, level, trainingDays }: OnboardingOutcomeStepProps) => {
+const OnboardingOutcomeStep = ({ goal, level, trainingDays, splitOverride }: OnboardingOutcomeStepProps) => {
   const { t } = useTranslation();
-  const split = getSplitFromFrequency(trainingDays.length, level);
+  const split = resolveSplit(trainingDays.length, level, splitOverride ?? null);
   const splitInfo = SPLIT_INFO[split];
   const goalInfo = MVP_GOALS.find(g => g.id === goal);
   const dayLabels = DAYS.filter(d => trainingDays.includes(d.id)).map(d => t(`onboarding.days_${d.id}`));

@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import pumploWordmark from '@/assets/pumplo-wordmark.png';
-import { TrainingGoalId, UserLevel, getSplitFromFrequency } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, SplitType, resolveSplit } from '@/lib/trainingGoals';
 import { ONBOARDING_TOTAL_STEPS, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {
   OnboardingGoalStep,
@@ -67,6 +67,8 @@ const Auth = () => {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  // Ruční volba splitu (Daniel, 7. 8.): null = automatika podle frekvence.
+  const [splitOverride, setSplitOverride] = useState<SplitType | null>(null);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   // Matches the 'register' default above: the trainer welcome is the first thing
   // a new install sees, not a screen you have to switch modes to reach.
@@ -100,6 +102,7 @@ const Auth = () => {
     setWeight(draft.weight);
     setInjuries(draft.injuries);
     setEquipmentPreference(draft.equipmentPreference);
+    setSplitOverride(draft.splitOverride ?? null);
     // A gym from a fresh QR scan wins over the one stored in the draft.
     setSelectedGymId(prev => prev ?? draft.selectedGymId);
 
@@ -177,6 +180,7 @@ const Auth = () => {
         firstName, lastName, regEmail,
         primaryGoal, userLevel, trainingDays, preferredTime, trainingDuration,
         gender, age, height, weight, injuries, equipmentPreference, selectedGymId,
+        splitOverride,
       });
 
       // 1. Register user - returns userId directly
@@ -211,8 +215,8 @@ const Auth = () => {
 
       // 3. Save onboarding data to profile (retry logic for race condition)
       const trainingSplit = trainingDays.length > 0 && userLevel
-        ? getSplitFromFrequency(trainingDays.length, userLevel)
-        : null;
+        ? resolveSplit(trainingDays.length, userLevel, splitOverride)
+        : splitOverride;
       
       let profileUpdateSuccess = false;
       let retries = 3;
@@ -236,6 +240,7 @@ const Auth = () => {
             equipment_preference: equipmentPreference,
             selected_gym_id: selectedGymId,
             training_split: trainingSplit,
+            split_override: splitOverride,
             onboarding_completed: true,
             current_step: ONBOARDING_TOTAL_STEPS,
             first_name: firstName,
@@ -403,7 +408,7 @@ const Auth = () => {
           if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
         }} />;
       case 2:
-        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
+        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} splitOverride={splitOverride} onSplitOverrideChange={setSplitOverride} userLevel={userLevel} />;
       case 3:
         return (
           <OnboardingTimeStep
@@ -804,7 +809,7 @@ const Auth = () => {
                         goal={primaryGoal!}
                         level={userLevel!}
                         trainingDays={trainingDays}
-                      />
+                       splitOverride={splitOverride} />
                     </motion.div>
                   </AnimatePresence>
                   <div className="flex gap-3 mt-6 pb-4">

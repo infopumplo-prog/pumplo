@@ -11,7 +11,7 @@
 // The draft is written before the account is created and cleared only once the
 // profile is confirmed, so the answers outlive every failure in between.
 
-import { TrainingGoalId, UserLevel } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, SplitType } from '@/lib/trainingGoals';
 
 const KEY = 'pumplo:onboarding-draft';
 
@@ -31,6 +31,7 @@ export interface OnboardingDraft {
   injuries: string[];
   equipmentPreference: string | null;
   selectedGymId: string | null;
+  splitOverride?: SplitType | null;
 }
 
 // Never persisted: the password. A draft is recoverable input, not a credential.

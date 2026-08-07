@@ -907,6 +907,7 @@ export type Database = {
           notification_morning_reminder: boolean | null
           notification_onboarding_shown: boolean | null
           onboarding_completed: boolean | null
+          split_override: string | null
           preferred_time: string | null
           primary_goal: string | null
           push_subscription: Json | null
@@ -945,6 +946,7 @@ export type Database = {
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
+          split_override?: string | null
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
@@ -983,6 +985,7 @@ export type Database = {
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
+          split_override?: string | null
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null

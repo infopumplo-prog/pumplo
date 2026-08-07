@@ -39,6 +39,16 @@ export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; day
  * @param userLevel - úroveň uživatele (beginner/intermediate/advanced)
  * @returns typ splitu (full_body/upper_lower/ppl)
  */
+/**
+ * Split s možností ručního přepsání: uživatel si může natvrdo vybrat
+ * full body / upper-lower / PPL; null = automatika podle frekvence.
+ */
+export const resolveSplit = (
+  frequency: number,
+  userLevel: UserLevel,
+  override: SplitType | null | undefined
+): SplitType => override ?? getSplitFromFrequency(frequency, userLevel);
+
 export const getSplitFromFrequency = (
   frequency: number, 
   userLevel: UserLevel
