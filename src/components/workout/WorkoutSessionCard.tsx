@@ -34,15 +34,19 @@ interface WorkoutSessionCardProps {
     total_weight_kg: number | null;
   };
   variant?: 'compact' | 'full';
+  titleOverride?: string;
+  hideStatsWhenCollapsed?: boolean;
 }
 
-export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSessionCardProps) => {
+export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, hideStatsWhenCollapsed = false }: WorkoutSessionCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
   const [isExpanded, setIsExpanded] = useState(false);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [isLoadingSets, setIsLoadingSets] = useState(false);
+  // exercise_name in sets is a Czech snapshot — live-resolve name_en for EN UI
+  const [nameEnMap, setNameEnMap] = useState<Record<string, string>>({});
 
   // Format day letter for display
   const isExtension = session.day_letter.includes('_EXT');
@@ -50,7 +54,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
     ? `${session.day_letter.replace('_EXT', '')}+` 
     : session.day_letter;
   const displayTitle = isExtension
-    ? `${isEn ? 'Day' : 'Den'} ${session.day_letter.replace('_EXT', '')} (${isEn ? 'extension' : 'rozšírenie'})`
+    ? `${isEn ? 'Day' : 'Den'} ${session.day_letter.replace('_EXT', '')} (${isEn ? 'extension' : 'rozšíření'})`
     : `${isEn ? 'Day' : 'Den'} ${session.day_letter}`;
 
   // Fetch sets when expanded
@@ -64,11 +68,26 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
           .from('workout_session_sets')
           .select('*')
           .eq('session_id', session.id)
+          // created_at is distinct per exercise (batched inserts) → chronological
+          // workout order; exercise_name keeps legacy same-timestamp rows grouped
+          .order('created_at', { ascending: true })
           .order('exercise_name', { ascending: true })
           .order('set_number', { ascending: true });
 
         if (!error && data) {
           setSets(data);
+          const ids = [...new Set(data.map(s => s.exercise_id).filter((id): id is string => !!id))];
+          if (ids.length > 0) {
+            const { data: exs } = await supabase
+              .from('exercises')
+              .select('id, name_en')
+              .in('id', ids);
+            if (exs) {
+              const map: Record<string, string> = {};
+              exs.forEach(e => { if (e.name_en) map[e.id] = e.name_en; });
+              setNameEnMap(map);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching sets:', err);
@@ -131,7 +150,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
               </span>
             </div>
             <div>
-              <p className="font-semibold text-foreground">{displayTitle}</p>
+              <p className="font-semibold text-foreground">{titleOverride ?? displayTitle}</p>
               <p className="text-sm text-muted-foreground">
                 {format(new Date(session.started_at), variant === 'compact' ? 'd.M.' : (isEn ? 'EEEE, MMMM d' : 'EEEE d. MMMM'), { locale: dateLocale })}
                 {variant === 'full' && ` • ${format(new Date(session.started_at), 'HH:mm')}`}
@@ -155,7 +174,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
         </div>
 
         {/* Stats Row - compact version */}
-        {variant === 'compact' && (
+        {variant === 'compact' && !hideStatsWhenCollapsed && (
           <div className="grid grid-cols-3 gap-2 text-sm mt-3">
             <div className="text-center">
               <p className="font-semibold text-foreground">{durationMinutes} min</p>
@@ -235,7 +254,7 @@ export const WorkoutSessionCard = ({ session, variant = 'full' }: WorkoutSession
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
-                                <p className="font-medium text-sm">{group.exerciseName}</p>
+                                <p className="font-medium text-sm">{(isEn && group.exerciseId && nameEnMap[group.exerciseId]) || group.exerciseName}</p>
                                 <p className="text-xs text-muted-foreground">
                                   {completedSets.length} {t('workout.sets_count')} • {totalReps} {t('workout.reps_count')}
                                   {maxWeight > 0 && ` • max ${maxWeight} kg`}

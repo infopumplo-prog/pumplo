@@ -28,7 +28,17 @@ interface ExerciseDetail {
   equipment_type: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en: string[] | null;
+  secondary_muscles_en: string[] | null;
   difficulty: number | null;
+  description: string | null;
+  description_en: string | null;
+  setup_instructions: string | null;
+  setup_instructions_en: string | null;
+  common_mistakes: string | null;
+  common_mistakes_en: string | null;
+  tips: string | null;
+  tips_en: string | null;
 }
 
 interface WorkoutPreviewProps {
@@ -83,7 +93,7 @@ export const WorkoutPreview = ({
     setSignedDetailVideoUrl(null);
     supabase
       .from('exercises')
-      .select('video_path, category, equipment_type, primary_muscles, secondary_muscles, difficulty')
+      .select('video_path, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, difficulty, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
       .eq('id', selectedExercise.exerciseId)
       .single()
       .then(({ data }) => {
@@ -115,7 +125,7 @@ export const WorkoutPreview = ({
 
       let query = supabase
         .from('exercises')
-        .select('id, name, primary_role, machine_id, equipment_type, category')
+        .select('id, name, name_en, primary_role, machine_id, equipment_type, category')
         .eq('allowed_phase', 'main');
 
       if (isCardio) {
@@ -144,13 +154,15 @@ export const WorkoutPreview = ({
       const pick = valid[Math.floor(Math.random() * valid.length)];
 
       let newMachineName: string | null = null;
+      let newMachineNameEn: string | null = null;
       if (pick.machine_id) {
         const { data: machine } = await supabase
           .from('machines')
-          .select('name')
+          .select('name, name_en')
           .eq('id', pick.machine_id)
           .single();
         newMachineName = machine?.name || null;
+        newMachineNameEn = (machine as Record<string, unknown> | null)?.name_en as string | null || null;
       }
 
       // Update DB
@@ -173,7 +185,12 @@ export const WorkoutPreview = ({
         ...exercise,
         exerciseId: pick.id,
         exerciseName: pick.name,
+        // Localized fields MUST follow the new exercise — keeping the old
+        // exerciseNameEn made EN-mode users see the old exercise's name while
+        // the video already showed the new one (bug D2).
+        exerciseNameEn: (pick as Record<string, unknown>).name_en as string | null || null,
         machineName: newMachineName,
+        machineNameEn: newMachineNameEn,
         isFallback: true,
         fallbackReason: 'user_swap',
       };
@@ -263,7 +280,7 @@ export const WorkoutPreview = ({
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <p className={`font-medium text-sm truncate ${!ex.exerciseName ? 'text-muted-foreground italic' : ''}`}>
-                    {ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
+                    {((isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName) || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
                   </p>
                   {ex.slotCategory && SLOT_CATEGORY_LABELS[ex.slotCategory] && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${SLOT_CATEGORY_LABELS[ex.slotCategory].color}`}>
@@ -339,9 +356,9 @@ export const WorkoutPreview = ({
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>{selectedExercise?.exerciseName || t('workout.exercise_label')}</DrawerTitle>
+            <DrawerTitle>{((isEn && selectedExercise?.exerciseNameEn) ? selectedExercise.exerciseNameEn : selectedExercise?.exerciseName) || t('workout.exercise_label')}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             {signedDetailVideoUrl ? (
               <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
                 <video
@@ -375,27 +392,73 @@ export const WorkoutPreview = ({
                   </span>
                 )}
 
-                {exerciseDetail?.primary_muscles && exerciseDetail.primary_muscles.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.primary_muscles.map((m) => (
-                        <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{m}</span>
-                      ))}
+                {(() => {
+                  const primary = isEn && exerciseDetail?.primary_muscles_en?.length ? exerciseDetail.primary_muscles_en : exerciseDetail?.primary_muscles;
+                  return primary && primary.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {primary.map((m) => (
+                          <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{m}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
 
-                {exerciseDetail?.secondary_muscles && exerciseDetail.secondary_muscles.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.secondary_muscles.map((m) => (
-                        <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
-                      ))}
+                {(() => {
+                  const secondary = isEn && exerciseDetail?.secondary_muscles_en?.length ? exerciseDetail.secondary_muscles_en : exerciseDetail?.secondary_muscles;
+                  return secondary && secondary.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {secondary.map((m) => (
+                          <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const desc = isEn && exerciseDetail?.description_en ? exerciseDetail.description_en : exerciseDetail?.description;
+                  return desc ? (
+                    <div className="p-3 bg-muted/50 rounded-xl">
+                      <p className="text-xs font-semibold text-foreground mb-1">{t('workout.description_technique')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{desc}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const setup = isEn && exerciseDetail?.setup_instructions_en ? exerciseDetail.setup_instructions_en : exerciseDetail?.setup_instructions;
+                  return setup ? (
+                    <div>
+                      <p className="text-xs font-semibold text-foreground mb-1">{t('workout.setup')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{setup}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const mistakes = isEn && exerciseDetail?.common_mistakes_en ? exerciseDetail.common_mistakes_en : exerciseDetail?.common_mistakes;
+                  return mistakes ? (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-600 mb-1">{t('workout.common_mistakes')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{mistakes}</p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const tipsText = isEn && exerciseDetail?.tips_en ? exerciseDetail.tips_en : exerciseDetail?.tips;
+                  return tipsText ? (
+                    <div>
+                      <p className="text-xs font-semibold text-green-600 mb-1">{t('workout.tips')}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tipsText}</p>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             )}
           </div>

@@ -34,8 +34,11 @@ export interface UserProfile {
   notification_morning_reminder: boolean;
   notification_missed_workout: boolean;
   notification_closing_soon: boolean;
+  notification_comeback: boolean;
   notification_onboarding_shown: boolean;
+  is_staff: boolean;
   push_subscription: Record<string, unknown> | null;
+  language: 'cs' | 'en' | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -75,6 +78,12 @@ export const useUserProfile = () => {
       }
     } else {
       setProfile(data as UserProfile);
+      // Backfill the persisted language for push localization: if the DB value
+      // is missing or out of sync with the user's local choice, push it up.
+      const localLang = (localStorage.getItem('pumplo_lang') as 'cs' | 'en' | null) || 'cs';
+      if ((data as UserProfile).language !== localLang) {
+        supabase.from('user_profiles').update({ language: localLang }).eq('user_id', user.id);
+      }
     }
     setIsLoading(false);
   };

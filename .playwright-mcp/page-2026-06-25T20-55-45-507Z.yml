@@ -1,0 +1,88 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "MámOkno" [ref=e29] [cursor=pointer]:
+          - /url: /
+        - button "Přepnout organizaci" [ref=e9] [cursor=pointer]:
+          - img [ref=e10]
+      - button "Upozornění" [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - link "← Zpět na úkoly" [ref=e116] [cursor=pointer]:
+          - /url: /tasks
+        - generic [ref=e117]:
+          - heading "Ahoj, test zprávy z prohlížeče 👋" [level=1] [ref=e118]
+          - button "Upravit" [ref=e119] [cursor=pointer]
+        - generic [ref=e120]:
+          - heading "Podrobnosti" [level=2] [ref=e121]
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - term [ref=e124]: Stav
+              - definition [ref=e125]:
+                - combobox [ref=e126]:
+                  - option "Nový" [selected]
+                  - option "V řešení"
+                  - option "Čeká se"
+                  - option "Hotovo"
+                  - option "Zrušeno"
+            - generic [ref=e127]:
+              - term [ref=e128]: Priorita
+              - definition [ref=e129]:
+                - generic [ref=e130]: Vysoká
+            - generic [ref=e131]:
+              - term [ref=e132]: Zodpovědná osoba
+              - definition [ref=e133]: David Novotný
+            - generic [ref=e134]:
+              - term [ref=e135]: Vytvořil/a
+              - definition [ref=e136]: David Novotný
+            - generic [ref=e137]:
+              - term [ref=e138]: Vytvořeno
+              - definition [ref=e139]: 25.06.2026 12:08
+            - generic [ref=e140]:
+              - term [ref=e141]: Klient
+              - definition [ref=e142]: Jan Novák (upd)
+            - generic [ref=e143]:
+              - term [ref=e144]: Kód zakázky
+              - definition [ref=e145]: ZAK-2026-001
+            - generic [ref=e146]:
+              - term [ref=e147]: Napojená zakázka
+              - definition [ref=e148]: ZAK-2026-001 · Jan Novák (upd) · Hlavní 12, Ostrava
+            - generic [ref=e149]:
+              - term [ref=e150]: Druh
+              - definition [ref=e151]:
+                - generic [ref=e152]: reklamace
+          - generic [ref=e153]:
+            - paragraph [ref=e154]: Popis
+            - paragraph [ref=e155]: Ahoj, test zprávy z prohlížeče 👋
+        - generic [ref=e156]:
+          - heading "Původní zpráva" [level=2] [ref=e157]
+          - paragraph [ref=e158]: David Novotný · 25.06.2026 10:34
+          - paragraph [ref=e159]: Ahoj, test zprávy z prohlížeče 👋
+          - button "Přejít na zprávu" [ref=e160] [cursor=pointer]
+        - generic [ref=e161]:
+          - heading "Komentáře" [level=2] [ref=e162]
+          - paragraph [ref=e163]: Zatím žádné komentáře.
+          - generic [ref=e164]:
+            - textbox "Napište komentář…" [ref=e165]
+            - button "Přidat komentář" [ref=e166] [cursor=pointer]
+        - generic [ref=e167]:
+          - heading "Historie" [level=2] [ref=e168]
+          - list [ref=e169]:
+            - listitem [ref=e170]:
+              - text: Přiřazení změněno
+              - generic [ref=e171]: — David Novotný · 25.06.2026 22:55
+  - navigation [ref=e20]:
+    - link "Chaty" [ref=e21] [cursor=pointer]:
+      - /url: /
+      - img [ref=e22]
+      - generic [ref=e24]: Chaty
+    - link "Úkoly" [ref=e25] [cursor=pointer]:
+      - /url: /tasks
+      - img [ref=e26]
+      - generic [ref=e28]: Úkoly
+    - link "Admin" [ref=e111] [cursor=pointer]:
+      - /url: /admin/users
+      - img [ref=e112]
+      - generic [ref=e115]: Admin

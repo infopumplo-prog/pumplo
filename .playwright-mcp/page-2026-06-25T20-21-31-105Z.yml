@@ -1,0 +1,48 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "Organizace" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - button "Přepnout organizaci" [ref=e9] [cursor=pointer]:
+          - img [ref=e10]
+      - button "Upozornění" [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+    - main [ref=e17]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Ahoj, vítej 👋" [level=1] [ref=e22]
+            - paragraph
+          - button "Odhlásit" [ref=e23] [cursor=pointer]
+        - generic [ref=e24]:
+          - link "0 Otevřené" [ref=e25] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e26]: "0"
+            - paragraph [ref=e27]: Otevřené
+          - link "0 Urgentní" [ref=e28] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e29]: "0"
+            - paragraph [ref=e30]: Urgentní
+          - link "0 Po termínu" [ref=e31] [cursor=pointer]:
+            - /url: /tasks
+            - paragraph [ref=e32]: "0"
+            - paragraph [ref=e33]: Po termínu
+        - generic [ref=e35]:
+          - heading "Upozornění" [level=2] [ref=e36]
+          - paragraph [ref=e37]: Push upozornění na přiřazené, urgentní a po termínu úkoly.
+          - button "Zapnout upozornění" [ref=e40] [cursor=pointer]
+        - generic [ref=e41]:
+          - heading "Chaty" [level=2] [ref=e42]
+          - link "Úkoly →" [ref=e43] [cursor=pointer]:
+            - /url: /tasks
+        - paragraph [ref=e44]: Načítání…
+  - navigation [ref=e45]:
+    - link "Chaty" [ref=e46] [cursor=pointer]:
+      - /url: /
+      - img [ref=e47]
+      - generic [ref=e49]: Chaty
+    - link "Úkoly" [ref=e50] [cursor=pointer]:
+      - /url: /tasks
+      - img [ref=e51]
+      - generic [ref=e53]: Úkoly

@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
-import { StatusBar, Style } from "@capacitor/status-bar";
+import { StatusBar } from "@capacitor/status-bar";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -53,8 +54,13 @@ import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
 import ResetPassword from "@/pages/ResetPassword";
+import { usePushRegistration } from "@/hooks/usePushRegistration";
+import { usePushNavigation } from "@/hooks/usePushNavigation";
+import { flushWorkoutSaveQueue } from "@/lib/workoutSaveQueue";
+import WebGate from "@/components/WebGate";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
+const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
 
 // Handles com.pumplo.app://plan/{token} deep links
 const PlanDeepLinkNavigator = () => {
@@ -167,21 +173,71 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading: authLoading, isRegistering } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
 
-  if (authLoading || roleLoading || isRegistering) {
+  if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
 
-  if (user) {
+  // Během registrace se `user` objeví dřív, než je hotový profil a plán —
+  // přesměrování domů musí počkat. Formulář ale musí zůstat namontovaný:
+  // výměna za spinner by zahodila stav dotazníku i chybovou hlášku.
+  if (user && !isRegistering) {
     return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 };
 
-const AppRoutes = () => (
+// Retries workout saves that failed offline (F1): on app start, on native
+// resume, and when the network comes back.
+const SaveQueueFlusher = () => {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    flushWorkoutSaveQueue();
+    const retry = () => { flushWorkoutSaveQueue(); };
+    window.addEventListener('online', retry);
+    let listener: Promise<{ remove: () => void }> | null = null;
+    if (Capacitor.isNativePlatform()) {
+      listener = CapApp.addListener('resume', retry);
+    }
+    return () => {
+      window.removeEventListener('online', retry);
+      listener?.then(h => h.remove());
+    };
+  }, [user]);
+  return null;
+};
+
+// Gym data (pricing, opening hours, photos) is edited in the admin app, so a phone that has been
+// sitting in the background would otherwise keep showing whatever it cached. Refetch on resume and
+// when the network comes back.
+const GymDataRefresher = () => {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () => { queryClient.invalidateQueries({ queryKey: ['published-gyms'] }); };
+    window.addEventListener('online', refresh);
+    let listener: Promise<{ remove: () => void }> | null = null;
+    if (Capacitor.isNativePlatform()) {
+      listener = CapApp.addListener('resume', refresh);
+    }
+    return () => {
+      window.removeEventListener('online', refresh);
+      listener?.then(h => h.remove());
+    };
+  }, [queryClient]);
+  return null;
+};
+
+const AppRoutes = () => {
+  usePushRegistration();
+  usePushNavigation();
+  return (
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+    <SaveQueueFlusher />
+    <GymDataRefresher />
+  <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/reset-password" element={<ResetPassword />} />
@@ -189,6 +245,15 @@ const AppRoutes = () => (
     <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
+    <Route path="/go/:code" element={
+      <Suspense fallback={
+        <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+        </div>
+      }>
+        <FlyerLanding />
+      </Suspense>
+    } />
     <Route path="/s/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
@@ -222,8 +287,10 @@ const AppRoutes = () => (
     {/* Fallback */}
     <Route path="*" element={<NotFound />} />
   </Routes>
+  </WebGate>
   </>
-);
+  );
+};
 
 const App = () => {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
@@ -235,7 +302,7 @@ const App = () => {
 
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: true });
-      StatusBar.setStyle({ style: Style.Dark });
+      // Styl textu status baru řídí ThemeProvider podle aktivního tématu.
     }
   }, []);
 
@@ -252,6 +319,7 @@ const App = () => {
 
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           {showUpdateBanner && <UpdateBanner onUpdate={handleUpdate} />}
@@ -264,6 +332,7 @@ const App = () => {
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };

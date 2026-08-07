@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -6,6 +6,9 @@ import { Browser } from '@capacitor/browser';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from '@/integrations/supabase/client';
+import { updateWatchAuth } from '@/lib/watchWorkout';
+import { createRegistrationLock } from '@/lib/registrationLock';
+import { signUpErrorMessage } from '@/lib/authErrors';
 
 interface AuthContextType {
   user: User | null;
@@ -24,19 +27,51 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Předání relace hodinkám pro samostatný režim. Nesmí nikdy shodit přihlášení
+// v telefonu — nespárované hodinky ani chybějící plugin nejsou chyba.
+// Export kvůli useWatchMenu: hodinky si o relaci umí říct akcí requestAuth.
+export const pushSessionToWatch = async (session: Session | null): Promise<void> => {
+  try {
+    if (!session?.access_token || !session.refresh_token || !session.user?.id) {
+      await updateWatchAuth(null);
+      return;
+    }
+    await updateWatchAuth({
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      // Supabase dává expires_at v sekundách; když chybí, dopočítáme z expires_in.
+      expiresAt: session.expires_at ?? (Date.now() / 1000 + (session.expires_in ?? 3600)),
+      userId: session.user.id,
+    });
+  } catch { /* hodinky nejsou povinné */ }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegisteringState] = useState(false);
   const [pendingPasswordReset, setPendingPasswordReset] = useState(false);
   const clearPasswordReset = () => setPendingPasswordReset(false);
+
+  // Zámek se pustí sám i tehdy, když ho volající zapomene uvolnit — uživatel
+  // nikdy nesmí zůstat na nekonečném spinneru místo přihlašovací obrazovky.
+  const registrationLock = useMemo(
+    () => createRegistrationLock(setIsRegisteringState),
+    [],
+  );
+  useEffect(() => registrationLock.dispose, [registrationLock]);
+  const setIsRegistering = (value: boolean) =>
+    value ? registrationLock.acquire() : registrationLock.release();
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
+        // Hodinky si drží vlastní přihlášení — posíláme jim ho při každé změně
+        // relace, aby nikdy nedržely mrtvý token, dokud je telefon po ruce.
+        void pushSessionToWatch(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
         if (event === 'PASSWORD_RECOVERY') {
@@ -48,6 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      void pushSessionToWatch(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
@@ -101,8 +137,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    const { data, error } = await supabase.auth.signUp({
+
+    // Never hang the registration spinner forever: if the network (or the
+    // auth client's internal lock) stalls, surface an error after 20 s.
+    const signUpPromise = supabase.auth.signUp({
       email,
       password,
       options: {
@@ -113,15 +151,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       },
     });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('signup_timeout')), 20000));
+
+    let data, error;
+    try {
+      ({ data, error } = await Promise.race([signUpPromise, timeout]));
+    } catch (e) {
+      if (e instanceof Error && e.message === 'signup_timeout') {
+        return { success: false, error: 'Registrace vypršela — zkontroluj připojení k internetu a zkus to znovu.' };
+      }
+      return { success: false, error: e instanceof Error ? e.message : 'Registrace selhala' };
+    }
 
     if (error) {
-      if (error.message.includes('User already registered')) {
-        return { success: false, error: 'Uživatel s tímto emailem již existuje' };
-      }
-      if (error.message.includes('Password should be at least 6 characters')) {
-        return { success: false, error: 'Heslo musí mít alespoň 6 znaků' };
-      }
-      return { success: false, error: error.message };
+      return { success: false, error: signUpErrorMessage(error) };
     }
 
     // Return userId for immediate use (no need to call getUser separately)
@@ -185,6 +229,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           token: result.response.identityToken,
         });
         if (error) return { success: false, error: error.message };
+        // Apple sends the name ONLY with the very first authorization — the ID
+        // token never carries it, so this is the single chance to store it.
+        try {
+          const given = result.response.givenName?.trim();
+          const family = result.response.familyName?.trim();
+          if (given || family) {
+            const { data: { user: u } } = await supabase.auth.getUser();
+            if (u) {
+              const { data: prof } = await supabase
+                .from('user_profiles').select('first_name, last_name')
+                .eq('user_id', u.id).maybeSingle();
+              if (prof && !prof.first_name && !prof.last_name) {
+                await supabase.from('user_profiles')
+                  .update({ first_name: given || null, last_name: family || null })
+                  .eq('user_id', u.id);
+              }
+            }
+          }
+        } catch { /* jméno navíc nesmí shodit login */ }
         return { success: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Apple přihlášení selhalo';

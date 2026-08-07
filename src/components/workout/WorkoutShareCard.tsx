@@ -8,9 +8,12 @@ import { format } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { estimateCalories } from '@/lib/calorieEstimation';
+import { localizeDayName } from '@/lib/dayNames';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { isInstagramInstalled, shareToInstagramStories } from '@/lib/instagramShare';
+import { MuscleBodySvg } from './MuscleBodySvg';
 
 interface ExerciseDetail { name: string; nameEn?: string | null; sets: { weight: number; reps: number }[]; isCardio?: boolean }
 
@@ -18,6 +21,7 @@ interface WorkoutShareCardProps {
   dayLetter: string; dayName?: string; goalId: string; gymName: string; gymInstagram?: string | null;
   totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
+  muscleIntensities?: Record<string, number>;
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
   onAbandon?: () => void; abandonDescription?: string;
 }
@@ -195,12 +199,63 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
   );
 };
 
+// 6. Muscle map — front + back body figures with highlighted groups
+const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform, exercisesLabel, repsLabel, muscles, musclesTitle }: TProps & { muscles: Record<string, number>; musclesTitle: string }) => (
+  <>
+    <BG photo={photo} gradient="linear-gradient(135deg, #0B1222 0%, #16213e 100%)" />
+    <Overlay photo={photo} />
+    <Center>
+      <Draggable transform={transform}>
+        <div className="rounded-2xl px-5 py-4 mb-3" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>{musclesTitle}</p>
+          <div className="flex justify-center gap-6">
+            <MuscleBodySvg intensities={muscles} side="front" width={104} dark />
+            <MuscleBodySvg intensities={muscles} side="back" width={104} dark />
+          </div>
+        </div>
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
+      </Draggable>
+    </Center>
+  </>
+);
+
+// 7. Fun fact — total volume compared to a real-world thing (Hevy elephant)
+const FUNFACT_TIERS: { min: number; key: string; emoji: string }[] = [
+  { min: 30000, key: 'whale', emoji: '🐋' },
+  { min: 12000, key: 'bus', emoji: '🚌' },
+  { min: 6000, key: 'elephant', emoji: '🐘' },
+  { min: 3000, key: 'rhino', emoji: '🦏' },
+  { min: 1500, key: 'car', emoji: '🚗' },
+  { min: 700, key: 'horse', emoji: '🐎' },
+  { min: 200, key: 'motorbike', emoji: '🏍️' },
+  { min: 50, key: 'dog', emoji: '🐕' },
+];
+const funFactTier = (kg: number) => FUNFACT_TIERS.find(tier => kg >= tier.min) ?? null;
+
+const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, emoji }: TProps & { totalKg: number; liftedLabel: string; factText: string; emoji: string }) => (
+  <>
+    <BG photo={photo} gradient="linear-gradient(160deg, #0B1222 0%, #0f3460 100%)" />
+    <Overlay photo={photo} />
+    <Center>
+      <Draggable transform={transform}>
+        <div className="rounded-2xl px-6 py-6 mb-3 text-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '4px' }}>{liftedLabel}</p>
+          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString('cs')} kg</p>
+          <p style={{ color: '#4CC9FF', fontSize: '15px', fontWeight: 600, marginTop: '8px' }}>{factText}</p>
+          <p style={{ fontSize: '72px', lineHeight: 1.3 }}>{emoji}</p>
+        </div>
+        <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
+      </Draggable>
+    </Center>
+  </>
+);
+
 // ===== SHARED PARTS =====
 interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string; exercisesLabel: string; repsLabel: string; setsLabel: string; isEn: boolean }
 
 const BG = ({ photo, gradient }: { photo: string | null; gradient: string }) => (
   <>
-    {photo ? <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
+    {photo ? <img data-share-photo src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
       : <div className="absolute inset-0" style={{ background: gradient }} />}
   </>
 );
@@ -245,12 +300,10 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
   </div>
 );
 
-const TEMPLATE_NAMES = ['Dark', 'Minimal', 'Bold', 'Cviky', 'Detail'];
-
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
+  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
 }: WorkoutShareCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -264,6 +317,12 @@ export const WorkoutShareCard = ({
   const { profile } = useUserProfile();
   const [templateIndex, setTemplateIndex] = useState(0);
   const [selectedEx, setSelectedEx] = useState(0);
+  // Template count lives in a ref so the (stable) native touch handlers always
+  // cycle over the CURRENT template list length.
+  const templateCountRef = useRef(5);
+  const [igInstalled, setIgInstalled] = useState(false);
+
+  useEffect(() => { isInstagramInstalled().then(setIgInstalled); }, []);
 
   // Drag + pinch
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -277,14 +336,68 @@ export const WorkoutShareCard = ({
   const genImg = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
     try {
-      const c = await html2canvas(cardRef.current, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#000', logging: false });
-      const blob = await new Promise<Blob | null>(r => c.toBlob(b => r(b), 'image/png', 1.0));
-      // Free the large canvas bitmap immediately to prevent WebKit libpas heap crash
+      // html2canvas (1.4.1) does NOT honour `object-fit: cover` on <img>, so it
+      // stretches the user photo to the card box. We therefore HIDE the photo
+      // during capture (transparent background), draw it ourselves with proper
+      // cover-fit below, and layer the captured UI (cards/overlay/text) on top.
+      const cardEl = cardRef.current;
+      const photoEl = cardEl.querySelector('img[data-share-photo]') as HTMLImageElement | null;
+      const prevVis = photoEl?.style.visibility ?? '';
+      const prevBg = cardEl.style.background;
+      // Hide the photo AND make the card's own black background transparent, so
+      // the captured layer is transparent where the photo sits (the card el has
+      // `background:#000`, which would otherwise capture as opaque and hide the
+      // manually-drawn photo).
+      if (photoEl) photoEl.style.visibility = 'hidden';
+      cardEl.style.background = 'transparent';
+      const c = await html2canvas(cardEl, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: null, logging: false });
+      if (photoEl) photoEl.style.visibility = prevVis;
+      cardEl.style.background = prevBg;
+
+      // Load the user photo as a bitmap for manual cover-fit drawing.
+      let photoImg: HTMLImageElement | null = null;
+      if (userPhoto) {
+        photoImg = await new Promise<HTMLImageElement | null>(res => {
+          const im = new Image();
+          im.onload = () => res(im); im.onerror = () => res(null);
+          im.src = userPhoto;
+        });
+      }
+
+      // Cover-fit helper: scales source uniformly to fill W×H, centred, cropping
+      // overflow. Uniform scale = never stretches.
+      const cover = (ctx: CanvasRenderingContext2D, src: CanvasImageSource, sw: number, sh: number, W: number, H: number) => {
+        const sAR = sw / sh, tAR = W / H;
+        let dw: number, dh: number, dx: number, dy: number;
+        if (sAR > tAR) { dh = H; dw = H * sAR; dx = (W - dw) / 2; dy = 0; }
+        else { dw = W; dh = W / sAR; dx = 0; dy = (H - dh) / 2; }
+        ctx.drawImage(src, dx, dy, dw, dh);
+      };
+
+      // Composite onto a fixed 9:16 (1080×1920) canvas: black base → photo
+      // (cover) → captured UI overlay (cover). Guarantees a true 9:16 output
+      // with no distortion regardless of the preview box size.
+      const TW = 1080, TH = 1920;
+      const out = document.createElement('canvas');
+      out.width = TW; out.height = TH;
+      const ctx = out.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, TW, TH);
+        if (photoImg) cover(ctx, photoImg, photoImg.naturalWidth, photoImg.naturalHeight, TW, TH);
+        cover(ctx, c, c.width, c.height, TW, TH);
+      }
+      // Free the large source bitmap immediately to prevent WebKit libpas heap crash
       c.width = 0;
       c.height = 0;
+      // Export JPEG (not PNG): JPEG has no alpha channel, so the story
+      // background is guaranteed fully opaque. A transparent PNG made
+      // Instagram show the live camera through the card (sticker-like look).
+      const blob = await new Promise<Blob | null>(r => out.toBlob(b => r(b), 'image/jpeg', 0.95));
+      out.width = 0; out.height = 0;
       return blob;
     } catch { return null; }
-  }, []);
+  }, [userPhoto]);
 
   // Native touch listeners with { passive: false } to actually prevent browser zoom/scroll
   const posRef = useRef(pos);
@@ -338,7 +451,7 @@ export const WorkoutShareCard = ({
 
       if (wasTap) {
         // Tap = cycle to next template
-        setTemplateIndex(i => (i + 1) % TEMPLATE_NAMES.length);
+        setTemplateIndex(i => (i + 1) % templateCountRef.current);
       }
 
       cachedBlobRef.current = null; setImageReady(false);
@@ -359,7 +472,7 @@ export const WorkoutShareCard = ({
   }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
-  const title = isBonus ? t('workout_share.bonus_workout') : dayName || `Den ${dayLetter.replace('_EXT', '+')}`;
+  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || `Den ${dayLetter.replace('_EXT', '+')}`);
   const today = new Date();
   const dateStr = format(today, 'd. MMMM yyyy', { locale: isEn ? enUS : cs });
 
@@ -385,19 +498,35 @@ export const WorkoutShareCard = ({
 
   const b2b = (blob: Blob): Promise<string> => new Promise((res, rej) => { const r = new FileReader(); r.onloadend = () => res((r.result as string).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
 
+  // Write the cached JPEG to the native cache and return its file URI.
+  const writeShareFile = useCallback(async (blob: Blob): Promise<string | null> => {
+    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.jpg`;
+    try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); return s.uri; }
+    catch { return null; }
+  }, [today]);
+
+  // Single "Share" (Strava-style): when Instagram is installed, hand the card
+  // straight to IG Stories as the BACKGROUND (native pasteboard / ADD_TO_STORY).
+  // Otherwise fall back to the generic share sheet (feed/WhatsApp/save/web).
   const handleShare = useCallback(async () => {
     const blob = cachedBlobRef.current; if (!blob) return;
-    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.png`;
+    const fn = `pumplo-trenink-${format(today, 'yyyy-MM-dd')}.jpg`;
     const igTag = gymInstagram ? ` @${gymInstagram}` : '';
     const txt = `${title} ${t('workout_share.completed')} ${Math.round(totalWeight)} kg | ${totalSets} ${t('workout_share.sets_unit')} | ${totalDuration} min${igTag}`;
     if (Capacitor.isNativePlatform()) {
-      try { const b64 = await b2b(blob); const s = await Filesystem.writeFile({ path: fn, data: b64, directory: Directory.Cache }); await Share.share({ title: t('workout_share.share_title'), text: txt, url: s.uri, dialogTitle: t('workout_share.share_dialog') }); return; }
-      catch (e) { if ((e as Error).message?.includes('canceled')) return; }
+      const uri = await writeShareFile(blob);
+      if (uri) {
+        // IG installed → Story background (opaque JPEG, no sticker, no camera).
+        if (igInstalled && await shareToInstagramStories(uri)) return;
+        // Otherwise generic native share sheet.
+        try { await Share.share({ title: t('workout_share.share_title'), text: txt, files: [uri], dialogTitle: t('workout_share.share_dialog') }); return; }
+        catch (e) { if ((e as Error).message?.includes('canceled')) return; }
+      }
     }
-    const file = new File([blob], fn, { type: 'image/png' });
+    const file = new File([blob], fn, { type: 'image/jpeg' });
     if (navigator.share) { try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Pumplo', text: txt }); return; } } catch (e) { if ((e as Error).name === 'AbortError') return; } }
     const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = fn; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
-  }, [today, title, totalWeight, totalSets, totalDuration]);
+  }, [today, title, totalWeight, totalSets, totalDuration, gymInstagram, t, writeShareFile, igInstalled]);
 
   const stats: Stat[] = [
     { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
@@ -409,16 +538,19 @@ export const WorkoutShareCard = ({
   const tf = `translate(${pos.x}px, ${pos.y}px) scale(${scale})`;
   const tp: TProps = { photo: userPhoto, title, gym: gymName, gymIg: gymInstagram || null, date: dateStr, exCount: exerciseCount, reps: totalReps, stats, transform: tf, exercisesLabel: t('workout_share.exercises_label'), repsLabel: t('workout_share.reps_abbr'), setsLabel: t('workout_share.sets_unit'), isEn };
 
-  const renderTemplate = () => {
-    switch (templateIndex) {
-      case 0: return <T_DarkBlur {...tp} />;
-      case 1: return <T_Minimal {...tp} />;
-      case 2: return <T_Bold {...tp} />;
-      case 3: return <T_ExerciseList {...tp} exercises={exerciseDetails} />;
-      case 4: return <T_SingleExercise {...tp} exercises={exerciseDetails} selectedEx={selectedEx} onSelectEx={setSelectedEx} />;
-      default: return <T_DarkBlur {...tp} />;
-    }
-  };
+  const fact = funFactTier(totalWeight);
+  const hasMuscles = !!muscleIntensities && Object.keys(muscleIntensities).length > 0;
+  const templates: (() => JSX.Element)[] = [
+    () => <T_DarkBlur {...tp} />,
+    () => <T_Minimal {...tp} />,
+    () => <T_Bold {...tp} />,
+    () => <T_ExerciseList {...tp} exercises={exerciseDetails} />,
+    () => <T_SingleExercise {...tp} exercises={exerciseDetails} selectedEx={selectedEx} onSelectEx={setSelectedEx} />,
+    ...(hasMuscles ? [() => <T_MuscleMap {...tp} muscles={muscleIntensities!} musclesTitle={t('workout_share.muscles_title')} />] : []),
+    ...(fact ? [() => <T_FunFact {...tp} totalKg={totalWeight} liftedLabel={t('workout_share.funfact_lifted')} factText={t(`workout_share.funfact_${fact.key}`)} emoji={fact.emoji} />] : []),
+  ];
+  templateCountRef.current = templates.length;
+  const renderTemplate = templates[templateIndex % templates.length];
 
 
   return (
@@ -481,7 +613,7 @@ export const WorkoutShareCard = ({
           className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
           style={{ height: '44px', background: '#4CC9FF', color: '#fff', fontSize: '15px', fontWeight: 600, border: 'none' }}>
           <Share2 className="w-4 h-4" />
-          {isGenerating ? t('workout.preparing') : imageReady ? t('workout.share') : t('workout.preparing')}
+          {(isGenerating || !imageReady) ? t('workout.preparing') : igInstalled ? t('workout.share_instagram') : t('workout.share')}
         </button>
         <button type="button" onClick={onFinish} disabled={isSaving || isGenerating}
           className="w-full flex items-center justify-center rounded-xl disabled:opacity-50"

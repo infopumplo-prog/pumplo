@@ -62,6 +62,7 @@ serve(async (req) => {
     step = "parse-body";
     const body = await req.json().catch(() => ({}));
     const return_url = body?.return_url as string | undefined;
+    const requested_gym_id = body?.gym_id as string | undefined;
 
     step = "find-gym";
     const { data: gyms, error: gymError } = await supabaseAdmin
@@ -78,13 +79,19 @@ serve(async (req) => {
         user_id: user.id,
       });
     }
-    const gym = gyms[0];
+    // Optional gym_id narrows to one gym — but only one the caller owns.
+    const candidateGymIds = requested_gym_id
+      ? gyms.filter((g) => g.id === requested_gym_id).map((g) => g.id)
+      : gyms.map((g) => g.id);
+    if (candidateGymIds.length === 0) {
+      return jsonResponse(403, { step, error: "Posilovna nepatří tomuto účtu." });
+    }
 
     step = "find-subscription";
     const { data: subs, error: subError } = await supabaseAdmin
       .from("gym_subscriptions")
-      .select("stripe_customer_id, is_grandfathered, status")
-      .eq("gym_id", gym.id);
+      .select("gym_id, stripe_customer_id, stripe_subscription_id, is_grandfathered, status")
+      .in("gym_id", candidateGymIds);
     if (subError) {
       return jsonResponse(500, { step, error: "Subscription query failed", detail: subError.message });
     }
@@ -92,15 +99,19 @@ serve(async (req) => {
       return jsonResponse(404, {
         step,
         error: "Žádné aktivní předplatné.",
-        gym_id: gym.id,
+        gym_id: candidateGymIds[0],
       });
     }
-    const subscription = subs[0];
+    // Prefer a subscription that actually has a Stripe customer and is not
+    // manually managed — gyms[0] blindly broke multi-gym owners.
+    const subscription =
+      subs.find((s) => s.stripe_customer_id && !s.is_grandfathered) ?? subs[0];
+    const gym = { id: subscription.gym_id };
 
     if (subscription.is_grandfathered) {
       return jsonResponse(403, {
         step: "grandfathered-check",
-        error: "Vaše předplatné je spravováno ručně. Pro změny kontaktujte podporu.",
+        error: "Předplatné je zatím na individuální domluvě — samoobsluha se aktivuje po první platbě kartou. Pro změny napište na info@pumplo.com.",
         grandfathered: true,
       });
     }
@@ -114,9 +125,20 @@ serve(async (req) => {
     }
 
     step = "stripe-portal-create";
+    // Optional deep-link flows: land the user straight in the cancel or
+    // plan-change screen for THIS gym's subscription instead of the portal home.
+    const flow = body?.flow as string | undefined; // 'cancel' | 'update'
+    let flow_data: Record<string, unknown> | undefined;
+    if ((flow === "cancel" || flow === "update") && subscription.stripe_subscription_id) {
+      flow_data = flow === "cancel"
+        ? { type: "subscription_cancel", subscription_cancel: { subscription: subscription.stripe_subscription_id } }
+        : { type: "subscription_update", subscription_update: { subscription: subscription.stripe_subscription_id } };
+    }
+
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
       return_url: return_url || "https://pumplo-admin.vercel.app/",
+      ...(flow_data ? { flow_data } : {}),
     });
 
     return jsonResponse(200, { url: session.url });

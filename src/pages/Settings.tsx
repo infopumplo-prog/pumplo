@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -13,7 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { signUpErrorMessage } from '@/lib/authErrors';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +42,14 @@ const Settings = () => {
   } = usePushNotifications();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+  const { preference, setPreference } = useTheme();
+
+  // First-visit hints.
+  const tour = useCoachTour('settings', 1, true);
+  const tourSteps = [
+    { title: t('tour.settings.overview_title'), body: t('tour.settings.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const currentLang = i18n.language as 'cs' | 'en';
 
   // Profile state
@@ -64,6 +75,7 @@ const Settings = () => {
   const [morningReminder, setMorningReminder] = useState(true);
   const [missedWorkout, setMissedWorkout] = useState(true);
   const [closingSoon, setClosingSoon] = useState(true);
+  const [comeback, setComeback] = useState(true);
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
 
   // Sync profile data when loaded
@@ -79,6 +91,7 @@ const Settings = () => {
     setMorningReminder(notificationPreferences.morningReminder);
     setMissedWorkout(notificationPreferences.missedWorkout);
     setClosingSoon(notificationPreferences.closingSoon);
+    setComeback(notificationPreferences.comeback);
   }, [notificationPreferences]);
 
   const handleSaveProfile = async () => {
@@ -169,7 +182,10 @@ const Settings = () => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: unknown) {
-      toast({ title: t('toast.error'), description: (error as Error).message || t('toast.password_change_failed'), variant: 'destructive' });
+      const description = error instanceof Error
+        ? signUpErrorMessage(error as { code?: string; message: string })
+        : t('toast.password_change_failed');
+      toast({ title: t('toast.error'), description, variant: 'destructive' });
     } finally {
       setIsChangingPassword(false);
     }
@@ -195,14 +211,15 @@ const Settings = () => {
   };
 
   const handleNotificationTypeToggle = async (
-    type: 'morning_reminder' | 'missed_workout' | 'closing_soon',
+    type: 'morning_reminder' | 'missed_workout' | 'closing_soon' | 'comeback',
     enabled: boolean
   ) => {
     // Update local state immediately for responsiveness
     if (type === 'morning_reminder') setMorningReminder(enabled);
     if (type === 'missed_workout') setMissedWorkout(enabled);
     if (type === 'closing_soon') setClosingSoon(enabled);
-    
+    if (type === 'comeback') setComeback(enabled);
+
     // Persist to database
     const success = await updateNotificationPreference(type, enabled);
     if (!success) {
@@ -210,6 +227,7 @@ const Settings = () => {
       if (type === 'morning_reminder') setMorningReminder(!enabled);
       if (type === 'missed_workout') setMissedWorkout(!enabled);
       if (type === 'closing_soon') setClosingSoon(!enabled);
+      if (type === 'comeback') setComeback(!enabled);
       toast({ title: t('toast.error'), description: t('toast.settings_save_failed'), variant: 'destructive' });
     }
   };
@@ -319,6 +337,15 @@ const Settings = () => {
       enabled: closingSoon,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10'
+    },
+    {
+      id: 'comeback' as const,
+      icon: Heart,
+      title: t('settings.notif.comeback_title'),
+      description: t('settings.notif.comeback_desc'),
+      enabled: comeback,
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-500/10'
     }
   ];
 
@@ -335,6 +362,7 @@ const Settings = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-xl font-bold">{t('settings.title')}</h1>
+            <CoachHelpButton onClick={tour.openTour} />
           </div>
         </div>
 
@@ -590,6 +618,43 @@ const Settings = () => {
             </div>
           </motion.div>
 
+          {/* Appearance Section */}
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                <Moon className="w-5 h-5 text-indigo-500" />
+              </div>
+              <h2 className="text-lg font-semibold">{t('settings.appearance')}</h2>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex gap-2">
+                {([
+                  { value: 'light', label: t('settings.theme_light'), icon: Sun },
+                  { value: 'dark', label: t('settings.theme_dark'), icon: Moon },
+                  { value: 'system', label: t('settings.theme_system'), icon: Smartphone },
+                ] as const).map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setPreference(value)}
+                    className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl font-medium text-xs transition-colors ${
+                      preference === value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {preference === 'system' && (
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  {t('settings.theme_system_hint')}
+                </p>
+              )}
+            </div>
+          </motion.div>
+
           {/* Privacy Section */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-3 mb-4">
@@ -676,6 +741,7 @@ const Settings = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      <CoachTour screenId="settings" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

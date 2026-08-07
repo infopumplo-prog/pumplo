@@ -1,0 +1,36 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "Organizace" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - button "Přepnout organizaci" [ref=e9] [cursor=pointer]:
+          - img [ref=e10]
+      - button "Upozornění" [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+    - main [ref=e17]:
+      - generic [ref=e19]:
+        - link "← Zpět" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - heading "Nastavení" [level=1] [ref=e21]
+        - generic [ref=e22]:
+          - heading "Jméno" [level=2] [ref=e23]
+          - textbox [ref=e24]
+          - button "Uložit jméno" [ref=e25] [cursor=pointer]
+        - generic [ref=e26]:
+          - heading "Změna hesla" [level=2] [ref=e27]
+          - textbox "Nové heslo" [ref=e28]
+          - textbox "Zopakuj heslo" [ref=e29]
+          - button "Změnit heslo" [ref=e30] [cursor=pointer]
+        - generic [ref=e31]:
+          - paragraph
+          - button "Odhlásit se" [ref=e32] [cursor=pointer]
+  - navigation [ref=e33]:
+    - link "Chaty" [ref=e34] [cursor=pointer]:
+      - /url: /
+      - img [ref=e35]
+      - generic [ref=e37]: Chaty
+    - link "Úkoly" [ref=e38] [cursor=pointer]:
+      - /url: /tasks
+      - img [ref=e39]
+      - generic [ref=e41]: Úkoly

@@ -8,15 +8,18 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
+import { useWorkoutHistory } from '@/hooks/useWorkoutHistoryDetails';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
+import { Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
 import pumploWordmark from '@/assets/pumplo-wordmark.png';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
+import ThemeIntroSheet from '@/components/ThemeIntroSheet';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -69,6 +72,8 @@ const Home = () => {
     refetch: refetchStats
   } = useWorkoutStats();
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
+  const { sessions: recentSessions } = useWorkoutHistory();
+  const [historyExpanded, setHistoryExpanded] = useState(true);
   const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
@@ -88,6 +93,18 @@ const Home = () => {
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+
+  // First-run guided tour (also replayable via the ? button).
+  const tour = useCoachTour('home', 2, isOnboardingComplete);
+  const tourSteps = [
+    { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
+    { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t('tour.home.tab_pumplo_body') },
+    { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t('tour.home.tab_custom_body') },
+    { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
+    { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
+    { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
 
   // Refetch plan and stats when navigating back to Home
   useEffect(() => {
@@ -155,7 +172,10 @@ const Home = () => {
 
   // Week progress calculation - use actual training days per week
   const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
-  const goalDurationWeeks = 8; // default
+  // 12 weeks for ALL goals (PUMPLO methodology §10) — keep in sync with
+  // training_goals.duration_weeks used on the Training page, otherwise the two
+  // progress percentages diverge (hardcoded 8 made Home show 3% vs detail 2%).
+  const goalDurationWeeks = 12;
   const totalPlanDays = goalDurationWeeks * trainingDaysCount;
   const weekProgress = plan ? (plan.currentDayIndex || 0) / totalPlanDays * 100 : 0;
   const currentWeek = plan ? Math.floor((plan.currentDayIndex || 0) / trainingDaysCount) + 1 : 1;
@@ -248,9 +268,12 @@ const Home = () => {
           delay: 0.1
         }}>
             <p className="text-muted-foreground text-sm">{t('home.hello')}</p>
-            <h1 className="text-3xl font-bold text-foreground">
-              {profile?.first_name || t('home.athlete')} 💪
-            </h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-foreground">
+                {profile?.first_name || t('home.athlete')} 💪
+              </h1>
+              <CoachHelpButton onClick={tour.openTour} />
+            </div>
           </motion.div>
         </div>
 
@@ -262,14 +285,15 @@ const Home = () => {
         {/* Tab Switch */}
         {isOnboardingComplete && (
           <div className="px-6 pt-2">
-            <div className="flex gap-1 border-b border-border/50">
+            <div className="flex gap-1 border-b border-border/50" data-coach="home-tabs">
               <button
                 onClick={() => setActiveTab('pumplo')}
+                data-coach="home-tab-pumplo"
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'pumplo'
-                    ? "border-[#5BC8F5] text-[#1A2744]"
-                    : "border-transparent text-[#6B7280]"
+                    ? "border-[#5BC8F5] text-foreground"
+                    : "border-transparent text-muted-foreground"
                 )}
               >
                 <Zap className="w-3.5 h-3.5" />
@@ -290,11 +314,12 @@ const Home = () => {
               </button>
               <button
                 onClick={() => setActiveTab('custom')}
+                data-coach="home-tab-custom"
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'custom'
-                    ? "border-[#5BC8F5] text-[#1A2744]"
-                    : "border-transparent text-[#6B7280]"
+                    ? "border-[#5BC8F5] text-foreground"
+                    : "border-transparent text-muted-foreground"
                 )}
               >
                 <Dumbbell className="w-3.5 h-3.5" />
@@ -328,27 +353,9 @@ const Home = () => {
 
           {/* My Plan Section (Pumplo plán) */}
           {isOnboardingComplete && activeTab === 'pumplo' && <>
-              {/* No gym selected */}
-              {!profile?.selected_gym_id && !planLoading ? <motion.div variants={itemVariants}>
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
-                    <div className="absolute -left-8 -bottom-8 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                    
-                    <div className="relative">
-                      <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
-                        <MapPin className="w-8 h-8 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">{t('home.select_gym')}</h3>
-                      <p className="text-muted-foreground mb-6">
-                        {t('home.select_gym_desc')}
-                      </p>
-                      <Button onClick={() => navigate('/map')} size="lg" className="gap-2 rounded-xl">
-                        <MapPin className="w-5 h-5" />
-                        {t('home.find_gym')}
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div> : !plan && !planLoading ? (/* No plan yet */
+              {/* Gym is picked right before the first workout — the plan card
+                  shows even without one. */}
+              {!plan && !planLoading ? (/* No plan yet */
           <motion.div variants={itemVariants}>
                   <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 via-primary/10 to-transparent border border-primary/20 p-6">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
@@ -362,7 +369,7 @@ const Home = () => {
                       <p className="text-muted-foreground mb-6">
                         {t('home.create_plan_desc')}
                       </p>
-                      <Button onClick={() => navigate('/my-plan')} size="lg" className="gap-2 rounded-xl">
+                      <Button onClick={() => navigate('/training?start=true')} size="lg" className="gap-2 rounded-xl">
                         <Target className="w-5 h-5" />
                         {t('home.create_plan_btn')}
                       </Button>
@@ -371,7 +378,7 @@ const Home = () => {
                 </motion.div>) : plan ? (/* Active plan */
           <>
                   {/* Week Progress Card with next training inside */}
-                  <motion.div variants={itemVariants}>
+                  <motion.div variants={itemVariants} data-coach="home-today">
                     <div className="rounded-3xl bg-[#5BC8F5] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
@@ -415,8 +422,12 @@ const Home = () => {
                           const nextDay = schedule[0];
                           if (!nextDay) return null;
                           const isCurrentDay = nextDay.dayOfWeek === today;
-                          const isCompletedToday = isCurrentDay && completedTodayDayLetter === nextDay.dayLetter;
-                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === nextDay.dayLetter);
+                          // F9: a session completed today for this plan always shows the green
+                          // card — the day counter advances right after finishing, so nextDay
+                          // already points past the completed workout and must not gate this.
+                          const isCompletedToday = wasCompletedToday;
+                          const completedLetter = (completedTodayDayLetter || '').replace('_EXT', '');
+                          const dayTemplate = plan.allDays?.find(d => d.dayLetter === (isCompletedToday ? completedLetter : nextDay.dayLetter));
                           const dayNameMap: Record<string, string> = {
                             'Horní tělo': t('workout.day_upper_body'),
                             'Dolní tělo': t('workout.day_lower_body'),
@@ -450,7 +461,7 @@ const Home = () => {
                                       {t('home.workout_completed')}
                                     </p>
                                     <p className="text-white/70 text-xs">
-                                      {dayNamesCz[nextDay.dayOfWeek] || nextDay.dayOfWeek}
+                                      {dayNamesCz[today] || today}
                                       {dayTypeName && ` – ${dayTypeName}`}
                                     </p>
                                   </div>
@@ -494,6 +505,41 @@ const Home = () => {
                           );
                         })()}
                       </div>
+
+                      {/* Last workout — inside the blue box, collapsible */}
+                      {recentSessions.length > 0 && (
+                        <div className="mx-3 mb-3">
+                          <div className="flex items-center gap-3 mb-2 px-1">
+                            <button onClick={() => setHistoryExpanded(v => !v)} className="flex items-center gap-1.5 text-white font-semibold text-sm">
+                              {t('home.last_workout')}
+                              <ChevronDown className={cn('w-4 h-4 transition-transform', historyExpanded && 'rotate-180')} />
+                            </button>
+                            <Link to="/profile/history?tab=sessions" className="text-white/80 text-xs font-medium flex items-center gap-0.5">
+                              {t('home.see_all')} <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                          {historyExpanded && (() => {
+                            const nameMap: Record<string, string> = {
+                              'Horní tělo': t('workout.day_upper_body'),
+                              'Dolní tělo': t('workout.day_lower_body'),
+                              'Celotělový': t('workout.day_full_body'),
+                              'Celé tělo': t('workout.day_full_body'),
+                              'Celé tělo A': `${t('workout.day_full_body')} A`,
+                              'Celé tělo B': `${t('workout.day_full_body')} B`,
+                              'Nožní den': t('workout.day_leg_day'),
+                              'Nohy': t('workout.day_leg_day'),
+                              'Push': 'Push', 'Pull': 'Pull', 'Tlak': 'Push', 'Tah': 'Pull',
+                            };
+                            // Only the single most recent workout (Davidův feedback 7.7.:
+                            // víc karet vypadá divně) — "Zobrazit vše" vede do historie
+                            const last = recentSessions[0];
+                            const letter = last.day_letter.replace('_EXT', '');
+                            const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
+                            const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
+                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                          })()}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
 
@@ -515,7 +561,7 @@ const Home = () => {
                     <motion.div variants={itemVariants}>
                       <StartWorkoutButton
                         selectedGymId={profile?.selected_gym_id || null}
-                        className="[&_button]:bg-[#1A2744] [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-[#1A2744]/25"
+                        className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
                       />
                     </motion.div>
                   )}
@@ -549,6 +595,9 @@ const Home = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      <CoachTour screenId="home" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
+      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen} />
     </PageTransition>;
 };
 export default Home;

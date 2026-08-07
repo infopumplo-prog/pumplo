@@ -3,11 +3,34 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0525D2B7FC3FECF64EE741B3 /* WatchAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1DB73F81E5489D6861E79F /* WatchAuth.swift */; };
+		06553C7D2FFD57B300A92F27 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06553C7C2FFD57B300A92F27 /* WidgetKit.framework */; };
+		06553C7F2FFD57B300A92F27 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06553C7E2FFD57B300A92F27 /* SwiftUI.framework */; };
+		06553C8C2FFD57B500A92F27 /* PumploWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06553C7A2FFD57B300A92F27 /* PumploWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		06C5271A2FE0200000000001 /* RestAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000002 /* RestAudioPlugin.swift */; };
+		06C5271A2FE0200000000003 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000004 /* MainViewController.swift */; };
+		06C5271A2FE0200000000005 /* InstagramSharePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000006 /* InstagramSharePlugin.swift */; };
+		06C5271A2FE0200000000007 /* rest_beep.wav in Resources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000008 /* rest_beep.wav */; };
+		06C5271A2FE0200000000009 /* RestActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE020000000000A /* RestActivityPlugin.swift */; };
+		06C5271A2FE020000000000B /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE020000000000C /* RestActivityAttributes.swift */; };
+		06C5271A2FE020000000000D /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE020000000000C /* RestActivityAttributes.swift */; };
+		06C5271A2FE020000000000E /* RestActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE020000000000F /* RestActivityIntents.swift */; };
+		06C5271A2FE0200000000010 /* RestActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE020000000000F /* RestActivityIntents.swift */; };
+		06C727452FCEE7B4004BF6C8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 06C727442FCEE7B4004BF6C8 /* GoogleService-Info.plist */; };
+		07E91F657757808399D40766 /* SpinnerField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3F6DC1F92E4D0609142017 /* SpinnerField.swift */; };
+		179E935FF316132CDDECEDBF /* WatchConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27C3095B25AF7319FC57809 /* WatchConnector.swift */; };
+		1D7A76DA2E749E0E8E777143 /* WatchWorkoutPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242DAC88F765EC5BE13CA8D6 /* WatchWorkoutPlugin.swift */; };
+		1F47366440293CB7A546CA5D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD9EECCC0C6DAA3453EE15A /* Theme.swift */; };
+		2F9F7B665D52D63D984039C0 /* PumploWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		37C5651FFB544F7B2BDFDC6E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E3176A965F1B9E121ED8366 /* Assets.xcassets */; };
+		397C75F43979CB400D1E5CED /* WatchMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */; };
+		39CC2B4BAAF6F1C791E75ACF /* ExerciseListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB61A06DFFC73B705DC77DD1 /* ExerciseListView.swift */; };
+		4C42FA99B2C974A9D6F50C8D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B5DE2FA5FCDF556391AAF /* RootView.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,11 +38,96 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		56CD64F522BFA1D2100F3769 /* StandaloneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */; };
+		6D6AA145F695FF57D26480EA /* StandaloneModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D6C003E4AB5F0460DCDA2F /* StandaloneModel.swift */; };
+		7297D73D14EEAC213FEAB17B /* StandaloneMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047F40241652F1257EBC1AF3 /* StandaloneMenuView.swift */; };
+		7E14B0F85B17B069C500EFAE /* WatchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5CE9F6B5BBB72E53F95EC9 /* WatchPayload.swift */; };
+		7F4917E4F5706FBCF6E2958E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 163B8C610A2C0023914ACF74 /* Foundation.framework */; };
+		8FA06341B361D7431818C0EA /* WatchExerciseList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */; };
+		A7D94370A8E395633D5969D2 /* EdgeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386DC46D709083AB08219595 /* EdgeViews.swift */; };
+		BC36BDEA6A5114E81E0B84D2 /* WatchWorkoutSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */; };
+		CAE56DB6621063EBC94E3A6C /* DragStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */; };
+		CEB431BF9A298900D6624501 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FD5CC3541FA768F278CE8E /* MenuView.swift */; };
+		D2E4236B1E596218B866D833 /* RestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE5D68F5BE9A7254E5C6E572 /* RestView.swift */; };
+		DB2919492CBE47336B8A0AF4 /* WatchConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 579DAC71DE88D95E63DCB6E6 /* WatchConfig.swift */; };
+		E11A8DAEDC6E719735D11F5E /* WatchApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D083781E4E4664E64B04F8 /* WatchApi.swift */; };
+		E5535B61C273E44966EF685E /* CardioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3BC91FA3C98EA6E0074236E /* CardioView.swift */; };
+		ED8F0FD20FBAC6FF1A9E808F /* LocalWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7AAEC7BD3487BBD43D653CE /* LocalWorkout.swift */; };
+		F3127E5ED4F34FF75D256610 /* PumploWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEADCACB120E93330585495 /* PumploWatchApp.swift */; };
+		F473295A2A718BC7426951D5 /* ActiveSetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5256854733A673FB3A428D14 /* ActiveSetView.swift */; };
+		F8FC3CB8C0BD2205859D139D /* WatchAuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC5F09693FC7D45FFDCBBCB /* WatchAuthStore.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		06553C8A2FFD57B500A92F27 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 06553C792FFD57B300A92F27;
+			remoteInfo = PumploWidgetsExtension;
+		};
+		28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3031224A16F18CD9A6AF386B;
+			remoteInfo = "PumploWatch Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		06553C8D2FFD57B500A92F27 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				06553C8C2FFD57B500A92F27 /* PumploWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E7C7494F610419D6000F3D00 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				2F9F7B665D52D63D984039C0 /* PumploWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		03FD5CC3541FA768F278CE8E /* MenuView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
+		047F40241652F1257EBC1AF3 /* StandaloneMenuView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StandaloneMenuView.swift; sourceTree = "<group>"; };
 		0609C8E62FA721C8009C58A9 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		06553C7A2FFD57B300A92F27 /* PumploWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PumploWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		06553C7C2FFD57B300A92F27 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		06553C7E2FFD57B300A92F27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		06C526F82FE011D7001C225D /* Eurogym.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = Eurogym.gpx; path = App/Eurogym.gpx; sourceTree = "<group>"; };
+		06C5271A2FE0200000000002 /* RestAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestAudioPlugin.swift; sourceTree = "<group>"; };
+		06C5271A2FE0200000000004 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		06C5271A2FE0200000000006 /* InstagramSharePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstagramSharePlugin.swift; sourceTree = "<group>"; };
+		06C5271A2FE0200000000008 /* rest_beep.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = rest_beep.wav; sourceTree = "<group>"; };
+		06C5271A2FE020000000000A /* RestActivityPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
+		06C5271A2FE020000000000C /* RestActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
+		06C5271A2FE020000000000F /* RestActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityIntents.swift; sourceTree = "<group>"; };
+		06C727442FCEE7B4004BF6C8 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		0D5CE9F6B5BBB72E53F95EC9 /* WatchPayload.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchPayload.swift; sourceTree = "<group>"; };
+		163B8C610A2C0023914ACF74 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		1A2B5DE2FA5FCDF556391AAF /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		1FC5F09693FC7D45FFDCBBCB /* WatchAuthStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchAuthStore.swift; sourceTree = "<group>"; };
+		22D083781E4E4664E64B04F8 /* WatchApi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchApi.swift; sourceTree = "<group>"; };
+		242DAC88F765EC5BE13CA8D6 /* WatchWorkoutPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchWorkoutPlugin.swift; sourceTree = "<group>"; };
+		2B3F6DC1F92E4D0609142017 /* SpinnerField.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpinnerField.swift; sourceTree = "<group>"; };
+		2E3176A965F1B9E121ED8366 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		386DC46D709083AB08219595 /* EdgeViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EdgeViews.swift; sourceTree = "<group>"; };
+		4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchExerciseList.swift; sourceTree = "<group>"; };
+		4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchMenu.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -28,10 +136,67 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		5256854733A673FB3A428D14 /* ActiveSetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveSetView.swift; sourceTree = "<group>"; };
+		579DAC71DE88D95E63DCB6E6 /* WatchConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConfig.swift; sourceTree = "<group>"; };
+		69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StandaloneStore.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		9AEADCACB120E93330585495 /* PumploWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PumploWatchApp.swift; sourceTree = "<group>"; };
+		A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PumploWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A7AAEC7BD3487BBD43D653CE /* LocalWorkout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalWorkout.swift; sourceTree = "<group>"; };
+		A8D6C003E4AB5F0460DCDA2F /* StandaloneModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StandaloneModel.swift; sourceTree = "<group>"; };
+		BB61A06DFFC73B705DC77DD1 /* ExerciseListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExerciseListView.swift; sourceTree = "<group>"; };
+		C3BC91FA3C98EA6E0074236E /* CardioView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardioView.swift; sourceTree = "<group>"; };
+		CC1DB73F81E5489D6861E79F /* WatchAuth.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchAuth.swift; sourceTree = "<group>"; };
+		D27C3095B25AF7319FC57809 /* WatchConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnector.swift; sourceTree = "<group>"; };
+		DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSnapshot.swift; sourceTree = "<group>"; };
+		DDD9EECCC0C6DAA3453EE15A /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DragStepper.swift; sourceTree = "<group>"; };
+		FE5D68F5BE9A7254E5C6E572 /* RestView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		06553C902FFD57B500A92F27 /* Exceptions for "PumploWidgets" folder in "PumploWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 06553C792FFD57B300A92F27 /* PumploWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		06553C802FFD57B300A92F27 /* PumploWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				06553C902FFD57B500A92F27 /* Exceptions for "PumploWidgets" folder in "PumploWidgetsExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PumploWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		06553C772FFD57B300A92F27 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06553C7F2FFD57B300A92F27 /* SwiftUI.framework in Frameworks */,
+				06553C7D2FFD57B300A92F27 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2D5D1324341E10034F7740A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7F4917E4F5706FBCF6E2958E /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3011FED79650016851F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -43,12 +208,67 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		06553C7B2FFD57B300A92F27 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				06553C7C2FFD57B300A92F27 /* WidgetKit.framework */,
+				06553C7E2FFD57B300A92F27 /* SwiftUI.framework */,
+				2BDB19BC09E89BFC858E39E3 /* watchOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		24497FA1FF5DEABF6292E69A /* PumploWatch Watch App */ = {
+			isa = PBXGroup;
+			children = (
+				386DC46D709083AB08219595 /* EdgeViews.swift */,
+				9AEADCACB120E93330585495 /* PumploWatchApp.swift */,
+				1A2B5DE2FA5FCDF556391AAF /* RootView.swift */,
+				DDD9EECCC0C6DAA3453EE15A /* Theme.swift */,
+				2E3176A965F1B9E121ED8366 /* Assets.xcassets */,
+				D27C3095B25AF7319FC57809 /* WatchConnector.swift */,
+				DC59AB6C32CC5BE8626DEA61 /* WatchWorkoutSnapshot.swift */,
+				5256854733A673FB3A428D14 /* ActiveSetView.swift */,
+				FE5D68F5BE9A7254E5C6E572 /* RestView.swift */,
+				2B3F6DC1F92E4D0609142017 /* SpinnerField.swift */,
+				F4AD0DF6302DCD7971EFC4B3 /* DragStepper.swift */,
+				C3BC91FA3C98EA6E0074236E /* CardioView.swift */,
+				4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */,
+				03FD5CC3541FA768F278CE8E /* MenuView.swift */,
+				4AAFBCF6EFA8E91BB924B123 /* WatchExerciseList.swift */,
+				BB61A06DFFC73B705DC77DD1 /* ExerciseListView.swift */,
+				CC1DB73F81E5489D6861E79F /* WatchAuth.swift */,
+				1FC5F09693FC7D45FFDCBBCB /* WatchAuthStore.swift */,
+				579DAC71DE88D95E63DCB6E6 /* WatchConfig.swift */,
+				A7AAEC7BD3487BBD43D653CE /* LocalWorkout.swift */,
+				047F40241652F1257EBC1AF3 /* StandaloneMenuView.swift */,
+				A8D6C003E4AB5F0460DCDA2F /* StandaloneModel.swift */,
+				22D083781E4E4664E64B04F8 /* WatchApi.swift */,
+				69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */,
+			);
+			name = "PumploWatch Watch App";
+			path = "PumploWatch Watch App";
+			sourceTree = SOURCE_ROOT;
+		};
+		2BDB19BC09E89BFC858E39E3 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				163B8C610A2C0023914ACF74 /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
+				06C526F82FE011D7001C225D /* Eurogym.gpx */,
+				06C727442FCEE7B4004BF6C8 /* GoogleService-Info.plist */,
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				06553C802FFD57B300A92F27 /* PumploWidgets */,
+				06553C7B2FFD57B300A92F27 /* Frameworks */,
 				504EC3051FED79650016851F /* Products */,
+				24497FA1FF5DEABF6292E69A /* PumploWatch Watch App */,
 			);
 			sourceTree = "<group>";
 		};
@@ -56,6 +276,8 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				06553C7A2FFD57B300A92F27 /* PumploWidgetsExtension.appex */,
+				A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,12 +288,21 @@
 				0609C8E62FA721C8009C58A9 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				06C5271A2FE0200000000002 /* RestAudioPlugin.swift */,
+				06C5271A2FE020000000000A /* RestActivityPlugin.swift */,
+				06C5271A2FE020000000000C /* RestActivityAttributes.swift */,
+				06C5271A2FE020000000000F /* RestActivityIntents.swift */,
+				06C5271A2FE0200000000004 /* MainViewController.swift */,
+				06C5271A2FE0200000000006 /* InstagramSharePlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				06C5271A2FE0200000000008 /* rest_beep.wav */,
+				242DAC88F765EC5BE13CA8D6 /* WatchWorkoutPlugin.swift */,
+				0D5CE9F6B5BBB72E53F95EC9 /* WatchPayload.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -79,6 +310,43 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		06553C792FFD57B300A92F27 /* PumploWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06553C912FFD57B500A92F27 /* Build configuration list for PBXNativeTarget "PumploWidgetsExtension" */;
+			buildPhases = (
+				06553C762FFD57B300A92F27 /* Sources */,
+				06553C772FFD57B300A92F27 /* Frameworks */,
+				06553C782FFD57B300A92F27 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				06553C802FFD57B300A92F27 /* PumploWidgets */,
+			);
+			name = PumploWidgetsExtension;
+			productName = PumploWidgetsExtension;
+			productReference = 06553C7A2FFD57B300A92F27 /* PumploWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		3031224A16F18CD9A6AF386B /* PumploWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E5EA7E13277D62F62CE55330 /* Build configuration list for PBXNativeTarget "PumploWatch Watch App" */;
+			buildPhases = (
+				9E3B6500C15DA8F79A8555B7 /* Sources */,
+				2D5D1324341E10034F7740A9 /* Frameworks */,
+				560570EB16C574BD8D2549CD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PumploWatch Watch App";
+			productName = "PumploWatch Watch App";
+			productReference = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -86,10 +354,14 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				06553C8D2FFD57B500A92F27 /* Embed Foundation Extensions */,
+				E7C7494F610419D6000F3D00 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				06553C8B2FFD57B500A92F27 /* PBXTargetDependency */,
+				70A7ADFC93A0CEB39234ED72 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -106,9 +378,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastSwiftUpdateCheck = 0920;
+				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					06553C792FFD57B300A92F27 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
@@ -133,11 +408,20 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				06553C792FFD57B300A92F27 /* PumploWidgetsExtension */,
+				3031224A16F18CD9A6AF386B /* PumploWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		06553C782FFD57B300A92F27 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -148,21 +432,92 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				06C727452FCEE7B4004BF6C8 /* GoogleService-Info.plist in Resources */,
+				06C5271A2FE0200000000007 /* rest_beep.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		560570EB16C574BD8D2549CD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37C5651FFB544F7B2BDFDC6E /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		06553C762FFD57B300A92F27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06C5271A2FE020000000000D /* RestActivityAttributes.swift in Sources */,
+				06C5271A2FE0200000000010 /* RestActivityIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				06C5271A2FE0200000000001 /* RestAudioPlugin.swift in Sources */,
+				06C5271A2FE0200000000009 /* RestActivityPlugin.swift in Sources */,
+				06C5271A2FE020000000000B /* RestActivityAttributes.swift in Sources */,
+				06C5271A2FE020000000000E /* RestActivityIntents.swift in Sources */,
+				06C5271A2FE0200000000003 /* MainViewController.swift in Sources */,
+				06C5271A2FE0200000000005 /* InstagramSharePlugin.swift in Sources */,
+				1D7A76DA2E749E0E8E777143 /* WatchWorkoutPlugin.swift in Sources */,
+				7E14B0F85B17B069C500EFAE /* WatchPayload.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E3B6500C15DA8F79A8555B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7D94370A8E395633D5969D2 /* EdgeViews.swift in Sources */,
+				F3127E5ED4F34FF75D256610 /* PumploWatchApp.swift in Sources */,
+				4C42FA99B2C974A9D6F50C8D /* RootView.swift in Sources */,
+				1F47366440293CB7A546CA5D /* Theme.swift in Sources */,
+				179E935FF316132CDDECEDBF /* WatchConnector.swift in Sources */,
+				BC36BDEA6A5114E81E0B84D2 /* WatchWorkoutSnapshot.swift in Sources */,
+				F473295A2A718BC7426951D5 /* ActiveSetView.swift in Sources */,
+				D2E4236B1E596218B866D833 /* RestView.swift in Sources */,
+				07E91F657757808399D40766 /* SpinnerField.swift in Sources */,
+				CAE56DB6621063EBC94E3A6C /* DragStepper.swift in Sources */,
+				E5535B61C273E44966EF685E /* CardioView.swift in Sources */,
+				397C75F43979CB400D1E5CED /* WatchMenu.swift in Sources */,
+				CEB431BF9A298900D6624501 /* MenuView.swift in Sources */,
+				8FA06341B361D7431818C0EA /* WatchExerciseList.swift in Sources */,
+				39CC2B4BAAF6F1C791E75ACF /* ExerciseListView.swift in Sources */,
+				0525D2B7FC3FECF64EE741B3 /* WatchAuth.swift in Sources */,
+				F8FC3CB8C0BD2205859D139D /* WatchAuthStore.swift in Sources */,
+				DB2919492CBE47336B8A0AF4 /* WatchConfig.swift in Sources */,
+				ED8F0FD20FBAC6FF1A9E808F /* LocalWorkout.swift in Sources */,
+				7297D73D14EEAC213FEAB17B /* StandaloneMenuView.swift in Sources */,
+				6D6AA145F695FF57D26480EA /* StandaloneModel.swift in Sources */,
+				E11A8DAEDC6E719735D11F5E /* WatchApi.swift in Sources */,
+				56CD64F522BFA1D2100F3769 /* StandaloneStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		06553C8B2FFD57B500A92F27 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 06553C792FFD57B300A92F27 /* PumploWidgetsExtension */;
+			targetProxy = 06553C8A2FFD57B500A92F27 /* PBXContainerItemProxy */;
+		};
+		70A7ADFC93A0CEB39234ED72 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "PumploWatch Watch App";
+			target = 3031224A16F18CD9A6AF386B /* PumploWatch Watch App */;
+			targetProxy = 28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -184,6 +539,82 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		06553C8E2FFD57B500A92F27 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_ENTITLEMENTS = PumploWidgets/PumploWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PumploWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PumploWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.2.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.PumploWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		06553C8F2FFD57B500A92F27 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_ENTITLEMENTS = PumploWidgets/PumploWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PumploWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PumploWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.2.3;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.PumploWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
@@ -312,14 +743,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.3;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -335,14 +766,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -351,9 +782,69 @@
 			};
 			name = Release;
 		};
+		5A12BE32C311FC3DFB46660E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF748BR59G;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pumplo;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumplo.app;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		B6E96243E8A33B65E4216933 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF748BR59G;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pumplo;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumplo.app;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumplo.app.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		06553C912FFD57B500A92F27 /* Build configuration list for PBXNativeTarget "PumploWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06553C8E2FFD57B500A92F27 /* Debug */,
+				06553C8F2FFD57B500A92F27 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -368,6 +859,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E5EA7E13277D62F62CE55330 /* Build configuration list for PBXNativeTarget "PumploWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A12BE32C311FC3DFB46660E /* Release */,
+				B6E96243E8A33B65E4216933 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

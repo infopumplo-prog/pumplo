@@ -1,0 +1,20 @@
+- generic [ref=e30]:
+  - banner [ref=e31]:
+    - button "Otevřít menu" [ref=e32] [cursor=pointer]:
+      - img [ref=e33]
+    - button "MámOkno" [ref=e36] [cursor=pointer]:
+      - generic [ref=e37]: MámOkno
+      - img [ref=e38]
+    - button "Upozornění" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]: MámOkno
+        - heading "Dashboard" [level=1] [ref=e49]
+        - paragraph [ref=e50]: Přihlášen jako David NovotnýAdmin
+        - button "Odhlásit se" [ref=e51] [cursor=pointer]
+      - generic [ref=e52]:
+        - heading "Upozornění" [level=2] [ref=e53]
+        - paragraph [ref=e54]: Push upozornění na přiřazené, urgentní a po termínu úkoly.
+        - button "Zapnout upozornění" [ref=e57] [cursor=pointer]

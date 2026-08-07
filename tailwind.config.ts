@@ -42,6 +42,12 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        /* Tmavě navy primární akce ("Začít trénink"). Ve světlém režimu je to
+           brandová navy, v tmavém světlejší odstín, aby tlačítko nesplynulo s pozadím. */
+        action: {
+          DEFAULT: "hsl(var(--action))",
+          foreground: "hsl(var(--action-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",

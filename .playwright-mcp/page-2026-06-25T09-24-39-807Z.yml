@@ -1,0 +1,16 @@
+- generic [ref=e27]:
+  - complementary [ref=e28]:
+    - generic [ref=e29]: MámOkno
+    - navigation [ref=e30]:
+      - link "Dashboard" [ref=e31] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e32] [cursor=pointer]:
+        - /url: /groups
+      - link "Tasky" [ref=e33] [cursor=pointer]:
+        - /url: /tasks
+  - main [ref=e34]:
+    - generic [ref=e36]:
+      - generic [ref=e37]: MámOkno
+      - heading "Dashboard" [level=1] [ref=e38]
+      - paragraph [ref=e39]: Načítání…
+      - button "Odhlásit se" [ref=e40] [cursor=pointer]

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Dumbbell, Clock, Flame, TrendingUp, Calendar } from 'lucide-react';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistoryDetails';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,12 +17,21 @@ import { cs, enUS } from 'date-fns/locale';
 
 const WorkoutHistory = () => {
   const { t, i18n } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('history', 1, true);
+  const tourSteps = [
+    { title: t('tour.history.overview_title'), body: t('tour.history.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
   const navigate = useNavigate();
   const { stats, isLoading } = useWorkoutStats();
   const { sessions, exerciseStats, isLoading: historyLoading } = useWorkoutHistory();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') ?? 'overview';
+  const [activeTab, setActiveTab] = useState(['overview', 'exercises', 'sessions'].includes(initialTab) ? initialTab : 'overview');
 
   // Prepare chart data for last 7 days
   const last7Days = eachDayOfInterval({
@@ -101,6 +111,7 @@ const WorkoutHistory = () => {
             >
               {t('history.title')}
             </motion.h1>
+            <CoachHelpButton onClick={tour.openTour} />
           </div>
         </div>
 
@@ -288,6 +299,7 @@ const WorkoutHistory = () => {
           </motion.div>
         </motion.div>
       </div>
+      <CoachTour screenId="history" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

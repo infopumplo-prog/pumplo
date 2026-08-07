@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronRight, Info, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, HelpCircle, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { ExerciseInfoContent } from './ExerciseInfoContent';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { useLongPress } from '@/lib/useLongPress';
 
 
 interface SetData {
@@ -33,6 +37,7 @@ interface ExercisePlayerProps {
   onCompleteExercise: (setsData: SetData[]) => void;
   onSkipExercise?: () => void;
   onSwapExercise?: () => void;
+  onSwapLongPress?: () => void;
   isSwapping?: boolean;
   onSwitchToList?: () => void;
   onClose?: () => void;
@@ -44,6 +49,8 @@ interface ExercisePlayerProps {
   equipmentType?: string | null;
   primaryMuscles?: string[];
   secondaryMuscles?: string[];
+  primaryMusclesEn?: string[] | null;
+  secondaryMusclesEn?: string[] | null;
   restBetweenSets?: number;
   lastWeight?: number;
   setupInstructions?: string | null;
@@ -54,6 +61,20 @@ interface ExercisePlayerProps {
   initialSetIndex?: number;
   initialSetsData?: SetData[];
   onSetChange?: (currentSetIndex: number, setsData: SetData[]) => void;
+  nextExerciseName?: string;
+  nextVideoUrl?: string | null;
+  // Fired when the internal between-set rest starts/stops so the parent can
+  // avoid overwriting the rest countdown on the lock-screen Live Activity.
+  // endsAt (epoch ms) is passed on start and on every ±15 s adjust, so the
+  // parent (and through it the watch) shares ONE rest clock with this player.
+  onRestActiveChange?: (active: boolean, endsAt?: number) => void;
+  // The lock-screen Skip intent lands in the parent (it owns the plugin
+  // listeners), but this player owns the video-view between-set rest — the
+  // parent calls this ref to close it. Null whenever no rest is running.
+  skipRestRef?: React.MutableRefObject<(() => void) | null>;
+  // Stejný princip jako skipRestRef: „+15 s" z hodinek přijde do rodiče, ale
+  // video-view pauzu vlastní tenhle player. Null, když žádná pauza neběží.
+  adjustRestRef?: React.MutableRefObject<((delta: number) => void) | null>;
 }
 
 export const ExercisePlayer = ({
@@ -71,6 +92,7 @@ export const ExercisePlayer = ({
   onCompleteExercise,
   onSkipExercise,
   onSwapExercise,
+  onSwapLongPress,
   isSwapping = false,
   onSwitchToList,
   onClose,
@@ -82,6 +104,8 @@ export const ExercisePlayer = ({
   equipmentType,
   primaryMuscles = [],
   secondaryMuscles = [],
+  primaryMusclesEn,
+  secondaryMusclesEn,
   restBetweenSets = 90,
   lastWeight,
   setupInstructions,
@@ -91,21 +115,53 @@ export const ExercisePlayer = ({
   rirMax,
   initialSetIndex = 0,
   initialSetsData,
-  onSetChange
+  onSetChange,
+  nextExerciseName,
+  nextVideoUrl,
+  onRestActiveChange,
+  skipRestRef,
+  adjustRestRef
 }: ExercisePlayerProps) => {
   const { t } = useTranslation();
+  // Hold on the swap button → sheet with every slot alternative.
+  const swapPress = useLongPress(() => onSwapLongPress?.());
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Ref callback for the small last-set preview <video>: releases its WebKit
+  // media player when the element detaches so it doesn't count toward the iOS
+  // simultaneous-media ceiling (same reason as the main video cleanup below).
+  const previewNodeRef = useRef<HTMLVideoElement | null>(null);
+  const previewVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    if (el) { previewNodeRef.current = el; return; }
+    const v = previewNodeRef.current;
+    if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ } previewNodeRef.current = null; }
+  }, []);
   const [currentSet, setCurrentSet] = useState(initialSetIndex);
   const [setsData, setSetsData] = useState<SetData[]>(
     initialSetsData || Array.from({ length: totalSets }, () => ({ completed: false }))
   );
   const [showRestTimer, setShowRestTimer] = useState(false);
+  // Shared clock for the between-set rest (epoch ms). The ref mirror lets
+  // adjustRest compute the next value without a stale closure.
+  const [restEndsAt, setRestEndsAt] = useState(0);
+  const restEndsAtRef = useRef(0);
   const [videoError, setVideoError] = useState(false);
   const [weight, setWeight] = useState<string>(lastWeight ? `${lastWeight}` : '');
   const [reps, setReps] = useState<string>(`${repMax}`);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
+
+  // First-workout guided tour (video player controls).
+  const tour = useCoachTour('player', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="player-rir"]', title: t('tour.player.rir_title'), body: t('tour.player.rir_body') },
+    { target: '[data-coach="player-inputs"]', title: t('tour.player.inputs_title'), body: t('tour.player.inputs_body') },
+    { target: '[data-coach="player-complete"]', title: t('tour.player.complete_title'), body: t('tour.player.complete_body') },
+    { target: '[data-coach="player-swap"]', title: t('tour.player.swap_title'), body: t('tour.player.swap_body') },
+    { target: '[data-coach="player-list"]', title: t('tour.player.list_title'), body: t('tour.player.list_body') },
+    { target: '[data-coach="player-info"]', title: t('tour.player.info_title'), body: t('tour.player.info_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
 
   const handleToggleMute = () => {
     const next = !isMuted;
@@ -183,23 +239,73 @@ export const ExercisePlayer = ({
     }
   }, [currentSet]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Robust autoplay: the <video> can mount before its data is buffered, so a
+  // bare play() right after mount rejects on the first set (it only worked on
+  // set 2 once the file was cached). playVideo() retries; onCanPlay/onLoadedData
+  // on the element call it once the video is actually ready.
+  const playVideo = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !videoUrl || showRestTimer) return;
+    v.muted = true;
+    const p = v.play();
+    if (p) p.catch(() => {});
+  }, [videoUrl, showRestTimer]);
+
   useEffect(() => {
-    if (videoRef.current && videoUrl) {
-      videoRef.current.muted = true;
-      if (!showRestTimer) {
-        videoRef.current.play().catch(() => {});
-      } else {
-        videoRef.current.pause();
-      }
+    if (showRestTimer) {
+      videoRef.current?.pause();
+      return;
     }
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && videoRef.current && !showRestTimer) {
-        videoRef.current.play().catch(() => {});
-      }
+    // Resume playback when the user returns to the app. visibilitychange covers
+    // web/PWA; Capacitor 'resume' is the reliable signal in the native WKWebView.
+    // iOS often rejects a play() fired exactly at resume (the webview is still
+    // waking up, and the lock-screen replay runs at the same moment) — retry
+    // until playback actually starts. The lock-screen Skip can also remount
+    // this <video> while the webview is suspended, leaving it in a stalled
+    // fetch that play() alone never recovers — after the early retries fail
+    // without buffered data, one load() kick restarts the loader.
+    const timers: number[] = [];
+    const playWithRetry = () => {
+      timers.forEach(id => clearTimeout(id));
+      timers.length = 0;
+      [0, 300, 1200, 2500, 4000].forEach((delay, i) => {
+        timers.push(window.setTimeout(() => {
+          const v = videoRef.current;
+          if (!v || !v.paused) return;
+          if (i >= 3 && v.readyState < 2) { try { v.load(); } catch { /* noop */ } }
+          playVideo();
+        }, delay));
+      });
     };
+    playWithRetry();
+    const onVisible = () => { if (document.visibilityState === 'visible') playWithRetry(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [showRestTimer, videoUrl]);
+    let removeResume: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('resume', playWithRetry).then((h) => { removeResume = () => h.remove(); });
+    }
+    return () => {
+      timers.forEach(id => clearTimeout(id));
+      document.removeEventListener('visibilitychange', onVisible);
+      removeResume?.();
+    };
+  }, [showRestTimer, videoUrl, playVideo]);
+
+  // Tell the parent when the internal between-set rest is active so it doesn't
+  // push its idle "next set" card over the rest countdown on the lock screen.
+  // Also clears on unmount (e.g. exercise advance) so the flag never sticks.
+  useEffect(() => {
+    onRestActiveChange?.(showRestTimer);
+    return () => { onRestActiveChange?.(false); };
+  }, [showRestTimer, onRestActiveChange]);
+
+  // Release the WebKit media player on unmount (the player is re-keyed on every
+  // set/exercise change) so decoded video resources don't accumulate toward the
+  // iOS simultaneous-media ceiling and block later videos from loading.
+  useEffect(() => () => {
+    const v = videoRef.current;
+    if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* noop */ } }
+  }, []);
 
   const handleCompleteSet = () => {
     const weightNum = weight ? parseFloat(weight) : undefined;
@@ -218,12 +324,31 @@ export const ExercisePlayer = ({
     if (currentSet + 1 >= totalSets) {
       onCompleteExercise(newSetsData);
     } else {
+      // Flag the between-set rest SYNCHRONOUSLY in the same event/batch as
+      // onSetChange, so the parent's idle-card effect already sees the rest as
+      // active on its next run and never pushes the "next set" card over the
+      // countdown. The showRestTimer effect below still fires the false on end.
+      const restEnds = Date.now() + restBetweenSets * 1000;
+      restEndsAtRef.current = restEnds;
+      setRestEndsAt(restEnds);
+      onRestActiveChange?.(true, restEnds);
       setShowRestTimer(true);
     }
   };
 
+  // ±15 s musí posunout JEDNY hodiny: lokální stav, RestTimer i rodiče
+  // (a přes něj hodinky), jinak by každá plocha odpočítávala něco jiného.
+  const adjustRest = useCallback((delta: number) => {
+    const next = Math.max(Date.now(), restEndsAtRef.current + delta * 1000);
+    restEndsAtRef.current = next;
+    setRestEndsAt(next);
+    onRestActiveChange?.(true, next);
+  }, [onRestActiveChange]);
+
   const handleRestComplete = () => {
     setShowRestTimer(false);
+    restEndsAtRef.current = 0;
+    setRestEndsAt(0);
     const newSetIndex = currentSet + 1;
     setCurrentSet(newSetIndex);
     // Pre-fill weight from previous set for convenience (keep current reps default)
@@ -237,6 +362,13 @@ export const ExercisePlayer = ({
     }
   };
 
+  // Render-time assignment (same pattern as the parent's lock-screen refs)
+  // keeps the exposed skip in sync with showRestTimer within the same commit.
+  if (skipRestRef) skipRestRef.current = showRestTimer ? handleRestComplete : null;
+  useEffect(() => () => { if (skipRestRef) skipRestRef.current = null; }, [skipRestRef]);
+  if (adjustRestRef) adjustRestRef.current = showRestTimer ? adjustRest : null;
+  useEffect(() => () => { if (adjustRestRef) adjustRestRef.current = null; }, [adjustRestRef]);
+
   const handleGoBack = () => {
     if (currentSet > 0) {
       setCurrentSet(prev => prev - 1);
@@ -249,8 +381,16 @@ export const ExercisePlayer = ({
     return (
       <RestTimer
         duration={restBetweenSets}
+        endsAt={restEndsAt || undefined}
+        onAdjust={adjustRest}
         onComplete={handleRestComplete}
         label={t('workout.rest_before_set', { n: currentSet + 2 })}
+        nextSet={{
+          exerciseName: exerciseName || '',
+          setText: t('log_workout.set_of', { num: Math.min(currentSet + 2, totalSets), total: totalSets }),
+          detailText: weight ? `${weight} kg × ${repMin}–${repMax} ${t('workout_share.reps_abbr')}` : `${repMin}–${repMax} ${t('workout_share.reps_abbr')}`,
+          restSeconds: restBetweenSets,
+        }}
       />
     );
   }
@@ -277,6 +417,8 @@ export const ExercisePlayer = ({
               preload="auto"
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
+              onLoadedData={playVideo}
+              onCanPlay={playVideo}
               onError={() => setVideoError(true)}
             />
           ) : (
@@ -304,7 +446,13 @@ export const ExercisePlayer = ({
                 {exerciseIndex + 1}/{totalExercises}
               </span>
               {onSwapExercise && (
-                <button onClick={onSwapExercise} className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`} style={{ pointerEvents: 'auto' }}>
+                <button
+                  {...swapPress.handlers}
+                  data-coach="player-swap"
+                  onClick={() => { if (!swapPress.wasLongPress()) onSwapExercise(); }}
+                  className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`}
+                  style={{ pointerEvents: 'auto', touchAction: 'none' }}
+                >
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
                 </button>
               )}
@@ -314,7 +462,7 @@ export const ExercisePlayer = ({
                 </button>
               )}
               {onSwitchToList && (
-                <button onClick={onSwitchToList} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={onSwitchToList} data-coach="player-list" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                   <List className="w-5 h-5" />
                 </button>
               )}
@@ -345,7 +493,16 @@ export const ExercisePlayer = ({
               )}
             </div>
             <button
+              onClick={tour.openTour}
+              data-coach="help-btn"
+              className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              style={{ pointerEvents: 'auto' }}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => setShowInfoDrawer(!showInfoDrawer)}
+              data-coach="player-info"
               className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
               style={{ pointerEvents: 'auto' }}
             >
@@ -355,6 +512,27 @@ export const ExercisePlayer = ({
 
           {/* Bottom overlay: cardio timer OR strength inputs */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-16 px-5">
+            {/* On the last set, preview the next exercise so the user can plan
+                ahead / walk to the next machine. Hidden on the final exercise. */}
+            {currentSet + 1 === totalSets && nextExerciseName && (
+              <div className="flex items-center gap-2 mb-3 w-fit max-w-[80vw] bg-black/40 backdrop-blur-sm rounded-xl p-1.5 pr-3">
+                {nextVideoUrl ? (
+                  <video
+                    ref={previewVideoRef}
+                    src={nextVideoUrl}
+                    autoPlay loop muted playsInline preload="auto"
+                    className="w-11 h-11 rounded-lg object-cover shrink-0"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-lg bg-white/10 shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[#5BC8F5] text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">{t('workout.next_label')}</p>
+                  <p className="text-white text-sm font-semibold truncate leading-tight">{nextExerciseName}</p>
+                </div>
+              </div>
+            )}
             {isCardio ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
@@ -397,7 +575,7 @@ export const ExercisePlayer = ({
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     {/* Reps + RIR display */}
-                    <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
+                    <div data-coach="player-rir" className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 mb-2">
                       <p className="text-white text-2xl font-bold leading-tight">
                         {repMin === repMax ? repMin : `${repMin}-${repMax}`} <span className="text-sm font-normal text-white/60">{t('workout.reps_abbr')}</span>
                       </p>
@@ -417,7 +595,7 @@ export const ExercisePlayer = ({
 
                     {/* Weight and reps inputs */}
                     {showWeightInput && currentSet < totalSets && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" data-coach="player-inputs">
                         <div className="flex-1">
                           <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.weight_kg')}</label>
                           <input
@@ -446,6 +624,7 @@ export const ExercisePlayer = ({
                   {/* Complete set button */}
                   {currentSet < totalSets && (
                     <button
+                      data-coach="player-complete"
                       onClick={handleCompleteSet}
                       className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
                     >
@@ -459,19 +638,23 @@ export const ExercisePlayer = ({
         </div>
       </motion.div>
 
+      <CoachTour screenId="player" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+
       {/* Info drawer */}
       <Drawer open={showInfoDrawer} onOpenChange={setShowInfoDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle>{exerciseName}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <ExerciseInfoContent
               category={category}
               equipmentType={equipmentType}
               machineName={machineName}
               primaryMuscles={primaryMuscles}
               secondaryMuscles={secondaryMuscles}
+              primaryMusclesEn={primaryMusclesEn}
+              secondaryMusclesEn={secondaryMusclesEn}
               description={exerciseDescription}
               setupInstructions={setupInstructions}
               commonMistakes={commonMistakes}

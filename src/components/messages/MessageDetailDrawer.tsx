@@ -74,34 +74,28 @@ export const MessageDetailDrawer = ({
       .single();
 
     let conversationId = existing?.id;
-    let isNew = false;
 
     if (!conversationId) {
       const { data: created } = await supabase
         .from('conversations')
+        // Link the new conversation to the announcement so ChatThread can show
+        // it as a context banner (no seeded message -> no spurious push).
         .insert({
           gym_id: gymId,
           participant_user_id: user.id,
           participant_type: 'user',
           trainer_id: null,
+          original_gym_message_id: message.id,
         })
         .select('id')
         .single();
       conversationId = created?.id;
-      isNew = true;
-    }
-
-    // Send context message referencing the original announcement
-    if (conversationId && isNew) {
-      await supabase.from('direct_messages').insert({
-        conversation_id: conversationId,
-        sender_type: 'member',
-        sender_id: user.id,
-        body: `📢 Odpověď na oznámení "${message.title}":\n\n„${message.body.slice(0, 200)}${message.body.length > 200 ? '...' : ''}"`,
-      });
-      await supabase.from('conversations').update({
-        last_message_at: new Date().toISOString(),
-      }).eq('id', conversationId);
+    } else {
+      // Existing gym conversation: point it at the announcement being replied to
+      // so its text is shown in context (fixes "I can't see what they sent").
+      await supabase.from('conversations')
+        .update({ original_gym_message_id: message.id })
+        .eq('id', conversationId);
     }
 
     setReplying(false);

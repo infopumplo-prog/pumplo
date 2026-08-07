@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useWorkoutStats } from '@/hooks/useWorkoutStats';
@@ -23,6 +24,7 @@ import { PRIMARY_GOAL_TO_TRAINING_GOAL, TrainingGoalId, WorkoutExercise } from '
 import { getTrainingSchedule, getCurrentDayLetter, getCurrentWeekday, getAllDayLetters } from '@/lib/workoutRotation';
 import { supabase } from '@/integrations/supabase/client';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import NotificationOnboardingDrawer from '@/components/notifications/NotificationOnboardingDrawer';
@@ -31,10 +33,12 @@ import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { ExtendWorkoutSelector } from '@/components/workout/ExtendWorkoutSelector';
 import { WorkoutPreview } from '@/components/workout/WorkoutPreview';
+import { localizeDayName } from '@/lib/dayNames';
 import { WarmupPlayer, WarmupExercise } from '@/components/workout/WarmupPlayer';
 import { getTrainingFocus, selectWarmupExercises, selectCooldownExercises } from '@/lib/warmupCooldownSelection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { isStandaloneWatchWorkoutActive } from '@/lib/watchWorkout';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import { OpeningHours } from '@/hooks/useGym';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
@@ -118,6 +122,15 @@ const Training = () => {
   
   // Week switching
   const [viewingWeek, setViewingWeek] = useState<number>(1);
+
+  // First-run guided tour — explains how the plan/split works (top App Review
+  // reviewer feedback: "I didn't understand how the plan / split works").
+  const tour = useCoachTour('training', 2, true);
+  const tourSteps = [
+    { target: '[data-coach="training-day0"]', title: t('tour.training.plan_title'), body: t('tour.training.plan_body') },
+    { target: '[data-coach="training-week"]', title: t('tour.training.week_title'), body: t('tour.training.week_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [completedWorkouts, setCompletedWorkouts] = useState<CompletedWorkout[]>([]);
   const [historyExercises, setHistoryExercises] = useState<HistoryExercise[]>([]);
@@ -154,6 +167,24 @@ const Training = () => {
 
   // Auto-start flag from URL param
   const [autoStartTriggered, setAutoStartTriggered] = useState(false);
+  const [pendingAutoStartGymId, setPendingAutoStartGymId] = useState<string | null>(null);
+  const handleRegeneratePlanRef = useRef<(gymOverride?: string) => void>(() => {});
+  // Spuštění z hodinek přeskakuje náhled i rozehřátí — obojí jsou obrazovky
+  // telefonu a stály by přesně to sáhnutí po telefonu, kvůli kterému se trénink
+  // spouští z hodinek. Drží se ve stavu, protože parametr z URL se hned maže.
+  const [autoStartFromWatch, setAutoStartFromWatch] = useState(false);
+  const generateTimedExercisesRef = useRef<(exs: WorkoutExercise[], phase: 'warmup' | 'cooldown') => Promise<WarmupExercise[]>>(
+    async () => []);
+
+  // Spuštění z hodinek jde rovnou do první série. Cooldown se dogeneruje na
+  // pozadí, aby po tréninku nechyběl — v běžném toku ho připraví rozehřátí.
+  const startWorkoutFromWatch = useCallback((exercises: WorkoutExercise[]) => {
+    setShowWorkoutPreview(false);
+    setIsWorkoutActive(true);
+    generateTimedExercisesRef.current(exercises, 'cooldown')
+      .then(setCooldownExercises)
+      .catch(() => { /* bez cooldownu se trénink nesmí zaseknout */ });
+  }, []);
 
   // Resume workout state
   const [initialExerciseIndex, setInitialExerciseIndex] = useState(0);
@@ -240,18 +271,13 @@ const Training = () => {
   // For display: totalWeeks stays same but last week shows extra days
   const totalWeeks = goalInfo?.duration_weeks || 8;
 
-  // Current week and day based on current_day_index
+  // Current week = the week holding the next workout in the queue (completion-based,
+  // not calendar). Plan advances only by completing trainings → it stretches in time.
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
-    const completedDays = plan.currentDayIndex || 0;
-    
-    // Week 1 has effectiveFirstWeekDayCount days
-    if (completedDays < effectiveFirstWeekDayCount) return 1;
-    
-    // Remaining weeks have trainingFrequency days each
-    const daysAfterFirstWeek = completedDays - effectiveFirstWeekDayCount;
-    return 2 + Math.floor(daysAfterFirstWeek / trainingFrequency);
-  }, [plan, effectiveFirstWeekDayCount, trainingFrequency]);
+    const done = plan.currentDayIndex || 0;
+    return Math.min(Math.floor(done / trainingFrequency) + 1, totalWeeks);
+  }, [plan, trainingFrequency, totalWeeks]);
 
   const currentDayInWeek = useMemo(() => {
     if (!plan) return 0;
@@ -375,23 +401,30 @@ const Training = () => {
   useEffect(() => {
     const shouldAutoStart = searchParams.get('start') === 'true';
     
+    const gymIdParam = searchParams.get('gymId') || profile?.selected_gym_id || null;
     if (
-      shouldAutoStart && 
-      !autoStartTriggered && 
-      plan && 
-      !planLoading && 
-      profile?.selected_gym_id && 
+      shouldAutoStart &&
+      !autoStartTriggered &&
+      plan &&
+      !planLoading &&
+      gymIdParam &&
       !profileLoading
     ) {
       setAutoStartTriggered(true);
-      // Clear the URL param
+      const fromWatch = searchParams.get('watch') === 'true';
+      setAutoStartFromWatch(fromWatch);
+      // Clear the URL params
       searchParams.delete('start');
-      setSearchParams(searchParams, { replace: true });
-      
-      // Start workout flow directly (gym already confirmed in Home)
-      const gymIdParam = searchParams.get('gymId') || profile.selected_gym_id;
       searchParams.delete('gymId');
+      searchParams.delete('watch');
       setSearchParams(searchParams, { replace: true });
+
+      // Souběh s hodinkami: start z telefonu se blokuje. Start vyžádaný přímo
+      // z hodinek projde — během vlastního tréninku hodinky nabídku neukazují.
+      if (!fromWatch && isStandaloneWatchWorkoutActive()) {
+        toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+        return;
+      }
 
       const exercisesFromPlan = getCurrentDayExercises()
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
@@ -399,12 +432,34 @@ const Training = () => {
       if (exercisesFromPlan.length > 0) {
         setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(gymIdParam);
-        setShowWorkoutPreview(true);
+        if (fromWatch) {
+          startWorkoutFromWatch(exercisesFromPlan);
+        } else {
+          setShowWorkoutPreview(true);
+        }
+      } else if (plan.exercises.length === 0) {
+        // Bare plan (questionnaire done, first gym just picked): fill the
+        // plan from this gym's equipment, then auto-start below.
+        setPendingAutoStartGymId(gymIdParam);
+        handleRegeneratePlanRef.current(gymIdParam);
       } else {
         setShowMissingExercisesDialog(true);
       }
     }
   }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams]);
+
+  // Once the bare plan has been generated for the picked gym, start the workout.
+  useEffect(() => {
+    if (!pendingAutoStartGymId || planLoading || isRegeneratingPlan) return;
+    const exercisesFromPlan = getCurrentDayExercises().filter(ex => ex.exerciseId);
+    if (exercisesFromPlan.length > 0) {
+      setGeneratedExercises(exercisesFromPlan);
+      setSelectedWorkoutGymId(pendingAutoStartGymId);
+      if (autoStartFromWatch) startWorkoutFromWatch(exercisesFromPlan);
+      else setShowWorkoutPreview(true);
+      setPendingAutoStartGymId(null);
+    }
+  }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartGymId, getCurrentDayExercises, autoStartFromWatch]);
 
   // Auto-resume paused workout when navigating from Home with ?resume=true
   useEffect(() => {
@@ -419,21 +474,50 @@ const Training = () => {
       // Clear the URL param
       searchParams.delete('resume');
       setSearchParams(searchParams, { replace: true });
-      
+
+      // Souběh s hodinkami: rozdělaný trénink zůstane uložený, obnoví se, až
+      // trénink na hodinkách skončí.
+      if (isStandaloneWatchWorkoutActive()) {
+        toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+        return;
+      }
+
       // Restore exercises from paused state
       setGeneratedExercises(pausedWorkout.exercises);
       setWarmupExercises(pausedWorkout.warmupExercises || []);
       setSelectedWorkoutGymId(pausedWorkout.gymId);
+      // Cooldown is only built in handleStartWarmup, which resume bypasses —
+      // rebuild it from the restored exercises so a resumed workout still ends
+      // with the cooldown instead of jumping straight to the summary.
+      generateTimedExercises(pausedWorkout.exercises, 'cooldown')
+        .then(setCooldownExercises)
+        .catch(() => {});
       
       if (pausedWorkout.isInWarmup) {
         // Resume in warmup
         setInitialWarmupIndex(pausedWorkout.warmupIndex || 0);
         setShowWarmup(true);
       } else {
-        // Resume in main workout
-        setInitialExerciseIndex(pausedWorkout.currentExerciseIndex);
-        setInitialSetIndex(pausedWorkout.currentSetIndex || 0);
-        setInitialCurrentExerciseSets(pausedWorkout.currentExerciseSets || []);
+        // Resume in main workout. Normalize snapshots taken during the
+        // between-exercise rest: a stored set index past the exercise's set
+        // count would render "Série 4/3" with no way forward — jump to the
+        // next exercise instead.
+        let exIdx = pausedWorkout.currentExerciseIndex;
+        let setIdx = pausedWorkout.currentSetIndex || 0;
+        let curSets = pausedWorkout.currentExerciseSets || [];
+        const exTotalSets = pausedWorkout.exercises[exIdx]?.sets || 0;
+        if (exTotalSets > 0 && setIdx >= exTotalSets) {
+          if (exIdx < pausedWorkout.exercises.length - 1) {
+            exIdx += 1;
+            setIdx = 0;
+            curSets = [];
+          } else {
+            setIdx = exTotalSets - 1;
+          }
+        }
+        setInitialExerciseIndex(exIdx);
+        setInitialSetIndex(setIdx);
+        setInitialCurrentExerciseSets(curSets);
         // Convert completedSets back to results array format
         const resultsArray = Object.entries(pausedWorkout.completedSets).map(([exerciseId, sets]) => {
           const exercise = pausedWorkout.exercises.find(e => e.exerciseId === exerciseId);
@@ -453,7 +537,7 @@ const Training = () => {
   }, [searchParams, pausedWorkout, autoStartTriggered, setSearchParams, clearPausedWorkout]);
   
   // Function to regenerate plan automatically
-  const handleRegeneratePlan = useCallback(async () => {
+  const handleRegeneratePlan = useCallback(async (gymOverride?: string) => {
     if (!profile?.primary_goal) return;
     
     setIsRegeneratingPlan(true);
@@ -475,7 +559,7 @@ const Training = () => {
       }
       
       // Create new plan with current profile training_days snapshot and generate exercises
-      const selectedGymId = profile.selected_gym_id;
+      const selectedGymId = gymOverride || profile.selected_gym_id;
       const durationMinutes = profile.training_duration_minutes || 60;
       
       if (selectedGymId && profile.user_level) {
@@ -512,10 +596,10 @@ const Training = () => {
           });
       }
       
-      // Reset day index but KEEP STREAK!
+      // Reset day index but KEEP STREAK! (+ persist the freshly picked gym)
       await supabase
         .from('user_profiles')
-        .update({ current_day_index: 0 })
+        .update(gymOverride ? { current_day_index: 0, selected_gym_id: gymOverride } : { current_day_index: 0 })
         .eq('user_id', userData.user.id);
       
       // Refetch
@@ -532,6 +616,7 @@ const Training = () => {
       setIsRegeneratingPlan(false);
     }
   }, [profile, plan, refetchProfile, refetchPlan]);
+  handleRegeneratePlanRef.current = handleRegeneratePlan;
 
   // Get today's weekday
   const todayWeekday = getCurrentWeekday();
@@ -541,152 +626,64 @@ const Training = () => {
   // Implements shifted week logic: 
   // - Week 1: Only show days from plan start onwards (skip days before)
   // - Week after last (totalWeeks + 1): Add the skipped days from week 1
+  // QUEUE model (same as Můj plán): each card is a slot in the training queue,
+  // NOT a calendar weekday. Completed slots show what was actually trained ✓;
+  // the slot at `totalCompletedDays` is the next workout; later slots are upcoming.
+  // The plan advances by completion, so it stretches in real time to all trainings.
   const daysInViewingWeek = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
-    
-    const workoutLetters = getAllDayLetters(workoutTypes);
-    const isFirstWeek = viewingWeek === 1;
-    // Extra week only exists if there are skipped days from week 1
-    const isExtraWeek = skippedDaysCount > 0 && viewingWeek === totalWeeks + 1;
-    
-    // Build the list of days to show in this week
-    let daysToShow: string[] = [];
-    
-    if (isFirstWeek) {
-      // Week 1: Only show days from plan start onwards (hide skipped days)
-      daysToShow = firstWeekEffectiveDays;
-    } else if (isExtraWeek) {
-      // Extra week (after last regular week): Show only the skipped days from first week
-      daysToShow = firstWeekSkippedDays;
-    } else {
-      // Normal weeks (including last regular week): Show all training days
-      daysToShow = trainingDays;
-    }
-    
-    // Calculate base properties for each day
-    const daysWithBaseProps = daysToShow.map((dayOfWeek, indexInWeek) => {
-      // For split calculation, we need the EFFECTIVE global day index
-      // Week 1 starts at 0, week 2 starts at firstWeekEffectiveDays, etc.
-      let effectiveGlobalIndex: number;
-      
-      if (isFirstWeek) {
-        effectiveGlobalIndex = indexInWeek;
-      } else if (isExtraWeek) {
-        // Extra week days: these are the LAST days of the entire plan
-        const regularDaysInPlan = effectiveFirstWeekDayCount + (totalWeeks - 1) * trainingFrequency;
-        effectiveGlobalIndex = regularDaysInPlan + indexInWeek;
+    const dayCount = workoutTypes;
+    const queueHead = plan.currentDayIndex ?? totalCompletedDays;
+    const weekStartSlot = (viewingWeek - 1) * trainingFrequency;
+
+    return trainingDays.map((dayOfWeek, i) => {
+      const slot = weekStartSlot + i;
+      const isCompleted = slot < totalCompletedDays;
+      const isNext = slot === totalCompletedDays;
+      const isFuture = slot > totalCompletedDays;
+
+      let workoutLetter: string;
+      let sessionId: string | null = null;
+      if (isCompleted) {
+        const w = regularCompletedWorkouts[slot];
+        workoutLetter = w ? String(w.dayLetter).replace('_EXT', '') : getCurrentDayLetter(dayCount, slot);
+        sessionId = w?.sessionId ?? null;
       } else {
-        // Normal calculation for other weeks
-        const daysBeforeThisWeek = effectiveFirstWeekDayCount + (viewingWeek - 2) * trainingFrequency;
-        effectiveGlobalIndex = daysBeforeThisWeek + indexInWeek;
+        workoutLetter = getCurrentDayLetter(dayCount, queueHead + (slot - totalCompletedDays));
       }
-      
-      // Rotate through workout types (A, B, A, B... or A, B, C, A, B, C...)
-      const workoutLetter = workoutLetters[effectiveGlobalIndex % workoutTypes];
-      
-      // Check if this day is completed (non-bonus) - match by week and dayOfWeek
-      // For extra week days, they are always in the future
-      const completedSession = isExtraWeek 
-        ? null 
-        : regularCompletedWorkouts.find(w => 
-            w.week === viewingWeek && w.dayOfWeek === dayOfWeek && !w.isBonus
-          );
-      const isCompleted = !!completedSession;
-      
-      // Is this the actual "today" - check if day of week matches today's day
-      const dayOrderIndex = DAY_ORDER.indexOf(dayOfWeek);
-      const isToday = !isExtraWeek && dayOfWeek === todayWeekday && viewingWeek === currentWeek;
-      
-      // Is this day in the past within the current week?
-      const isPastThisWeek = !isExtraWeek && viewingWeek === currentWeek && dayOrderIndex < todayDayOrder;
-      
-      // Is the entire viewing week in the past?
-      const isWeekInPast = viewingWeek < currentWeek;
-      
-      // Is this day in the future?
-      // Extra week days are always considered "future" since they're at the end of the plan
-      const isFuture = isExtraWeek || viewingWeek > currentWeek || 
-        (viewingWeek === currentWeek && dayOrderIndex > todayDayOrder);
-      
-      // Calculate actual calendar date for this day in this week
-      // Used to check if day is before plan start (shouldn't be marked as missed)
-      const getActualDateForDay = (): Date | null => {
-        if (!planStartDate) return null;
-        
-        // Calculate the Monday of the plan's start week
-        const startDay = planStartDate.getDay(); // 0=Sunday
-        const daysFromMonday = startDay === 0 ? 6 : startDay - 1; // Convert to Mon=0
-        const planWeekMonday = new Date(planStartDate);
-        planWeekMonday.setDate(planStartDate.getDate() - daysFromMonday);
-        
-        // Add weeks to get to the viewing week's Monday
-        const viewingWeekMonday = new Date(planWeekMonday);
-        viewingWeekMonday.setDate(planWeekMonday.getDate() + (viewingWeek - 1) * 7);
-        
-        // Add days to get to the specific day of week
-        const targetDate = new Date(viewingWeekMonday);
-        targetDate.setDate(viewingWeekMonday.getDate() + dayOrderIndex);
-        
-        return targetDate;
-      };
-      
-      const actualDate = getActualDateForDay();
-      const isBeforePlanStart = planStartDate && actualDate && actualDate < planStartDate;
-      
-      // Compare with TODAY's actual calendar date (not day-of-week index)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isActuallyInPast = actualDate && actualDate < today;
-      
-      // Is this day missed? Only if:
-      // 1. Not in extra week (shifted days at end of plan)
-      // 2. Its actual calendar date is in the PAST (not future)
-      // 3. Not before plan start date
-      // 4. Not already completed
-      // 5. User has at least 1 completed workout (don't show X marks for brand new users)
-      const isMissed = !isExtraWeek && isActuallyInPast && !isBeforePlanStart && !isCompleted && totalCompletedDays > 0;
-      
-      // Is this the current day to train (next up)?
-      const isCurrentDay = isToday && !isCompleted;
-      
-      // Get day template info - shows split name (e.g., "Push", "Pull & Ramena")
+
       const dayInfo = plan.allDays?.find(d => d.dayLetter === workoutLetter);
-      
+      const workoutName = dayInfo?.dayName || t('training.workout_letter', { letter: workoutLetter });
+
       return {
         dayOfWeek,
-        dayOrderIndex,
-        dayName: DAY_NAMES_CZ[dayOfWeek] || dayOfWeek,
-        dayNameShort: DAY_NAMES_SHORT_CZ[dayOfWeek] || dayOfWeek.slice(0, 2),
         workoutLetter,
-        // Show split name, NOT "Den A" - use dayName from template
-        workoutName: dayInfo?.dayName || t('training.workout_letter', { letter: workoutLetter }),
+        workoutName,
+        dayName: workoutName, // legacy safety: any leftover ref shows the workout
+        ordinalLabel: t('training.workout_number', { n: slot + 1 }),
+        sessionId,
         isCompleted,
-        isCurrentDay,
-        isToday,
+        isNext,
         isFuture,
-        isPast: isPastThisWeek || isWeekInPast,
-        isMissed,
-        isFirstWeekSkip: false, // No longer used
-        isShiftedDay: false, // No longer highlighted
-        globalDayIndex: effectiveGlobalIndex,
-        sessionId: completedSession?.sessionId || null,
-        isUpcoming: false // Will be set in second pass
+        globalDayIndex: slot,
+        // legacy fields kept inert so older render branches don't trigger
+        isToday: isNext,
+        isMissed: false,
+        isUpcoming: false,
+        isShiftedDay: false,
       };
     });
-    
-    // Second pass: find the first upcoming day (future, not completed)
-    // Only mark upcoming if we're viewing the current week
-    if (viewingWeek === currentWeek) {
-      const upcomingIndex = daysWithBaseProps.findIndex(day => 
-        day.isFuture && !day.isCompleted
-      );
-      if (upcomingIndex !== -1) {
-        daysWithBaseProps[upcomingIndex].isUpcoming = true;
-      }
-    }
-    
-    return daysWithBaseProps;
-  }, [plan, viewingWeek, currentWeek, totalWeeks, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, todayWeekday, todayDayOrder, firstWeekEffectiveDays, firstWeekSkippedDays, skippedDaysCount, effectiveFirstWeekDayCount, totalCompletedDays]);
+  }, [plan, viewingWeek, trainingDays, trainingFrequency, workoutTypes, regularCompletedWorkouts, totalCompletedDays, t]);
+
+  // Did the user already complete a (regular) workout TODAY — by real date, not
+  // queue position. Drives whether today's Start button / preview shows.
+  const completedToday = useMemo(() => {
+    const now = new Date();
+    return regularCompletedWorkouts.some(w => {
+      const d = new Date(w.date);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    });
+  }, [regularCompletedWorkouts]);
 
   // Fetch available goals
   useEffect(() => {
@@ -903,6 +900,12 @@ const Training = () => {
 
   // Otevře GymSelector před startem tréninku
   const handleStartWorkout = () => {
+    // Souběh s hodinkami: v jednu chvíli běží trénink jen na jednom místě.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
+    prefetchGymLocation(); // warm the GPS fix while the user picks a gym
     setShowGymSelectorForStart(true);
   };
 
@@ -982,7 +985,11 @@ const Training = () => {
       return selectCooldownExercises(exercisesData as any, targetMuscles);
     }
   }, [plan?.splitType, plan?.currentDayLetter]);
-  
+
+  // Ref-indirekce: efekt auto-startu stojí nad touhle definicí, takže ji nesmí
+  // mít v poli závislostí (stejný důvod jako u handleRegeneratePlanRef).
+  generateTimedExercisesRef.current = generateTimedExercises;
+
   // Handle starting warmup from preview
   const handleStartWarmup = useCallback(async () => {
     setIsGeneratingWarmup(true);
@@ -1371,24 +1378,41 @@ const Training = () => {
       
       const { data } = await supabase
         .from('workout_session_sets')
-        .select('exercise_name, set_number, reps, weight_kg')
+        .select('exercise_id, exercise_name, set_number, reps, weight_kg')
         .eq('session_id', sessionId)
+        // created_at is distinct per exercise (batched inserts) → chronological
+        // workout order; exercise_name keeps legacy same-timestamp rows grouped
+        .order('created_at')
         .order('exercise_name')
         .order('set_number');
-      
+
       if (data) {
+        // exercise_name is a Czech snapshot saved at workout time — in EN mode
+        // resolve current name_en via exercise_id so history is localized too.
+        const enNames: Record<string, string> = {};
+        if (isEn) {
+          const ids = [...new Set(data.map(s => s.exercise_id).filter(Boolean))] as string[];
+          if (ids.length) {
+            const { data: exRows } = await supabase
+              .from('exercises')
+              .select('id, name_en')
+              .in('id', ids);
+            (exRows || []).forEach(r => { if (r.name_en) enNames[r.id] = r.name_en; });
+          }
+        }
+
         // Group by exercise name
-        const grouped: Record<string, { reps: number[], weights: number[] }> = {};
+        const grouped: Record<string, { reps: number[], weights: number[], exerciseId: string | null }> = {};
         data.forEach(set => {
           if (!grouped[set.exercise_name]) {
-            grouped[set.exercise_name] = { reps: [], weights: [] };
+            grouped[set.exercise_name] = { reps: [], weights: [], exerciseId: set.exercise_id || null };
           }
           grouped[set.exercise_name].reps.push(set.reps || 0);
           grouped[set.exercise_name].weights.push(set.weight_kg || 0);
         });
-        
+
         const exercises: HistoryExercise[] = Object.entries(grouped).map(([name, data]) => ({
-          exerciseName: name,
+          exerciseName: (isEn && data.exerciseId && enNames[data.exerciseId]) ? enNames[data.exerciseId] : name,
           sets: data.reps.length,
           reps: data.reps.length > 0 ? Math.round(data.reps.reduce((a, b) => a + b, 0) / data.reps.length) : null,
           weight: data.weights.some(w => w > 0) ? Math.max(...data.weights) : null
@@ -1422,7 +1446,7 @@ const Training = () => {
       <WorkoutPreview
         exercises={generatedExercises}
         dayLetter={plan?.currentDayLetter || 'A'}
-        dayName={getTodayDayName()}
+        dayName={localizeDayName(getTodayDayName(), t)}
         estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
         gymId={selectedWorkoutGymId || plan?.gymId}
         planId={plan?.id}
@@ -1769,6 +1793,7 @@ const Training = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
+              <CoachHelpButton onClick={tour.openTour} />
               <Button variant="ghost" size="icon" onClick={() => setShowCancelConfirm(true)} title={t('training.cancel_plan')}>
                 <X className="w-5 h-5" />
               </Button>
@@ -1848,7 +1873,7 @@ const Training = () => {
         </div>
 
         {/* Week Navigation - Compact */}
-        <div className="px-4 py-3 flex items-center justify-between bg-muted/30">
+        <div className="px-4 py-3 flex items-center justify-between bg-muted/30" data-coach="training-week">
           <Button 
             variant="ghost" 
             size="sm"
@@ -1864,7 +1889,7 @@ const Training = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">
-              {t('training.week_of', { week: viewingWeek, total: skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks })}
+              {t('training.week_of', { week: viewingWeek, total: totalWeeks })}
             </span>
             {isViewingCurrentWeek && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t('training.now_badge')}</Badge>
@@ -1874,7 +1899,7 @@ const Training = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            disabled={viewingWeek >= (skippedDaysCount > 0 ? totalWeeks + 1 : totalWeeks)}
+            disabled={viewingWeek >= totalWeeks}
             onClick={() => {
               setViewingWeek(w => w + 1);
               setSelectedDayIndex(null);
@@ -1886,10 +1911,11 @@ const Training = () => {
         </div>
 
         {/* Days in Week */}
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-2" data-coach="training-days">
           {daysInViewingWeek.map((day, index) => (
             <motion.button
               key={`${viewingWeek}-${day.dayOfWeek}`}
+              data-coach={index === 0 ? 'training-day0' : undefined}
               onClick={() => setSelectedDayIndex(selectedDayIndex === index ? null : index)}
               className={cn(
                 "w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3",
@@ -1946,13 +1972,10 @@ const Training = () => {
                             ? "text-amber-600"
                             : "text-foreground"
                   )}>
-                    {day.dayName}
+                    {day.workoutName}
                   </h3>
-                  {day.isToday && isViewingCurrentWeek && !day.isCompleted && !day.isMissed && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">{t('training.today_badge')}</Badge>
-                  )}
-                  {day.isUpcoming && !day.isToday && (
-                    <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">{t('training.next_badge')}</Badge>
+                  {day.isNext && isViewingCurrentWeek && !day.isCompleted && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">{t('training.next_badge')}</Badge>
                   )}
                 </div>
                 <p className={cn(
@@ -1963,7 +1986,7 @@ const Training = () => {
                       ? "text-destructive/70" 
                       : "text-muted-foreground"
                 )}>
-                  {day.workoutName}
+                  {day.ordinalLabel}
                 </p>
               </div>
 
@@ -1998,12 +2021,9 @@ const Training = () => {
                   return (
                     <>
                       <h3 className="font-bold mb-3 flex items-center gap-2">
-                        {day.dayName} - {day.workoutName}
+                        {day.workoutName} <span className="text-muted-foreground font-normal text-sm">· {day.ordinalLabel}</span>
                         {day.isCompleted && (
                           <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        )}
-                        {day.isMissed && (
-                          <X className="w-4 h-4 text-destructive" />
                         )}
                       </h3>
                       
@@ -2080,9 +2100,10 @@ const Training = () => {
 
         {/* Show bonus workout option on non-training days */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const isNonTrainingDay = isViewingCurrentWeek && !todayTrainingDay;
-          
+          // Bonus offered when today (real calendar) is NOT one of the user's scheduled days.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const isNonTrainingDay = isViewingCurrentWeek && !todayIsScheduled;
+
           if (!isNonTrainingDay || isWorkoutActive) return null;
           
           return (
@@ -2140,14 +2161,11 @@ const Training = () => {
 
         {/* Current Day Preview - only when today is a training day, viewing current week, and not completed */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const showPreview = isViewingCurrentWeek && 
-            todayTrainingDay && 
-            !todayTrainingDay.isCompleted && 
-            !todayTrainingDay.isMissed &&
-            selectedDayIndex === null;
-          
-          if (!showPreview || !todayTrainingDay) return null;
+          // Preview today's next workout when today is a scheduled day and not yet done today.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const showPreview = todayIsScheduled && !completedToday && selectedDayIndex === null;
+
+          if (!showPreview) return null;
           
           return (
             <div className="px-4">
@@ -2158,7 +2176,7 @@ const Training = () => {
                       {t('workout.today_workout')}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {todayTrainingDay.dayName} • {todayTrainingDay.workoutName}
+                      {getTodayDayName()}
                     </p>
                   </div>
                   {generatedExercises.length > 0 && (
@@ -2198,12 +2216,10 @@ const Training = () => {
 
         {/* Action Button - only when today is a training day and not completed */}
         {(() => {
-          const todayTrainingDay = daysInViewingWeek.find(d => d.isToday);
-          const showButton = isViewingCurrentWeek && 
-            todayTrainingDay && 
-            !todayTrainingDay.isCompleted && 
-            !todayTrainingDay.isMissed;
-          
+          // Start shown when today is a scheduled day and no workout done today yet.
+          const todayIsScheduled = isViewingCurrentWeek && trainingDays.includes(todayWeekday);
+          const showButton = todayIsScheduled && !completedToday;
+
           if (!showButton) return null;
           
           return (
@@ -2465,6 +2481,7 @@ const Training = () => {
           }}
         />
       </div>
+      <CoachTour screenId="training" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

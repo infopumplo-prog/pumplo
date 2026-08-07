@@ -64,6 +64,7 @@ Používej `GET /rest/v1/exercises?select=id&limit=1000` piped do Python `len()`
 **Eurogym Olomouc** — platící pilot zákazník.
 - Databáze cviků: 130+ cviků s videi
 - Video pipeline: CapCut edit/loop → ffmpeg (`-vcodec libx264 -crf 28 -an -movflags faststart`, `-stream_loop 2` pro krátké/unilaterální pohyby) → upload do Supabase Storage → update `video_path`
+- **Thumbnail (POVINNÉ u každého nového videa):** `ffmpeg -ss 0.1 -i <video> -frames:v 1 -vf scale=240:-2 -q:v 4 thumb.jpg` → upload do stejné složky jako video (`exercise-videos/<folder>/thumb.jpg`). Seznamy v appce renderují `<img>` z `getVideoThumbUrl()` — bez thumb.jpg se ukáže fallback ikona. Nikdy nevracet `<video>` do seznamů (200 videí naráz zabije iOS).
 
 ### 6 cviků k přetočení (glute focus)
 Při novém upload session vždy začni těmito — potřebují jen update `video_path`:

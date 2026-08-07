@@ -101,7 +101,7 @@ USING (short_code IS NOT NULL);
 - [ ] **Step 2: Run migration against Supabase**
 
 ```bash
-SUPABASE_ACCESS_TOKEN=sbp_7f2cb1aef1c2d04cfc3f1ff941d00906f12d5855 \
+SUPABASE_ACCESS_TOKEN=<YOUR_SUPABASE_ACCESS_TOKEN> \
 npx supabase db query --linked < supabase/migrations/20260408_add_short_code.sql
 ```
 

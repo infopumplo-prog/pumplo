@@ -1,0 +1,45 @@
+- main [ref=e17]:
+  - generic [ref=e73]:
+    - generic [ref=e74]:
+      - button "Zpět" [ref=e75] [cursor=pointer]:
+        - img [ref=e76]
+      - heading "Servisní technici" [level=1] [ref=e78]
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - generic [ref=e82]: 10:34
+        - paragraph [ref=e84]: Ahoj, test zprávy z prohlížeče 👋
+        - generic [ref=e85]:
+          - generic [ref=e86]: úkol
+          - button "+ úkol" [ref=e87] [cursor=pointer]
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - generic [ref=e90]: Jaroslav Chmelář
+          - generic [ref=e91]: 10:35
+        - paragraph [ref=e93]: Realtime zpráva od Jaroslava ✅
+        - generic [ref=e94]:
+          - generic [ref=e95]: úkol
+          - button "+ úkol" [ref=e96] [cursor=pointer]
+      - generic [ref=e97]:
+        - generic [ref=e99]: 20:03
+        - paragraph [ref=e101]: Těst úkol 1
+        - generic [ref=e102]:
+          - generic [ref=e103]: úkol
+          - button "+ úkol" [ref=e104] [cursor=pointer]
+      - generic [ref=e105]:
+        - generic [ref=e107]: 21:19
+        - paragraph [ref=e109]: Test2
+        - generic [ref=e110]:
+          - generic [ref=e111]: úkol
+          - button "+ úkol" [ref=e112] [cursor=pointer]
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]: Jaroslav Chmelář
+          - generic [ref=e116]: 22:21
+        - paragraph [ref=e118]: Nepřečtená zpráva od Jaroslava
+        - button "+ úkol" [ref=e120] [cursor=pointer]
+    - generic [ref=e122]:
+      - button "Přiložit soubor" [ref=e123] [cursor=pointer]:
+        - img [ref=e124]
+      - textbox "Napište zprávu…" [ref=e126]
+      - button "Odeslat zprávu" [disabled] [ref=e127]:
+        - img [ref=e128]

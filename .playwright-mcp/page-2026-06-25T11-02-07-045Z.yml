@@ -1,0 +1,15 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - button "Otevřít menu" [ref=e6] [cursor=pointer]:
+      - img [ref=e7]
+    - generic [ref=e9]: MámOkno
+    - button "Upozornění" [ref=e11] [cursor=pointer]:
+      - img [ref=e12]
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - complementary [ref=e17]:
+        - button "Moje úlohy" [ref=e18] [cursor=pointer]
+        - button "Vše" [ref=e19] [cursor=pointer]
+      - main [ref=e20]:
+        - heading "Úkoly" [level=1] [ref=e21]
+        - paragraph [ref=e22]: Žádné úkoly.

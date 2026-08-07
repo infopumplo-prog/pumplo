@@ -1,0 +1,41 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - img "Eurogym" [ref=e9]
+    - generic [ref=e10]: ×
+    - img "Pumplo" [ref=e12]
+  - generic [ref=e15]: ZDARMA PRO ČLENY EUROGYMU
+  - heading "Vítej. Tvůj trenér čeká v telefonu." [level=1] [ref=e16]:
+    - text: Vítej. Tvůj trenér
+    - text: čeká v telefonu.
+  - paragraph [ref=e17]: Naskenuj QR, stáhni appku a máš trénink na míru strojům v Eurogymu. Zdarma a za 10 sekund.
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - img [ref=e21]
+      - text: Plán na míru tvému fitku
+    - generic [ref=e24]:
+      - img [ref=e26]
+      - text: Video u každého cviku
+    - generic [ref=e28]:
+      - img [ref=e30]
+      - text: Sleduj pokrok a sérii
+  - generic [ref=e34]:
+    - img [ref=e36]
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - text: Naskenuj
+        - text: "& začni"
+      - generic [ref=e47]: Stáhni appku zdarma za 10 sekund
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e52]:
+            - generic [ref=e53]: App Store
+            - text: iPhone
+        - generic [ref=e54]:
+          - img [ref=e55]
+          - generic [ref=e57]:
+            - generic [ref=e58]: Google Play
+            - text: Android
+  - generic [ref=e59]:
+    - generic [ref=e60]: ● pumplo.com
+    - generic [ref=e61]: Tvůj digitální trenér v kapse

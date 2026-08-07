@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { sendFcmToUser } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,45 +15,152 @@ interface MessageTemplate {
   body: string;
 }
 
-const MORNING_MESSAGES: MessageTemplate[] = [
-  { title: '🏋️ Pripravený na tréning?', body: 'Dnes máš naplánovaný {workout}. Ideme do toho!' },
-  { title: '💪 Čas na tréning!', body: '{workout} čaká. Si pripravený?' },
-  { title: '🔥 Tvoje svaly volajú!', body: 'Dnes je deň na {workout}. Ukáž im, čo vieš!' },
-  { title: '⚡ Energia na maximum!', body: '{workout} - dnešný cieľ. Zvládneš to!' },
-  { title: '🎯 Fokus na cieľ!', body: 'Dnes {workout}. Každý tréning ťa posúva vpred!' },
-];
+type Lang = 'cs' | 'en';
 
-const MISSED_WORKOUT_MESSAGES: MessageTemplate[] = [
-  { title: '😤 Včera si vynechal tréning!', body: 'Dnes to naprav. {workout} na teba čaká!' },
-  { title: '💪 Návrat silnejší!', body: 'Vynechaný tréning? Dnes to dožeň s {workout}!' },
-  { title: '🔥 Čas na comeback!', body: 'Včera pause, dnes {workout}. Ideme!' },
-  { title: '⚡ Dvojnásobná motivácia!', body: 'Za včerajšok aj dnes - {workout} volá!' },
-];
+interface MessageBundle {
+  morning: MessageTemplate[];
+  missed: MessageTemplate[];
+  closing: MessageTemplate[];
+  closingStreak: MessageTemplate[];
+  test: MessageTemplate;
+}
 
-const CLOSING_SOON_MESSAGES: MessageTemplate[] = [
-  { title: '⏰ Posilka čoskoro zatvára!', body: 'Ešte {time} do zatvorenia. Stihneš rýchly tréning?' },
-  { title: '🏃 Posledná šanca dnes!', body: 'Gym zatvára o {time}. Bež trénovať!' },
-  { title: '⚡ Teraz alebo nikdy!', body: 'Už len {time} do zatvorenia. Zvládneš to!' },
-];
+// Localized message templates. The recipient's chosen UI language
+// (user_profiles.language) selects the bundle; 'cs' is the fallback.
+const MESSAGES: Record<Lang, MessageBundle> = {
+  cs: {
+    morning: [
+      { title: '🏋️ Připravený na trénink?', body: 'Dnes máš naplánovaný {workout}. Jdeme na to!' },
+      { title: '💪 Čas na trénink!', body: '{workout} čeká. Jsi připravený?' },
+      { title: '🔥 Tvoje svaly volají!', body: 'Dnes je den na {workout}. Ukaž jim, co umíš!' },
+      { title: '⚡ Energie na maximum!', body: '{workout} – dnešní cíl. Zvládneš to!' },
+      { title: '🎯 Soustřeď se na cíl!', body: 'Dnes {workout}. Každý trénink tě posouvá vpřed!' },
+    ],
+    missed: [
+      { title: '😤 Včera jsi vynechal trénink!', body: 'Dnes to naprav. {workout} na tebe čeká!' },
+      { title: '💪 Návrat silnější!', body: 'Vynechaný trénink? Dnes to dožeň s {workout}!' },
+      { title: '🔥 Čas na comeback!', body: 'Včera pauza, dnes {workout}. Jdeme!' },
+      { title: '⚡ Dvojnásobná motivace!', body: 'Za včerejšek i dnešek – {workout} volá!' },
+    ],
+    closing: [
+      { title: '⏰ Posilovna brzy zavírá!', body: 'Ještě {time} do zavření. Stihneš rychlý trénink?' },
+      { title: '🏃 Poslední šance dnes!', body: 'Posilovna zavírá za {time}. Běž trénovat!' },
+      { title: '⚡ Teď, nebo nikdy!', body: 'Už jen {time} do zavření. Zvládneš to!' },
+    ],
+    closingStreak: [
+      { title: '🔥 Nepřeruš sérii {streak} dní!', body: 'Posilovna zavírá za {time}. Udrž svůj streak!' },
+      { title: '💪 {streak} dní v řadě!', body: 'Ještě {time} do zavření. Nepřeruš sérii!' },
+      { title: '⚡ Streak {streak} je v ohrožení!', body: 'Posilovna zavírá za {time}. Stihni to!' },
+    ],
+    test: { title: '🧪 Testovací notifikace', body: 'Toto je testovací notifikace. Streak: {streak} dní.' },
+  },
+  en: {
+    morning: [
+      { title: '🏋️ Ready to train?', body: 'You have {workout} planned today. Let’s go!' },
+      { title: '💪 Time to train!', body: '{workout} is waiting. Are you ready?' },
+      { title: '🔥 Your muscles are calling!', body: 'Today is {workout} day. Show them what you’ve got!' },
+      { title: '⚡ Energy to the max!', body: '{workout} – today’s goal. You’ve got this!' },
+      { title: '🎯 Focus on the goal!', body: '{workout} today. Every workout moves you forward!' },
+    ],
+    missed: [
+      { title: '😤 You skipped yesterday’s workout!', body: 'Make up for it today. {workout} is waiting!' },
+      { title: '💪 Come back stronger!', body: 'Missed a workout? Make it up today with {workout}!' },
+      { title: '🔥 Time for a comeback!', body: 'Rest yesterday, {workout} today. Let’s go!' },
+      { title: '⚡ Double the motivation!', body: 'For yesterday and today – {workout} is calling!' },
+    ],
+    closing: [
+      { title: '⏰ The gym closes soon!', body: '{time} left until closing. Time for a quick workout?' },
+      { title: '🏃 Last chance today!', body: 'The gym closes in {time}. Go train!' },
+      { title: '⚡ Now or never!', body: 'Only {time} until closing. You can make it!' },
+    ],
+    closingStreak: [
+      { title: '🔥 Don’t break your {streak}-day streak!', body: 'The gym closes in {time}. Keep your streak alive!' },
+      { title: '💪 {streak} days in a row!', body: '{time} left until closing. Don’t break the streak!' },
+      { title: '⚡ Your {streak}-day streak is at risk!', body: 'The gym closes in {time}. Make it!' },
+    ],
+    test: { title: '🧪 Test notification', body: 'This is a test notification. Streak: {streak} days.' },
+  },
+};
 
-const CLOSING_SOON_STREAK_MESSAGES: MessageTemplate[] = [
-  { title: '🔥 Neprerušuj sériu {streak} dní!', body: 'Gym zatvára o {time}. Udrž svoj streak!' },
-  { title: '💪 {streak} dní v rade!', body: 'Ešte {time} do zatvorenia. Neprerušuj sériu!' },
-  { title: '⚡ Streak {streak} je v ohrození!', body: 'Posilka zatvára o {time}. Stihni to!' },
-];
+function pickLang(value: string | null | undefined): Lang {
+  return value === 'en' ? 'en' : 'cs';
+}
+
+// ============================================================================
+// Comeback / re-engagement templates (Duolingo-style escalating).
+// Keyed by "days since last completed workout". `needs` = which progress signal
+// the personalized (hook) variant requires; falls back to `generic` if absent.
+// ============================================================================
+
+type ComebackSignal = 'streak' | 'workouts' | 'goal' | null;
+interface ComebackTpl { needs: ComebackSignal; hook: string; generic: string }
+
+const COMEBACK_STAGES = [2, 4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
+const COMEBACK_TAIL_FROM = 44; // day 44+ all use the gentle "tail" template
+
+const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl>; tail: ComebackTpl }> = {
+  cs: {
+    title: 'Pumplo 💪',
+    stages: {
+      2: { needs: null, hook: '👋 Hej {name}, dva dny pauza? Tělo už kouká, kde seš.', generic: '👋 Hej {name}, dva dny pauza? Uvidíme se v posilce?' },
+      4: { needs: 'streak', hook: '🙏 {name}, čtyři dny… tvůj rekord {streak} dní by to neschvaloval.', generic: '🙏 {name}, čtyři dny ticho. Dáme to zítra?' },
+      7: { needs: 'workouts', hook: '🔥 Týden bez tréninku, {name}. {workouts} tréninků za tebou — teď to nezahodíš.', generic: '🔥 Týden bez tréninku, {name}. Pojď zpátky do hry.' },
+      11: { needs: 'goal', hook: '😅 {name}, svaly ti píšou, že jim chybíš. Tvůj cíl ({goal}) pořád čeká.', generic: '😅 {name}, svaly ti píšou, že jim chybíš. Vrátíš se?' },
+      16: { needs: 'workouts', hook: '😤 {name}, {workouts} tréninků a teď ticho? Deal byl jinej. Zítra náprava?', generic: '😤 {name}, dva týdny? Deal byl jinej. Zítra náprava?' },
+      23: { needs: null, hook: '🥺 {name}, fakt nám tam chybíš. Jeden trénink a jsi zpátky v sérii.', generic: '🥺 {name}, fakt nám tam chybíš. Jeden trénink stačí.' },
+      30: { needs: 'streak', hook: '💔 Poslední šťouch, {name}. Pak tě nechám bejt — ale rekord {streak} dní by byl škoda.', generic: '💔 Poslední šťouch, {name}. Pak tě nechám bejt. Bylo by škoda toho nechat.' },
+    },
+    tail: { needs: null, hook: '🌱 {name}, pořád tu na tebe čeká tvůj plán. Kdykoliv budeš chtít.', generic: '🌱 {name}, pořád tu pro tebe jsme. Kdykoliv budeš chtít.' },
+  },
+  en: {
+    title: 'Pumplo 💪',
+    stages: {
+      2: { needs: null, hook: "👋 Hey {name}, two days off? Your body's asking where you are.", generic: '👋 Hey {name}, two days off? See you at the gym?' },
+      4: { needs: 'streak', hook: '🙏 {name}, four days… your {streak}-day record wouldn’t approve.', generic: '🙏 {name}, four quiet days. Get back to it tomorrow?' },
+      7: { needs: 'workouts', hook: "🔥 A week off, {name}. {workouts} workouts behind you — don't throw it away now.", generic: '🔥 A week off, {name}. Come back into the game.' },
+      11: { needs: 'goal', hook: '😅 {name}, your muscles say they miss you. Your goal ({goal}) is still waiting.', generic: '😅 {name}, your muscles say they miss you. Coming back?' },
+      16: { needs: 'workouts', hook: "😤 {name}, {workouts} workouts and now silence? That wasn't the deal. Fix it tomorrow?", generic: "😤 {name}, two weeks? That wasn't the deal. Fix it tomorrow?" },
+      23: { needs: null, hook: "🥺 {name}, we really miss you. One workout and you're back in the game.", generic: '🥺 {name}, we really miss you. One workout is all it takes.' },
+      30: { needs: 'streak', hook: "💔 Last nudge, {name}. Then I'll leave you be — but a {streak}-day record would be a shame to lose.", generic: "💔 Last nudge, {name}. Then I'll leave you be. Would be a shame to quit." },
+    },
+    tail: { needs: null, hook: '🌱 {name}, your plan is still here waiting. Whenever you’re ready.', generic: '🌱 {name}, we’re still here for you. Whenever you’re ready.' },
+  },
+};
+
+const GOAL_LABELS: Record<Lang, Record<string, string>> = {
+  cs: { muscle_gain: 'nabrat svaly', strength: 'síla', fat_loss: 'zhubnout', general_fitness: 'kondice', endurance: 'vytrvalost' },
+  en: { muscle_gain: 'build muscle', strength: 'strength', fat_loss: 'fat loss', general_fitness: 'fitness', endurance: 'endurance' },
+};
+
+// Fill {name} gracefully — drop it (and surrounding comma/space) when missing.
+function fillName(text: string, name: string | null): string {
+  if (name) return text.replace(/\{name\}/g, name);
+  return text
+    .replace(/,?\s*\{name\}/g, '')
+    .replace(/\{name\}\s*,?\s*/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 // ============================================================================
 // Helpers
 // ============================================================================
 
-type NotificationType = 'morning' | 'missed' | 'closing';
+type NotificationType = 'morning' | 'missed' | 'closing' | 'comeback';
 
 function getRandomMessage(messages: MessageTemplate[]): MessageTemplate {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes} minút`;
+function formatMinutes(minutes: number, lang: Lang): string {
+  if (lang === 'en') {
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (m === 0) return `${h} ${h === 1 ? 'hour' : 'hours'}`;
+    return `${h}h ${m}min`;
+  }
+  if (minutes < 60) return `${minutes} minut`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (mins === 0) return `${hours} ${hours === 1 ? 'hodinu' : 'hodiny'}`;
@@ -445,10 +553,13 @@ interface UserProfile {
   notification_missed_workout: boolean;
   notification_closing_soon: boolean;
   selected_gym_id: string | null;
+  language: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutName(supabase: SupabaseClient<any>, userId: string): Promise<string> {
+async function getWorkoutName(supabase: SupabaseClient<any>, userId: string, lang: Lang): Promise<string> {
+  const fallback = lang === 'en' ? 'workout' : 'trénink';
+
   const { data: plan } = await supabase
     .from('user_workout_plans')
     .select('goal_id')
@@ -456,16 +567,24 @@ async function getWorkoutName(supabase: SupabaseClient<any>, userId: string): Pr
     .eq('is_active', true)
     .single();
 
-  if (!plan) return 'tréning';
+  if (!plan) return fallback;
 
-  const goalNames: Record<string, string> = {
-    'strength': 'silový tréning',
-    'hypertrophy': 'objemový tréning',
-    'endurance': 'vytrvalostný tréning',
-    'weight_loss': 'tréning na chudnutie',
+  const goalNames: Record<Lang, Record<string, string>> = {
+    cs: {
+      'strength': 'silový trénink',
+      'hypertrophy': 'objemový trénink',
+      'endurance': 'vytrvalostní trénink',
+      'weight_loss': 'trénink na hubnutí',
+    },
+    en: {
+      'strength': 'strength workout',
+      'hypertrophy': 'hypertrophy workout',
+      'endurance': 'endurance workout',
+      'weight_loss': 'weight-loss workout',
+    },
   };
 
-  return goalNames[plan.goal_id] || 'tréning';
+  return goalNames[lang][plan.goal_id] || fallback;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -583,10 +702,11 @@ async function processMorningNotifications(
   console.log(`Processing morning notifications for preferred_time=${targetPreferredTime}, weekday=${weekday}`);
 
   // Query users
+  // Select by preferences only — no longer require a web push_subscription, so
+  // native-app users (FCM device tokens, no web sub) are included too.
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout')
-    .not('push_subscription', 'is', null)
+    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout, language')
     .eq('preferred_time', targetPreferredTime)
     .eq('notification_morning_reminder', true);
 
@@ -610,12 +730,19 @@ async function processMorningNotifications(
       continue;
     }
 
+    // Suppress if a comeback push already went out today (avoid double-spam).
+    if (await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) {
+      stats.skipped++;
+      continue;
+    }
+
     // Check if missed previous training
     const missedPrevious = user.notification_missed_workout && 
       await checkMissedPreviousTraining(supabase, user.user_id, user.training_days);
 
-    const workoutName = await getWorkoutName(supabase, user.user_id);
-    const messages = missedPrevious ? MISSED_WORKOUT_MESSAGES : MORNING_MESSAGES;
+    const lang = pickLang(user.language);
+    const workoutName = await getWorkoutName(supabase, user.user_id, lang);
+    const messages = missedPrevious ? MESSAGES[lang].missed : MESSAGES[lang].morning;
     const message = getRandomMessage(messages);
 
     const title = message.title.replace('{workout}', workoutName);
@@ -629,29 +756,41 @@ async function processMorningNotifications(
       data: { url: '/' },
     });
 
-    const result = await sendWebPush(
-      user.push_subscription!,
-      payload,
-      vapidPublicKey,
-      vapidPrivateKey,
-      vapidSubject
-    );
+    let delivered = false;
 
-    if (result.success) {
+    // Web push (browser/PWA) — only if the user has a subscription and VAPID is set.
+    if (user.push_subscription && vapidPrivateKey) {
+      const result = await sendWebPush(
+        user.push_subscription,
+        payload,
+        vapidPublicKey,
+        vapidPrivateKey,
+        vapidSubject
+      );
+      if (result.success) {
+        delivered = true;
+      } else if (result.error === 'subscription_expired') {
+        await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+        console.log(`Cleared expired subscription for user ${user.user_id}`);
+      } else {
+        console.error(`Web push failed for user ${user.user_id}:`, result.error);
+      }
+    }
+
+    // Native push (iOS/Android via FCM) — no-op if no device tokens.
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`FCM failed for user ${user.user_id}:`, e);
+    }
+
+    if (delivered) {
       await logNotification(supabase, user.user_id, missedPrevious ? 'missed' : 'morning', dateKey);
       stats.sent++;
       console.log(`Sent ${missedPrevious ? 'missed' : 'morning'} notification to user ${user.user_id}`);
-    } else if (result.error === 'subscription_expired') {
-      // Clear invalid subscription
-      await supabase
-        .from('user_profiles')
-        .update({ push_subscription: null })
-        .eq('user_id', user.user_id);
-      stats.errors++;
-      console.log(`Cleared expired subscription for user ${user.user_id}`);
     } else {
-      stats.errors++;
-      console.error(`Failed to send to user ${user.user_id}:`, result.error);
+      stats.skipped++;
     }
   }
 
@@ -678,10 +817,10 @@ async function processClosingNotifications(
       push_subscription, 
       training_days, 
       current_streak, 
-      notification_closing_soon, 
-      selected_gym_id
+      notification_closing_soon,
+      selected_gym_id,
+      language
     `)
-    .not('push_subscription', 'is', null)
     .not('selected_gym_id', 'is', null)
     .eq('notification_closing_soon', true);
 
@@ -701,6 +840,12 @@ async function processClosingNotifications(
 
     // Check if already sent today
     if (await wasNotificationSentToday(supabase, user.user_id, 'closing', dateKey)) {
+      stats.skipped++;
+      continue;
+    }
+
+    // Suppress if a comeback push already went out today (avoid double-spam).
+    if (await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) {
       stats.skipped++;
       continue;
     }
@@ -729,10 +874,11 @@ async function processClosingNotifications(
       continue;
     }
 
-    const messages = user.current_streak > 0 ? CLOSING_SOON_STREAK_MESSAGES : CLOSING_SOON_MESSAGES;
+    const lang = pickLang(user.language);
+    const messages = user.current_streak > 0 ? MESSAGES[lang].closingStreak : MESSAGES[lang].closing;
     const message = getRandomMessage(messages);
 
-    const timeStr = formatMinutes(minutesUntilClose);
+    const timeStr = formatMinutes(minutesUntilClose, lang);
     const title = message.title
       .replace('{streak}', String(user.current_streak))
       .replace('{time}', timeStr);
@@ -748,30 +894,220 @@ async function processClosingNotifications(
       data: { url: '/' },
     });
 
-    const result = await sendWebPush(
-      user.push_subscription!,
-      payload,
-      vapidPublicKey,
-      vapidPrivateKey,
-      vapidSubject
-    );
+    let delivered = false;
 
-    if (result.success) {
+    if (user.push_subscription && vapidPrivateKey) {
+      const result = await sendWebPush(
+        user.push_subscription,
+        payload,
+        vapidPublicKey,
+        vapidPrivateKey,
+        vapidSubject
+      );
+      if (result.success) {
+        delivered = true;
+      } else if (result.error === 'subscription_expired') {
+        await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+      } else {
+        console.error(`Web push failed for user ${user.user_id}:`, result.error);
+      }
+    }
+
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`FCM failed for user ${user.user_id}:`, e);
+    }
+
+    if (delivered) {
       await logNotification(supabase, user.user_id, 'closing', dateKey);
       stats.sent++;
       console.log(`Sent closing notification to user ${user.user_id}`);
-    } else if (result.error === 'subscription_expired') {
-      await supabase
-        .from('user_profiles')
-        .update({ push_subscription: null })
-        .eq('user_id', user.user_id);
-      stats.errors++;
     } else {
-      stats.errors++;
-      console.error(`Failed to send to user ${user.user_id}:`, result.error);
+      stats.skipped++;
     }
   }
 
+  return stats;
+}
+
+// ============================================================================
+// Comeback / re-engagement notifications
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getDaysSinceLastWorkout(supabase: SupabaseClient<any>, userId: string): Promise<number | null> {
+  // Count ANY session, including one still in progress — a user training
+  // RIGHT NOW must not get a "two days off?" win-back push (happened to
+  // David mid-workout: his running session wasn't completed yet).
+  const { data } = await supabase
+    .from('workout_sessions')
+    .select('started_at, completed_at')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const last = new Date((data.completed_at || data.started_at) as string);
+  const pragueNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+  const pragueLast = new Date(last.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+  const d0 = Date.UTC(pragueNow.getFullYear(), pragueNow.getMonth(), pragueNow.getDate());
+  const d1 = Date.UTC(pragueLast.getFullYear(), pragueLast.getMonth(), pragueLast.getDate());
+  return Math.floor((d0 - d1) / 86400000);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getCompletedWorkoutCount(supabase: SupabaseClient<any>, userId: string): Promise<number> {
+  const { count } = await supabase
+    .from('workout_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .not('completed_at', 'is', null);
+  return count || 0;
+}
+
+interface ComebackUser {
+  user_id: string;
+  first_name: string | null;
+  preferred_time: string | null;
+  language: string | null;
+  primary_goal: string | null;
+  max_streak: number | null;
+  push_subscription: { endpoint: string; keys: { p256dh: string; auth: string } } | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processComebackNotifications(
+  supabase: SupabaseClient<any>,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string,
+  force = false,
+  testDays?: number,
+  testUserId?: string,
+): Promise<{ sent: number; skipped: number; errors: number }> {
+  const stats = { sent: 0, skipped: 0, errors: 0 };
+  const { hour, dateKey } = getPragueTime();
+  // Comeback (win-back) goes out at the user's preferred hour, EXCEPT the
+  // 'morning' (6:00) slot — a "come back and train" nudge at 6am is unread
+  // (everyone's asleep), so morning users get it in the evening (18:00) like
+  // the evening slot. Daily morning workout reminders keep their 6:00 time.
+  const timeToHour: Record<string, number> = { morning: 18, late_morning: 10, afternoon: 14, evening: 18 };
+
+  // Comeback only runs at the comeback hours (null preferred_time -> 10:00).
+  // `force` (test only) bypasses the hour gate, per-day dedup and logging;
+  // testDays overrides the computed absence; testUserId limits to one user.
+  if (!force && ![10, 14, 18].includes(hour)) return stats;
+
+  let query = supabase
+    .from('user_profiles')
+    .select('user_id, first_name, preferred_time, language, primary_goal, max_streak, push_subscription')
+    .eq('notification_comeback', true);
+  if (testUserId) query = query.eq('user_id', testUserId);
+  const { data: users, error } = await query;
+  if (error) { console.error('Error fetching comeback users:', error); return stats; }
+
+  for (const user of (users || []) as ComebackUser[]) {
+    const sendHour = timeToHour[user.preferred_time ?? ''] ?? 10;
+    if (!force && sendHour !== hour) { stats.skipped++; continue; }
+
+    const d = testDays ?? await getDaysSinceLastWorkout(supabase, user.user_id);
+    if (d === null || !COMEBACK_STAGES.includes(d)) { stats.skipped++; continue; }
+
+    if (!force && await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) { stats.skipped++; continue; }
+
+    const lang = pickLang(user.language);
+    const tpl = d >= COMEBACK_TAIL_FROM ? COMEBACK[lang].tail : COMEBACK[lang].stages[d];
+    if (!tpl) { stats.skipped++; continue; }
+
+    // Personalized (hook) when the required signal exists, else generic.
+    let chosen = tpl.generic;
+    if (tpl.needs === null) {
+      chosen = tpl.hook;
+    } else if (tpl.needs === 'streak' && (user.max_streak ?? 0) >= 3) {
+      chosen = tpl.hook.replace('{streak}', String(user.max_streak));
+    } else if (tpl.needs === 'workouts') {
+      const count = await getCompletedWorkoutCount(supabase, user.user_id);
+      if (count >= 5) chosen = tpl.hook.replace('{workouts}', String(count));
+    } else if (tpl.needs === 'goal' && user.primary_goal) {
+      const label = GOAL_LABELS[lang][user.primary_goal];
+      if (label) chosen = tpl.hook.replace('{goal}', label); // else keep generic
+    }
+
+    const title = COMEBACK[lang].title;
+    const body = fillName(chosen, user.first_name);
+
+    const payload = JSON.stringify({ title, body, icon: '/pwa-192x192.png', badge: '/favicon.ico', data: { url: '/' } });
+    let delivered = false;
+
+    if (user.push_subscription && vapidPrivateKey) {
+      const r = await sendWebPush(user.push_subscription, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+      if (r.success) delivered = true;
+      else if (r.error === 'subscription_expired') await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+    }
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) { console.error(`FCM comeback failed for ${user.user_id}:`, e); }
+
+    if (delivered) {
+      if (!force) await logNotification(supabase, user.user_id, 'comeback', dateKey);
+      stats.sent++;
+      console.log(`Sent comeback (day ${d}) to user ${user.user_id}`);
+    } else {
+      stats.skipped++;
+    }
+  }
+
+  return stats;
+}
+
+// ============================================================================
+// Broadcast: admin-authored custom push to all users (or one gym), native + web
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processBroadcast(
+  supabase: SupabaseClient<any>,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string,
+  title: string,
+  body: string,
+  gymId?: string,
+): Promise<{ sent: number; skipped: number; errors: number }> {
+  const stats = { sent: 0, skipped: 0, errors: 0 };
+
+  let query = supabase.from('user_profiles').select('user_id, push_subscription');
+  if (gymId) query = query.eq('selected_gym_id', gymId);
+  const { data: users, error } = await query;
+  if (error) { console.error('Broadcast user fetch error:', error); return stats; }
+
+  const payload = JSON.stringify({
+    title, body, icon: '/pwa-192x192.png', badge: '/favicon.ico', data: { url: '/' },
+  });
+
+  for (const user of (users || []) as UserProfile[]) {
+    let delivered = false;
+
+    if (user.push_subscription && vapidPrivateKey) {
+      const r = await sendWebPush(user.push_subscription, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+      if (r.success) delivered = true;
+      else if (r.error === 'subscription_expired') await supabase.from('user_profiles').update({ push_subscription: null }).eq('user_id', user.user_id);
+    }
+    try {
+      const fcm = await sendFcmToUser(supabase, user.user_id, { title, body, data: { route: '/' } });
+      if (fcm.sent > 0) delivered = true;
+    } catch (e) {
+      console.error(`Broadcast FCM failed for ${user.user_id}:`, e);
+    }
+
+    if (delivered) stats.sent++;
+    else stats.skipped++;
+  }
+
+  console.log(`Broadcast sent=${stats.sent} skipped=${stats.skipped}`);
   return stats;
 }
 
@@ -793,7 +1129,7 @@ async function processTestNotifications(
   // Query ALL users with push_subscription (no conditions)
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('user_id, push_subscription, current_streak')
+    .select('user_id, push_subscription, current_streak, language')
     .not('push_subscription', 'is', null);
 
   if (error) {
@@ -811,9 +1147,11 @@ async function processTestNotifications(
       continue;
     }
 
+    const lang = pickLang(user.language);
+    const tpl = MESSAGES[lang].test;
     const payload = JSON.stringify({
-      title: '🧪 Test notifikácia',
-      body: `Toto je testovacia notifikácia. Streak: ${user.current_streak || 0} dní.`,
+      title: tpl.title,
+      body: tpl.body.replace('{streak}', String(user.current_streak || 0)),
       icon: '/pwa-192x192.png',
       badge: '/favicon.ico',
       data: { url: '/' },
@@ -864,6 +1202,33 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // --- Auth gate: only the cron (CRON_SECRET) or an authenticated admin (the
+  // Dashboard broadcast/test trigger) may fire pushes. Blocks anonymous spam. ---
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const isCron = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+  if (!isCron) {
+    let isAdmin = false;
+    if (authHeader) {
+      const authClient = createClient(
+        Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await authClient.auth.getUser();
+      if (user) {
+        const { data: role } = await authClient
+          .from('user_roles').select('role')
+          .eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+        isAdmin = !!role;
+      }
+    }
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   console.log('Push notification function invoked');
 
   const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
@@ -878,32 +1243,27 @@ Deno.serve(async (req) => {
     hasSubject: !!vapidSubject,
   });
 
-  if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
-    console.error('Missing VAPID configuration');
-    return new Response(
-      JSON.stringify({ error: 'Missing VAPID configuration' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  // VAPID is only needed for WEB push. Native (FCM) reminders work without it,
+  // so don't hard-fail — just disable the web-push channel when VAPID is absent.
+  const webPushEnabled = !!(vapidPublicKey && vapidPrivateKey && vapidSubject);
+  if (!webPushEnabled) {
+    console.warn('VAPID not configured — web push disabled, FCM (native) still active');
   }
   
-  // Validate key formats
-  try {
-    const pubKeyBytes = base64UrlDecode(vapidPublicKey);
-    const privKeyBytes = base64UrlDecode(vapidPrivateKey);
-    console.log('Decoded key sizes:', {
-      publicKeyBytes: pubKeyBytes.length,
-      privateKeyBytes: privKeyBytes.length,
-      publicKeyFirstByte: pubKeyBytes[0],
-    });
-    
-    if (pubKeyBytes.length !== 65) {
-      console.error(`Invalid public key: expected 65 bytes, got ${pubKeyBytes.length}`);
+  // Validate key formats (only when web push is enabled)
+  if (webPushEnabled) {
+    try {
+      const pubKeyBytes = base64UrlDecode(vapidPublicKey!);
+      const privKeyBytes = base64UrlDecode(vapidPrivateKey!);
+      if (pubKeyBytes.length !== 65) {
+        console.error(`Invalid public key: expected 65 bytes, got ${pubKeyBytes.length}`);
+      }
+      if (privKeyBytes.length !== 32) {
+        console.error(`Invalid private key: expected 32 bytes, got ${privKeyBytes.length}`);
+      }
+    } catch (e) {
+      console.error('Key decode error:', e);
     }
-    if (privKeyBytes.length !== 32) {
-      console.error(`Invalid private key: expected 32 bytes, got ${privKeyBytes.length}`);
-    }
-  } catch (e) {
-    console.error('Key decode error:', e);
   }
 
   const supabase = createClient(
@@ -913,9 +1273,21 @@ Deno.serve(async (req) => {
 
   // Parse request body
   let notificationType: NotificationType | 'test' | null = null;
+  let forceComeback = false;
+  let testComebackDays: number | undefined;
+  let testComebackUser: string | undefined;
+  let bcTitle = '';
+  let bcBody = '';
+  let bcGymId: string | undefined;
   try {
     const body = await req.json();
     notificationType = body.type || null;
+    forceComeback = body.force === true;
+    testComebackDays = typeof body.test_days === 'number' ? body.test_days : undefined;
+    testComebackUser = typeof body.test_user_id === 'string' ? body.test_user_id : undefined;
+    bcTitle = typeof body.title === 'string' ? body.title.trim() : '';
+    bcBody = typeof body.body === 'string' ? body.body.trim() : '';
+    bcGymId = typeof body.gym_id === 'string' ? body.gym_id : undefined;
   } catch {
     // No body or invalid JSON - process all types
   }
@@ -936,6 +1308,32 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ success: true, mode: 'test', results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // BROADCAST: admin sends a custom push to all users (or one gym), native + web.
+  if (notificationType === 'broadcast') {
+    if (!bcTitle || !bcBody) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing title/body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    results.broadcast = await processBroadcast(supabase, vapidPublicKey, vapidPrivateKey, vapidSubject, bcTitle, bcBody, bcGymId);
+    console.log('Broadcast complete:', results);
+    return new Response(JSON.stringify({ success: true, mode: 'broadcast', results }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  // Process comeback notifications FIRST so morning/closing can suppress
+  // themselves for any user who just received a comeback push today.
+  if (!notificationType || notificationType === 'comeback') {
+    results.comeback = await processComebackNotifications(
+      supabase,
+      vapidPublicKey,
+      vapidPrivateKey,
+      vapidSubject,
+      forceComeback,
+      testComebackDays,
+      testComebackUser
     );
   }
 

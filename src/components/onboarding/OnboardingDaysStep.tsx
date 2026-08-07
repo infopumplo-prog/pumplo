@@ -19,7 +19,10 @@ const OnboardingDaysStep = ({ value, onChange }: OnboardingDaysStepProps) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-center">{t('onboarding.days_title')}</h2>
+      <div className="space-y-2 text-center">
+        <h2 className="text-2xl font-bold">{t('onboarding.days_title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('onboarding.days_subtitle')}</p>
+      </div>
       <div className="grid grid-cols-1 gap-2">
         {DAYS.map((day) => (
           <button

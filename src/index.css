@@ -42,6 +42,10 @@
     --input: 214 30% 91%;
     --ring: 195 100% 59%;
 
+    /* Primární akce — brandová navy #1A2744. */
+    --action: 220 46% 19%;
+    --action-foreground: 0 0% 100%;
+
     --radius: 1rem;
 
     /* Custom gradients */
@@ -93,9 +97,30 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
 
+    --success: 142 60% 45%;
+    --success-foreground: 0 0% 8%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 0 0% 8%;
+
     --border: 220 15% 20%;
     --input: 220 15% 20%;
     --ring: 195 100% 59%;
+
+    /* Na tmavém podkladu by původní navy splynula s pozadím — o dva odstíny výš. */
+    --action: 220 38% 32%;
+    --action-foreground: 0 0% 100%;
+
+    /* Tmavé varianty gradientů a stínů — na tmavém podkladu musí být stíny
+       výraznější a plochy tlumenější, jinak karty splynou s pozadím. */
+    --gradient-primary: linear-gradient(135deg, hsl(195 100% 55%), hsl(200 100% 40%));
+    --gradient-hero: linear-gradient(180deg, hsl(195 100% 59% / 0.14), transparent);
+    --gradient-card: linear-gradient(145deg, hsl(220 20% 13%), hsl(220 20% 10%));
+
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.45);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.55);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.4);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -223,4 +248,20 @@
 /* Padding that clears the floating bottom nav (replaces pb-24 on scrollable pages) */
 .pb-nav {
   padding-bottom: var(--bottom-nav-offset);
+}
+
+/* Native-app feel: long-press must drive app gestures (hold-to-pick swap),
+   not the iOS text-selection callout. Inputs keep normal text selection. */
+* {
+  -webkit-touch-callout: none;
+}
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
 }

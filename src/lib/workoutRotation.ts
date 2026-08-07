@@ -3,41 +3,17 @@
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+// Rotace dní je pravidlo sdílené se serverovou funkcí pro hodinky — žije
+// v supabase/functions/_shared/planRules.ts. Import (ne pouhý re-export):
+// getCurrentDayLetter se používá i tady v getWeeklySchedule.
+import { getCurrentDayLetter, getNextDayLetter } from './planRules';
+export { getCurrentDayLetter, getNextDayLetter };
+
 /**
  * Získá písmeno dne podle indexu a počtu dní v rotaci
  * @param dayCount - počet unikátních dní v rotaci (z training_goals.day_count)
  * @param currentIndex - aktuální index v rotaci (0-based)
  * @returns písmeno dne a další index
- */
-export const getNextDayLetter = (
-  dayCount: number,
-  currentIndex: number
-): { letter: string; nextIndex: number } => {
-  const safeIndex = Math.max(0, currentIndex);
-  const safeDayCount = Math.max(1, Math.min(dayCount, 26)); // max 26 dní (A-Z)
-  
-  const letter = ALPHABET[safeIndex % safeDayCount];
-  const nextIndex = safeIndex + 1; // Monotonically increasing — modulo only for letter
-
-  return { letter, nextIndex };
-};
-
-/**
- * Získá aktuální písmeno dne (bez posunu indexu)
- */
-export const getCurrentDayLetter = (
-  dayCount: number,
-  currentIndex: number
-): string => {
-  const safeDayCount = Math.max(1, Math.min(dayCount, 26));
-  const safeIndex = Math.max(0, currentIndex);
-  return ALPHABET[safeIndex % safeDayCount];
-};
-
-/**
- * Získá seznam všech písmen dní pro daný goal
- * @param dayCount - počet dní
- * @returns pole písmen ['A', 'B', 'C', ...]
  */
 export const getAllDayLetters = (dayCount: number): string[] => {
   const safeDayCount = Math.max(1, Math.min(dayCount, 26));

@@ -4,25 +4,33 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, Share2, Link, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
+import { GestureSafeInput } from '@/components/workout/GestureSafeInput';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { checkCustomPlanEquipment, IncompatibleExercise, AlternativeExercise } from '@/lib/gymEquipmentCheck';
+import { fetchCatalogAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
+import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
+import { useLongPress } from '@/lib/useLongPress';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { cn } from '@/lib/utils';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
+import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
+import { SET_TYPE_META, SELECTABLE_SET_TYPES, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import {
   DndContext,
   closestCenter,
@@ -56,6 +64,8 @@ interface ExerciseSearchResult {
   category: string;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en?: string[] | null;
+  secondary_muscles_en?: string[] | null;
   equipment_type: string | null;
   video_path: string | null;
   slot_type: string | null;
@@ -202,104 +212,189 @@ const getEquipmentLabel = (key: string, t: (k: string) => string): string =>
      kettlebell: t('equipment.kettlebell'), machine: t('equipment.machine'), cable: t('equipment.cable'),
      plate_loaded: t('equipment.plate_loaded'), other: t('equipment.other') }[key] ?? key);
 
-// --- Per-set row input (local state, saves on blur) ---
-const SetRowInput = ({ index, reps, weight, rest, isCardio, onRepsChange, onWeightChange, onRestChange }: {
-  index: number; reps: number; weight: number | null; rest: number;
-  isCardio: boolean;
-  onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onRestChange: (v: number) => void;
+// Build a public CDN url synchronously (exercise-videos is a public bucket).
+const CARD_BUCKET = 'exercise-videos';
+const publicVideoUrl = (videoPath: string | null): string | null => {
+  if (!videoPath) return null;
+  const marker = `/${CARD_BUCKET}/`;
+  const idx = videoPath.indexOf(marker);
+  const path = idx !== -1 ? videoPath.substring(idx + marker.length) : videoPath;
+  return supabase.storage.from(CARD_BUCKET).getPublicUrl(path).data?.publicUrl ?? null;
+};
+
+// Static first-frame JPEG thumbnail with dumbbell fallback for the card
+// (<video> thumbnails stall iOS when many render at once).
+const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
+  const [error, setError] = useState(false);
+  const url = useRef(getVideoThumbUrl(videoPath)).current;
+  if (!url || error) {
+    return (
+      <div className="shrink-0 w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
+        <Dumbbell className="w-5 h-5 text-muted-foreground/50" />
+      </div>
+    );
+  }
+  return (
+    <div className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-muted">
+      <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => setError(true)} />
+    </div>
+  );
+};
+
+// Rest-timer picker options: Off (0), then 5s..5min in 5s steps.
+export const REST_OPTIONS: number[] = [0, ...Array.from({ length: 60 }, (_, i) => (i + 1) * 5)];
+
+// "1 min 30 s" / "45 s" / "Vypnuto"
+export const formatRest = (sec: number, t: (k: string) => string): string => {
+  if (!sec || sec <= 0) return t('custom_plan.rest_off');
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  const min = t('custom_plan.rest_minutes_short');
+  const secL = t('custom_plan.rest_seconds_short');
+  if (m > 0 && s > 0) return `${m} ${min} ${s} ${secL}`;
+  if (m > 0) return `${m} ${min}`;
+  return `${s} ${secL}`;
+};
+
+// --- Per-set table row (SÉRIE | KG | OPAK.) — local state, saves on blur ---
+const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, onWeightChange, onOpenTypeSheet, onRemove }: {
+  index: number; reps: number; weight: number | null;
+  isCardio: boolean; setTypes: (string | null)[] | null;
+  onRepsChange: (v: number) => void; onWeightChange: (v: number | null) => void; onOpenTypeSheet: (index: number) => void;
+  onRemove?: () => void;
 }) => {
-  const { t } = useTranslation();
   const [r, setR] = useState(String(reps));
   const [w, setW] = useState(weight != null ? String(weight) : '');
-  const [restVal, setRestVal] = useState(String(rest));
   const [cardioMin, setCardioMin] = useState(String(Math.floor(reps / 60)));
   const [cardioSec, setCardioSec] = useState(String(reps % 60));
+
+  // Keep local inputs in sync when the underlying value changes (copy-down / add-set).
+  useEffect(() => { setR(String(reps)); setCardioMin(String(Math.floor(reps / 60))); setCardioSec(String(reps % 60)); }, [reps]);
+  useEffect(() => { setW(weight != null ? String(weight) : ''); }, [weight]);
 
   const saveCardio = (mStr: string, sStr: string) => {
     const m = Math.max(0, parseInt(mStr) || 0);
     const s = Math.max(0, Math.min(59, parseInt(sStr) || 0));
-    const total = m * 60 + s;
-    // Sync local state to exactly what gets stored (no hidden rounding surprises)
     setCardioMin(String(m));
     setCardioSec(String(s));
-    onRepsChange(total);
+    onRepsChange(m * 60 + s);
   };
 
   return (
-    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 flex-wrap">
-      <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">S{index + 1}</span>
+    <motion.div
+      drag={onRemove ? 'x' : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0.5, right: 0 }}
+      style={{ touchAction: 'pan-y' }}
+      onDragEnd={(_, info) => { if (onRemove && (info.offset.x < -60 || info.velocity.x < -400)) onRemove(); }}
+      className="flex items-center gap-2 py-1"
+    >
+      {/* SÉRIE — type badge, tap opens the "Typ série" sheet */}
+      <button
+        onClick={() => onOpenTypeSheet(index)}
+        className={cn('w-10 shrink-0 h-8 rounded-lg bg-muted/70 flex items-center justify-center text-sm font-bold active:scale-95 transition-transform', setBadgeColor(setTypes, index))}
+      >
+        {setBadgeLabel(setTypes, index)}
+      </button>
       {isCardio ? (
-        <>
+        <div className="flex-1 flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
+            <GestureSafeInput containerClassName="w-14" type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} />
+              className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} />
             <span className="text-[10px] text-muted-foreground">min</span>
           </div>
           <div className="flex items-center gap-1">
-            <input type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
+            <GestureSafeInput containerClassName="w-14" type="number" value={cardioSec} onChange={(e) => setCardioSec(e.target.value)}
               onBlur={() => saveCardio(cardioMin, cardioSec)}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} max={59} />
-            <span className="text-[10px] text-muted-foreground">sek</span>
+              className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} max={59} />
+            <span className="text-[10px] text-muted-foreground">s</span>
           </div>
-        </>
+        </div>
       ) : (
         <>
-          <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">{t('custom_plan.opak_label')}</label>
-            <input type="number" value={r} onChange={(e) => setR(e.target.value)}
-              onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
-              className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={1} />
-          </div>
-          <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">kg:</label>
-            <input type="number" value={w} onChange={(e) => setW(e.target.value)}
-              onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
-              placeholder="–" className="w-14 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={0} step={0.5} />
-          </div>
+          <GestureSafeInput containerClassName="flex-1 min-w-0" type="number" value={w} onChange={(e) => setW(e.target.value)}
+            onBlur={() => { const v = w ? parseFloat(w) : null; onWeightChange(v); }}
+            placeholder="–" className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={0} step={0.5} />
+          <GestureSafeInput containerClassName="flex-1 min-w-0" type="number" value={r} onChange={(e) => setR(e.target.value)}
+            onBlur={() => { const v = Math.max(1, parseInt(r) || 1); setR(String(v)); onRepsChange(v); }}
+            className="w-full bg-muted rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-primary/30" min={1} />
         </>
       )}
-      <div className="flex items-center gap-1">
-        <label className="text-xs text-muted-foreground">{t('custom_plan.pause_label')}</label>
-        <input type="number" value={restVal} onChange={(e) => setRestVal(e.target.value)}
-          onBlur={() => { const v = Math.max(10, parseInt(restVal) || 120); setRestVal(String(v)); onRestChange(v); }}
-          className="w-12 bg-background rounded-md px-2 py-1 text-xs text-center outline-none" min={10} step={5} />
-        <span className="text-[10px] text-muted-foreground">s</span>
-      </div>
-    </div>
+    </motion.div>
+  );
+};
+
+// --- Per-exercise note (local state, saves on blur) ---
+const NoteInput = ({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) => {
+  const { t } = useTranslation();
+  const [note, setNote] = useState(value ?? '');
+  useEffect(() => { setNote(value ?? ''); }, [value]);
+  return (
+    <input
+      type="text"
+      value={note}
+      onChange={(e) => setNote(e.target.value)}
+      onBlur={() => { const v = note.trim() || null; if (v !== (value ?? null)) onSave(v); }}
+      placeholder={t('custom_plan.note_placeholder')}
+      className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/70 py-1"
+    />
   );
 };
 
 // --- Sortable Exercise Item ---
 interface SortableExerciseProps {
   exercise: CustomPlanExercise;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
   onUpdate: (id: string, updates: Record<string, any>) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onShowDetail: (exerciseId: string) => void;
+  onOpenRestSheet: (exercise: CustomPlanExercise) => void;
+  onOpenTypeSheet: (exercise: CustomPlanExercise, setIndex: number) => void;
   isIncompatible?: boolean;
   alternatives?: AlternativeExercise[];
   onSwapExercise?: (oldExerciseId: string, newExercise: AlternativeExercise) => void;
+  // Per-row swap picker (catalog-wide): tap = quick swap, hold = full list.
+  onSwapQuick?: (exercise: CustomPlanExercise) => void;
+  onSwapLong?: (exercise: CustomPlanExercise) => void;
+  isSwapping?: boolean;
 }
 
-const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, onRemove, onDuplicate, onShowDetail, isIncompatible, alternatives, onSwapExercise }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
-  const [setsInput, setSetsInput] = useState(String(exercise.sets));
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Hold the swap icon → sheet with every catalog alternative (parent-owned).
+  const swapPress = useLongPress(() => onSwapLong?.(exercise));
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
+
+  // Swipe-left removal of a single set row (mirrors the type-sheet removal).
+  const handleRemoveSetAt = (setIndex: number) => {
+    if (exercise.sets <= 1) { onRemove(exercise.id); return; }
+    const dropAt = <T,>(arr: T[] | null | undefined, fallback: T[]): T[] => (arr ?? fallback).filter((_, i) => i !== setIndex);
+    onUpdate(exercise.id, {
+      sets: exercise.sets - 1,
+      reps_per_set: dropAt(exercise.reps_per_set, Array(exercise.sets).fill(exercise.reps)),
+      weight_per_set: dropAt(exercise.weight_per_set, Array(exercise.sets).fill(exercise.weight_kg)),
+      set_types: dropAt(exercise.set_types, Array(exercise.sets).fill('normal')),
+    });
   };
 
-  const isCardio = exercise.unit_type === 'time_min' || exercise.category === 'cardio';
-  const formatDuration = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return s > 0 ? `${m}min ${s}s` : `${m} min`;
+  // Append a new set copying the last set's values (Hevy "+ Add set").
+  const handleAddSet = () => {
+    const n = exercise.sets;
+    const repsArr = exercise.reps_per_set || Array(n).fill(exercise.reps);
+    const weightArr = exercise.weight_per_set || Array(n).fill(exercise.weight_kg);
+    const typesArr = exercise.set_types || Array(n).fill('normal');
+    onUpdate(exercise.id, {
+      sets: n + 1,
+      reps_per_set: [...repsArr, repsArr[n - 1] ?? exercise.reps],
+      weight_per_set: [...weightArr, weightArr[n - 1] ?? exercise.weight_kg],
+      set_types: [...typesArr, 'normal'],
+    });
   };
 
   return (
@@ -307,132 +402,144 @@ const SortableExerciseItem = ({ exercise, isExpanded, onToggleExpand, onUpdate, 
       ref={setNodeRef}
       style={style}
       className={cn(
-        "py-2 border-b border-border/50 last:border-0 bg-card",
+        "py-3 border-b border-border/50 last:border-0 bg-card",
         isDragging && "opacity-50 shadow-lg rounded-xl z-50",
         isIncompatible && "bg-destructive/5 border-l-2 border-l-destructive"
       )}
     >
+      {/* Header: thumbnail + name + ⋮ menu */}
       <div className="flex items-center gap-2">
-        {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0"
-        >
+        <button {...attributes} {...listeners} className="p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0">
           <GripVertical className="w-4 h-4" />
         </button>
-
-        <div className="flex-1 min-w-0">
-          {/* Clickable exercise name -> opens detail */}
+        <button onClick={() => onShowDetail(exercise.exercise_id)} className="shrink-0">
+          <CardThumb videoPath={exercise.video_path} />
+        </button>
+        <button
+          onClick={() => onShowDetail(exercise.exercise_id)}
+          className={cn(
+            "flex-1 min-w-0 text-sm font-semibold truncate text-left transition-colors",
+            isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
+          )}
+        >
+          {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
+          {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
+        </button>
+        {onSwapQuick && (
           <button
-            onClick={() => onShowDetail(exercise.exercise_id)}
-            className={cn(
-              "text-sm font-medium truncate text-left transition-colors block w-full",
-              isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
-            )}
+            {...swapPress.handlers}
+            onClick={() => { if (!swapPress.wasLongPress()) onSwapQuick(exercise); }}
+            data-coach="editor-swap"
+            className={cn('p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0', isSwapping && 'opacity-50')}
+            style={{ touchAction: 'none' }}
+            title={t('workout.swap')}
           >
-            {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
-            {(isEn && (exercise as any).exercise_name_en) ? (exercise as any).exercise_name_en : exercise.exercise_name || t('custom_plan.exercise_unknown')}
+            <RefreshCw className={cn('w-4 h-4', isSwapping && 'animate-spin')} />
           </button>
-          <div className="flex items-center gap-3 mt-1">
-            <button
-              onClick={onToggleExpand}
-              className={cn(
-                "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
-              )}
-            >
-              <span>{t('custom_plan.sets_count', { n: exercise.sets })}</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
-            </button>
-            {!isExpanded && (
-              isCardio ? (
-                <span className="text-xs text-muted-foreground">{formatDuration(exercise.reps)}</span>
-              ) : (
-                <>
-                  <span className="text-xs text-muted-foreground">{exercise.reps} {t('custom_plan.reps_label')}</span>
-                  <span className="text-xs text-muted-foreground">{exercise.weight_kg != null ? `${exercise.weight_kg} kg` : '–'}</span>
-                </>
-              )
-            )}
-          </div>
+        )}
+        <div className="relative shrink-0">
+          <button onClick={() => setMenuOpen(o => !o)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <MoreVertical className="w-4 h-4" />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-card border border-border rounded-xl shadow-lg overflow-hidden py-1">
+                <button
+                  onClick={() => { setMenuOpen(false); onDuplicate(exercise.id); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                >
+                  <Copy className="w-4 h-4 text-muted-foreground" />
+                  {t('custom_plan.menu_duplicate')}
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); onRemove(exercise.id); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {t('custom_plan.menu_remove')}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* Action buttons */}
-        <button
-          onClick={() => onDuplicate(exercise.id)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-[#5BC8F5] hover:bg-[#5BC8F5]/10 transition-colors shrink-0"
-        >
-          <Copy className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => onRemove(exercise.id)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
       </div>
 
-      {/* Expandable per-set rows */}
-      {isExpanded && (
-        <div className="ml-7 mt-2 space-y-1.5">
-          {/* Sets count control */}
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-muted-foreground">{t('custom_plan.sets_label')}</label>
-            <input
-              type="number"
-              value={setsInput}
-              onChange={(e) => {
-                setSetsInput(e.target.value);
-                const parsed = parseInt(e.target.value);
-                if (parsed >= 1) onUpdate(exercise.id, { sets: parsed });
-              }}
-              onBlur={() => {
-                const val = Math.max(1, parseInt(setsInput) || 1);
-                setSetsInput(String(val));
-                onUpdate(exercise.id, { sets: val });
-              }}
-              className="w-14 bg-muted rounded-lg px-2 py-1 text-xs text-center outline-none"
-              min={1}
-            />
-          </div>
-          {/* Individual set rows — per-set reps, weight, rest */}
-          {Array.from({ length: exercise.sets }, (_, i) => {
-            const repsArr = exercise.reps_per_set || [];
-            const weightArr = exercise.weight_per_set || [];
-            const restArr = exercise.rest_per_set || [];
-            const setReps = repsArr[i] ?? exercise.reps;
-            const setWeight = weightArr[i] ?? exercise.weight_kg;
-            const setRest = restArr[i] ?? exercise.rest_seconds ?? 120;
-            return (
-              <SetRowInput
-                key={i}
-                index={i}
-                reps={setReps}
-                weight={setWeight}
-                rest={setRest}
-                isCardio={isCardio}
-                onRepsChange={(val) => {
-                  const arr = [...(exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps))];
-                  arr[i] = val;
-                  const updates: Record<string, any> = { reps_per_set: arr };
-                  if (isCardio) updates.reps = val;
-                  onUpdate(exercise.id, updates);
-                }}
-                onWeightChange={(val) => {
-                  const arr = [...(exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg))];
-                  arr[i] = val;
-                  onUpdate(exercise.id, { weight_per_set: arr });
-                }}
-                onRestChange={(val) => {
-                  const arr = [...(exercise.rest_per_set || Array(exercise.sets).fill(exercise.rest_seconds || 120))];
-                  arr[i] = val;
-                  onUpdate(exercise.id, { rest_per_set: arr });
-                }}
-              />
-            );
-          })}
+      {/* Note */}
+      <div className="ml-7 mt-1.5">
+        <NoteInput value={exercise.notes} onSave={(v) => onUpdate(exercise.id, { notes: v })} />
+      </div>
+
+      {/* Rest timer per exercise */}
+      <button
+        onClick={() => onOpenRestSheet(exercise)}
+        className="ml-7 mt-1 flex items-center gap-2 text-xs font-medium text-[#5BC8F5] hover:opacity-80 transition-opacity"
+      >
+        <Clock className="w-3.5 h-3.5" />
+        <span>{t('custom_plan.rest_row_label')}: {formatRest(exercise.rest_seconds, t)}</span>
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Sets table */}
+      <div className="ml-7 mt-2" data-coach="editor-sets">
+        <div className="flex items-center gap-2 px-1 pb-1">
+          <span className="w-10 shrink-0 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_set')}</span>
+          {isCardio ? (
+            <span className="flex-1 text-[10px] font-semibold text-muted-foreground">{t('workout.category_cardio')}</span>
+          ) : (
+            <>
+              <span className="flex-1 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_kg')}</span>
+              <span className="flex-1 text-[10px] font-semibold text-muted-foreground text-center">{t('custom_plan.col_reps')}</span>
+            </>
+          )}
         </div>
-      )}
+        {Array.from({ length: exercise.sets }, (_, i) => {
+          const repsArr = exercise.reps_per_set || [];
+          const weightArr = exercise.weight_per_set || [];
+          const setReps = repsArr[i] ?? exercise.reps;
+          const setWeight = weightArr[i] ?? exercise.weight_kg;
+          return (
+            <SetRowInput
+              key={i}
+              index={i}
+              reps={setReps}
+              weight={setWeight}
+              isCardio={isCardio}
+              setTypes={exercise.set_types}
+              onRemove={() => handleRemoveSetAt(i)}
+              onOpenTypeSheet={(idx) => onOpenTypeSheet(exercise, idx)}
+              onRepsChange={(val) => {
+                const base = exercise.reps_per_set || Array(exercise.sets).fill(exercise.reps);
+                const prevFirst = base[0] ?? exercise.reps;
+                // Copy-down: editing set 1 pre-fills later sets that are still
+                // empty or untouched (equal to the old set-1 value).
+                const arr = i === 0
+                  ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                  : base.map((v: number | null, idx: number) => idx === i ? val : v);
+                const updates: Record<string, any> = { reps_per_set: arr };
+                if (isCardio) updates.reps = val;
+                onUpdate(exercise.id, updates);
+              }}
+              onWeightChange={(val) => {
+                const base = exercise.weight_per_set || Array(exercise.sets).fill(exercise.weight_kg);
+                const prevFirst = base[0] ?? exercise.weight_kg;
+                const arr = i === 0
+                  ? base.map((v: number | null, idx: number) => (idx === 0 || v == null || v === prevFirst) ? val : v)
+                  : base.map((v: number | null, idx: number) => idx === i ? val : v);
+                onUpdate(exercise.id, { weight_per_set: arr });
+              }}
+            />
+          );
+        })}
+
+        <button
+          onClick={handleAddSet}
+          className="w-full flex items-center justify-center gap-1.5 mt-2 py-2 rounded-lg bg-muted/60 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {t('custom_plan.add_set')}
+        </button>
+      </div>
 
       {/* Incompatible alternatives */}
       {isIncompatible && alternatives && alternatives.length > 0 && (
@@ -464,12 +571,21 @@ const CustomPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+
+  // First-run hints for the workout editor.
+  const tour = useCoachTour('editor', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="editor-sets"]', title: t('tour.editor.table_title'), body: t('tour.editor.table_body') },
+    { target: '[data-coach="editor-sets"]', title: t('tour.editor.swipe_title'), body: t('tour.editor.swipe_body') },
+    { target: '[data-coach="editor-swap"]', title: t('tour.editor.swap_title'), body: t('tour.editor.swap_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const isEn = i18n.language === 'en';
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const {
     plan, isLoading, addDay, removeDay, renameDay,
-    addExercise, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
+    addExercise, addExercisesBatch, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
     sharePlan, unsharePlan,
   } = useCustomPlanDetail(id || null);
   const [isSharing, setIsSharing] = useState(false);
@@ -484,6 +600,7 @@ const CustomPlanDetail = () => {
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
   const [drawerBottom, setDrawerBottom] = useState('0px');
   const [showGymSelector, setShowGymSelector] = useState(false);
@@ -533,10 +650,10 @@ const CustomPlanDetail = () => {
         setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
         setShowLocationGate(true);
       } else {
-        navigate(`/custom-workout/${id}`);
+        navigate(`/custom-workout/${id}?gym=${gymId}`);
       }
     } finally {
       setIsCheckingEquipment(false);
@@ -561,10 +678,10 @@ const CustomPlanDetail = () => {
       if (gymData?.latitude != null && gymData?.longitude != null) {
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}`);
+        setPendingWorkoutPath(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
         setShowLocationGate(true);
       } else {
-        navigate(`/custom-workout/${id}`);
+        navigate(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
       }
     } finally {
       setIsCheckingEquipment(false);
@@ -587,6 +704,86 @@ const CustomPlanDetail = () => {
       const incompatible = await checkCustomPlanEquipment(id, selectedWorkoutGymId);
       setIncompatibleExercises(incompatible);
     }
+  };
+
+  // --- Per-row catalog swap (tap = quick, hold = full list) ---
+  const [swapRow, setSwapRow] = useState<CustomPlanExercise | null>(null);
+  const [swapOptions, setSwapOptions] = useState<SwapCandidate[] | null>(null);
+  const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
+  const [isSwappingRowId, setIsSwappingRowId] = useState<string | null>(null);
+
+  // Other exercises already in the same day — excluded so a swap never suggests
+  // a movement that's already in the workout.
+  const sameDayExcludeIds = (exercise: CustomPlanExercise): string[] => {
+    const day = plan?.days.find(d => d.exercises.some(e => e.id === exercise.id));
+    return (day?.exercises || []).filter(e => e.id !== exercise.id).map(e => e.exercise_id);
+  };
+
+  // Replace a row's exercise with the picked alternative (persists via updateExercise).
+  const applyRowSwap = async (row: CustomPlanExercise, pick: SwapCandidate) => {
+    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null });
+    toast({ title: t('workout.swap_success', { name: pick.name }) });
+  };
+
+  const handleRowSwapQuick = async (exercise: CustomPlanExercise) => {
+    if (isSwappingRowId) return;
+    setIsSwappingRowId(exercise.id);
+    try {
+      const candidates = await fetchCatalogAlternatives(exercise.exercise_id, sameDayExcludeIds(exercise));
+      if (candidates.length === 0) { toast({ title: t('workout.no_replacement') }); return; }
+      await applyRowSwap(exercise, candidates[Math.floor(Math.random() * candidates.length)]);
+    } finally {
+      setIsSwappingRowId(null);
+    }
+  };
+
+  const handleRowSwapLong = async (exercise: CustomPlanExercise) => {
+    if (isSwappingRowId) return;
+    setIsSwappingRowId(exercise.id);
+    try {
+      const candidates = await fetchCatalogAlternatives(exercise.exercise_id, sameDayExcludeIds(exercise));
+      setSwapRow(exercise);
+      setSwapOptions(candidates);
+    } finally {
+      setIsSwappingRowId(null);
+    }
+  };
+
+  // --- P2 set-type / rest-timer handlers ---
+  const handleSelectSetType = (type: SetType) => {
+    if (!typeSheet) return;
+    const { exercise, setIndex } = typeSheet;
+    const types = [...(exercise.set_types || Array(exercise.sets).fill('normal'))];
+    while (types.length < exercise.sets) types.push('normal');
+    types[setIndex] = type;
+    updateExercise(exercise.id, { set_types: types });
+    setTypeSheet(null);
+  };
+
+  const handleRemoveSet = () => {
+    if (!typeSheet) return;
+    const { exercise, setIndex } = typeSheet;
+    // Removing the only set removes the whole exercise (Hevy behaviour).
+    if (exercise.sets <= 1) {
+      removeExercise(exercise.id);
+      setTypeSheet(null);
+      return;
+    }
+    const dropAt = <T,>(arr: T[] | null, fallback: T[]): T[] => (arr ?? fallback).filter((_, i) => i !== setIndex);
+    updateExercise(exercise.id, {
+      sets: exercise.sets - 1,
+      reps_per_set: dropAt(exercise.reps_per_set, Array(exercise.sets).fill(exercise.reps)),
+      weight_per_set: dropAt(exercise.weight_per_set, Array(exercise.sets).fill(exercise.weight_kg)),
+      set_types: dropAt(exercise.set_types, Array(exercise.sets).fill('normal')),
+    });
+    setTypeSheet(null);
+  };
+
+  const handleSelectRest = (seconds: number) => {
+    if (!restSheetExercise) return;
+    // Store rest at the exercise level; clear any legacy per-set rest so it applies.
+    updateExercise(restSheetExercise.id, { rest_seconds: seconds, rest_per_set: null });
+    setRestSheetExercise(null);
   };
 
   useEffect(() => {
@@ -617,7 +814,12 @@ const CustomPlanDetail = () => {
   const [detailExercise, setDetailExercise] = useState<ExerciseSearchResult | null>(null);
   const [videoError, setVideoError] = useState(false);
   const [signedDetailVideoUrl, setSignedDetailVideoUrl] = useState<string | null>(null);
-  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  // P2: rest-timer sheet, set-type sheet, set-type explanation dialog, title validation
+  const [restSheetExercise, setRestSheetExercise] = useState<CustomPlanExercise | null>(null);
+  const [typeSheet, setTypeSheet] = useState<{ exercise: CustomPlanExercise; setIndex: number } | null>(null);
+  const [explainType, setExplainType] = useState<SetType | null>(null);
+  const [showTitleDialog, setShowTitleDialog] = useState(false);
+  const [titleDialogName, setTitleDialogName] = useState('');
   const [viewExerciseDrawerOpen, setViewExerciseDrawerOpen] = useState(false);
   const [viewExerciseData, setViewExerciseData] = useState<ExerciseSearchResult | null>(null);
   const [viewVideoError, setViewVideoError] = useState(false);
@@ -653,7 +855,7 @@ const CustomPlanDetail = () => {
     setLoadingExercises(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .order('name', { ascending: true });
     const exercises = (data || []).map((e: any) => ({
       ...e,
@@ -754,6 +956,12 @@ const CustomPlanDetail = () => {
     resetSearch();
   };
 
+  // Batch-add exercises picked in the Hevy-style ExercisePicker to the active day.
+  const handleAddPickedExercises = async (exercises: PickerExercise[]) => {
+    if (!activeDayId) return;
+    await addExercisesBatch(activeDayId, exercises.map(e => e.id));
+  };
+
   const resetSearch = () => {
     setSearchQuery('');
     clearAllFilters();
@@ -829,7 +1037,7 @@ const CustomPlanDetail = () => {
     setViewExerciseDrawerOpen(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
+      .select('id, name, name_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, category, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, equipment_type, video_path, slot_type, primary_role, machine_id, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
@@ -848,8 +1056,21 @@ const CustomPlanDetail = () => {
     }
   }, [exerciseDrawerOpen, allExercises.length, loadAllExercises]);
 
+  // Hevy has no "days" concept — a fresh routine should land straight on an
+  // empty exercise list. Auto-create the first day once so the user can hit
+  // "+ Přidat cvik" immediately instead of adding a day first.
+  const autoDayCreatedRef = useRef(false);
+  useEffect(() => {
+    if (!plan || isLoading) return;
+    if (plan.days.length === 0 && !autoDayCreatedRef.current) {
+      autoDayCreatedRef.current = true;
+      addDay(t('custom_plan.day_prefix', { n: 1 }));
+    }
+  }, [plan, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Check if plan has any exercises to enable start button
   const hasExercises = plan?.days.some(d => d.exercises.length > 0) ?? false;
+  const isSingleDay = (plan?.days.length ?? 0) <= 1;
 
   if (isLoading) {
     return (
@@ -910,6 +1131,7 @@ const CustomPlanDetail = () => {
                 {plan.name}
               </button>
             )}
+            <CoachHelpButton onClick={tour.openTour} className="shrink-0" />
             <button
               onClick={handleShare}
               disabled={isSharing}
@@ -930,38 +1152,45 @@ const CustomPlanDetail = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-card border border-border rounded-2xl overflow-hidden"
             >
-              {/* Day Header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
-                {editingDayId === day.id ? (
-                  <input
-                    type="text"
-                    value={editingDayName}
-                    onChange={(e) => setEditingDayName(e.target.value)}
-                    onBlur={() => handleDayNameSave(day.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDayNameSave(day.id)}
-                    autoFocus
-                    className="bg-transparent text-sm font-semibold outline-none border-b border-primary"
-                  />
-                ) : (
+              {/* Day Header — hidden for single-day routines so it reads as a flat Hevy list */}
+              {!isSingleDay && (
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
+                  {editingDayId === day.id ? (
+                    <input
+                      type="text"
+                      value={editingDayName}
+                      onChange={(e) => setEditingDayName(e.target.value)}
+                      onBlur={() => handleDayNameSave(day.id)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleDayNameSave(day.id)}
+                      autoFocus
+                      className="bg-transparent text-sm font-semibold outline-none border-b border-primary"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
+                      className="text-sm font-semibold hover:text-primary transition-colors"
+                    >
+                      {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
+                    </button>
+                  )}
                   <button
-                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
-                    className="text-sm font-semibold hover:text-primary transition-colors"
+                    onClick={() => removeDay(day.id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >
-                    {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
+                    <Trash2 className="w-4 h-4" />
                   </button>
-                )}
-                <button
-                  onClick={() => removeDay(day.id)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Exercises with drag & drop */}
               <div className="px-4 py-2">
                 {day.exercises.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-3 text-center">{t('custom_plan.no_exercises')}</p>
+                  <div className="flex flex-col items-center text-center py-8">
+                    <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                      <Dumbbell className="w-7 h-7 text-muted-foreground/60" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{t('custom_plan.empty_routine_hint')}</p>
+                  </div>
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -975,15 +1204,18 @@ const CustomPlanDetail = () => {
                           <SortableExerciseItem
                             key={exercise.id}
                             exercise={exercise}
-                            isExpanded={expandedExerciseId === exercise.id}
-                            onToggleExpand={() => setExpandedExerciseId(prev => prev === exercise.id ? null : exercise.id)}
                             onUpdate={updateExercise}
                             onRemove={removeExercise}
                             onDuplicate={duplicateExercise}
                             onShowDetail={handleShowExerciseDetail}
+                            onOpenRestSheet={setRestSheetExercise}
+                            onOpenTypeSheet={(ex, setIndex) => setTypeSheet({ exercise: ex, setIndex })}
                             isIncompatible={!!incompatInfo}
                             alternatives={incompatInfo?.alternatives}
                             onSwapExercise={handleSwapExercise}
+                            onSwapQuick={handleRowSwapQuick}
+                            onSwapLong={handleRowSwapLong}
+                            isSwapping={isSwappingRowId === exercise.id}
                           />
                         );
                       })}
@@ -992,7 +1224,7 @@ const CustomPlanDetail = () => {
                 )}
 
                 <button
-                  onClick={() => { setActiveDayId(day.id); setExerciseDrawerOpen(true); }}
+                  onClick={() => { setActiveDayId(day.id); setPickerOpen(true); }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 text-sm text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -1014,289 +1246,14 @@ const CustomPlanDetail = () => {
 
 
 
-        {/* Exercise Search Drawer */}
-        <Drawer open={exerciseDrawerOpen} onOpenChange={(open) => { setExerciseDrawerOpen(open); if (!open) resetSearch(); }}>
-          <DrawerContent className="flex flex-col" style={{ height: drawerHeight, maxHeight: drawerHeight, bottom: drawerBottom }}>
-            <DrawerHeader className="shrink-0 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
-              <DrawerTitle>{t('custom_plan.select_exercise')}</DrawerTitle>
-            </DrawerHeader>
+        {/* Hevy-style multi-select exercise picker */}
+        <ExercisePicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onAdd={handleAddPickedExercises}
+          gymId={selectedWorkoutGymId || profile?.selected_gym_id || null}
+        />
 
-            {detailExercise ? (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 pb-4">
-                  <button
-                    onClick={() => { setDetailExercise(null); setVideoError(false); }}
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t('custom_plan.back_to_list')}
-                  </button>
-
-                  {signedDetailVideoUrl ? (
-                    <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
-                      {videoError ? (
-                        <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('custom_plan.video_loading')}</div>
-                      ) : (
-                        <video
-                          key={signedDetailVideoUrl}
-                          src={signedDetailVideoUrl}
-                          playsInline autoPlay loop muted preload="auto"
-                          controlsList="nodownload"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: '12px', opacity: 0, transition: 'opacity 0.3s' }}
-                          onCanPlay={(e) => { (e.target as HTMLVideoElement).style.opacity = '1'; }}
-                          onError={() => setVideoError(true)}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-muted mb-4 aspect-video flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">{t('custom_plan.no_video')}</p>
-                    </div>
-                  )}
-
-                  <h3 className="text-xl font-bold mb-1">{(isEn && detailExercise.name_en) ? detailExercise.name_en : detailExercise.name}</h3>
-                  <ExerciseInfoContent
-                    category={detailExercise.category}
-                    equipmentType={detailExercise.equipment_type}
-                    machineName={detailExercise.machine_name}
-                    primaryMuscles={detailExercise.primary_muscles}
-                    secondaryMuscles={detailExercise.secondary_muscles}
-                    description={detailExercise.description}
-                    descriptionEn={detailExercise.description_en}
-                    setupInstructions={detailExercise.setup_instructions}
-                    setupInstructionsEn={detailExercise.setup_instructions_en}
-                    commonMistakes={detailExercise.common_mistakes}
-                    commonMistakesEn={detailExercise.common_mistakes_en}
-                    tips={detailExercise.tips}
-                    tipsEn={detailExercise.tips_en}
-                  />
-                </div>
-
-                <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border">
-                  <Button
-                    onClick={() => handleAddExercise(detailExercise)}
-                    className="w-full h-12 rounded-xl gap-2 text-base font-semibold bg-[#5BC8F5] hover:bg-[#3AAED8] text-white"
-                  >
-                    <Plus className="w-5 h-5" />
-                    {t('custom_plan.add_to_workout')}
-                  </Button>
-                </div>
-              </div>
-            ) : filterPanelOpen ? (
-              /* ---- Filter Panel ---- */
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 pb-6">
-                  {/* Machine search */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.machine_search')}</p>
-                    <div className="relative mb-2">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder={t('custom_plan.machine_placeholder')}
-                        value={machineSearch}
-                        onChange={(e) => setMachineSearch(e.target.value)}
-                        className="w-full bg-muted rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      {machineSearch && (
-                        <button onClick={() => setMachineSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      )}
-                    </div>
-                    {machineSearch.trim().length > 0 && (() => {
-                      const list = filterMachinesByQuery(uniqueMachineNames, machineSearch);
-                      if (list.length === 0) return <p className="text-xs text-muted-foreground mt-1">{t('custom_plan.no_machine')}</p>;
-                      return (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {list.map((machine) => (
-                            <button
-                              key={machine}
-                              onClick={() => setMachineSearch(machineSearch === machine ? '' : machine)}
-                              className={cn(
-                                "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
-                                machineSearch === machine
-                                  ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                                  : "bg-card border-border text-foreground hover:border-[#5BC8F5]/50"
-                              )}
-                            >
-                              {machine}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Equipment type */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.equipment_type')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {EQUIPMENT_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedEquipment, setSelectedEquipment, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedEquipment.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedEquipment.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Muscles */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.muscle_groups')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {MUSCLE_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedMuscles, setSelectedMuscles, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedMuscles.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedMuscles.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Slot type (designation) */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.slot_type')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {SLOT_TYPE_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          onClick={() => toggleFilter(selectedSlotTypes, setSelectedSlotTypes, f.key)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                            selectedSlotTypes.has(f.key)
-                              ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                              : "bg-card border-border text-foreground"
-                          )}
-                        >
-                          {selectedSlotTypes.has(f.key) && <Check className="w-3.5 h-3.5" />}
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Primary role */}
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('custom_plan.exercise_role')}</p>
-                    {ROLE_FILTER_GROUPS.map((group) => (
-                      <div key={group.label} className="mb-3">
-                        <p className="text-xs text-muted-foreground mb-1.5">{group.label}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {group.roles.map((r) => (
-                            <button
-                              key={r.key}
-                              onClick={() => toggleFilter(selectedRoles, setSelectedRoles, r.key)}
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border",
-                                selectedRoles.has(r.key)
-                                  ? "bg-[#5BC8F5] text-white border-[#5BC8F5]"
-                                  : "bg-card border-border text-foreground"
-                              )}
-                            >
-                              {selectedRoles.has(r.key) && <Check className="w-3.5 h-3.5" />}
-                              {r.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Filter panel bottom buttons */}
-                <div className="shrink-0 px-4 pb-6 pt-3 border-t border-border flex gap-3">
-                  {activeFilterCount > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => { clearAllFilters(); applyFilters(searchQuery, new Set(), new Set(), new Set(), new Set(), ''); setFilterPanelOpen(false); }}
-                      className="h-12 rounded-xl px-6"
-                    >
-                      {t('custom_plan.clear_filters')}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={applyAndCloseFilters}
-                    className="flex-1 h-12 rounded-xl gap-2 text-base font-semibold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white"
-                  >
-                    {t('custom_plan.show_results')}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col overflow-hidden px-4">
-                {/* Search + Filter button */}
-                <div className="shrink-0 flex gap-2 mb-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text" placeholder={t('custom_plan.search_exercise')} value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="w-full bg-muted rounded-xl pl-10 pr-10 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => { setSearchQuery(''); applyFilters('', selectedMuscles, selectedEquipment, selectedSlotTypes, selectedRoles, machineSearch); }} className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setFilterPanelOpen(true)}
-                    className={cn(
-                      "shrink-0 flex items-center gap-1.5 px-3 py-3 rounded-xl text-sm font-medium transition-colors",
-                      activeFilterCount > 0
-                        ? "bg-[#5BC8F5] text-white"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    {activeFilterCount > 0 && <span className="text-xs font-bold">{activeFilterCount}</span>}
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto -mx-4 px-4 pb-6 overscroll-contain">
-                  {loadingExercises && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.loading_exercises')}</div>}
-                  {!loadingExercises && filteredExercises.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{t('custom_plan.no_results')}</div>}
-                  <div className="space-y-0.5">
-                    {filteredExercises.map((exercise) => (
-                      <div key={exercise.id} className="flex items-center rounded-xl hover:bg-muted transition-colors">
-                        <button onClick={() => handleAddExercise(exercise)} className="flex-1 text-left px-4 py-3 min-w-0">
-                          <p className="text-sm font-medium truncate">{(isEn && exercise.name_en) ? exercise.name_en : exercise.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {getCategoryLabel(exercise.category, t)}
-                            {exercise.primary_muscles?.length > 0 && ` · ${exercise.primary_muscles.map(m => translateMuscle(m, isEn)).join(', ')}`}
-                          </p>
-                        </button>
-                        <button onClick={() => { setDetailExercise(exercise); setVideoError(false); }} className="shrink-0 p-3 text-muted-foreground hover:text-[#5BC8F5] transition-colors">
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </DrawerContent>
-        </Drawer>
 
         {/* Exercise Detail View Drawer (from plan) */}
         <Drawer open={viewExerciseDrawerOpen} onOpenChange={(open) => { setViewExerciseDrawerOpen(open); if (!open) { setViewExerciseData(null); setViewVideoError(false); } }}>
@@ -1336,6 +1293,8 @@ const CustomPlanDetail = () => {
                   machineName={viewExerciseData.machine_name}
                   primaryMuscles={viewExerciseData.primary_muscles}
                   secondaryMuscles={viewExerciseData.secondary_muscles}
+                  primaryMusclesEn={viewExerciseData.primary_muscles_en}
+                  secondaryMusclesEn={viewExerciseData.secondary_muscles_en}
                   description={viewExerciseData.description}
                   descriptionEn={viewExerciseData.description_en}
                   setupInstructions={viewExerciseData.setup_instructions}
@@ -1355,6 +1314,7 @@ const CustomPlanDetail = () => {
         </Drawer>
       </div>
 
+      <CoachTour screenId="editor" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
 
       {/* Equipment incompatibility banner */}
@@ -1392,13 +1352,19 @@ const CustomPlanDetail = () => {
           ) : (
             <Button
               onClick={() => {
+                // Hevy-style title validation before committing the routine.
+                if (!plan.name.trim()) {
+                  setTitleDialogName(plan.name);
+                  setShowTitleDialog(true);
+                  return;
+                }
                 if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
                   setShowConflictDialog(true);
                 } else {
                   setShowGymSelector(true);
                 }
               }}
-              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-[#1A2744] hover:bg-[#1A2744]/90 text-white shadow-lg shadow-[#1A2744]/25"
+              className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-action hover:bg-action/90 text-white shadow-lg shadow-action/25"
             >
               <Play className="w-5 h-5" />
               {t('custom_plan.start_workout')}
@@ -1466,6 +1432,139 @@ const CustomPlanDetail = () => {
         />,
         document.body
       )}
+
+      {/* Rest-timer picker sheet (per exercise) */}
+      <Drawer open={!!restSheetExercise} onOpenChange={(o) => { if (!o) setRestSheetExercise(null); }}>
+        <DrawerContent className="flex flex-col" style={{ maxHeight: '70dvh' }}>
+          <DrawerHeader className="shrink-0">
+            <DrawerTitle>{t('custom_plan.rest_sheet_title')}</DrawerTitle>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 pb-8">
+            {REST_OPTIONS.map((sec) => {
+              const selected = (restSheetExercise?.rest_seconds ?? 120) === sec;
+              return (
+                <button
+                  key={sec}
+                  onClick={() => handleSelectRest(sec)}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-muted transition-colors"
+                >
+                  <span className={cn('text-sm', selected ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{formatRest(sec, t)}</span>
+                  {selected && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+                </button>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Set-type picker sheet */}
+      <Drawer open={!!typeSheet} onOpenChange={(o) => { if (!o) setTypeSheet(null); }}>
+        <DrawerContent className="flex flex-col" style={{ maxHeight: '75dvh' }}>
+          <DrawerHeader className="shrink-0">
+            <DrawerTitle>{t('set_type.sheet_title')}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8">
+            {SELECTABLE_SET_TYPES.map((type) => {
+              const meta = SET_TYPE_META[type];
+              const isCurrent = !!typeSheet && getSetType(typeSheet.exercise.set_types, typeSheet.setIndex) === type;
+              return (
+                <div key={type} className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleSelectSetType(type)}
+                    className="flex-1 flex items-center gap-3 px-3 py-3.5 rounded-xl hover:bg-muted transition-colors text-left"
+                  >
+                    <span className={cn('w-7 text-center font-bold', meta.color)}>{type === 'normal' ? '1' : type}</span>
+                    <span className={cn('text-sm', isCurrent ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{t(meta.labelKey)}</span>
+                    {isCurrent && <Check className="w-4 h-4 text-[#5BC8F5] ml-auto" />}
+                  </button>
+                  <button onClick={() => setExplainType(type)} className="p-2.5 text-muted-foreground hover:text-foreground transition-colors">
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              onClick={handleRemoveSet}
+              className="w-full flex items-center gap-3 px-3 py-3.5 mt-1 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <X className="w-5 h-5 ml-0.5" />
+              <span className="text-sm font-medium">{t('set_type.remove')}</span>
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Set-type explanation dialog (?) — above the sheet */}
+      {explainType && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setExplainType(null)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className={cn('w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold', SET_TYPE_META[explainType].color)}>
+                {explainType === 'normal' ? '1' : explainType}
+              </span>
+              <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainType].labelKey)}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainType].explainKey)}</p>
+            <button onClick={() => setExplainType(null)} className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors">
+              {t('set_type.explain_ok')}
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Title-required validation dialog */}
+      {showTitleDialog && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setShowTitleDialog(false)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-center mb-1">{t('custom_plan.title_required_title')}</h2>
+            <p className="text-muted-foreground text-sm text-center mb-4">{t('custom_plan.title_required_desc')}</p>
+            <input
+              type="text"
+              value={titleDialogName}
+              onChange={(e) => setTitleDialogName(e.target.value)}
+              placeholder={t('custom_plan.name_placeholder')}
+              autoFocus
+              className="w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+            />
+            <button
+              disabled={!titleDialogName.trim()}
+              onClick={async () => {
+                const name = titleDialogName.trim();
+                if (!name) return;
+                await renamePlan(name);
+                setShowTitleDialog(false);
+                if (pausedCustomWorkout && pausedCustomWorkout.planId !== id) {
+                  setShowConflictDialog(true);
+                } else {
+                  setShowGymSelector(true);
+                }
+              }}
+              className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors disabled:opacity-40"
+            >
+              {t('custom_plan.title_required_save')}
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Catalog swap picker + exercise detail (shared with the workout player) */}
+      <ExerciseSwapSheet
+        options={swapOptions}
+        onPick={(c) => { if (swapRow) applyRowSwap(swapRow, c); }}
+        onClose={() => { setSwapOptions(null); setSwapRow(null); }}
+        onShowInfo={setSwapInfoId}
+      />
+      <ExerciseInfoSheet exerciseId={swapInfoId} onClose={() => setSwapInfoId(null)} />
     </>
   );
 };

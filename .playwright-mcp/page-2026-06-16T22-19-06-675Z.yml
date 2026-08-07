@@ -1,0 +1,191 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e6]:
+        - link "Pumplo" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Pumplo" [ref=e8]
+        - link "Zpět pro cvičící" [ref=e9] [cursor=pointer]:
+          - /url: /client
+          - button "Zpět pro cvičící" [ref=e10]:
+            - img
+            - text: Zpět pro cvičící
+    - generic [ref=e11]:
+      - img "Modern fitness center" [ref=e13]
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - generic [ref=e21]: Retenční platforma pro nezávislé posilovny
+        - heading "Zastavte odliv členů. Udržte víc cvičících, s menší prací." [level=1] [ref=e22]
+        - paragraph [ref=e23]
+        - generic [ref=e24]:
+          - button "Spustit Pumplo →" [ref=e25] [cursor=pointer]
+          - button "Jak to funguje" [ref=e26] [cursor=pointer]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - heading "Posilovna bez retence je posilovna, která umírá" [level=2] [ref=e30]
+        - generic [ref=e31]:
+          - generic [ref=e32]: 30–50 %
+          - paragraph [ref=e33]: nových členů odchází do prvních 6 měsíců
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - img [ref=e37]
+          - heading "Platíte za systém který nic neukáže" [level=3] [ref=e39]
+          - paragraph [ref=e40]: Rezervační systém řekne kdo přišel. Neřekne kdo reálně cvičí, kdo se trápí se stroji, kdo je na odchodu.
+        - generic [ref=e41]:
+          - img [ref=e43]
+          - heading "Členové ztrácí motivaci" [level=3] [ref=e48]
+          - paragraph [ref=e49]: Bez jasného plánu a viditelných výsledků většina lidí po pár měsících přestane chodit. Nevědí co dělat, tak nedělají nic.
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - heading "Nemáte jak zareagovat" [level=3] [ref=e54]
+          - paragraph [ref=e55]: Dokud někdo nezruší členství, nemáte jak poznat že je na odchodu. Tehdy už je pozdě.
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - heading "S Pumplem uvidíte co se u vás skutečně děje" [level=2] [ref=e59]
+        - paragraph [ref=e60]: Ne další aplikace na cvičení. Dashboard pro majitele + digitální trenér pro členy — sladěné do jednoho systému.
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - img [ref=e64]
+          - heading "Vidíte realitu" [level=3] [ref=e67]
+          - paragraph [ref=e68]: V dashboardu sledujete kdo reálně cvičí, kdo odpadává, kolik tréninků kdo má. Žádné dohady.
+        - generic [ref=e69]:
+          - img [ref=e71]
+          - heading "Udržíte víc členů" [level=3] [ref=e76]
+          - paragraph [ref=e77]: Členové dostanou plán šitý na míru vašemu vybavení. Vidí svůj pokrok. Vrátí se zítra místo odchodu ke konkurenci.
+        - generic [ref=e78]:
+          - img [ref=e80]
+          - heading "Bez práce pro tým" [level=3] [ref=e82]
+          - paragraph [ref=e83]: Systém běží automaticky. Personál nemusí nic nastavovat. Členové si skenují QR a startují.
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - heading "Data pro rozhodování" [level=3] [ref=e88]
+          - paragraph [ref=e89]: Vidíte které stroje se využívají, která kategorie členů odpadává, a co na to dělat.
+    - generic [ref=e91]:
+      - heading "Jak to vypadá" [level=2] [ref=e93]
+      - generic [ref=e94]:
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - img [ref=e99]
+            - heading "Co uvidí členové" [level=3] [ref=e101]
+          - paragraph [ref=e102]: "Mobilní aplikace: onboarding → tréninkový plán → sledování progresu. Vše přizpůsobené vašemu vybavení."
+          - generic [ref=e103]:
+            - img "Pumplo app — member home, week and next workout" [ref=e107]
+            - img "Pumplo app — guided workout in the gym" [ref=e111]
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - img [ref=e116]
+            - heading "Co uvidíte vy" [level=3] [ref=e118]
+          - paragraph [ref=e119]: "Správa posilovny: na první pohled vidíte, kdo reálně chodí, komu hrozí odchod a jak roste vaše retence. Všechno na jednom místě."
+          - img "Pumplo admin dashboard — members, activity, retention and analytics" [ref=e264]
+    - generic [ref=e127]:
+      - heading "Kolik vás stojí fluktuace?" [level=2] [ref=e129]
+      - generic [ref=e131]:
+        - paragraph [ref=e132]: Kolik členů by vám Pumplo měsíčně udrželo?
+        - generic [ref=e133]:
+          - generic [ref=e134]: "8"
+          - generic "Kolik členů by vám Pumplo měsíčně udrželo?" [ref=e135]:
+            - slider [ref=e139]
+          - generic [ref=e140]:
+            - generic [ref=e141]: "1"
+            - generic [ref=e142]: "20"
+        - generic [ref=e143]:
+          - paragraph [ref=e144]: Když udržíte jen 8 členů, Pumplo vám ročně vydělá
+          - generic [ref=e145]: 144 000 Kč
+          - paragraph [ref=e146]: ročně
+        - paragraph [ref=e147]: Přestaňte přicházet o peníze.
+    - generic [ref=e149]:
+      - generic [ref=e150]:
+        - heading "Jak to pro vás bude fungovat?" [level=2] [ref=e151]
+        - paragraph [ref=e152]: Od registrace k prvnímu aktivnímu členovi za týden
+      - generic [ref=e154]:
+        - generic [ref=e156]:
+          - img [ref=e158]
+          - generic [ref=e161]:
+            - img [ref=e162]
+            - text: 5 minut
+          - heading "Zaregistrujete se online" [level=3] [ref=e165]
+          - paragraph [ref=e166]: Vyplníte základní údaje o fitku, vyberete stroje které máte, a zaplatíte. Žádný obchodník, žádné dohadování.
+        - generic [ref=e167]:
+          - img [ref=e169]
+          - generic [ref=e173]:
+            - img [ref=e174]
+            - text: 30 minut
+          - heading "Nastavíme vaše fitko" [level=3] [ref=e177]
+          - paragraph [ref=e178]: Nahrajete logo, fotky, otevírací dobu a ceník. Vaše fitko se objeví na mapě v Pumplo aplikaci.
+        - generic [ref=e179]:
+          - img [ref=e181]
+          - generic [ref=e183]:
+            - img [ref=e184]
+            - text: Průběžně
+          - heading "Členové začnou používat appku" [level=3] [ref=e187]
+          - paragraph [ref=e188]: Dáte členům QR kód k stažení Pumplo. Po stažení si vyberou vaše fitko a začnou cvičit podle svých cílů.
+        - generic [ref=e189]:
+          - img [ref=e191]
+          - generic [ref=e194]:
+            - img [ref=e195]
+            - text: Od prvního týdne
+          - heading "Vidíte data, která jste nikdy neměli" [level=3] [ref=e198]
+          - paragraph [ref=e199]: V dashboardu sledujete kdo reálně cvičí, kdo odpadává, kolik kdo odtrénoval. Víte, koho oslovit než odejde.
+      - generic [ref=e200]:
+        - paragraph [ref=e201]: Celé nastavení hotové za 35 minut
+        - button "Začít →" [ref=e202] [cursor=pointer]
+    - generic [ref=e205]:
+      - heading "Cena na míru vašemu fitku" [level=2] [ref=e206]
+      - paragraph [ref=e207]: Záleží na velikosti fitka a na tom, co všechno potřebujete. Připravíme vám konkrétní nabídku — rychle a nezávazně.
+      - paragraph [ref=e208]: Bez setup fee • Bez závazků • Zrušíte kdykoli
+      - button "Chci nezávaznou nabídku" [ref=e209] [cursor=pointer]
+      - paragraph [ref=e210]: Odpovíme do 24 hodin. Ukázka zdarma.
+    - generic [ref=e212]:
+      - generic [ref=e213]:
+        - generic [ref=e214]:
+          - img [ref=e215]
+          - generic [ref=e218]: FAQ
+        - heading "Odpovědi na vaše otázky" [level=2] [ref=e219]
+      - generic [ref=e220]:
+        - generic [ref=e221]:
+          - heading "Je to drahé" [level=3] [ref=e222]
+          - paragraph [ref=e223]: Otázka nezní, kolik Pumplo stojí, ale kolik vás stojí každý člověk, který odejde ke konkurenci, protože u vás neměl výsledky.
+        - generic [ref=e224]:
+          - heading "Máme na to trenéry" [level=3] [ref=e225]
+          - paragraph [ref=e226]: Správně. Pumplo řeší základní plán pro masy, aby se vaši trenéři mohli věnovat prémiovým službám.
+        - generic [ref=e227]:
+          - heading "Používáme jiný systém" [level=3] [ref=e228]
+          - paragraph [ref=e229]: Rezervační systém říká, kdo přišel. Pumplo říká, kdo reálně cvičí a kdo odpadává.
+        - generic [ref=e230]:
+          - heading "Vaše know-how musí patřit vám" [level=3] [ref=e231]
+          - paragraph [ref=e232]: Pokud váš systém stojí pouze na trenérech, riskujete, že s jejich odchodem ztratíte i své klienty. Pumplo digitalizuje know-how fitka.
+        - generic [ref=e233]:
+          - heading "Jak dlouho trvá nastavení?" [level=3] [ref=e234]
+          - paragraph [ref=e235]: 5 minut online registrace + 30 minut pro nahrání fotek, strojů a otevírací doby. Celkem 35 minut a můžete spustit první členy.
+        - generic [ref=e236]:
+          - heading "Můžu zrušit kdykoli?" [level=3] [ref=e237]
+          - paragraph [ref=e238]: Ano. Předplatné je měsíční nebo roční, zrušit můžete kdykoli přímo ve správě předplatného. Nic vás neváže.
+        - generic [ref=e239]:
+          - heading "Co když to nebude fungovat?" [level=3] [ref=e240]
+          - paragraph [ref=e241]: První výsledky uvidíte v dashboardu během týdne. Pokud vám to nesedí, zrušíte — nic neztrácíte kromě měsíčního předplatného.
+    - generic [ref=e244]:
+      - heading "Začněte dnes. První výsledky za týden." [level=2] [ref=e245]
+      - paragraph [ref=e246]: Online registrace za 5 minut. Nejrychlejší cesta od problému s retencí k reálným datům o členech.
+      - button "Spustit Pumplo →" [ref=e247] [cursor=pointer]
+      - paragraph [ref=e248]:
+        - text: nebo si napřed
+        - button "domluvte nezávaznou konzultaci" [ref=e249] [cursor=pointer]
+      - paragraph [ref=e250]: Bez závazků • Bez setup fee • Zrušíte kdykoli
+    - generic [ref=e253]:
+      - heading "Kontaktujte nás" [level=2] [ref=e254]
+      - paragraph [ref=e255]: ‌
+      - link "Domluvit nezávaznou konzultaci" [ref=e256] [cursor=pointer]:
+        - /url: /contact
+        - button "Domluvit nezávaznou konzultaci" [ref=e257]:
+          - img
+          - text: Domluvit nezávaznou konzultaci
+    - contentinfo [ref=e258]:
+      - generic [ref=e259]:
+        - generic [ref=e260]:
+          - img "Pumplo" [ref=e261]
+          - paragraph [ref=e262]: © 2025 Pumplo. Váš digitální trenér v kapse.
+        - paragraph [ref=e263]: Pumplo is a product of GynTools CZ s.r.o., Registration No. 27804461, registered in the Czech Republic.

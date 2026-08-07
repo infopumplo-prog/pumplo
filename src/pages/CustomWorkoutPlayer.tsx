@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Check, SkipForward, Trophy, Play, Pause, ChevronRight, X, Info, MessageSquarePlus, MapPin, AlertTriangle, RefreshCw, List, Video, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail } from '@/hooks/useCustomPlans';
@@ -13,13 +14,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import { GymSelector } from '@/components/workout/GymSelector';
 import { WorkoutShareCard } from '@/components/workout/WorkoutShareCard';
-import { CompactWorkoutView } from '@/components/workout/CompactWorkoutView';
+import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
+import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
-import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
+import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
+import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
+import { useLongPress } from '@/lib/useLongPress';
+import { cn } from '@/lib/utils';
+import { SET_TYPE_META, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 const REST_BETWEEN_SETS = 90; // seconds
 const REST_BETWEEN_EXERCISES = 120; // seconds
 
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, unlockAudio, announceWorkoutComplete, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
+import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
+import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
+import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction } from '@/lib/watchWorkout';
+import { useWatchBridge } from '@/hooks/useWatchBridge';
 
 interface ExerciseWithVideo {
   id: string;
@@ -33,10 +45,14 @@ interface ExerciseWithVideo {
   weight_per_set: number[] | null;
   rest_seconds: number;
   rest_per_set: number[] | null;
+  set_types: (string | null)[] | null;
   video_path: string | null;
   machine_id: string | null;
   unit_type: string;
   category: string;
+  primary_muscles: string[];
+  secondary_muscles: string[];
+  notes: string | null;
 }
 
 interface CompletedSetData {
@@ -52,6 +68,8 @@ interface ExerciseDetail {
   equipment_type: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
+  primary_muscles_en: string[];
+  secondary_muscles_en: string[];
   video_path: string | null;
   machine_name: string | null;
   description: string | null;
@@ -111,6 +129,12 @@ const CustomWorkoutPlayer = () => {
   const { profile } = useUserProfile();
   const searchParams = new URLSearchParams(window.location.search);
   const resumeMode = searchParams.get('resume') === 'true';
+  // Gym chosen already on the plan page (selector + location gate ran there) —
+  // don't ask again, jump straight to day selection.
+  const gymParam = searchParams.get('gym');
+  // Den poslaný z hodinek — bez něj by ťuknutí na hodinkách stejně skončilo
+  // u ručního výběru dne na displeji telefonu.
+  const dayParam = searchParams.get('day');
 
   // State
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
@@ -121,7 +145,7 @@ const CustomWorkoutPlayer = () => {
   const [exercises, setExercises] = useState<ExerciseWithVideo[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-  const [playerState, setPlayerState] = useState<PlayerState>('select_gym');
+  const [playerState, setPlayerState] = useState<PlayerState>(() => gymParam ? 'select_day' : 'select_gym');
   const [restSeconds, setRestSeconds] = useState(0);
   const [startTime] = useState<Date>(new Date());
   const [totalSetsCompleted, setTotalSetsCompleted] = useState(0);
@@ -137,6 +161,14 @@ const CustomWorkoutPlayer = () => {
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<SuggestedAlternative[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'video' | 'list'>('list');
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
+  const [explainSetType, setExplainSetType] = useState<SetType | null>(null);
+  // Gym-bound swap picker (tap = quick swap, hold = full list) — shared with the
+  // generated workout player.
+  const [swapOptions, setSwapOptions] = useState<SwapCandidate[] | null>(null);
+  const [swapRowIdx, setSwapRowIdx] = useState<number | null>(null);
+  const [swapInfoId, setSwapInfoId] = useState<string | null>(null);
+  const [isSwappingIdx, setIsSwappingIdx] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(() => isAudioMuted());
   const [weight, setWeight] = useState<string>('');
   const [reps, setReps] = useState<string>('');
@@ -151,11 +183,25 @@ const CustomWorkoutPlayer = () => {
     totalDuration: number; totalSets: number; totalWeight: number; totalReps: number;
     exerciseCount: number;
     exerciseDetails: { name: string; nameEn: string | null; isCardio: boolean; sets: { weight: number; reps: number }[] }[];
+    muscleIntensities?: Record<string, number>;
+    savedAt?: number;
   }
   const SHARE_CACHE_KEY = `pumplo_share_${id}`;
-  const [shareCache, setShareCache] = useState<ShareCacheData | null>(() => {
-    try { const s = localStorage.getItem(`pumplo_share_${id}`); return s ? JSON.parse(s) : null; } catch { return null; }
-  });
+  // Only auto-restore the completion screen if the cache is fresh — i.e. the app
+  // was killed mid-share moments ago. An old cache (user closed the app on the
+  // share screen a while back) must NOT hijack a deliberate fresh start.
+  const SHARE_CACHE_TTL_MS = 10 * 60 * 1000;
+  const readFreshShareCache = (): ShareCacheData | null => {
+    try {
+      const s = localStorage.getItem(`pumplo_share_${id}`);
+      if (!s) return null;
+      const c = JSON.parse(s) as ShareCacheData;
+      if (c.savedAt && Date.now() - c.savedAt < SHARE_CACHE_TTL_MS) return c;
+      localStorage.removeItem(`pumplo_share_${id}`); // stale → drop it
+      return null;
+    } catch { return null; }
+  };
+  const [shareCache, setShareCache] = useState<ShareCacheData | null>(() => readFreshShareCache());
 
   // Rest duration from plan DB (default 120s)
   const [currentRestTotal, setCurrentRestTotal] = useState<number>(120);
@@ -192,20 +238,28 @@ const CustomWorkoutPlayer = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [playerState]);
 
-  // Restore completion screen if app was killed during share/photo picker
+  // Restore completion screen only if the app was killed mid-share moments ago
+  // (fresh cache). A stale cache is ignored so a deliberate fresh start isn't
+  // hijacked onto the previous workout's share screen.
   useEffect(() => {
     if (shareCache) setPlayerState('completed');
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        try {
-          const s = localStorage.getItem(SHARE_CACHE_KEY);
-          if (s) { setShareCache(JSON.parse(s)); setPlayerState('completed'); }
-        } catch {}
+        const c = readFreshShareCache();
+        if (c) { setShareCache(c); setPlayerState('completed'); }
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Muscle-group intensities (0–1) for the share card's body figure.
+  const computeShareMuscles = (): Record<string, number> => muscleIntensities(computeMuscleDistribution(
+    exercises.map((ex, i) => ({
+      primaryMuscles: ex.primary_muscles || [],
+      secondaryMuscles: ex.secondary_muscles || [],
+      completedSets: (completedSetsMap.get(i) || []).filter(s => s.completed).length,
+    }))));
 
   // Save completion data to localStorage when workout finishes
   useEffect(() => {
@@ -217,14 +271,16 @@ const CustomWorkoutPlayer = () => {
         gymName,
         gymInstagram,
         totalDuration: durationMinutes,
-        totalSets: totalSetsCompleted,
-        totalWeight,
-        totalReps,
+        totalSets: workingTotals.sets,
+        totalWeight: workingTotals.volume,
+        totalReps: workingTotals.reps,
         exerciseCount: exercises.length,
         exerciseDetails: exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
           return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         }),
+        muscleIntensities: computeShareMuscles(),
+        savedAt: Date.now(),
       };
       localStorage.setItem(SHARE_CACHE_KEY, JSON.stringify(cache));
       setShareCache(cache);
@@ -327,6 +383,22 @@ const CustomWorkoutPlayer = () => {
   const totalReps = Array.from(completedSetsMap.values()).reduce((sum, sets) =>
     sum + sets.reduce((s, set) => s + (set.reps || 0), 0), 0);
 
+  // Working totals (warm-up "W" sets excluded) — used for the saved session
+  // totals and the completion summary, per the Hevy spec.
+  const workingTotals = (() => {
+    let sets = 0, volume = 0, reps = 0;
+    completedSetsMap.forEach((arr, exIdx) => {
+      arr.forEach((set, si) => {
+        if (!set.completed) return;
+        if (getSetType(exercises[exIdx]?.set_types, si) === 'W') return;
+        sets++;
+        reps += set.reps || 0;
+        volume += (set.weight || 0) * (set.reps || 0);
+      });
+    });
+    return { sets, volume, reps };
+  })();
+
   // Handle gym selection
   const handleGymSelected = async (gymId: string) => {
     // Starting a fresh workout — clear any stale completion cache
@@ -352,6 +424,12 @@ const CustomWorkoutPlayer = () => {
 
     setPlayerState('select_day');
   };
+
+  // Gym passed from the plan page → run the selection handler once on mount
+  // (fetches gym name/IG and moves on) without showing the selector again.
+  useEffect(() => {
+    if (gymParam) handleGymSelected(gymParam);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check exercise equipment compatibility with selected gym
   const checkEquipmentCompatibility = useCallback(async (dayExercises: ExerciseWithVideo[]) => {
@@ -424,11 +502,11 @@ const CustomWorkoutPlayer = () => {
     const exerciseIds = day.exercises.map(e => e.exercise_id);
     const { data: exerciseData } = await supabase
       .from('exercises')
-      .select('id, name, name_en, video_path, machine_id, unit_type, category')
+      .select('id, name, name_en, video_path, machine_id, unit_type, category, primary_muscles, secondary_muscles')
       .in('id', exerciseIds);
 
-    const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string }>();
-    exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '' }));
+    const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string; primary_muscles: string[]; secondary_muscles: string[] }>();
+    exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '', primary_muscles: (e as any).primary_muscles || [], secondary_muscles: (e as any).secondary_muscles || [] }));
 
     const loaded: ExerciseWithVideo[] = day.exercises.map(e => ({
       id: e.id,
@@ -440,12 +518,16 @@ const CustomWorkoutPlayer = () => {
       reps_per_set: e.reps_per_set || null,
       weight_kg: e.weight_kg,
       weight_per_set: e.weight_per_set || null,
-      rest_seconds: e.rest_seconds || 120,
+      rest_seconds: e.rest_seconds ?? 120,
       rest_per_set: e.rest_per_set || null,
+      set_types: e.set_types || null,
       video_path: dataMap.get(e.exercise_id)?.video_path || null,
       machine_id: dataMap.get(e.exercise_id)?.machine_id || null,
       unit_type: dataMap.get(e.exercise_id)?.unit_type || 'reps',
       category: dataMap.get(e.exercise_id)?.category || '',
+      primary_muscles: dataMap.get(e.exercise_id)?.primary_muscles || [],
+      secondary_muscles: dataMap.get(e.exercise_id)?.secondary_muscles || [],
+      notes: (e as any).notes ?? null,
     }));
 
     // Fetch last weights from history for all exercises
@@ -485,6 +567,11 @@ const CustomWorkoutPlayer = () => {
 
   // Start day
   const handleStartDay = (dayId: string) => {
+    // Souběh s hodinkami: v jednu chvíli běží trénink jen na jednom místě.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
     unlockAudio(); // Unlock audio on user gesture for mobile browsers
     setSelectedDayId(dayId);
     loadDayExercises(dayId);
@@ -494,6 +581,19 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!plan || resumeApplied) return;
     if (playerState !== 'select_day') return;
+
+    // Souběh s hodinkami: dokud tam běží samostatný trénink, telefon žádný
+    // nespouští ani neobnovuje. Rozdělaný trénink zůstává uložený na později.
+    if (isStandaloneWatchWorkoutActive()) {
+      toast.info(t('workout.watch_workout_active'), { id: 'watch-active' });
+      return;
+    }
+
+    if (dayParam && plan.days.some(d => d.id === dayParam)) {
+      setResumeApplied(true);
+      handleStartDay(dayParam);
+      return;
+    }
 
     if (resumeMode && pausedWorkout && pausedWorkout.planId === id) {
       setResumeApplied(true);
@@ -525,6 +625,7 @@ const CustomWorkoutPlayer = () => {
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
   const restBeepsRef = useRef({ b3: false, b2: false, b1: false, done: false });
+  const restNativeBeepsRef = useRef(false); // true once native audio owns the rest beeps
 
   // Set end time when rest starts
   useEffect(() => {
@@ -538,17 +639,26 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (playerState !== 'rest') return;
 
+    // Native background-capable beeps (heard locked / backgrounded / headphones,
+    // music keeps playing). Falls back to the JS beeps below on web / if missing.
+    let cancelled = false;
+    const remainingAtStart = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000));
+    startRestBeeps(remainingAtStart).then(handled => { if (!cancelled) restNativeBeepsRef.current = handled; });
+
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000));
       setRestSeconds(remaining);
 
       const b = restBeepsRef.current;
-      if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
-      if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
-      if (remaining === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
+      if (!restNativeBeepsRef.current) {
+        if (remaining === 3 && !b.b3) { b.b3 = true; playCountdown3(); }
+        if (remaining === 2 && !b.b2) { b.b2 = true; playCountdown2(); }
+        if (remaining === 1 && !b.b1) { b.b1 = true; playCountdown1(); }
+      }
       if (remaining <= 0 && !b.done) {
         b.done = true;
-        playAlarmFinish();
+        if (!restNativeBeepsRef.current) playAlarmFinish();
+        stopRestBeeps();
         advanceAfterRest();
       }
     };
@@ -559,6 +669,9 @@ const CustomWorkoutPlayer = () => {
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      cancelled = true;
+      stopRestBeeps();
+      restNativeBeepsRef.current = false;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
@@ -633,12 +746,16 @@ const CustomWorkoutPlayer = () => {
       setReps('');
     }
 
-    // Start rest — use per-set rest duration
+    // Start rest — use per-set rest duration (0 = rest timer off → skip straight to next)
     const setIdx = currentSet - 1; // 0-based
     const restTime = currentExercise?.rest_per_set?.[setIdx] ?? currentExercise?.rest_seconds ?? 120;
-    setRestSeconds(restTime);
-    setCurrentRestTotal(restTime);
-    setPlayerState('rest');
+    if (restTime > 0) {
+      setRestSeconds(restTime);
+      setCurrentRestTotal(restTime);
+      setPlayerState('rest');
+    } else {
+      advanceAfterRest();
+    }
   };
 
   const handleCardioComplete = () => {
@@ -663,14 +780,18 @@ const CustomWorkoutPlayer = () => {
       return;
     }
 
-    setRestSeconds(restTime);
-    setCurrentRestTotal(restTime);
-    setPlayerState('rest');
-
     if (isLastSet) {
       pendingAdvanceRef.current = { type: 'next_exercise', exIdx: currentExerciseIndex + 1 };
     } else {
       pendingAdvanceRef.current = { type: 'next_set', exIdx: currentExerciseIndex, set: currentSet + 1 };
+    }
+
+    if (restTime > 0) {
+      setRestSeconds(restTime);
+      setCurrentRestTotal(restTime);
+      setPlayerState('rest');
+    } else {
+      advanceAfterRest();
     }
   };
 
@@ -701,11 +822,255 @@ const CustomWorkoutPlayer = () => {
     advanceAfterRest();
   };
 
+  // Hodinky. Stav se skládá čistou funkcí (buildCustomWatchState), akce se
+  // přehrávají do TÝCHŽ handlerů, které volá UI v appce — žádná tréninková
+  // logika navíc.
+  const lastCompletedSet = completedSetsMap.get(currentExerciseIndex)?.slice(-1)[0] ?? null;
+  // Seznam cviků pro hodinky. Náhledy si hodinky stáhnou samy z veřejné adresy,
+  // telefon posílá jen odkaz.
+  const watchExercises = exercises.map((ex, idx) => ({
+    name: (isEn && ex.exercise_name_en) ? ex.exercise_name_en : ex.exercise_name,
+    setsDone: (completedSetsMap.get(idx) ?? []).filter(s => s.completed).length,
+    setsTotal: ex.sets,
+    thumbUrl: getVideoThumbUrl(ex.video_path ?? null),
+  }));
+  const watchState = buildCustomWatchState({
+    playerState,
+    isCardio: isCurrentCardio,
+    exerciseName: (isEn && currentExercise?.exercise_name_en)
+      ? currentExercise.exercise_name_en
+      : (currentExercise?.exercise_name || ''),
+    currentSet,
+    totalSets: currentExercise?.sets ?? 0,
+    targetWeight: currentExercise?.weight_per_set?.[currentSet - 1] ?? currentExercise?.weight_kg ?? null,
+    targetReps: currentExercise?.reps_per_set?.[currentSet - 1] ?? currentExercise?.reps ?? 0,
+    prevWeight: lastCompletedSet?.weight ?? null,
+    prevReps: lastCompletedSet?.reps ?? null,
+    restEndsAt: playerState === 'rest' ? restEndTimeRef.current : 0,
+    cardioTotalSeconds,
+    cardioEndsAt: cardioEndTimeRef.current,
+    cardioPausedAt: cardioPausedAtRef.current ?? 0,
+    nextExerciseName: exercises[currentExerciseIndex + 1]?.exercise_name ?? null,
+  });
+  const watchStateWithList = watchState && {
+    ...watchState,
+    workoutTitle: [plan?.name, plan?.days.find(d => d.id === selectedDayId)?.name]
+      .filter(Boolean).join(' · ') || (plan?.name ?? ''),
+    workoutStartedAt: startTime.getTime(),
+    exercises: watchExercises,
+    currentExerciseIndex,
+  };
+
+  const handleWatchAction = (a: WatchAction) => {
+    if (a.type === 'logSet') {
+      if (a.weight != null) setWeight(String(a.weight));
+      setReps(String(a.reps));
+      // Hodnoty z hodinek se do handleCompleteSet dostanou přes stav vstupů,
+      // proto se zápis odloží o tick — jinak by handler četl starou hodnotu.
+      setTimeout(() => handleCompleteSetRef.current(), 0);
+    } else if (a.type === 'skipRest') {
+      if (playerState === 'rest') handleSkipRest();
+    } else if (a.type === 'addRest15') {
+      if (playerState === 'rest') {
+        restEndTimeRef.current += 15000;
+        setRestSeconds(Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000)));
+        setCurrentRestTotal(prev => prev + 15);
+      }
+    } else if (a.type === 'cardioToggle') {
+      if (isCurrentCardio && playerState === 'exercise') handleCardioPauseToggle();
+    } else if (a.type === 'goPrevSet') {
+      if (currentSet > 1) setCurrentSet(currentSet - 1);
+      else if (currentExerciseIndex > 0) { setCurrentExerciseIndex(currentExerciseIndex - 1); setCurrentSet(1); }
+    } else if (a.type === 'goNextSet') {
+      if (currentSet < (currentExercise?.sets ?? 1)) setCurrentSet(currentSet + 1);
+      else if (currentExerciseIndex < exercises.length - 1) { setCurrentExerciseIndex(currentExerciseIndex + 1); setCurrentSet(1); }
+    } else if (a.type === 'goToExercise') {
+      if (a.index >= 0 && a.index < exercises.length) { setCurrentExerciseIndex(a.index); setCurrentSet(1); }
+    }
+  };
+
+  // handleCompleteSet čte rozepsané vstupy, a odložené volání z hodinek by přes
+  // přímou referenci sáhlo do closure z minulého renderu.
+  const handleCompleteSetRef = useRef(handleCompleteSet);
+  handleCompleteSetRef.current = handleCompleteSet;
+
+  useWatchBridge(watchStateWithList, handleWatchAction);
+
   const handleToggleMute = () => {
     const next = !isMuted;
     setIsMuted(next);
     setAudioMuted(next);
   };
+
+  // Append exercises picked mid-workout to the running session (ephemeral — not
+  // persisted to the plan). New exercises land at the end with default sets.
+  const handleAddExercisesToSession = (picked: PickerExercise[]) => {
+    setExercises(prev => [
+      ...prev,
+      ...picked.map((p): ExerciseWithVideo => ({
+        id: `adhoc-${p.id}-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+        exercise_id: p.id,
+        exercise_name: p.name,
+        exercise_name_en: p.name_en,
+        sets: 3,
+        reps: 10,
+        reps_per_set: null,
+        weight_kg: null,
+        weight_per_set: null,
+        rest_seconds: 120,
+        rest_per_set: null,
+        set_types: null,
+        video_path: p.video_path,
+        machine_id: p.machine_id,
+        unit_type: p.unit_type,
+        category: p.category,
+        primary_muscles: p.primary_muscles || [],
+        secondary_muscles: [],
+        notes: null,
+      })),
+    ]);
+    setAddPickerOpen(false);
+  };
+
+  // --- Gym-bound swap (playback) ---
+  // Alternatives are filtered by the selected gym's machines (same as the
+  // generated player). Custom-plan slots lack a role_id, so we read the
+  // exercise's primary_role from the DB (cardio slots skip the role query).
+  const fetchAltsForIndex = useCallback(async (idx: number): Promise<SwapCandidate[]> => {
+    const ex = exercises[idx];
+    if (!ex || !selectedGymId) return [];
+    const isCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
+    let primaryRole: string | null = null;
+    if (!isCardio) {
+      const { data } = await supabase.from('exercises').select('primary_role').eq('id', ex.exercise_id).single();
+      primaryRole = (data as { primary_role: string | null } | null)?.primary_role ?? null;
+    }
+    const excludeIds = exercises.map(e => e.exercise_id).filter(Boolean);
+    return fetchGymBoundAlternatives({ primaryRole, isCardio, excludeIds, gymId: selectedGymId });
+  }, [exercises, selectedGymId]);
+
+  // Replace a slot with the picked alternative: update the running session AND
+  // persist to the plan (mirrors how rest/notes persist mid-workout). Ad-hoc
+  // rows added this session aren't in the DB, so they're only updated in memory.
+  const applySwap = useCallback(async (idx: number, pick: SwapCandidate) => {
+    const row = exercises[idx];
+    if (!row) return;
+    const { data } = await supabase
+      .from('exercises')
+      .select('name, name_en, video_path, machine_id, unit_type, category, primary_muscles, secondary_muscles')
+      .eq('id', pick.id)
+      .single();
+    const d = data as { name: string; name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string | null; category: string | null; primary_muscles: string[] | null; secondary_muscles: string[] | null } | null;
+    setExercises(prev => prev.map((e, i) => i === idx ? {
+      ...e,
+      exercise_id: pick.id,
+      exercise_name: d?.name ?? pick.name,
+      exercise_name_en: d?.name_en ?? pick.name_en ?? null,
+      video_path: d?.video_path ?? pick.video_path,
+      machine_id: d?.machine_id ?? pick.machine_id,
+      unit_type: d?.unit_type ?? e.unit_type,
+      category: d?.category ?? e.category,
+      primary_muscles: d?.primary_muscles ?? e.primary_muscles,
+      secondary_muscles: d?.secondary_muscles ?? e.secondary_muscles,
+    } : e));
+    if (!row.id.startsWith('adhoc-')) {
+      const { error } = await supabase.from('custom_plan_exercises').update({ exercise_id: pick.id }).eq('id', row.id);
+      if (error) console.warn('[custom_plan] swap not persisted:', error.message);
+    }
+    toast.success(t('workout.swap_success', { name: d?.name ?? pick.name }));
+  }, [exercises, t]);
+
+  const handleSwapQuick = useCallback(async (idx: number) => {
+    if (isSwappingIdx != null) return;
+    setIsSwappingIdx(idx);
+    try {
+      const cands = await fetchAltsForIndex(idx);
+      if (cands.length === 0) { toast.error(t('workout.no_replacement')); return; }
+      await applySwap(idx, cands[Math.floor(Math.random() * cands.length)]);
+    } finally { setIsSwappingIdx(null); }
+  }, [isSwappingIdx, fetchAltsForIndex, applySwap, t]);
+
+  const handleSwapLong = useCallback(async (idx: number) => {
+    if (isSwappingIdx != null) return;
+    setIsSwappingIdx(idx);
+    try {
+      const cands = await fetchAltsForIndex(idx);
+      setSwapRowIdx(idx);
+      setSwapOptions(cands);
+    } finally { setIsSwappingIdx(null); }
+  }, [isSwappingIdx, fetchAltsForIndex]);
+
+  // Hold the video-mode swap icon → full alternatives sheet for the current slot.
+  const videoSwapPress = useLongPress(() => { if (currentExercise) handleSwapLong(currentExerciseIndex); });
+
+  // Shared swap picker + exercise detail (rendered in both list and video modes).
+  const swapSheets = (
+    <>
+      <ExerciseSwapSheet
+        options={swapOptions}
+        onPick={(c) => { if (swapRowIdx != null) applySwap(swapRowIdx, c); }}
+        onClose={() => { setSwapOptions(null); setSwapRowIdx(null); }}
+        onShowInfo={setSwapInfoId}
+      />
+      <ExerciseInfoSheet exerciseId={swapInfoId} onClose={() => setSwapInfoId(null)} />
+    </>
+  );
+
+  // --- Log Workout (Hevy) view handlers ---
+  // The Hevy view owns its own sticky rest bar, so these only mutate the shared
+  // completedSetsMap; playerState stays on 'exercise'.
+  const recountCompleted = (map: Map<number, CompletedSetData[]>) => {
+    let c = 0;
+    map.forEach(arr => arr.forEach(s => { if (s.completed) c++; }));
+    return c;
+  };
+  const handleLogSetComplete = (exIdx: number, setIdx: number, w: number | null, r: number | null, duration: number | null) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      while (arr.length <= setIdx) arr.push({ completed: false, weight: null, reps: null, durationSeconds: null });
+      arr[setIdx] = { completed: true, weight: w, reps: r, durationSeconds: duration };
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
+  const handleLogSetUncomplete = (exIdx: number, setIdx: number) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      if (arr[setIdx]) arr[setIdx] = { completed: false, weight: null, reps: null, durationSeconds: null };
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
+  // Mid-workout edits that PERSIST to the routine (Hevy-style): rest timer and
+  // notes write straight back to custom_plan_exercises.
+  const handleUpdateRest = async (rowId: string, seconds: number) => {
+    setExercises(prev => prev.map(e => e.id === rowId ? { ...e, rest_seconds: seconds, rest_per_set: null } : e));
+    await supabase.from('custom_plan_exercises').update({ rest_seconds: seconds, rest_per_set: null }).eq('id', rowId);
+  };
+  const handleUpdateNote = async (rowId: string, note: string | null) => {
+    setExercises(prev => prev.map(e => e.id === rowId ? { ...e, notes: note } : e));
+    const { error } = await supabase.from('custom_plan_exercises').update({ notes: note }).eq('id', rowId);
+    if (error) console.warn('[custom_plan] note not persisted:', error.message);
+  };
+
+  // Removing a set row shifts everything after it down by one (mirrors the
+  // per-row input shift in LogWorkoutView).
+  const handleLogSetRemove = (exIdx: number, setIdx: number) => {
+    setCompletedSetsMap(prev => {
+      const next = new Map(prev);
+      const arr = [...(next.get(exIdx) || [])];
+      if (setIdx < arr.length) arr.splice(setIdx, 1);
+      next.set(exIdx, arr);
+      return next;
+    });
+  };
+  // In Log mode sets can be toggled on/off, so keep the completed counter derived
+  // from the map (video mode manages it manually and is left untouched).
+  useEffect(() => {
+    if (viewMode === 'list') setTotalSetsCompleted(recountCompleted(completedSetsMap));
+  }, [completedSetsMap, viewMode]);
 
   // Go back to previous set
   const handleGoBack = () => {
@@ -750,7 +1115,7 @@ const CustomWorkoutPlayer = () => {
     setInfoVideoError(false);
     const { data } = await supabase
       .from('exercises')
-      .select('name, category, equipment_type, primary_muscles, secondary_muscles, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
+      .select('name, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, video_path, description, setup_instructions, common_mistakes, tips, machines!exercises_machine_id_fkey(name)')
       .eq('id', exerciseId)
       .single();
     if (data) {
@@ -760,6 +1125,8 @@ const CustomWorkoutPlayer = () => {
         equipment_type: data.equipment_type,
         primary_muscles: data.primary_muscles || [],
         secondary_muscles: data.secondary_muscles || [],
+        primary_muscles_en: (data as any).primary_muscles_en || [],
+        secondary_muscles_en: (data as any).secondary_muscles_en || [],
         video_path: data.video_path,
         machine_name: (data as any).machines?.name || null,
         description: (data as any).description || null,
@@ -792,9 +1159,9 @@ const CustomWorkoutPlayer = () => {
             started_at: startTime.toISOString(),
             completed_at: completedAt.toISOString(),
             duration_seconds: durationSeconds,
-            total_sets: totalSetsCompleted,
-            total_reps: totalReps,
-            total_weight_kg: totalWeight,
+            total_sets: workingTotals.sets,
+            total_reps: workingTotals.reps,
+            total_weight_kg: workingTotals.volume,
             is_bonus: false,
           })
           .select()
@@ -808,18 +1175,22 @@ const CustomWorkoutPlayer = () => {
           const setInserts: any[] = [];
           exercises.forEach((exercise, exIdx) => {
             const setsData = completedSetsMap.get(exIdx) || [];
-            for (let i = 0; i < exercise.sets; i++) {
-              const setData = setsData[i];
+            // Persist COMPLETED sets only (incl. ones added beyond the plan).
+            // Uncompleted rows carried no data and swipe-deleted sets used to
+            // resurface as phantom rows via Math.max(plan, map length).
+            setsData.forEach((setData, i) => {
+              if (!setData?.completed) return;
               setInserts.push({
                 session_id: session.id,
                 exercise_id: exercise.exercise_id || null,
                 exercise_name: exercise.exercise_name,
                 set_number: i + 1,
-                weight_kg: setData?.weight || null,
-                reps: setData?.reps || null,
-                completed: setData?.completed || false,
+                weight_kg: setData.weight || null,
+                reps: setData.reps || null,
+                completed: true,
+                set_type: getSetType(exercise.set_types, i),
               });
-            }
+            });
           });
           if (setInserts.length > 0) {
             const { error: setsError } = await supabase.from('workout_session_sets').insert(setInserts);
@@ -833,6 +1204,29 @@ const CustomWorkoutPlayer = () => {
     clearPausedWorkout();
     navigate('/');
   };
+
+  // Shared set-type explanation dialog (opened via the ? in the compact list).
+  const setTypeExplainDialog = explainSetType && (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm" onClick={() => setExplainSetType(null)}>
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span className={cn('w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold', SET_TYPE_META[explainSetType].color)}>
+            {explainSetType === 'normal' ? '1' : explainSetType}
+          </span>
+          <h2 className="text-lg font-bold">{t(SET_TYPE_META[explainSetType].labelKey)}</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">{t(SET_TYPE_META[explainSetType].explainKey)}</p>
+        <button onClick={() => setExplainSetType(null)} className="w-full py-3 rounded-xl bg-action text-white font-semibold hover:bg-action/90 transition-colors">
+          {t('set_type.explain_ok')}
+        </button>
+      </motion.div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -995,14 +1389,15 @@ const CustomWorkoutPlayer = () => {
         gymName={sc?.gymName ?? gymName}
         gymInstagram={sc?.gymInstagram ?? gymInstagram}
         totalDuration={sc?.totalDuration ?? durationMinutes}
-        totalSets={sc?.totalSets ?? totalSetsCompleted}
-        totalWeight={sc?.totalWeight ?? totalWeight}
-        totalReps={sc?.totalReps ?? totalReps}
+        totalSets={sc?.totalSets ?? workingTotals.sets}
+        totalWeight={sc?.totalWeight ?? workingTotals.volume}
+        totalReps={sc?.totalReps ?? workingTotals.reps}
         exerciseCount={sc?.exerciseCount ?? totalExercises}
         exerciseDetails={sc?.exerciseDetails ?? exercises.map((ex, i) => {
           const sets = completedSetsMap.get(i) || [];
           return { name: ex.exercise_name, nameEn: ex.exercise_name_en || null, isCardio: ex.unit_type === 'time_min' || ex.category === 'cardio', sets: sets.filter(s => s.completed).map(s => ({ weight: s.weight ?? 0, reps: s.reps ?? 0 })) };
         })}
+        muscleIntensities={sc?.muscleIntensities ?? computeShareMuscles()}
         onClose={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} setShareCache(null); setPlayerState('exercise'); }}
         onFinish={handleFinishWorkout}
         isSaving={isSaving}
@@ -1082,115 +1477,49 @@ const CustomWorkoutPlayer = () => {
     );
   }
 
-  // --- Compact List Mode ---
+  // --- Log Workout (Hevy) mode ---
   if (viewMode === 'list' && playerState === 'exercise') {
-    // Map custom workout data to CompactWorkoutView format
-    const compactExercises = exercises.map(ex => ({
-      id: ex.id,
-      exerciseId: ex.exercise_id,
-      exerciseName: ex.exercise_name,
-      exerciseNameEn: ex.exercise_name_en ?? null,
-      roleId: '',
-      machineName: ex.machine_name ?? null,
-      machineNameEn: ex.machine_name_en ?? null,
-      sets: ex.sets,
-      repMin: ex.reps,
-      repMax: ex.reps,
-      slotCategory: null as string | null,
-      repsPerSet: ex.reps_per_set,
-      weightPerSet: ex.weight_per_set,
-      unit_type: ex.unit_type,
-      category: ex.category,
-    }));
-
-    const compactSetsMap = new Map<number, { completed: boolean; weight?: number; reps?: number; durationSeconds?: number }[]>();
-    exercises.forEach((ex, idx) => {
-      const completedSets = completedSetsMap.get(idx) || [];
-      const fullSets = Array.from({ length: ex.sets }, (_, i) => {
-        const s = completedSets[i];
-        return s
-          ? { completed: s.completed, weight: s.weight ?? undefined, reps: s.reps ?? undefined, durationSeconds: s.durationSeconds ?? undefined }
-          : { completed: false };
-      });
-      compactSetsMap.set(idx, fullSets);
-    });
-
-    const handleCompactComplete = (exIdx: number, setIdx: number, w?: number, r?: number, duration?: number) => {
-      setCompletedSetsMap(prev => {
-        const next = new Map(prev);
-        const existing = next.get(exIdx) || [];
-        const newSets = [...existing];
-        while (newSets.length <= setIdx) {
-          newSets.push({ completed: false, weight: null, reps: null, durationSeconds: null });
-        }
-        newSets[setIdx] = { completed: true, weight: w ?? null, reps: r ?? null, durationSeconds: duration ?? null };
-        next.set(exIdx, newSets);
-        return next;
-      });
-      setTotalSetsCompleted(prev => prev + 1);
-
-      // Check if all sets done for exercise → auto advance
-      const exercise = exercises[exIdx];
-      if (!exercise) return;
-      const setsForEx = setIdx + 1; // setIdx is 0-based index of just-completed set
-      const completedSetIdx = setIdx;
-      const exRestSec = exercise.rest_per_set?.[completedSetIdx] ?? exercise.rest_seconds ?? 120;
-      if (setsForEx >= exercise.sets) {
-        if (exIdx < exercises.length - 1) {
-          setRestSeconds(exRestSec);
-          setCurrentRestTotal(exRestSec);
-          setPlayerState('rest');
-          pendingAdvanceRef.current = { type: 'next_exercise', exIdx: exIdx + 1 };
-        } else {
-          setPlayerState('completed');
-          announceWorkoutComplete();
-        }
-      } else {
-        setCurrentExerciseIndex(exIdx);
-        setCurrentSet(setsForEx + 1);
-        setRestSeconds(exRestSec);
-        setCurrentRestTotal(exRestSec);
-        setPlayerState('rest');
-        pendingAdvanceRef.current = { type: 'next_set', exIdx, set: setsForEx + 1 };
+    const handleMinimize = () => {
+      if (id && plan && selectedDayId) {
+        const day = plan.days.find(d => d.id === selectedDayId);
+        savePausedWorkout({
+          planId: id,
+          planName: plan.name,
+          dayId: selectedDayId,
+          dayName: day?.name || t('workout.day_fallback', { number: day?.day_number || 1 }),
+          currentExerciseIndex,
+          currentSet,
+          totalSetsCompleted,
+          startedAt: startTime.toISOString(),
+          pausedAt: new Date().toISOString(),
+          completedSetsData: serializeCompletedSets(),
+        });
       }
+      navigate('/');
     };
 
     return (
       <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
-        <CompactWorkoutView
-          exercises={compactExercises}
-          currentExerciseIndex={currentExerciseIndex}
-          setsDataByExercise={compactSetsMap}
-          onCompleteSet={handleCompactComplete}
-          onSelectExercise={(idx) => {
-            const completedCount = (completedSetsMap.get(idx) || []).filter(s => s.completed).length;
-            setCurrentExerciseIndex(idx);
-            setCurrentSet(Math.min(completedCount + 1, exercises[idx]?.sets || 1));
-          }}
-          onSwitchToVideo={() => {
-            setViewMode('video');
-            setPlayerState('exercise');
-          }}
-          onClose={() => setShowExitDialog(true)}
-          onSkipExercise={() => {
-            if (currentExerciseIndex < exercises.length - 1) {
-              setCurrentExerciseIndex(prev => prev + 1);
-              setCurrentSet(1);
-            } else {
-              setPlayerState('completed');
-            }
-          }}
-          totalExercises={exercises.length}
-          showTimer
+        <LogWorkoutView
+          title={selectedDayId ? (plan.days.find(d => d.id === selectedDayId)?.name || plan.name) : plan.name}
+          exercises={exercises}
+          completedSetsMap={completedSetsMap}
+          startTime={startTime}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onCompleteSet={handleLogSetComplete}
+          onUncompleteSet={handleLogSetUncomplete}
+          onRemoveSet={handleLogSetRemove}
+          onUpdateRest={handleUpdateRest}
+          onUpdateNote={handleUpdateNote}
           onShowInfo={handleShowInfo}
-          onFinishWorkout={() => setPlayerState('completed')}
-          externalCardioSecondsRemaining={isCurrentCardio ? cardioSeconds : undefined}
-          externalCardioPaused={cardioPaused}
-          onToggleCardioPause={handleCardioPauseToggle}
-          currentSetWeight={weight}
-          currentSetReps={reps}
-          onCurrentSetWeightChange={setWeight}
-          onCurrentSetRepsChange={setReps}
+          onAddExercise={() => setAddPickerOpen(true)}
+          onFinish={() => setPlayerState('completed')}
+          onMinimize={handleMinimize}
+          onExplainSetType={(type) => setExplainSetType(type as SetType)}
+          onSwapQuick={handleSwapQuick}
+          onSwapLong={handleSwapLong}
+          swappingIdx={isSwappingIdx}
         />
 
         {/* Exit confirmation dialog */}
@@ -1259,6 +1588,14 @@ const CustomWorkoutPlayer = () => {
           )}
         </AnimatePresence>
 
+        {/* Add-exercise picker (mid-workout, Hevy-style) */}
+        <ExercisePicker
+          open={addPickerOpen}
+          onClose={() => setAddPickerOpen(false)}
+          onAdd={handleAddExercisesToSession}
+          gymId={selectedGymId}
+        />
+
         {/* Exercise info drawer (list mode) */}
         <Drawer open={infoDrawerOpen} onOpenChange={setInfoDrawerOpen}>
           <DrawerContent className="max-h-[85vh]">
@@ -1268,7 +1605,16 @@ const CustomWorkoutPlayer = () => {
             {exerciseDetail && (
               <div className="px-4 pb-6 overflow-y-auto">
                 {signedInfoVideoUrl ? (
-                  <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                  <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                    {!infoVideoError && (
+                      <button
+                        type="button"
+                        onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
+                        className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                    )}
                     {infoVideoError ? (
                       <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                     ) : (
@@ -1294,21 +1640,21 @@ const CustomWorkoutPlayer = () => {
                   {exerciseDetail.equipment_type && ` · ${getEquipmentLabel(t, exerciseDetail.equipment_type)}`}
                   {exerciseDetail.machine_name && ` · ${exerciseDetail.machine_name}`}
                 </p>
-                {exerciseDetail.primary_muscles.length > 0 && (
+                {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.primary_muscles.map((m) => (
+                      {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
                         <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
                       ))}
                     </div>
                   </div>
                 )}
-                {exerciseDetail.secondary_muscles.length > 0 && (
+                {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {exerciseDetail.secondary_muscles.map((m) => (
+                      {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).map((m) => (
                         <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                       ))}
                     </div>
@@ -1342,6 +1688,9 @@ const CustomWorkoutPlayer = () => {
             )}
           </DrawerContent>
         </Drawer>
+
+        {setTypeExplainDialog}
+        {swapSheets}
       </div>
     );
   }
@@ -1400,6 +1749,14 @@ const CustomWorkoutPlayer = () => {
                   <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                     {currentExerciseIndex + 1}/{totalExercises}
                   </span>
+                  <button
+                    {...videoSwapPress.handlers}
+                    onClick={() => { if (!videoSwapPress.wasLongPress()) handleSwapQuick(currentExerciseIndex); }}
+                    className={cn('p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white', isSwappingIdx === currentExerciseIndex && 'opacity-50')}
+                    style={{ pointerEvents: 'auto', touchAction: 'none' }}
+                  >
+                    <RefreshCw className={cn('w-5 h-5', isSwappingIdx === currentExerciseIndex && 'animate-spin')} />
+                  </button>
                   <button onClick={() => setViewMode('list')} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                     <List className="w-5 h-5" />
                   </button>
@@ -1419,9 +1776,20 @@ const CustomWorkoutPlayer = () => {
               >
                 <div className="bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
                   <p className="text-white font-bold text-base leading-tight">{(isEn && currentExercise.exercise_name_en) ? currentExercise.exercise_name_en : currentExercise.exercise_name}</p>
-                  <p className="text-white/70 text-sm mt-0.5">
-                    {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-white/70 text-sm">
+                      {t('workout.set_label', { current: currentSet, total: currentExercise.sets })}
+                    </p>
+                    {currentExercise.set_types && setBadgeLabel(currentExercise.set_types, currentSet - 1).match(/[WFD]/) && (
+                      <button
+                        onClick={() => setExplainSetType(setBadgeLabel(currentExercise.set_types, currentSet - 1) as SetType)}
+                        className={cn('px-1.5 py-0.5 rounded bg-white/15 text-xs font-bold', setBadgeColor(currentExercise.set_types, currentSet - 1))}
+                        style={{ pointerEvents: 'auto' }}
+                      >
+                        {setBadgeLabel(currentExercise.set_types, currentSet - 1)}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => handleShowInfo(currentExercise.exercise_id)}
@@ -1630,7 +1998,16 @@ const CustomWorkoutPlayer = () => {
           {exerciseDetail && (
             <div className="px-4 pb-6 overflow-y-auto">
               {signedInfoVideoUrl ? (
-                <div className="rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                <div className="relative rounded-2xl overflow-hidden bg-black mb-4 aspect-video">
+                  {!infoVideoError && (
+                    <button
+                      type="button"
+                      onClick={(e) => enterVideoFullscreen(e.currentTarget.parentElement?.querySelector('video') ?? null)}
+                      className="absolute bottom-2 right-2 z-10 p-2 rounded-lg bg-black/50 text-white active:scale-90 transition-transform"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  )}
                   {infoVideoError ? (
                     <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">{t('workout.video_unavailable')}</div>
                   ) : (
@@ -1669,21 +2046,21 @@ const CustomWorkoutPlayer = () => {
                 {t('workout.feedback_btn')}
               </button>
 
-              {exerciseDetail.primary_muscles.length > 0 && (
+              {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {exerciseDetail.primary_muscles.map((m) => (
+                    {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
                       <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {exerciseDetail.secondary_muscles.length > 0 && (
+              {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.secondary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {exerciseDetail.secondary_muscles.map((m) => (
+                    {(isEn && exerciseDetail.secondary_muscles_en.length ? exerciseDetail.secondary_muscles_en : exerciseDetail.secondary_muscles).map((m) => (
                       <span key={m} className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{m}</span>
                     ))}
                   </div>
@@ -1704,6 +2081,9 @@ const CustomWorkoutPlayer = () => {
           exercise_id: currentExercise?.exercise_id,
         }}
       />
+
+      {setTypeExplainDialog}
+      {swapSheets}
     </div>
   );
 };

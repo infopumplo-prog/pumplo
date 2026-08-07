@@ -3,7 +3,10 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MapPin, AlertTriangle, RefreshCw, X, ShieldAlert, Settings } from 'lucide-react';
 import { useGymLocation } from '@/hooks/useGymLocation';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Capacitor } from '@capacitor/core';
+import { AppLauncher } from '@capacitor/app-launcher';
+import { App as CapApp } from '@capacitor/app';
 
 interface GymLocationGateProps {
   gymLat: number;
@@ -15,12 +18,19 @@ interface GymLocationGateProps {
 
 export const GymLocationGate = ({ gymLat, gymLng, gymName, onConfirmed, onCancel }: GymLocationGateProps) => {
   const { status, distanceFromGym, checkLocation, GYM_RADIUS_METRES } = useGymLocation();
+  const { profile, isLoading: profileLoading } = useUserProfile();
 
+  // Pumplo team/staff can start a workout anywhere — skip the location check.
+  const isStaff = profile?.is_staff === true;
+
+  // Wait for the profile so a staff member never gets a stray location prompt.
   useEffect(() => {
+    if (profileLoading) return;
+    if (isStaff) { onConfirmed(); return; }
     checkLocation(gymLat, gymLng).then((ok) => {
       if (ok) onConfirmed();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isStaff, profileLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const retry = () => {
     checkLocation(gymLat, gymLng).then((ok) => {
@@ -71,6 +81,26 @@ const CheckingState = ({ gymName }: { gymName: string }) => {
 const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string; onRetry: () => void; onCancel: () => void }) => {
   const { t } = useTranslation();
   const isNative = Capacitor.isNativePlatform();
+  const isIOS = Capacitor.getPlatform() === 'ios';
+
+  // Returning from the Settings app re-runs the location check automatically
+  useEffect(() => {
+    if (!isNative) return;
+    const listener = CapApp.addListener('resume', onRetry);
+    return () => { listener.then(h => h.remove()); };
+  }, [isNative, onRetry]);
+
+  // iOS never re-shows the permission dialog once denied — the only way
+  // forward is the Settings app, so the primary button opens it directly.
+  const handlePrimary = async () => {
+    if (isIOS) {
+      try {
+        await AppLauncher.openUrl({ url: 'app-settings:' });
+        return;
+      } catch { /* fall back to retry below */ }
+    }
+    onRetry();
+  };
   return (
     <div className="text-center max-w-xs">
       <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
@@ -91,15 +121,26 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
           </p>
         </div>
       )}
+      {isNative && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4 text-left">
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
+            <Settings className="w-3 h-3" />
+            {t('workout.location_settings_blocked')}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t('workout.location_settings_instructions')}
+          </p>
+        </div>
+      )}
       <p className="text-muted-foreground text-xs mb-6">
         {t('workout.location_privacy')}
       </p>
       <button
-        onClick={onRetry}
+        onClick={handlePrimary}
         className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
       >
-        <MapPin className="w-4 h-4" />
-        {t('workout.allow_location')}
+        {isIOS ? <Settings className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+        {isIOS ? t('workout.open_settings') : t('workout.allow_location')}
       </button>
       <button onClick={onCancel} className="w-full text-muted-foreground text-sm py-2">
         {t('workout.cancel')}
@@ -120,10 +161,19 @@ const OutsideState = ({ gymName, distance, radius, onRetry, onCancel }: { gymNam
         {t('workout.not_in_gym_desc', { gymName })}
       </p>
       {distance != null && (
-        <p className="text-xs text-muted-foreground mb-6">
+        <p className="text-xs text-muted-foreground mb-4">
           {t('workout.distance_info', { distance, radius })}
         </p>
       )}
+      {/* Growth nudge: their gym may not be on Pumplo yet — ask them to refer us */}
+      <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 mb-5 text-left">
+        <p className="text-xs text-muted-foreground">
+          {t('workout.gym_missing_nudge')}{' '}
+          <a href="https://pumplo.com" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline">
+            pumplo.com
+          </a>
+        </p>
+      </div>
       <button
         onClick={onRetry}
         className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"

@@ -10,10 +10,10 @@ const BottomNav = () => {
   const { t } = useTranslation();
 
   const navItems = [
-    { path: '/', label: t('nav.home'), icon: Home },
-    { path: '/map', label: t('nav.map'), icon: MapPin },
-    { path: '/statistics', label: t('nav.statistics'), icon: BarChart3 },
-    { path: '/profile', label: t('nav.profile'), icon: User },
+    { path: '/', label: t('nav.home'), icon: Home, coach: 'nav-home' },
+    { path: '/map', label: t('nav.map'), icon: MapPin, coach: 'nav-map' },
+    { path: '/statistics', label: t('nav.statistics'), icon: BarChart3, coach: 'nav-stats' },
+    { path: '/profile', label: t('nav.profile'), icon: User, coach: 'nav-profile' },
   ];
 
   // Hide bottom nav during active workout and chat
@@ -31,6 +31,7 @@ const BottomNav = () => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                data-coach={item.coach}
                 className="flex flex-col items-center justify-center flex-1 h-full relative group py-2"
               >
                 {isActive && (

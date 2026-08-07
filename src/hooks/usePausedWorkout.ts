@@ -21,6 +21,20 @@ export interface PausedWorkoutState {
 
 const STORAGE_KEY = 'pumplo_paused_workout';
 
+// Plain (non-hook) helpers so WorkoutSession can continuously snapshot the
+// in-progress workout — an OS-killed app then resumes from the last set (F2).
+export const writePausedWorkoutSnapshot = (state: PausedWorkoutState) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { /* storage unavailable */ }
+};
+
+export const clearPausedWorkoutStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch { /* storage unavailable */ }
+};
+
 export const usePausedWorkout = () => {
   const [pausedWorkout, setPausedWorkout] = useState<PausedWorkoutState | null>(null);
 

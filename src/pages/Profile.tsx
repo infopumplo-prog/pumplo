@@ -13,12 +13,22 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
 import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
   const { t } = useTranslation();
+
+  // First-run hint.
+  const profileTour = useCoachTour('profile', 2, true);
+  const profileTourSteps = [
+    { target: '[data-coach="profile-messages"]', title: t('tour.profile.messages_title'), body: t('tour.profile.messages_body') },
+    { target: '[data-coach="profile-history"]', title: t('tour.profile.history_title'), body: t('tour.profile.history_body') },
+    { target: '[data-coach="profile-settings"]', title: t('tour.profile.settings_title'), body: t('tour.profile.settings_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { profile, isLoading, updateProfile, refetch } = useUserProfile();
@@ -78,12 +88,12 @@ const Profile = () => {
     : { icon: GraduationCap, label: t('profile.become_trainer'), onClick: () => navigate('/become-trainer') };
 
   const menuItems = [
-    { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount },
+    { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount, coach: 'profile-messages' },
     { icon: Calendar, label: t('profile.my_plan'), onClick: () => navigate('/profile/plan') },
-    { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history') },
+    { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history'), coach: 'profile-history' },
     trainerMenuItem,
     { icon: ClipboardList, label: t('profile.edit_questionnaire'), onClick: () => setOnboardingOpen(true) },
-    { icon: Settings, label: t('profile.settings'), onClick: () => navigate('/settings') },
+    { icon: Settings, label: t('profile.settings'), onClick: () => navigate('/settings'), coach: 'profile-settings' },
     { icon: MessageSquare, label: t('profile.feedback'), onClick: () => setFeedbackOpen(true) },
   ];
 
@@ -114,14 +124,17 @@ const Profile = () => {
 
       {/* Header — single gradient extends behind status bar */}
       <div className="gradient-hero px-6 pb-6" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2rem)' }}>
-        <motion.h1
-          className="text-2xl font-bold text-foreground"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          {t('profile.my_profile')}
-        </motion.h1>
+        <div className="flex items-center justify-between">
+          <motion.h1
+            className="text-2xl font-bold text-foreground"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {t('profile.my_profile')}
+          </motion.h1>
+          <CoachHelpButton onClick={profileTour.openTour} />
+        </div>
       </div>
 
       <motion.div
@@ -181,6 +194,24 @@ const Profile = () => {
           </div>
         </motion.div>
 
+        {/* OAuth signups can land without a name (Apple hides it after the
+            first authorization) — nudge them to fill it in Settings. */}
+        {profile && !profile.first_name && !profile.last_name && (
+          <motion.div variants={itemVariants}>
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-primary/30 bg-primary/5 text-left"
+            >
+              <User className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{t('profile.add_name_title')}</p>
+                <p className="text-xs text-muted-foreground">{t('profile.add_name_desc')}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </motion.div>
+        )}
+
         {/* Menu */}
         <motion.div variants={itemVariants}>
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">
@@ -190,6 +221,7 @@ const Profile = () => {
                 <button
                   key={item.label}
                   onClick={item.onClick}
+                  data-coach={(item as any).coach}
                   className={`w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors ${
                     index !== menuItems.length - 1 ? 'border-b border-border' : ''
                   }`}
@@ -230,6 +262,7 @@ const Profile = () => {
       {/* Feedback Dialog */}
       <AppFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
+      <CoachTour screenId="profile" version={2} steps={profileTourSteps} open={profileTour.open} onClose={profileTour.closeTour} />
     </PageTransition>
   );
 };

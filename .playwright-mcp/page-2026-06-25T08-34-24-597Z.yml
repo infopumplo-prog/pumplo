@@ -1,0 +1,22 @@
+- generic [ref=e27]:
+  - complementary [ref=e28]:
+    - generic [ref=e29]: MámOkno
+    - navigation [ref=e30]:
+      - link "Dashboard" [ref=e31] [cursor=pointer]:
+        - /url: /
+      - link "Skupiny" [ref=e32] [cursor=pointer]:
+        - /url: /groups
+      - generic [ref=e33]:
+        - text: Tasky
+        - generic [ref=e34]: brzy
+      - paragraph [ref=e35]: Admin
+      - link "Uživatelé" [ref=e36] [cursor=pointer]:
+        - /url: /admin/users
+      - link "Skupiny" [ref=e37] [cursor=pointer]:
+        - /url: /admin/groups
+  - main [ref=e38]:
+    - generic [ref=e40]:
+      - generic [ref=e41]: MámOkno
+      - heading "Dashboard" [level=1] [ref=e42]
+      - paragraph [ref=e43]: Přihlášen jako David NovotnýAdmin
+      - button "Odhlásit se" [ref=e44] [cursor=pointer]

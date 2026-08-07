@@ -14,8 +14,9 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { PRIMARY_GOAL_TO_TRAINING_GOAL, getRIRGuidance, PLAN_DURATION_WEEKS, SPLIT_INFO } from '@/lib/trainingGoals';
-import { getCurrentDayLetter, getCurrentWeekday } from '@/lib/workoutRotation';
+import { getCurrentDayLetter } from '@/lib/workoutRotation';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,13 @@ const DAY_NAME_EN: Record<string, string> = {
 
 const MyPlan = () => {
   const { t, i18n } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('myplan', 1, true);
+  const tourSteps = [
+    { title: t('tour.myplan.overview_title'), body: t('tour.myplan.overview_body'), target: '[data-coach="help-btn"]' },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const isEn = i18n.language === 'en';
   const navigate = useNavigate();
 
@@ -75,15 +83,6 @@ const MyPlan = () => {
     endurance: t('myplan.goal_general_fitness'),
   };
 
-  const DAY_NAMES_CZ: Record<string, string> = {
-    monday: t('myplan.day_monday'),
-    tuesday: t('myplan.day_tuesday'),
-    wednesday: t('myplan.day_wednesday'),
-    thursday: t('myplan.day_thursday'),
-    friday: t('myplan.day_friday'),
-    saturday: t('myplan.day_saturday'),
-    sunday: t('myplan.day_sunday'),
-  };
 
   const DAY_NAMES_SHORT: Record<string, string> = {
     monday: t('myplan.day_short_monday'),
@@ -132,17 +131,18 @@ const MyPlan = () => {
 
   const completedSessions = planSessions.length;
 
-  // Map sessions to weeks: count how many sessions completed per week
+  // Plan = a QUEUE of workouts (like Hevy/Strong), NOT a weekday calendar.
+  // Week N groups trainings (N-1)*count .. N*count-1. A week is "done" by
+  // completing its trainings, so the plan stretches in real time to all of them.
   const completedCountByWeek = useMemo(() => {
     const map = new Map<number, number>();
-    planSessions.forEach((_, i) => {
-      const week = Math.floor(i / trainingDaysCount) + 1;
-      map.set(week, (map.get(week) || 0) + 1);
-    });
+    for (let p = 0; p < completedSessions; p++) {
+      const wk = Math.floor(p / trainingDaysCount) + 1;
+      map.set(wk, (map.get(wk) || 0) + 1);
+    }
     return map;
-  }, [planSessions, trainingDaysCount]);
+  }, [completedSessions, trainingDaysCount]);
 
-  // Current week based on actual completed sessions
   const currentWeek = useMemo(() => {
     if (!plan) return 1;
     return Math.min(Math.floor(completedSessions / trainingDaysCount) + 1, totalWeeks);
@@ -156,19 +156,32 @@ const MyPlan = () => {
   // Progress calculation based on actual sessions
   const progressPercent = totalPlanSessions > 0 ? (completedSessions / totalPlanSessions) * 100 : 0;
 
-  // Build week schedule: training days in calendar order with day letters for the viewing week
+  // Each card is a queue slot (no weekday lock, no "missed"):
+  // - completed slots (slot < completed) show the letter actually trained ✓
+  // - the slot at `completed` is the NEXT workout to do (matches Home)
+  // - later slots continue the live rotation from currentDayIndex
   const weekSchedule = useMemo(() => {
     if (!plan || trainingDays.length === 0) return [];
     const dayCount = plan.dayCount || 2;
-    // Starting rotation index for this week
-    const weekStartIndex = (viewingWeek - 1) * trainingDaysCount;
-    return trainingDays.map((dayOfWeek, i) => ({
-      dayOfWeek,
-      dayLetter: getCurrentDayLetter(dayCount, weekStartIndex + i),
-    }));
-  }, [plan, trainingDays, trainingDaysCount, viewingWeek]);
+    const queueHead = plan.currentDayIndex ?? completedSessions;
+    const weekStartSlot = (viewingWeek - 1) * trainingDaysCount;
 
-  const today = getCurrentWeekday();
+    return trainingDays.map((dayOfWeek, i) => {
+      const slot = weekStartSlot + i;
+      const isCompleted = slot < completedSessions;
+      const isNext = slot === completedSessions;
+
+      let dayLetter: string;
+      if (isCompleted) {
+        const s = planSessions[slot];
+        dayLetter = s ? s.day_letter.replace('_EXT', '') : getCurrentDayLetter(dayCount, slot);
+      } else {
+        dayLetter = getCurrentDayLetter(dayCount, queueHead + (slot - completedSessions));
+      }
+
+      return { dayOfWeek, dayLetter, isCompleted, isNext, ordinal: slot + 1 };
+    });
+  }, [plan, trainingDays, trainingDaysCount, viewingWeek, planSessions, completedSessions]);
 
   // Gym name
   const [gymName, setGymName] = useState<string | null>(null);
@@ -309,6 +322,7 @@ const MyPlan = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <h1 className="text-2xl font-bold text-foreground">{t('myplan.title')}</h1>
+              <CoachHelpButton onClick={tour.openTour} />
             </div>
           </div>
           <div className="px-6 py-6">
@@ -327,6 +341,7 @@ const MyPlan = () => {
           </div>
           <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
         </div>
+        <CoachTour screenId="myplan" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
       </PageTransition>
     );
   }
@@ -364,7 +379,8 @@ const MyPlan = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
+              <h1 className="flex-1 text-2xl font-bold text-foreground">{GOAL_LABELS[plan.goalId] || plan.goalName}</h1>
+              <CoachHelpButton onClick={tour.openTour} />
               <p className="text-sm text-muted-foreground">
                 {t('myplan.weeks_per_frequency', { weeks: totalWeeks, days: trainingDaysCount })}
               </p>
@@ -521,9 +537,12 @@ const MyPlan = () => {
                           </div>
                         ) : (
                           weekSchedule.map((day, index) => {
-                            const isDayCompleted = index < weekCompletedCount;
-                            const isToday = viewingWeek === currentWeek && day.dayOfWeek === today;
+                            const isDayCompleted = day.isCompleted;
+                            const isToday = day.isNext; // highlight the next workout to do
                             const dayTemplate = plan.allDays?.find(d => d.dayLetter === day.dayLetter);
+                            const workoutName = dayTemplate?.dayName
+                              ? ((isEn && DAY_NAME_EN[dayTemplate.dayName]) ? DAY_NAME_EN[dayTemplate.dayName] : dayTemplate.dayName)
+                              : t('training.workout_letter', { letter: day.dayLetter });
 
                             return (
                               <div
@@ -549,16 +568,14 @@ const MyPlan = () => {
                                     {isDayCompleted ? <Check className="w-4 h-4" /> : day.dayLetter}
                                   </div>
                                   <div>
-                                    <p className={cn("font-medium text-sm", isDayCompleted && "text-green-700")}>{DAY_NAMES_CZ[day.dayOfWeek]}</p>
-                                    {dayTemplate?.dayName && (
-                                      <p className="text-xs text-muted-foreground">{(isEn && DAY_NAME_EN[dayTemplate.dayName]) ? DAY_NAME_EN[dayTemplate.dayName] : dayTemplate.dayName}</p>
-                                    )}
+                                    <p className={cn("font-medium text-sm", isDayCompleted && "text-green-700")}>{workoutName}</p>
+                                    <p className="text-xs text-muted-foreground">{t('myplan.workout_n', { n: day.ordinal })}</p>
                                   </div>
                                 </div>
                                 {isDayCompleted ? (
                                   <Check className="w-4 h-4 text-green-500" />
                                 ) : isToday ? (
-                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">{t('myplan.today')}</Badge>
+                                  <Badge className="bg-primary/20 text-primary border-0 text-xs">{t('myplan.next_workout')}</Badge>
                                 ) : null}
                               </div>
                             );
@@ -651,6 +668,7 @@ const MyPlan = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      <CoachTour screenId="myplan" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };

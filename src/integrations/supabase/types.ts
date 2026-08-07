@@ -313,10 +313,12 @@ export type Database = {
           name: string
           name_en: string | null
           primary_muscles: string[]
+          primary_muscles_en: string[] | null
           primary_role: string | null
           required_bench_config: string | null
           secondary_machine_id: string | null
           secondary_muscles: string[]
+          secondary_muscles_en: string[] | null
           setup_instructions: string | null
           setup_instructions_en: string | null
           slot_type: string | null
@@ -345,10 +347,12 @@ export type Database = {
           name: string
           name_en?: string | null
           primary_muscles?: string[]
+          primary_muscles_en?: string[] | null
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          secondary_muscles_en?: string[] | null
           setup_instructions?: string | null
           setup_instructions_en?: string | null
           slot_type?: string | null
@@ -377,10 +381,12 @@ export type Database = {
           name?: string
           name_en?: string | null
           primary_muscles?: string[]
+          primary_muscles_en?: string[] | null
           primary_role?: string | null
           required_bench_config?: string | null
           secondary_machine_id?: string | null
           secondary_muscles?: string[]
+          secondary_muscles_en?: string[] | null
           setup_instructions?: string | null
           setup_instructions_en?: string | null
           slot_type?: string | null
@@ -895,6 +901,8 @@ export type Database = {
           max_streak: number | null
           motivations: string[] | null
           notification_closing_soon: boolean | null
+          notification_comeback: boolean | null
+          is_staff: boolean | null
           notification_missed_workout: boolean | null
           notification_morning_reminder: boolean | null
           notification_onboarding_shown: boolean | null
@@ -902,6 +910,7 @@ export type Database = {
           preferred_time: string | null
           primary_goal: string | null
           push_subscription: Json | null
+          language: string | null
           secondary_goals: string[] | null
           selected_gym_id: string | null
           streak_updated_at: string | null
@@ -930,6 +939,8 @@ export type Database = {
           max_streak?: number | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
+          notification_comeback?: boolean | null
+          is_staff?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
@@ -937,6 +948,7 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
+          language?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null
@@ -965,6 +977,8 @@ export type Database = {
           max_streak?: number | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
+          notification_comeback?: boolean | null
+          is_staff?: boolean | null
           notification_missed_workout?: boolean | null
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
@@ -972,6 +986,7 @@ export type Database = {
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
+          language?: string | null
           secondary_goals?: string[] | null
           selected_gym_id?: string | null
           streak_updated_at?: string | null

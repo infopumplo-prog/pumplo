@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX } from 'lucide-react';
+import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX, HelpCircle } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 
 export interface WarmupExercise {
   id: string;
@@ -45,6 +46,13 @@ interface WarmupPlayerProps {
 
 export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd, initialIndex = 0 }: WarmupPlayerProps) => {
   const { t, i18n } = useTranslation();
+
+  // First-visit hints.
+  const tour = useCoachTour('warmup', 1, true);
+  const tourSteps = [
+    { target: '[data-coach="warmup-skip"]', title: t('tour.warmup.skip_title'), body: t('tour.warmup.skip_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const isEn = i18n.language === 'en';
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -275,7 +283,10 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
                 🔥 {currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={handleSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+              <button onClick={tour.openTour} data-coach="help-btn" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <HelpCircle className="w-5 h-5" />
+              </button>
+              <button onClick={handleSkipExercise} data-coach="warmup-skip" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                 <SkipForward className="w-5 h-5" />
               </button>
               <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
@@ -424,6 +435,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
           </div>
         </DrawerContent>
       </Drawer>
+      <CoachTour screenId="warmup" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </div>
   );
 };

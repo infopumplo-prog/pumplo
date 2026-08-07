@@ -1,0 +1,22 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: TaskChat
+    - heading "Vítejte zpět" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Přihlaste se do svého účtu
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: E-mail
+      - textbox "E-mail" [ref=e12]:
+        - /placeholder: vas@email.cz
+    - generic [ref=e13]:
+      - generic [ref=e14]: Heslo
+      - textbox "Heslo" [ref=e15]:
+        - /placeholder: ••••••••
+    - button "Přihlásit se" [ref=e16] [cursor=pointer]
+  - paragraph [ref=e17]:
+    - text: Nemáš účet?
+    - button "Zaregistruj se" [ref=e18] [cursor=pointer]
+  - generic [ref=e21]: NEBO
+  - button "Pokračovat přes Google" [ref=e23] [cursor=pointer]:
+    - img [ref=e24]
+    - text: Pokračovat přes Google

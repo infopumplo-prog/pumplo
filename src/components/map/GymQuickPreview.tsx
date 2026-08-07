@@ -1,4 +1,4 @@
-import { MapPin, Clock, Navigation, Info, X, CheckCircle2 } from 'lucide-react';
+import { MapPin, Clock, Navigation, Info, X, CheckCircle2, Dumbbell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { OpeningHours } from '@/hooks/useGym';
@@ -9,16 +9,23 @@ import { useTranslation } from 'react-i18next';
 interface GymQuickPreviewProps {
   gym: PublicGym;
   distance?: number;
+  /** User has no gym yet → show the green "Select gym" CTA instead of navigate. */
+  firstTimeSelect?: boolean;
+  isSelecting?: boolean;
   onDetailClick: () => void;
   onNavigateClick: () => void;
+  onSelectClick?: () => void;
   onClose: () => void;
 }
 
 const GymQuickPreview = ({
   gym,
   distance,
+  firstTimeSelect,
+  isSelecting,
   onDetailClick,
   onNavigateClick,
+  onSelectClick,
   onClose
 }: GymQuickPreviewProps) => {
   const { t } = useTranslation();
@@ -103,25 +110,42 @@ const GymQuickPreview = ({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 px-4 pb-4">
-        <Button 
-          size="lg" 
-          className="flex-1 gap-2"
-          onClick={onDetailClick}
-        >
-          <Info className="w-4 h-4" />
-          {t('map.detail')}
-        </Button>
-        <Button
-          size="lg"
-          className="flex-1 gap-2"
-          onClick={onNavigateClick}
-        >
-          <Navigation className="w-4 h-4" />
-          {t('map.navigate')}
-        </Button>
-      </div>
+      {/* Action Buttons. On first-ever gym pick, the prominent green CTA is
+          "Select gym" (not navigate) so the first choice is obvious (A7). */}
+      {firstTimeSelect ? (
+        <div className="px-4 pb-4 space-y-2">
+          <Button
+            size="lg"
+            className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg"
+            onClick={onSelectClick}
+            disabled={isSelecting}
+          >
+            {isSelecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Dumbbell className="w-4 h-4" />}
+            {t('map.select_this_gym')}
+          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" size="lg" className="flex-1 gap-2" onClick={onDetailClick}>
+              <Info className="w-4 h-4" />
+              {t('map.detail')}
+            </Button>
+            <Button variant="outline" size="lg" className="flex-1 gap-2" onClick={onNavigateClick}>
+              <Navigation className="w-4 h-4" />
+              {t('map.navigate')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3 px-4 pb-4">
+          <Button size="lg" className="flex-1 gap-2" onClick={onDetailClick}>
+            <Info className="w-4 h-4" />
+            {t('map.detail')}
+          </Button>
+          <Button size="lg" className="flex-1 gap-2" onClick={onNavigateClick}>
+            <Navigation className="w-4 h-4" />
+            {t('map.navigate')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

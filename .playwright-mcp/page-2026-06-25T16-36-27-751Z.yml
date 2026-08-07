@@ -1,0 +1,28 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: TaskChat
+    - heading "Vytvořit účet" [level=1] [ref=e29]
+    - paragraph [ref=e8]: Zaregistrujte se zdarma
+  - generic [ref=e9]:
+    - generic [ref=e30]:
+      - generic [ref=e31]: Jméno
+      - textbox "Jméno" [ref=e32]:
+        - /placeholder: Jan Novák
+    - generic [ref=e10]:
+      - generic [ref=e11]: E-mail
+      - textbox "E-mail" [ref=e12]:
+        - /placeholder: vas@email.cz
+        - text: info.pumplo@gmail.com
+    - generic [ref=e13]:
+      - generic [ref=e14]: Heslo
+      - textbox "Heslo" [ref=e15]:
+        - /placeholder: ••••••••
+        - text: Taskchat-1404Mo!
+    - button "Zaregistrovat se" [ref=e33] [cursor=pointer]
+  - paragraph [ref=e17]:
+    - text: Už máš účet?
+    - button "Přihlas se" [active] [ref=e34] [cursor=pointer]
+  - generic [ref=e21]: NEBO
+  - button "Pokračovat přes Google" [ref=e23] [cursor=pointer]:
+    - img [ref=e24]
+    - text: Pokračovat přes Google

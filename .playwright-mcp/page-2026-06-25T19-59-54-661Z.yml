@@ -1,0 +1,68 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "MámOkno" [ref=e34] [cursor=pointer]:
+          - /url: /
+        - button "Přepnout organizaci" [ref=e9] [cursor=pointer]:
+          - img [ref=e10]
+      - generic [ref=e12]:
+        - button "Upozornění" [active] [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+        - generic [ref=e91]:
+          - generic [ref=e93]: Upozornění
+          - paragraph [ref=e95]: Žádná upozornění
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - complementary [ref=e19]:
+          - button "Moje úlohy" [ref=e20] [cursor=pointer]
+          - button "Vše" [ref=e21] [cursor=pointer]
+          - button "reklamace" [ref=e35] [cursor=pointer]: reklamace
+          - button "presun termínu" [ref=e37] [cursor=pointer]: presun termínu
+          - button "storno" [ref=e39] [cursor=pointer]: storno
+          - button "sklad" [ref=e41] [cursor=pointer]: sklad
+          - button "problém" [ref=e43] [cursor=pointer]: problém
+        - main [ref=e22]:
+          - heading "Úkoly" [level=1] [ref=e23]
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]: Hotovo
+              - generic [ref=e64]: "2"
+            - generic [ref=e65]:
+              - generic [ref=e81] [cursor=pointer]:
+                - paragraph [ref=e82]: Test2
+                - generic [ref=e84]: Normální
+                - generic [ref=e85]:
+                  - paragraph [ref=e87]: David Novotný
+                  - combobox [ref=e89]:
+                    - option "Nový"
+                    - option "V řešení"
+                    - option "Čeká se"
+                    - option "Hotovo" [selected]
+                    - option "Zrušeno"
+              - generic [ref=e66] [cursor=pointer]:
+                - paragraph [ref=e67]: Realtime zpráva od Jaroslava ✅
+                - generic [ref=e68]:
+                  - generic [ref=e69]: reklamace
+                  - generic [ref=e70]: Vysoká
+                - generic [ref=e71]:
+                  - paragraph [ref=e73]: David Novotný
+                  - combobox [ref=e75]:
+                    - option "Nový"
+                    - option "V řešení"
+                    - option "Čeká se"
+                    - option "Hotovo" [selected]
+                    - option "Zrušeno"
+  - navigation [ref=e25]:
+    - link "Chaty" [ref=e26] [cursor=pointer]:
+      - /url: /
+      - img [ref=e27]
+      - generic [ref=e29]: Chaty
+    - link "Úkoly" [ref=e30] [cursor=pointer]:
+      - /url: /tasks
+      - img [ref=e31]
+      - generic [ref=e33]: Úkoly
+    - link "Admin" [ref=e76] [cursor=pointer]:
+      - /url: /admin/users
+      - img [ref=e77]
+      - generic [ref=e80]: Admin

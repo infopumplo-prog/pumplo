@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface CustomPlanDay {
@@ -25,6 +27,12 @@ export interface CustomPlanExercise {
   weight_per_set: number[] | null;
   rest_seconds: number;
   rest_per_set: number[] | null;
+  // Per-exercise note (P2). Stored in custom_plan_exercises.notes (text).
+  notes: string | null;
+  // Per-set type W/normal/F/D (P2). Stored in custom_plan_exercises.set_types (text[]).
+  set_types: (string | null)[] | null;
+  // Exercise demo video (from the exercises join) — used for the card thumbnail.
+  video_path: string | null;
   order_index: number;
   unit_type: string;
   category: string;
@@ -112,13 +120,20 @@ export function useCustomPlans() {
 export function useCustomPlanDetail(planId: string | null) {
   const [plan, setPlan] = useState<CustomPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Latest plan snapshot, so a refetch can fall back to in-memory notes/set_types
+  // when those columns aren't present in the DB yet (graceful pre-DDL behaviour).
+  const planRef = useRef<CustomPlan | null>(null);
+  useEffect(() => { planRef.current = plan; }, [plan]);
 
   const fetchPlan = useCallback(async () => {
     if (!planId) {
       setPlan(null);
       return;
     }
-    setIsLoading(true);
+    // Full-screen loading only on the FIRST load. Refetches after mutations run
+    // silently in the background — flipping isLoading here made the editor flash
+    // its loading screen on every change (feels like a reload, not an edit).
+    if (!planRef.current) setIsLoading(true);
 
     const { data: planData } = await supabase
       .from('custom_plans')
@@ -139,7 +154,7 @@ export function useCustomPlanDetail(planId: string | null) {
 
     const { data: exercisesData } = await supabase
       .from('custom_plan_exercises')
-      .select('*, exercises(name, name_en, unit_type, category, machines!exercises_machine_id_fkey(name, name_en))')
+      .select('*, exercises(name, name_en, unit_type, category, video_path, machines!exercises_machine_id_fkey(name, name_en))')
       .in('day_id', (daysData || []).map(d => d.id))
       .order('order_index');
 
@@ -154,9 +169,16 @@ export function useCustomPlanDetail(planId: string | null) {
       weight_per_set: number[] | null;
       rest_seconds: number | null;
       rest_per_set: number[] | null;
+      notes?: string | null;
+      set_types?: (string | null)[] | null;
       order_index: number;
-      exercises: { name: string; name_en: string | null; unit_type: string; category: string; machines: { name: string; name_en: string | null } | null } | null;
+      exercises: { name: string; name_en: string | null; unit_type: string; category: string; video_path: string | null; machines: { name: string; name_en: string | null } | null } | null;
     };
+
+    // In-memory fallback for notes/set_types (survives a refetch before the DDL
+    // that adds those columns has been applied).
+    const prevById = new Map<string, CustomPlanExercise>();
+    planRef.current?.days.forEach(d => d.exercises.forEach(e => prevById.set(e.id, e)));
 
     const days: CustomPlanDay[] = (daysData || []).map(d => ({
       ...d,
@@ -175,8 +197,11 @@ export function useCustomPlanDetail(planId: string | null) {
           reps_per_set: e.reps_per_set || null,
           weight_kg: e.weight_kg,
           weight_per_set: e.weight_per_set || null,
-          rest_seconds: e.rest_seconds || 120,
+          rest_seconds: e.rest_seconds ?? 120,
           rest_per_set: e.rest_per_set || null,
+          notes: e.notes ?? prevById.get(e.id)?.notes ?? null,
+          set_types: e.set_types ?? prevById.get(e.id)?.set_types ?? null,
+          video_path: e.exercises?.video_path ?? null,
           order_index: e.order_index,
           unit_type: e.exercises?.unit_type || 'reps',
           category: e.exercises?.category || '',
@@ -208,8 +233,10 @@ export function useCustomPlanDetail(planId: string | null) {
   };
 
   const renameDay = async (dayId: string, name: string) => {
-    await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
-    await fetchPlan();
+    const snapshot = planRef.current;
+    setPlan(prev => prev ? { ...prev, days: prev.days.map(d => d.id === dayId ? { ...d, name } : d) } : prev);
+    const { error } = await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const addExercise = async (dayId: string, exerciseId: string, sets = 3, reps = 10, weightKg: number | null = null) => {
@@ -226,14 +253,67 @@ export function useCustomPlanDetail(planId: string | null) {
     await fetchPlan();
   };
 
-  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: number[]; rest_seconds?: number; rest_per_set?: number[]; exercise_id?: string; exercise_name?: string; exercise_name_en?: string | null }) => {
-    await supabase.from('custom_plan_exercises').update(updates).eq('id', exerciseId);
+  // Add several exercises to a day at once (Hevy-style multi-select), preserving
+  // the order they were picked in.
+  const addExercisesBatch = async (dayId: string, exerciseIds: string[], sets = 3, reps = 10) => {
+    if (exerciseIds.length === 0) return;
+    const dayExercises = plan?.days.find(d => d.id === dayId)?.exercises || [];
+    const startOrder = dayExercises.length;
+    const rows = exerciseIds.map((exercise_id, i) => ({
+      day_id: dayId,
+      exercise_id,
+      sets,
+      reps,
+      weight_kg: null,
+      order_index: startOrder + i,
+    }));
+    await supabase.from('custom_plan_exercises').insert(rows);
     await fetchPlan();
   };
 
+  const updateExercise = async (exerciseId: string, updates: { sets?: number; reps?: number; reps_per_set?: number[]; weight_kg?: number | null; weight_per_set?: (number | null)[]; rest_seconds?: number; rest_per_set?: number[] | null; exercise_id?: string; exercise_name?: string; exercise_name_en?: string | null; notes?: string | null; set_types?: (string | null)[] | null }) => {
+    // notes / set_types live in columns that may not exist yet (P2 DDL). Persist
+    // them separately (best-effort) so a missing column can't fail the whole
+    // update, and apply them optimistically so the UI reflects the change even
+    // before the DDL is applied.
+    const { notes, set_types, ...known } = updates;
+    const hasMeta = notes !== undefined || set_types !== undefined;
+
+    // Optimistic update for EVERYTHING — every field here maps 1:1 onto the
+    // local exercise row, so the UI updates instantly and no refetch is needed.
+    setPlan(prev => prev ? {
+      ...prev,
+      days: prev.days.map(d => ({
+        ...d,
+        exercises: d.exercises.map(e => e.id === exerciseId ? { ...e, ...updates } : e),
+      })),
+    } : prev);
+
+    if (Object.keys(known).length > 0) {
+      const { error } = await supabase.from('custom_plan_exercises').update(known).eq('id', exerciseId);
+      if (error) { toast.error(i18n.t('custom_plan.save_failed')); fetchPlan(); }
+    }
+    if (hasMeta) {
+      const meta: Record<string, unknown> = {};
+      if (notes !== undefined) meta.notes = notes;
+      if (set_types !== undefined) meta.set_types = set_types;
+      const { error } = await supabase.from('custom_plan_exercises').update(meta).eq('id', exerciseId);
+      if (error) console.warn('[custom_plan] notes/set_types not persisted — apply P2 DDL:', error.message);
+    }
+    // Swapping the exercise itself changes joined data (video, muscles) the
+    // optimistic merge can't know — refresh silently in the background.
+    if (updates.exercise_id !== undefined) fetchPlan();
+  };
+
   const removeExercise = async (exerciseId: string) => {
-    await supabase.from('custom_plan_exercises').delete().eq('id', exerciseId);
-    await fetchPlan();
+    // Optimistic removal — the row disappears immediately; roll back on failure.
+    const snapshot = planRef.current;
+    setPlan(prev => prev ? {
+      ...prev,
+      days: prev.days.map(d => ({ ...d, exercises: d.exercises.filter(e => e.id !== exerciseId) })),
+    } : prev);
+    const { error } = await supabase.from('custom_plan_exercises').delete().eq('id', exerciseId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const duplicateExercise = async (exerciseId: string) => {
@@ -255,8 +335,10 @@ export function useCustomPlanDetail(planId: string | null) {
 
   const renamePlan = async (name: string) => {
     if (!planId) return;
-    await supabase.from('custom_plans').update({ name }).eq('id', planId);
-    await fetchPlan();
+    const snapshot = planRef.current;
+    setPlan(prev => prev ? { ...prev, name } : prev);
+    const { error } = await supabase.from('custom_plans').update({ name }).eq('id', planId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
   const sharePlan = async (): Promise<string | null> => {
@@ -313,6 +395,7 @@ export function useCustomPlanDetail(planId: string | null) {
     removeDay,
     renameDay,
     addExercise,
+    addExercisesBatch,
     updateExercise,
     removeExercise,
     renamePlan,

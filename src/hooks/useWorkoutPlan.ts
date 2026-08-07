@@ -10,7 +10,8 @@ import {
   WorkoutPlanV2,
   SplitType,
   getSplitFromFrequency,
-  UserLevel
+  UserLevel,
+  getRIRGuidance
 } from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
@@ -115,7 +116,7 @@ export const useWorkoutPlan = () => {
         .eq('user_id', user.id)
         .single();
 
-      const currentDayIndex = profileData?.current_day_index || 0;
+      let currentDayIndex = profileData?.current_day_index || 0;
       const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
       const goalName = (planData.training_goals as { name: string } | null)?.name || 'Trénink';
 
@@ -136,7 +137,36 @@ export const useWorkoutPlan = () => {
       const uniqueDayLetters = new Set(
         (exercisesData || []).map(e => e.day_letter)
       );
-      const dayCount = uniqueDayLetters.size || 2;
+      // Bare plan (no exercises yet — gym not picked): day count from split.
+      const SPLIT_DAYS: Record<string, number> = { full_body: 2, upper_lower: 2, ppl: 3 };
+      const dayCount = uniqueDayLetters.size
+        || SPLIT_DAYS[(planData as Record<string, unknown>).split_type as string]
+        || 2;
+
+      // Self-heal the day counter: day advancement runs in onComplete, which the
+      // user can skip by closing the app on the post-workout summary/share screen
+      // (the session is saved earlier, on summary open). If the LAST completed
+      // non-bonus session of this plan has the same letter the counter points to,
+      // the advancement was missed — advance past it now and persist.
+      const { data: lastSession } = await supabase
+        .from('workout_sessions')
+        .select('day_letter')
+        .eq('user_id', user.id)
+        .eq('plan_id', planData.id)
+        .eq('is_bonus', false)
+        .not('completed_at', 'is', null)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastLetter = lastSession?.day_letter?.replace('_EXT', '');
+      if (lastLetter && lastLetter === getCurrentDayLetter(dayCount, currentDayIndex)) {
+        currentDayIndex += 1;
+        await supabase
+          .from('user_profiles')
+          .update({ current_day_index: currentDayIndex })
+          .eq('user_id', user.id);
+      }
+
       const currentDayLetter = getCurrentDayLetter(dayCount, currentDayIndex);
 
       // 5. Determine split_type: use stored value, snapshot, or derive from exercise roles
@@ -166,6 +196,23 @@ export const useWorkoutPlan = () => {
         });
       }
 
+      // F11: during a deload week the in-session RIR must show 5 — the slot
+      // templates (day_templates.rir_min/max) don't know about deload cycling,
+      // so we override them. Week = completed non-bonus sessions / days per week.
+      let isDeloadWeek = false;
+      try {
+        const { count: completedCount } = await supabase
+          .from('workout_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('plan_id', planData.id)
+          .eq('is_bonus', false)
+          .not('completed_at', 'is', null);
+        const daysPerWeek = (planData.training_days as string[] | null)?.length || dayCount;
+        const weekNumber = Math.floor((completedCount || 0) / Math.max(daysPerWeek, 1)) + 1;
+        isDeloadWeek = getRIRGuidance(weekNumber).label === 'Deload';
+      } catch { /* keep template RIR if the count fails */ }
+
       // 7. Transform exercises (strictly from DB, no random selection)
       const exercises: WorkoutExercise[] = (exercisesData || []).map(ex => ({
         id: ex.id,
@@ -185,8 +232,8 @@ export const useWorkoutPlan = () => {
         fallbackReason: ex.fallback_reason,
         selectionScore: ex.selection_score,
         slotCategory: (ex.slot_category || slotCategoryMap[`${ex.day_letter}:${ex.slot_order}`] || null) as WorkoutExercise['slotCategory'],
-        rirMin: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null,
-        rirMax: rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null,
+        rirMin: isDeloadWeek ? 5 : (rirMap[`${ex.day_letter}:${ex.slot_order}`]?.min ?? null),
+        rirMax: isDeloadWeek ? 5 : (rirMap[`${ex.day_letter}:${ex.slot_order}`]?.max ?? null),
       }));
 
       // 6. Check if gym equipment has changed (needs_regeneration check)

@@ -1,0 +1,24 @@
+- generic [ref=e36]:
+  - generic [ref=e37]:
+    - generic [ref=e38]: TaskChat
+    - heading "Vítejte zpět" [level=1] [ref=e39]
+    - paragraph [ref=e40]: Přihlaste se do svého účtu
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]: E-mail
+      - textbox "E-mail" [ref=e44]:
+        - /placeholder: vas@email.cz
+        - text: info.pumplo@gmail.com
+    - generic [ref=e45]:
+      - generic [ref=e46]: Heslo
+      - textbox "Heslo" [ref=e47]:
+        - /placeholder: ••••••••
+        - text: Taskchat-1404Mo!
+    - button "Přihlásit se" [ref=e48] [cursor=pointer]
+  - paragraph [ref=e49]:
+    - text: Nemáš účet?
+    - button "Zaregistruj se" [ref=e50] [cursor=pointer]
+  - generic [ref=e53]: NEBO
+  - button "Pokračovat přes Google" [ref=e55] [cursor=pointer]:
+    - img [ref=e56]
+    - text: Pokračovat přes Google

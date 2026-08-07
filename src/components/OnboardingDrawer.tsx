@@ -44,6 +44,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
   const [preferredTime, setPreferredTime] = useState<string | null>(null);
   const [trainingDuration, setTrainingDuration] = useState(45);
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
   const [gender, setGender] = useState<string | null>(null);
   const [age, setAge] = useState<string>('');
   const [height, setHeight] = useState<string>('');
@@ -72,6 +74,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setTrainingDays(profile.training_days || []);
       setPreferredTime(profile.preferred_time);
       setTrainingDuration(profile.training_duration_minutes || 45);
+      setFirstName(profile.first_name || '');
+      setLastName(profile.last_name || '');
       setGender(profile.gender);
       setAge(profile.age?.toString() || '');
       setHeight(profile.height_cm?.toString() || '');
@@ -201,6 +205,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     
     // 1. Always save profile first
     await updateProfile({
+      first_name: firstName.trim() || null,
+      last_name: lastName.trim() || null,
       gender,
       primary_goal: primaryGoal,
       training_days: trainingDays,
@@ -341,10 +347,14 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       case 4:
         return (
           <OnboardingDemographicsStep
+            firstName={firstName}
+            lastName={lastName}
             gender={gender}
             age={age}
             height={height}
             weight={weight}
+            onFirstNameChange={setFirstName}
+            onLastNameChange={setLastName}
             onGenderChange={setGender}
             onAgeChange={setAge}
             onHeightChange={setHeight}

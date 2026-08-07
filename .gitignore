@@ -39,3 +39,6 @@ dist-ssr
 
 .superpowers/
 .claude
+deno.lock
+.worktrees/
+TASK-*-REPORT.md

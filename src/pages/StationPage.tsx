@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import { logQrScan } from '@/lib/qrTracking';
 import { useStationData } from '@/hooks/useStationData';
 import { StationBanner } from '@/components/station/StationBanner';
 import { StationCTA } from '@/components/station/StationCTA';
@@ -20,6 +21,11 @@ const StationPage = () => {
       document.title = `${titleName} — ${t('station.title_suffix')} | ${data.gymName} | Pumplo`;
     }
   }, [data, t]);
+
+  // Funnel analytics: every sticker scan is logged with its machine code.
+  useEffect(() => {
+    if (code) logQrScan('station', code);
+  }, [code]);
 
   if (isLoading) {
     return (

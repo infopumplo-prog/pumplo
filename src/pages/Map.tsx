@@ -18,6 +18,7 @@ import { OpeningHours } from '@/hooks/useGym';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import PageTransition from '@/components/PageTransition';
+import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
 
 // Calculate distance between two points using Haversine formula
@@ -54,6 +55,15 @@ const Map = () => {
   const { toast } = useToast();
   const { profile, isLoading: isProfileLoading, updateProfile } = useUserProfile();
   const { gyms } = usePublishedGyms();
+
+  // First-run hint: the plan is built around a specific gym's equipment.
+  const tour = useCoachTour('map', 2, true);
+  const tourSteps = [
+    { target: '[data-coach="map-canvas"]', title: t('tour.map.pick_title'), body: t('tour.map.pick_body') },
+    { target: '[data-coach="map-filter"]', title: t('tour.map.filter_title'), body: t('tour.map.filter_body') },
+    { target: '[data-coach="map-locate"]', title: t('tour.map.locate_title'), body: t('tour.map.locate_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const [gymMachinesMap, setGymMachinesMap] = useState<Record<string, string[]>>({});
   const [availableMachines, setAvailableMachines] = useState<string[]>([]);
 
@@ -291,17 +301,21 @@ const Map = () => {
     ? isGymCurrentlyOpen(detailGym.opening_hours as OpeningHours)
     : false;
 
-  const handleSelectGymForTraining = async () => {
-    if (!detailGym || !detailGymIsOpen) return;
-    
+  // True until the user has ever picked a gym — drives the green "Vybrat
+  // posilovnu" CTA on first run (A7).
+  const hasNoGymYet = !profile?.selected_gym_id;
+
+  const selectGym = async (gym: PublicGym | null) => {
+    if (!gym) return;
     setIsSelectingGym(true);
     try {
-      await updateProfile({ selected_gym_id: detailGym.id });
+      await updateProfile({ selected_gym_id: gym.id });
       toast({
         title: t('map.gym_selected'),
-        description: t('map.gym_selected_desc', { name: detailGym.name })
+        description: t('map.gym_selected_desc', { name: gym.name })
       });
       setDetailGym(null);
+      setQuickPreviewGym(null);
       navigate('/');
     } catch (error) {
       toast({
@@ -312,6 +326,11 @@ const Map = () => {
     } finally {
       setIsSelectingGym(false);
     }
+  };
+
+  const handleSelectGymForTraining = async () => {
+    if (!detailGym || !detailGymIsOpen) return;
+    await selectGym(detailGym);
   };
 
   // Early returns AFTER all hooks
@@ -359,6 +378,8 @@ const Map = () => {
     <PageTransition>
       <div className="fixed inset-0 bg-background overflow-hidden">
         {/* Fullscreen Map */}
+        {/* Invisible anchor so the tour spotlights the map's centre, not the whole screen */}
+        <div data-coach="map-canvas" className="absolute left-1/2 top-[38%] -translate-x-1/2 w-56 h-40 pointer-events-none" />
         <div className="absolute inset-0">
           <GymMap
             gyms={filteredGyms}
@@ -372,6 +393,7 @@ const Map = () => {
           <div className="absolute right-[60px] z-50" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
             <button
               onClick={() => setFiltersOpen(true)}
+              data-coach="map-filter"
               className="relative w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
               aria-label="Filtrovat posilovny"
             >
@@ -386,9 +408,21 @@ const Map = () => {
             </button>
           </div>
 
+          {/* Tour replay */}
+          <button
+            onClick={tour.openTour}
+            data-coach="help-btn"
+            className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)' }}
+            aria-label="Help"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          </button>
+
           {/* Center on user button */}
           <button
             onClick={handleCenterOnUser}
+            data-coach="map-locate"
             className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
             aria-label="Vycentrovat na mou polohu"
@@ -409,8 +443,11 @@ const Map = () => {
             <GymQuickPreview
               gym={quickPreviewGym}
               distance={getGymDistance(quickPreviewGym)}
+              firstTimeSelect={hasNoGymYet}
+              isSelecting={isSelectingGym}
               onDetailClick={handleDetailClick}
               onNavigateClick={handleNavigateClick}
+              onSelectClick={() => selectGym(quickPreviewGym)}
               onClose={() => setQuickPreviewGym(null)}
             />
           </div>
@@ -452,6 +489,7 @@ const Map = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      <CoachTour screenId="map" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
     </PageTransition>
   );
 };
