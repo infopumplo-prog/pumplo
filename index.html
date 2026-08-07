@@ -57,7 +57,10 @@
           var stored = localStorage.getItem('pumplo-theme');
           var dark = stored === 'dark' || ((!stored || stored === 'system') &&
             window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) document.documentElement.classList.add('dark');
+          if (dark) {
+            document.documentElement.classList.add('dark');
+            if (localStorage.getItem('pumplo-amoled') === '1') document.documentElement.classList.add('amoled');
+          }
           document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
         } catch (e) {
           /* localStorage může být zakázaný — appka pak startuje ve světlém režimu. */

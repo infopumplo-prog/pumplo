@@ -52,11 +52,11 @@ export const GymLocationGate = ({ gymLat, gymLng, gymName, onConfirmed, onCancel
       {status === 'checking' || status === 'idle' ? (
         <CheckingState gymName={gymName} />
       ) : status === 'permission_denied' ? (
-        <PermissionDeniedState gymName={gymName} onRetry={retry} onCancel={onCancel} />
+        <PermissionDeniedState gymName={gymName} onRetry={retry} onCancel={onCancel} onContinue={onConfirmed} />
       ) : status === 'outside' ? (
-        <OutsideState gymName={gymName} distance={distanceFromGym} radius={GYM_RADIUS_METRES} onRetry={retry} onCancel={onCancel} />
+        <OutsideState gymName={gymName} distance={distanceFromGym} radius={GYM_RADIUS_METRES} onRetry={retry} onCancel={onCancel} onContinue={onConfirmed} />
       ) : status === 'error' ? (
-        <ErrorState onRetry={retry} onCancel={onCancel} />
+        <ErrorState onRetry={retry} onCancel={onCancel} onContinue={onConfirmed} />
       ) : null}
     </motion.div>
   );
@@ -78,7 +78,7 @@ const CheckingState = ({ gymName }: { gymName: string }) => {
   );
 };
 
-const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string; onRetry: () => void; onCancel: () => void }) => {
+const PermissionDeniedState = ({ gymName, onRetry, onCancel, onContinue }: { gymName: string; onRetry: () => void; onCancel: () => void; onContinue: () => void }) => {
   const { t } = useTranslation();
   const isNative = Capacitor.isNativePlatform();
   const isIOS = Capacitor.getPlatform() === 'ios';
@@ -142,6 +142,12 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
         {isIOS ? <Settings className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
         {isIOS ? t('workout.open_settings') : t('workout.allow_location')}
       </button>
+      <button
+        onClick={onContinue}
+        className="w-full border border-border text-foreground font-medium rounded-xl py-3 mb-3"
+      >
+        {t('workout.continue_without_location')}
+      </button>
       <button onClick={onCancel} className="w-full text-muted-foreground text-sm py-2">
         {t('workout.cancel')}
       </button>
@@ -149,34 +155,36 @@ const PermissionDeniedState = ({ gymName, onRetry, onCancel }: { gymName: string
   );
 };
 
-const OutsideState = ({ gymName, distance, radius, onRetry, onCancel }: { gymName: string; distance: number | null; radius: number; onRetry: () => void; onCancel: () => void }) => {
+// The gate warns instead of locking: people set up their plan at the gym and
+// explore it from home — a hard 200 m lock was the single biggest reason users
+// with a finished plan never started a workout (confirmed by user feedback,
+// 7 Aug 2026). Machines may not match away from the gym, so say that — and let
+// them in.
+const OutsideState = ({ gymName, distance, radius, onRetry, onCancel, onContinue }: { gymName: string; distance: number | null; radius: number; onRetry: () => void; onCancel: () => void; onContinue: () => void }) => {
   const { t } = useTranslation();
   return (
     <div className="text-center max-w-xs">
-      <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-6">
-        <AlertTriangle className="w-10 h-10 text-destructive" />
+      <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
+        <AlertTriangle className="w-10 h-10 text-amber-500" />
       </div>
       <h2 className="text-xl font-bold mb-2">{t('workout.not_in_gym')}</h2>
       <p className="text-muted-foreground text-sm mb-2">
-        {t('workout.not_in_gym_desc', { gymName })}
+        {t('workout.outside_soft_desc', { gymName })}
       </p>
       {distance != null && (
         <p className="text-xs text-muted-foreground mb-4">
           {t('workout.distance_info', { distance, radius })}
         </p>
       )}
-      {/* Growth nudge: their gym may not be on Pumplo yet — ask them to refer us */}
-      <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 mb-5 text-left">
-        <p className="text-xs text-muted-foreground">
-          {t('workout.gym_missing_nudge')}{' '}
-          <a href="https://pumplo.com" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline">
-            pumplo.com
-          </a>
-        </p>
-      </div>
+      <button
+        onClick={onContinue}
+        className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3"
+      >
+        {t('workout.continue_anyway')}
+      </button>
       <button
         onClick={onRetry}
-        className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
+        className="w-full border border-border text-foreground font-medium rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
       >
         <RefreshCw className="w-4 h-4" />
         {t('workout.retry')}
@@ -188,7 +196,7 @@ const OutsideState = ({ gymName, distance, radius, onRetry, onCancel }: { gymNam
   );
 };
 
-const ErrorState = ({ onRetry, onCancel }: { onRetry: () => void; onCancel: () => void }) => {
+const ErrorState = ({ onRetry, onCancel, onContinue }: { onRetry: () => void; onCancel: () => void; onContinue: () => void }) => {
   const { t } = useTranslation();
   return (
     <div className="text-center max-w-xs">
@@ -200,8 +208,14 @@ const ErrorState = ({ onRetry, onCancel }: { onRetry: () => void; onCancel: () =
         {t('workout.location_error_desc')}
       </p>
       <button
+        onClick={onContinue}
+        className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3"
+      >
+        {t('workout.continue_anyway')}
+      </button>
+      <button
         onClick={onRetry}
-        className="w-full bg-primary text-white font-semibold rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
+        className="w-full border border-border text-foreground font-medium rounded-xl py-3 mb-3 flex items-center justify-center gap-2"
       >
         <RefreshCw className="w-4 h-4" />
         {t('workout.retry')}

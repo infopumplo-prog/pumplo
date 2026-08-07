@@ -12,7 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TrainingGoalId, UserLevel, getSplitFromFrequency, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, getSplitFromFrequency, resolveSplit, SplitType, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {
   OnboardingGoalStep,
@@ -42,6 +42,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [primaryGoal, setPrimaryGoal] = useState<TrainingGoalId | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
+  const [splitOverride, setSplitOverride] = useState<SplitType | null>(null);
   const [preferredTime, setPreferredTime] = useState<string | null>(null);
   const [trainingDuration, setTrainingDuration] = useState(45);
   const [firstName, setFirstName] = useState<string>('');
@@ -72,6 +73,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       
       setUserLevel(profile.user_level as UserLevel | null);
       setTrainingDays(profile.training_days || []);
+      setSplitOverride((profile.split_override as SplitType | null) ?? null);
       setPreferredTime(profile.preferred_time);
       setTrainingDuration(profile.training_duration_minutes || 45);
       setFirstName(profile.first_name || '');
@@ -123,8 +125,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       // Save all data and determine if onboarding is complete
       const allValid = areAllStepsValid();
       const trainingSplit = trainingDays.length > 0 && userLevel
-        ? getSplitFromFrequency(trainingDays.length, userLevel)
-        : null;
+        ? resolveSplit(trainingDays.length, userLevel, splitOverride)
+        : splitOverride;
       
       await updateProfile({
         gender,
@@ -137,6 +139,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         weight_kg: weight ? parseFloat(weight) : null,
         injuries,
         training_split: trainingSplit,
+      split_override: splitOverride,
         equipment_preference: equipmentPreference,
         user_level: userLevel as any,
         current_step: currentStep,
@@ -200,8 +203,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     setHasJustCompleted(true);
     
     const trainingSplit = trainingDays.length > 0 && userLevel
-      ? getSplitFromFrequency(trainingDays.length, userLevel)
-      : null;
+      ? resolveSplit(trainingDays.length, userLevel, splitOverride)
+      : splitOverride;
     
     // 1. Always save profile first
     await updateProfile({
@@ -217,6 +220,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       weight_kg: weight ? parseFloat(weight) : null,
       injuries,
       training_split: trainingSplit,
+      split_override: splitOverride,
       equipment_preference: equipmentPreference,
       user_level: userLevel as any,
       onboarding_completed: true,
@@ -332,7 +336,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
         }} />;
       case 2:
-        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
+        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} splitOverride={splitOverride} onSplitOverrideChange={setSplitOverride} userLevel={userLevel} />;
       case 3:
         return (
           <OnboardingTimeStep
@@ -407,8 +411,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             <div className="mt-3 p-2 bg-muted rounded-lg text-center">
               <span className="text-xs text-muted-foreground">
                 Split: <span className="font-medium text-foreground">
-                  {SPLIT_INFO[getSplitFromFrequency(trainingDays.length, userLevel)].labelCz}
-                </span> (podle počtu dnů: {trainingDays.length})
+                  {SPLIT_INFO[resolveSplit(trainingDays.length, userLevel, splitOverride)].labelCz}
+                </span> {splitOverride ? '(ručně zvoleno)' : `(podle počtu dnů: ${trainingDays.length})`}
               </span>
             </div>
           )}

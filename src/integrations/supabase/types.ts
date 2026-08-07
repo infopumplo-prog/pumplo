@@ -310,6 +310,7 @@ export type Database = {
           id: string
           is_compound: boolean | null
           machine_id: string | null
+          owner_id: string | null
           name: string
           name_en: string | null
           primary_muscles: string[]
@@ -344,6 +345,7 @@ export type Database = {
           id?: string
           is_compound?: boolean | null
           machine_id?: string | null
+          owner_id?: string | null
           name: string
           name_en?: string | null
           primary_muscles?: string[]
@@ -378,6 +380,7 @@ export type Database = {
           id?: string
           is_compound?: boolean | null
           machine_id?: string | null
+          owner_id?: string | null
           name?: string
           name_en?: string | null
           primary_muscles?: string[]
@@ -907,6 +910,7 @@ export type Database = {
           notification_morning_reminder: boolean | null
           notification_onboarding_shown: boolean | null
           onboarding_completed: boolean | null
+          split_override: string | null
           preferred_time: string | null
           primary_goal: string | null
           push_subscription: Json | null
@@ -945,6 +949,7 @@ export type Database = {
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
+          split_override?: string | null
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
@@ -983,6 +988,7 @@ export type Database = {
           notification_morning_reminder?: boolean | null
           notification_onboarding_shown?: boolean | null
           onboarding_completed?: boolean | null
+          split_override?: string | null
           preferred_time?: string | null
           primary_goal?: string | null
           push_subscription?: Json | null
