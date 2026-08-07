@@ -8,6 +8,8 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
 const STORAGE_KEY = 'pumplo-theme';
+// AMOLED: v tmavém režimu čistě černé pozadí (šetří baterii na OLED displejích).
+const AMOLED_KEY = 'pumplo-amoled';
 
 interface ThemeContextValue {
   /** Volba uživatele včetně `system`. */
@@ -15,6 +17,9 @@ interface ThemeContextValue {
   /** Téma, které je právě na obrazovce. */
   theme: ResolvedTheme;
   setPreference: (preference: ThemePreference) => void;
+  /** AMOLED: čistě černé pozadí, uplatní se jen v tmavém režimu. */
+  amoled: boolean;
+  setAmoled: (on: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -32,6 +37,10 @@ const readStoredPreference = (): ThemePreference => {
   return 'system';
 };
 
+const readStoredAmoled = (): boolean => {
+  try { return localStorage.getItem(AMOLED_KEY) === '1'; } catch { return false; }
+};
+
 const resolveTheme = (preference: ThemePreference): ResolvedTheme =>
   preference === 'system' ? (prefersDark() ? 'dark' : 'light') : preference;
 
@@ -40,13 +49,14 @@ const resolveTheme = (preference: ThemePreference): ResolvedTheme =>
  * `color-scheme` řídí nativní prvky (scrollbary, vstupy, klávesnici),
  * `theme-color` barvu systémových lišt na webu a v PWA.
  */
-const applyTheme = (theme: ResolvedTheme) => {
+const applyTheme = (theme: ResolvedTheme, amoled = false) => {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
+  root.classList.toggle('amoled', theme === 'dark' && amoled);
   root.style.colorScheme = theme;
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#141821' : '#ffffff');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? (amoled ? '#000000' : '#141821') : '#ffffff');
 
   if (Capacitor.isNativePlatform()) {
     // Style.Dark = světlý text pro tmavé pozadí, Style.Light = tmavý text pro světlé.
@@ -59,6 +69,7 @@ const applyTheme = (theme: ResolvedTheme) => {
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference);
   const [theme, setTheme] = useState<ResolvedTheme>(() => resolveTheme(readStoredPreference()));
+  const [amoled, setAmoledState] = useState<boolean>(readStoredAmoled);
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
@@ -69,10 +80,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const setAmoled = useCallback((on: boolean) => {
+    setAmoledState(on);
+    try {
+      localStorage.setItem(AMOLED_KEY, on ? '1' : '0');
+    } catch {
+      // Volba pak nepřežije restart, ale appka běží dál.
+    }
+  }, []);
+
   useEffect(() => {
     const resolved = resolveTheme(preference);
     setTheme(resolved);
-    applyTheme(resolved);
+    applyTheme(resolved, amoled);
 
     // Jen volba `system` reaguje na to, když si uživatel přepne téma telefonu za běhu.
     if (preference !== 'system') return;
@@ -80,14 +100,14 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const onChange = () => {
       const next: ResolvedTheme = query.matches ? 'dark' : 'light';
       setTheme(next);
-      applyTheme(next);
+      applyTheme(next, amoled);
     };
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
-  }, [preference]);
+  }, [preference, amoled]);
 
   return (
-    <ThemeContext.Provider value={{ preference, theme, setPreference }}>
+    <ThemeContext.Provider value={{ preference, theme, setPreference, amoled, setAmoled }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -72,6 +72,14 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  /* AMOLED: čistě černé pozadí v tmavém režimu (šetří OLED baterii).
+     Karty zůstávají o odstín světlejší, jinak by splynuly s plochou. */
+  .dark.amoled {
+    --background: 0 0% 0%;
+    --card: 220 20% 7%;
+    --popover: 220 20% 7%;
+  }
+
   .dark {
     --background: 220 20% 8%;
     --foreground: 0 0% 98%;

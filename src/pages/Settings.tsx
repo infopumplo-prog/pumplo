@@ -42,7 +42,7 @@ const Settings = () => {
   } = usePushNotifications();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
-  const { preference, setPreference } = useTheme();
+  const { preference, setPreference, theme, amoled, setAmoled } = useTheme();
 
   // First-visit hints.
   const tour = useCoachTour('settings', 1, true);
@@ -651,6 +651,20 @@ const Settings = () => {
                 <p className="text-xs text-muted-foreground mt-3 text-center">
                   {t('settings.theme_system_hint')}
                 </p>
+              )}
+              {theme === 'dark' && (
+                <button
+                  onClick={() => setAmoled(!amoled)}
+                  className="mt-3 w-full flex items-center justify-between rounded-xl bg-muted px-4 py-3"
+                >
+                  <span className="text-sm font-medium text-left">
+                    {t('settings.amoled')}
+                    <span className="block text-xs text-muted-foreground font-normal">{t('settings.amoled_hint')}</span>
+                  </span>
+                  <span className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${amoled ? 'bg-primary' : 'bg-border'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${amoled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </span>
+                </button>
               )}
             </div>
           </motion.div>

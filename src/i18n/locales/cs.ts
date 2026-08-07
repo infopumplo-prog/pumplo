@@ -135,6 +135,8 @@ const cs = {
   'settings.theme_light': 'Světlý',
   'settings.theme_dark': 'Tmavý',
   'settings.theme_system': 'Podle systému',
+  'settings.amoled': 'AMOLED černá',
+  'settings.amoled_hint': 'Čistě černé pozadí — šetří baterii na OLED displejích',
   'settings.theme_system_hint': 'Vzhled se řídí nastavením telefonu a přepne se sám.',
   'settings.privacy': 'Soukromí a bezpečnost',
   'settings.your_data': 'Vaše data',

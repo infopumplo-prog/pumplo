@@ -133,6 +133,8 @@ const en = {
   'settings.theme_light': 'Light',
   'settings.theme_dark': 'Dark',
   'settings.theme_system': 'System',
+  'settings.amoled': 'AMOLED black',
+  'settings.amoled_hint': 'Pure black background — saves battery on OLED displays',
   'settings.theme_system_hint': 'Follows your phone settings and switches automatically.',
   'settings.privacy': 'Privacy & Security',
   'settings.your_data': 'Your data',
