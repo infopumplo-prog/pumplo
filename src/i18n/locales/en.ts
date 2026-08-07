@@ -43,6 +43,7 @@ const en = {
   'auth.something_wrong': 'Something went wrong. Please try again.',
   'auth.rate_limit': 'Too many registrations. Please try again in a few minutes.',
   'auth.register_failed': 'Registration failed',
+  'auth.profile_save_failed': 'Your account was created, but we could not save your questionnaire. Your answers are kept — please try again.',
   'auth.enter_email_reset': 'Enter email to reset password',
   'auth.email_sent': 'Email sent',
   'auth.check_email': 'Check your inbox for a password reset link.',
