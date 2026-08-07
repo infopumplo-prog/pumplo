@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
@@ -27,6 +27,7 @@ import {
 } from '@/components/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { saveOnboardingDraft, loadOnboardingDraft, clearOnboardingDraft } from '@/lib/onboardingDraft';
 
 type AuthMode = 'login' | 'register';
 
@@ -34,7 +35,10 @@ const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const gymIdFromQR = searchParams.get('gymId');
-  const [mode, setMode] = useState<AuthMode>('login');
+  // Registration first: almost everyone who opens this screen has just
+  // installed the app and has no account yet. Landing them on a login form was
+  // asking for a password they never set.
+  const [mode, setMode] = useState<AuthMode>('register');
   const { toast } = useToast();
   
   // Login form state
@@ -64,13 +68,46 @@ const Auth = () => {
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
-  const [showTrainerWelcome, setShowTrainerWelcome] = useState(false);
+  // Matches the 'register' default above: the trainer welcome is the first thing
+  // a new install sees, not a screen you have to switch modes to reach.
+  const [showTrainerWelcome, setShowTrainerWelcome] = useState(true);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   
   const { login, register, loginWithProvider, resetPassword, setIsRegistering } = useAuth();
   const { t } = useTranslation();
+
+  // A draft only exists when a previous registration attempt died between
+  // creating the account and saving the answers. Put the person back on the
+  // final step with everything filled in instead of making them retype seven
+  // steps they already answered.
+  useEffect(() => {
+    const draft = loadOnboardingDraft();
+    if (!draft) return;
+
+    setFirstName(draft.firstName);
+    setLastName(draft.lastName);
+    setRegEmail(draft.regEmail);
+    setPrimaryGoal(draft.primaryGoal);
+    setUserLevel(draft.userLevel);
+    setTrainingDays(draft.trainingDays);
+    setPreferredTime(draft.preferredTime);
+    setTrainingDuration(draft.trainingDuration);
+    setGender(draft.gender);
+    setAge(draft.age);
+    setHeight(draft.height);
+    setWeight(draft.weight);
+    setInjuries(draft.injuries);
+    setEquipmentPreference(draft.equipmentPreference);
+    // A gym from a fresh QR scan wins over the one stored in the draft.
+    setSelectedGymId(prev => prev ?? draft.selectedGymId);
+
+    setMode('register');
+    setShowTrainerWelcome(false);
+    setShowOutcomeStep(false);
+    setOnboardingStep(ONBOARDING_TOTAL_STEPS);
+  }, []);
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setError('');
@@ -134,18 +171,40 @@ const Auth = () => {
     setIsRegistering(true);
 
     try {
+      // 0. The answers go to disk BEFORE the account exists. Everything below
+      // can fail; none of it may cost the person their seven steps.
+      saveOnboardingDraft({
+        firstName, lastName, regEmail,
+        primaryGoal, userLevel, trainingDays, preferredTime, trainingDuration,
+        gender, age, height, weight, injuries, equipmentPreference, selectedGymId,
+      });
+
       // 1. Register user - returns userId directly
       const result = await register(regEmail, regPassword, firstName, lastName);
-      if (!result.success || !result.userId) {
-        if (result.error?.includes('rate limit') || result.error?.includes('429')) {
-          setError(t('auth.rate_limit'));
-        } else {
-          setError(result.error || t('auth.register_failed'));
-        }
-        return;
-      }
+      let userId = result.userId;
 
-      const userId = result.userId;
+      if (!result.success || !userId) {
+        // A failed signUp does not prove the account was not created: a slow
+        // network can trip the client-side timeout long after the server
+        // committed the user. Signing in settles it — and if the account is
+        // really there, the registration continues instead of telling someone
+        // with a live account that registration failed.
+        const recovered = await login(regEmail, regPassword);
+        if (recovered.success) {
+          const { data: { user: recoveredUser } } = await supabase.auth.getUser();
+          userId = recoveredUser?.id;
+        }
+
+        if (!userId) {
+          if (result.error?.includes('rate limit') || result.error?.includes('429')) {
+            setError(t('auth.rate_limit'));
+          } else {
+            setError(result.error || t('auth.register_failed'));
+          }
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       // 2. Wait a moment for trigger to create profile
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -157,9 +216,11 @@ const Auth = () => {
       
       let profileUpdateSuccess = false;
       let retries = 3;
-      
+
       while (!profileUpdateSuccess && retries > 0) {
-        const { error: profileError } = await supabase
+        // .select() matters: an update that matches no row reports no error, so
+        // without it a write that touched nothing looks like a success.
+        const { data: updatedRows, error: profileError } = await supabase
           .from('user_profiles')
           .update({
             primary_goal: primaryGoal,
@@ -180,10 +241,11 @@ const Auth = () => {
             first_name: firstName,
             last_name: lastName,
           })
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .select('user_id');
 
-        if (profileError) {
-          console.error('Profile update error (retry ' + (4 - retries) + '):', profileError);
+        if (profileError || !updatedRows?.length) {
+          console.error('Profile update error (retry ' + (4 - retries) + '):', profileError ?? 'no row matched');
           retries--;
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -194,7 +256,14 @@ const Auth = () => {
       }
 
       if (!profileUpdateSuccess) {
+        // The account exists but the answers never landed. Say so and keep the
+        // draft: the next attempt resumes from the filled-in form rather than
+        // from an empty questionnaire nobody wants to redo.
         console.error('Failed to update profile after retries');
+        setError(t('auth.profile_save_failed'));
+        setIsRegistering(false);
+        setIsSubmitting(false);
+        return;
       }
 
       // 4. Create workout plan
@@ -243,7 +312,10 @@ const Auth = () => {
       // 6. Force a small delay for React Query cache invalidation
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // 7. All done - release the registration lock and navigate home
+      // 7. The answers are safely on the profile — the draft has done its job.
+      clearOnboardingDraft();
+
+      // 8. All done - release the registration lock and navigate home
       setIsRegistering(false);
       navigate('/');
     } catch (err) {

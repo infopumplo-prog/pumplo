@@ -43,6 +43,7 @@ const cs = {
   'auth.something_wrong': 'Něco se pokazilo. Zkuste to prosím znovu.',
   'auth.rate_limit': 'Příliš mnoho registrací. Zkuste to prosím za pár minut.',
   'auth.register_failed': 'Registrace se nezdařila',
+  'auth.profile_save_failed': 'Účet je založený, ale odpovědi z dotazníku se nepodařilo uložit. Tvoje odpovědi máme uložené — zkus to prosím znovu.',
   'auth.enter_email_reset': 'Zadejte email pro reset hesla',
   'auth.email_sent': 'Email odeslán',
   'auth.check_email': 'Zkontrolujte svou emailovou schránku pro odkaz na reset hesla.',
