@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
+import { HevyImportSection } from '@/components/settings/HevyImportSection';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone } from 'lucide-react';
@@ -667,6 +668,11 @@ const Settings = () => {
                 </button>
               )}
             </div>
+          </motion.div>
+
+          {/* Hevy import */}
+          <motion.div variants={itemVariants}>
+            <HevyImportSection />
           </motion.div>
 
           {/* Privacy Section */}
