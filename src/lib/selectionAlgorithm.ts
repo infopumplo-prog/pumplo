@@ -394,6 +394,7 @@ export const getCandidates = async (
   let query = supabase
     .from('exercises')
     .select('*')
+    .is('owner_id', null) // custom cviky NIKDY do generovaného Pumplo plánu
     .eq('allowed_phase', 'main')
     .lte('difficulty', maxDifficulty);
 

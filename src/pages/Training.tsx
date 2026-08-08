@@ -974,6 +974,7 @@ const Training = () => {
     const { data: exercisesData } = await supabase
       .from('exercises')
       .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
+      .is('owner_id', null) // custom cviky nikdy do rozcvičky/protažení
       .eq('allowed_phase', phase);
 
     if (!exercisesData || exercisesData.length === 0) return [];
@@ -1242,6 +1243,7 @@ const Training = () => {
         const { data: exercises } = await supabase
           .from('exercises')
           .select('*')
+          .is('owner_id', null) // custom cviky nikdy do bonusových slotů
           .eq('primary_role', randomRole);
         
         if (!exercises || exercises.length === 0) continue;
@@ -1306,6 +1308,7 @@ const Training = () => {
         const { data: exercises } = await supabase
           .from('exercises')
           .select('*')
+          .is('owner_id', null) // custom cviky nikdy do bonusových slotů
           .eq('primary_role', randomRole);
         
         if (!exercises || exercises.length === 0) continue;
