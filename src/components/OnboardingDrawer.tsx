@@ -336,7 +336,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
         }} />;
       case 2:
-        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} splitOverride={splitOverride} onSplitOverrideChange={setSplitOverride} userLevel={userLevel} />;
+        // Volba splitu vypnutá do konzultace s trenérem (8. 8.) — viz Auth.tsx.
+        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
       case 3:
         return (
           <OnboardingTimeStep

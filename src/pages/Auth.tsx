@@ -408,7 +408,10 @@ const Auth = () => {
           if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
         }} />;
       case 2:
-        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} splitOverride={splitOverride} onSplitOverrideChange={setSplitOverride} userLevel={userLevel} />;
+        // Volba splitu je schválně vypnutá (8. 8.) — čeká na konzultaci metodiky
+        // s trenérem. Infrastruktura (split_override, generátor) zůstává, UI se
+        // zapne vrácením props splitOverride/onSplitOverrideChange.
+        return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
       case 3:
         return (
           <OnboardingTimeStep
