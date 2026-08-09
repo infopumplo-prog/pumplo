@@ -38,6 +38,25 @@ const PRICE_TO_PLAN: Record<string, { plan_id: string; period: string }> = {
   "price_1TKxytEvdp2FxnFOqbt8PhRo": { plan_id: "premium", period: "annual" },
 };
 
+// Namapuje Stripe cenu na plán. Nejdřív statická mapa výše (rychlé, veřejné
+// tarify), pak fallback do subscription_plans v DB — pokrývá SKRYTÉ custom
+// plány (např. nextgen_custom / individuální cena), které v mapě nejsou a jinak
+// by spadly na „start".
+// deno-lint-ignore no-explicit-any
+async function resolvePlan(supabase: any, priceId: string): Promise<{ plan_id: string; period: string } | null> {
+  const hard = PRICE_TO_PLAN[priceId];
+  if (hard) return hard;
+  const { data } = await supabase
+    .from("subscription_plans")
+    .select("id, stripe_price_monthly_id, stripe_price_annual_id, stripe_price_quarterly_id")
+    .or(`stripe_price_monthly_id.eq.${priceId},stripe_price_annual_id.eq.${priceId},stripe_price_quarterly_id.eq.${priceId}`)
+    .maybeSingle();
+  if (!data) return null;
+  const period = data.stripe_price_annual_id === priceId ? "annual"
+    : data.stripe_price_quarterly_id === priceId ? "quarterly" : "monthly";
+  return { plan_id: data.id, period };
+}
+
 serve(async (req) => {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature")!;
@@ -130,9 +149,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         `Activate: item quantity (${item.quantity}) != gym count (${ids.length}) on`, subscription.id,
       );
     }
+    const planInfo = await resolvePlan(supabase, item.price.id);
+    if (!planInfo) console.error("Unknown price ID on activate:", item.price.id);
     for (const gymId of ids) {
-      const planInfo = PRICE_TO_PLAN[item.price.id];
-      if (!planInfo) console.error("Unknown price ID on activate:", item.price.id);
       const { error } = await supabase
         .from("gym_subscriptions")
         .upsert({
@@ -196,7 +215,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // Get subscription details from Stripe
   const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
   const priceId = subscription.items.data[0].price.id;
-  const planInfo = PRICE_TO_PLAN[priceId];
+  const planInfo = await resolvePlan(supabase, priceId);
 
   if (!planInfo) {
     console.error("Unknown price ID:", priceId);
@@ -622,7 +641,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   // Plan changes are per-item — reconcile each Stripe item against its row.
   for (const item of subscription.items.data) {
-    const planInfo = PRICE_TO_PLAN[item.price.id];
+    const planInfo = await resolvePlan(supabase, item.price.id);
     if (!planInfo) continue;
 
     // Quantity model: several rows can share one item — reconcile them ALL.
