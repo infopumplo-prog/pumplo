@@ -9,6 +9,7 @@ import { useGym, GymMachine } from '@/hooks/useGym';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { BenchConfigSelector, BENCH_CONFIGS } from '@/components/business/BenchConfigSelector';
+import MachineExerciseVideos from '@/components/business/MachineExerciseVideos';
 import { useTranslation } from 'react-i18next';
 
 interface Machine {
@@ -304,6 +305,10 @@ const GymMachines = () => {
                         {getBenchConfigLabels(gm.bench_configs)}
                       </p>
                     )}
+
+                    <div className="pt-3 border-t border-border/50">
+                      <MachineExerciseVideos machineId={machine.id} />
+                    </div>
                   </div>
                 )}
               </div>
