@@ -194,6 +194,23 @@ serve(async (req) => {
         quarterlyPrices.add(p.stripe_price_quarterly_id);
       }
     }
+    // V aktivačním toku povol i cenu SKRYTÉHO plánu, který mají aktivované
+    // posilovny přiřazený (custom deal, např. NextGen 1000 Kč / is_active=false).
+    // Ochrana proti podstrčení cizí/levnější ceny zůstává — bereme jen plány
+    // reálně přiřazené právě těmto pobočkám daného vlastníka.
+    if (isActivateFlow) {
+      const { data: assigned } = await adminClient
+        .from("gym_subscriptions")
+        .select("subscription_plans(stripe_price_monthly_id, stripe_price_annual_id, stripe_price_quarterly_id)")
+        .in("gym_id", activate_gym_ids!);
+      for (const row of assigned ?? []) {
+        const p = (row as { subscription_plans?: { stripe_price_monthly_id?: string; stripe_price_annual_id?: string; stripe_price_quarterly_id?: string } }).subscription_plans;
+        if (!p) continue;
+        if (p.stripe_price_monthly_id) allowedPrices.add(p.stripe_price_monthly_id);
+        if (p.stripe_price_annual_id) allowedPrices.add(p.stripe_price_annual_id);
+        if (p.stripe_price_quarterly_id) allowedPrices.add(p.stripe_price_quarterly_id);
+      }
+    }
     if (!allowedPrices.has(price_id)) {
       return new Response(JSON.stringify({ error: "Neplatný plán" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
