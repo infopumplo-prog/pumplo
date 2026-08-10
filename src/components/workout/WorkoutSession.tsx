@@ -259,6 +259,7 @@ export const WorkoutSession = ({
       isCardio: CARDIO_ROLE_IDS.includes(roleId),
       excludeIds,
       gymId,
+      baseExerciseId: exercise.exerciseId,
     });
   }, [currentExerciseIndex, liveExercises, gymId]);
 

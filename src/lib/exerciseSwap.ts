@@ -15,6 +15,43 @@ export function muscleOverlap(a: string[], b: string[]): number {
   return a.filter(m => b.includes(m)).length;
 }
 
+// --- Pojistka partie (horní/dolní tělo) ---------------------------------------
+// primary_muscles jsou v datech nekonzistentní (CZ/EN, překlepy, obecné pojmy),
+// takže se nedá spoléhat na přesný překryv. Mapujeme proto hrubě na partii a
+// vyřazujeme jen JASNÝ nesoulad (čistě horní cvik vs čistě dolní cvik) — to chytí
+// případy typu „roznožování (nohy) jako alternativa k upažení (ramena)", aniž by
+// se zbytečně zahazovaly validní alternativy uvnitř stejné partie.
+type Region = 'upper' | 'lower' | 'core';
+const MUSCLE_REGION: Record<string, Region> = {
+  // horní
+  ramena: 'upper', shoulders: 'upper', front_shoulders: 'upper', side_shoulders: 'upper',
+  prsa: 'upper', 'prsní svaly': 'upper', chest: 'upper', chest_muscles: 'upper', 'horní prsa': 'upper', 'spodní prsa': 'upper',
+  záda: 'upper', back: 'upper', latisimy: 'upper', latysimy: 'upper', latissimy: 'upper', latysimy_: 'upper',
+  wide_back_muscles: 'upper', 'střed zad': 'upper', rhomboid_major: 'upper', rhomboid_minor: 'upper',
+  middle_trapezius: 'upper', lower_trapezius: 'upper', upper_trapezius: 'upper', trapézy: 'upper', traps: 'upper', lopatky: 'upper',
+  biceps: 'upper', triceps: 'upper', paže: 'upper', ruce: 'upper', 'pilovitý sval': 'upper',
+  // dolní
+  zadek: 'lower', glutes: 'lower', hamstring: 'lower', hamstrings: 'lower', back_thighs: 'lower',
+  'dolní končetiny': 'lower', nohy: 'lower', kvadriceps: 'lower', quads: 'lower', quadriceps: 'lower', front_thighs: 'lower',
+  lýtka: 'lower', calves: 'lower', hip_flexors: 'lower', 'nohy a zadek': 'lower',
+  // střed
+  'přímé břišní svaly': 'core', 'přímý břišní sval': 'core', břicho: 'core', abs: 'core', core: 'core',
+  'střed těla': 'core', 'šikmé břišní svaly': 'core', stabilizing_muscles: 'core', bedra: 'core',
+};
+function regionsOf(muscles: string[] | null | undefined): Set<Region> {
+  const s = new Set<Region>();
+  for (const m of muscles || []) {
+    const r = MUSCLE_REGION[m.toLowerCase().trim()];
+    if (r) s.add(r);
+  }
+  return s;
+}
+// True když je jeden cvik čistě horní a druhý čistě dolní (jinak necháváme být).
+function regionConflict(base: Set<Region>, cand: Set<Region>): boolean {
+  const pure = (s: Set<Region>, r: Region) => s.size === 1 && s.has(r);
+  return (pure(base, 'upper') && pure(cand, 'lower')) || (pure(base, 'lower') && pure(cand, 'upper'));
+}
+
 /**
  * Gym-bound alternatives for a slot: same role (or any cardio), available at the
  * selected gym, excluding exercises already in the session. This is the exact
@@ -26,8 +63,9 @@ export async function fetchGymBoundAlternatives(opts: {
   isCardio: boolean;
   excludeIds: string[];
   gymId: string;
+  baseExerciseId?: string | null;
 }): Promise<SwapCandidate[]> {
-  const { primaryRole, isCardio, excludeIds, gymId } = opts;
+  const { primaryRole, isCardio, excludeIds, gymId, baseExerciseId } = opts;
   if (!isCardio && !primaryRole) return [];
 
   const { data: gymMachines } = await supabase
@@ -36,9 +74,18 @@ export async function fetchGymBoundAlternatives(opts: {
     .eq('gym_id', gymId);
   const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
 
+  // Svaly základního cviku — pro pojistku partie (horní/dolní tělo). Nezablokuje
+  // nic u kardia; když je neznáme, filtr se neuplatní.
+  let baseRegions = new Set<Region>();
+  if (!isCardio && baseExerciseId) {
+    const { data: base } = await supabase
+      .from('exercises').select('primary_muscles').eq('id', baseExerciseId).single();
+    baseRegions = regionsOf((base as { primary_muscles: string[] | null } | null)?.primary_muscles);
+  }
+
   let query = supabase
     .from('exercises')
-    .select('id, name, name_en, primary_role, machine_id, category, video_path')
+    .select('id, name, name_en, primary_role, machine_id, category, video_path, primary_muscles')
     .eq('allowed_phase', 'main');
   query = isCardio ? query.eq('category', 'cardio') : query.eq('primary_role', primaryRole!);
 
@@ -48,6 +95,8 @@ export async function fetchGymBoundAlternatives(opts: {
   return candidates.filter(c => {
     if (excludeIds.includes(c.id)) return false;
     if (c.machine_id && !machineIds.has(c.machine_id)) return false;
+    // Pojistka: nikdy nenabídnout čistě dolní cvik k čistě hornímu a naopak.
+    if (baseRegions.size && regionConflict(baseRegions, regionsOf((c as { primary_muscles: string[] | null }).primary_muscles))) return false;
     return true;
   }).map(c => ({
     id: c.id,

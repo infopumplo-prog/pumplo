@@ -946,7 +946,7 @@ const CustomWorkoutPlayer = () => {
       primaryRole = (data as { primary_role: string | null } | null)?.primary_role ?? null;
     }
     const excludeIds = exercises.map(e => e.exercise_id).filter(Boolean);
-    return fetchGymBoundAlternatives({ primaryRole, isCardio, excludeIds, gymId: selectedGymId });
+    return fetchGymBoundAlternatives({ primaryRole, isCardio, excludeIds, gymId: selectedGymId, baseExerciseId: ex.exercise_id });
   }, [exercises, selectedGymId]);
 
   // Replace a slot with the picked alternative: update the running session AND
