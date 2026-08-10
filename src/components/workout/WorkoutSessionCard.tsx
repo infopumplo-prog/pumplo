@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Clock, Dumbbell, Weight, Flame } from 'lucide-react';
+import { ChevronDown, Clock, Dumbbell, Weight, Flame, Share2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { cs, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { estimateCalories } from '@/lib/calorieEstimation';
+import { WorkoutShareCard } from './WorkoutShareCard';
 
 interface WorkoutSet {
   id: string;
@@ -32,6 +33,7 @@ interface WorkoutSessionCardProps {
     total_sets: number | null;
     total_reps: number | null;
     total_weight_kg: number | null;
+    gym_id?: string | null;
   };
   variant?: 'compact' | 'full';
   titleOverride?: string;
@@ -47,6 +49,17 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
   const [isLoadingSets, setIsLoadingSets] = useState(false);
   // exercise_name in sets is a Czech snapshot — live-resolve name_en for EN UI
   const [nameEnMap, setNameEnMap] = useState<Record<string, string>>({});
+  // Sdílení tréninku z historie (stejná karta jako po dojetí tréninku)
+  const [shareOpen, setShareOpen] = useState(false);
+  const [gymInfo, setGymInfo] = useState<{ name: string; instagram: string | null } | null>(null);
+
+  async function openShare() {
+    if (session.gym_id && !gymInfo) {
+      const { data } = await supabase.from('gyms').select('name, instagram_handle').eq('id', session.gym_id).maybeSingle();
+      if (data) setGymInfo({ name: (data as { name: string }).name, instagram: (data as { instagram_handle?: string | null }).instagram_handle ?? null });
+    }
+    setShareOpen(true);
+  }
 
   // Format day letter for display
   const isExtension = session.day_letter.includes('_EXT');
@@ -125,7 +138,8 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
   });
 
   return (
-    <Card 
+    <>
+    <Card
       className={cn(
         "overflow-hidden transition-all cursor-pointer",
         isExpanded && "ring-1 ring-primary/20"
@@ -283,11 +297,46 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
                     </div>
                   )}
                 </div>
+
+                {/* Sdílet trénink z historie */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openShare(); }}
+                  disabled={isLoadingSets || sets.length === 0}
+                  className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                >
+                  <Share2 className="w-4 h-4" /> {t('workout.share')}
+                </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </CardContent>
     </Card>
+
+    {shareOpen && (
+      <WorkoutShareCard
+        dayLetter={session.day_letter}
+        dayName={displayTitle}
+        goalId={session.goal_id}
+        gymName={gymInfo?.name ?? ''}
+        gymInstagram={gymInfo?.instagram ?? null}
+        totalDuration={durationMinutes}
+        totalSets={session.total_sets || 0}
+        totalWeight={session.total_weight_kg || 0}
+        totalReps={session.total_reps || 0}
+        exerciseCount={Object.keys(exerciseGroups).length}
+        exerciseDetails={Object.values(exerciseGroups).map(g => ({
+          name: g.exerciseName,
+          nameEn: (g.exerciseId && nameEnMap[g.exerciseId]) || null,
+          sets: g.sets.filter(s => s.completed).map(s => ({ weight: s.weight_kg || 0, reps: s.reps || 0 })),
+        }))}
+        isBonus={isExtension}
+        onClose={() => setShareOpen(false)}
+        onFinish={() => setShareOpen(false)}
+        finishLabel={isEn ? 'Close' : 'Zavřít'}
+      />
+    )}
+    </>
   );
 };

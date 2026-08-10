@@ -23,7 +23,7 @@ interface WorkoutShareCardProps {
   exerciseCount: number; exerciseDetails?: ExerciseDetail[];
   muscleIntensities?: Record<string, number>;
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
-  onAbandon?: () => void; abandonDescription?: string;
+  onAbandon?: () => void; abandonDescription?: string; finishLabel?: string;
 }
 
 interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
@@ -303,7 +303,7 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription,
+  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription, finishLabel,
 }: WorkoutShareCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -618,7 +618,7 @@ export const WorkoutShareCard = ({
         <button type="button" onClick={onFinish} disabled={isSaving || isGenerating}
           className="w-full flex items-center justify-center rounded-xl disabled:opacity-50"
           style={{ height: '44px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '15px', fontWeight: 600, background: 'transparent' }}>
-          {isSaving ? t('workout.saving') : t('workout.finish')}
+          {isSaving ? t('workout.saving') : (finishLabel ?? t('workout.finish'))}
         </button>
       </div>
     </motion.div>
