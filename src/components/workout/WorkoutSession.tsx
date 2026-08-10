@@ -311,6 +311,18 @@ export const WorkoutSession = ({
       return updated;
     });
 
+    // Vyměněný cvik začíná NAČISTO: zahoď série i výsledek předchozího cviku z
+    // tohoto slotu, ať se váha i opakování předvyplní z historie NOVÉHO cviku,
+    // ne z hodnot, co tam zůstaly po tom, co jsme vyměnili. (Série se drží podle
+    // indexu slotu, ne podle cviku — proto se to jinak přenášelo.)
+    setSetsDataByExercise(prev => { const next = new Map(prev); next.delete(currentExerciseIndex); return next; });
+    setsDataRef.current = (() => { const next = new Map(setsDataRef.current); next.delete(currentExerciseIndex); return next; })();
+    setResultsByIndex(prev => { const next = new Map(prev); next.delete(currentExerciseIndex); return next; });
+    setCurrentExerciseSets([]);
+    setCurrentSetIndex(0);
+    setCurrentExWeight(null);
+    setPlayerSync(n => n + 1); // remount přehrávače, ať nesedí na starých sériích
+
     toast.success(t('workout.swap_success', { name: pick.name }));
   }, [currentExerciseIndex, liveExercises, planId, dayLetter, t]);
 
