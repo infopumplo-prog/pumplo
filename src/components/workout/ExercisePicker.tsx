@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, Check, Dumbbell, ChevronDown, Maximize2 } from 'lucide-react';
+import { Search, X, Check, Dumbbell, ChevronDown, Maximize2, Share2 } from 'lucide-react';
+import { Share } from '@capacitor/share';
+import { toast } from 'sonner';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,7 @@ export interface PickerExercise {
   machine_id: string | null;
   unit_type: string;
   allowed_phase: string | null;
+  owner_id?: string | null;
 }
 
 interface ExercisePickerProps {
@@ -185,11 +188,22 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
     return () => window.visualViewport?.removeEventListener('resize', update);
   }, [open]);
 
+  // Sdílet vlastní cvik odkazem → příjemce si ho na /cvik/:id uloží k sobě.
+  const shareExercise = async (ex: PickerExercise) => {
+    const url = `https://app.pumplo.com/cvik/${ex.id}`;
+    const title = (isEn && ex.name_en) ? ex.name_en! : ex.name;
+    try {
+      await Share.share({ title, text: `${title} — Pumplo`, url, dialogTitle: t('exercise_picker.share') });
+    } catch {
+      try { await navigator.clipboard?.writeText(url); toast.success(t('exercise_picker.share_copied')); } catch { /* ignore */ }
+    }
+  };
+
   const loadExercises = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from('exercises')
-      .select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type, allowed_phase')
+      .select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type, allowed_phase, owner_id')
       .order('name', { ascending: true });
     setAllExercises((data || []).map((e: any) => ({
       id: e.id,
@@ -203,6 +217,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
       machine_id: e.machine_id ?? null,
       unit_type: e.unit_type || 'reps',
       allowed_phase: e.allowed_phase ?? null,
+      owner_id: e.owner_id ?? null,
     })));
     setLoading(false);
   }, []);
@@ -446,9 +461,24 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                           {ex.allowed_phase === 'warmup' ? t('exercise_picker.phase_warmup') : t('exercise_picker.phase_cooldown')}
                         </span>
                       )}
+                      {ex.owner_id && (
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-600">
+                          {t('exercise_picker.custom_badge')}
+                        </span>
+                      )}
                     </div>
                     {primaryMuscleText(ex) && <p className="text-xs text-muted-foreground truncate">{primaryMuscleText(ex)}</p>}
                   </div>
+                  {ex.owner_id && (
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); shareExercise(ex); }}
+                      className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                      title={t('exercise_picker.share')}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </span>
+                  )}
                   {isSel && (
                     <span className="shrink-0 w-6 h-6 rounded-full bg-[#5BC8F5] flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />

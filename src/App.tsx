@@ -53,6 +53,7 @@ import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
+import SharedExercisePage from "@/pages/SharedExercise";
 import ResetPassword from "@/pages/ResetPassword";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
@@ -245,6 +246,7 @@ const AppRoutes = () => {
     <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
+    <Route path="/cvik/:id" element={<SharedExercisePage />} />
     <Route path="/go/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
