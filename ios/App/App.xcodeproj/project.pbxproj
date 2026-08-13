@@ -25,7 +25,6 @@
 		179E935FF316132CDDECEDBF /* WatchConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27C3095B25AF7319FC57809 /* WatchConnector.swift */; };
 		1D7A76DA2E749E0E8E777143 /* WatchWorkoutPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242DAC88F765EC5BE13CA8D6 /* WatchWorkoutPlugin.swift */; };
 		1F47366440293CB7A546CA5D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD9EECCC0C6DAA3453EE15A /* Theme.swift */; };
-		2F9F7B665D52D63D984039C0 /* PumploWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A19B7339DB7E87D59880DFF9 /* PumploWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		37C5651FFB544F7B2BDFDC6E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E3176A965F1B9E121ED8366 /* Assets.xcassets */; };
 		397C75F43979CB400D1E5CED /* WatchMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C3FF2A6CBC88B8863B18ABB /* WatchMenu.swift */; };
@@ -65,13 +64,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 06553C792FFD57B300A92F27;
 			remoteInfo = PumploWidgetsExtension;
-		};
-		28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 3031224A16F18CD9A6AF386B;
-			remoteInfo = "PumploWatch Watch App";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -154,7 +146,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		06553C902FFD57B500A92F27 /* Exceptions for "PumploWidgets" folder in "PumploWidgetsExtension" target */ = {
+		06553C902FFD57B500A92F27 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -164,18 +156,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		06553C802FFD57B300A92F27 /* PumploWidgets */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				06553C902FFD57B500A92F27 /* Exceptions for "PumploWidgets" folder in "PumploWidgetsExtension" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = PumploWidgets;
-			sourceTree = "<group>";
-		};
+		06553C802FFD57B300A92F27 /* PumploWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (06553C902FFD57B500A92F27 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = PumploWidgets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -245,7 +226,6 @@
 				22D083781E4E4664E64B04F8 /* WatchApi.swift */,
 				69E7E953456A9E4D01DA7F6D /* StandaloneStore.swift */,
 			);
-			name = "PumploWatch Watch App";
 			path = "PumploWatch Watch App";
 			sourceTree = SOURCE_ROOT;
 		};
@@ -509,12 +489,6 @@
 			target = 06553C792FFD57B300A92F27 /* PumploWidgetsExtension */;
 			targetProxy = 06553C8A2FFD57B500A92F27 /* PBXContainerItemProxy */;
 		};
-		70A7ADFC93A0CEB39234ED72 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "PumploWatch Watch App";
-			target = 3031224A16F18CD9A6AF386B /* PumploWatch Watch App */;
-			targetProxy = 28EE80AB9161CD4EB9998A7D /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -742,6 +716,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = DF748BR59G;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -765,6 +740,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = DF748BR59G;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (

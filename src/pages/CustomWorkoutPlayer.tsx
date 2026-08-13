@@ -973,6 +973,9 @@ const CustomWorkoutPlayer = () => {
       primary_muscles: d?.primary_muscles ?? e.primary_muscles,
       secondary_muscles: d?.secondary_muscles ?? e.secondary_muscles,
     } : e));
+    // Vyměněný cvik začíná NAČISTO — zahoď série toho slotu, ať se váha/opakování
+    // nepřenese po předchozím cviku (input se přeseeduje z historie nového cviku).
+    setCompletedSetsMap(prev => { const next = new Map(prev); next.delete(idx); return next; });
     if (!row.id.startsWith('adhoc-')) {
       const { error } = await supabase.from('custom_plan_exercises').update({ exercise_id: pick.id }).eq('id', row.id);
       if (error) console.warn('[custom_plan] swap not persisted:', error.message);
