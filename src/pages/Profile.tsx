@@ -8,7 +8,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera, Mail, GraduationCap } from 'lucide-react';
+import { User, Settings, MessageSquare, LogOut, ChevronRight, ClipboardList, BarChart3, Calendar, Camera, Mail, GraduationCap, Dumbbell } from 'lucide-react';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -90,6 +90,7 @@ const Profile = () => {
   const menuItems = [
     { icon: Mail, label: t('profile.messages'), onClick: () => navigate('/messages'), badge: unreadCount, coach: 'profile-messages' },
     { icon: Calendar, label: t('profile.my_plan'), onClick: () => navigate('/profile/plan') },
+    { icon: Dumbbell, label: t('profile.my_exercises'), onClick: () => navigate('/profile/exercises') },
     { icon: BarChart3, label: t('profile.workout_history'), onClick: () => navigate('/profile/history'), coach: 'profile-history' },
     trainerMenuItem,
     { icon: ClipboardList, label: t('profile.edit_questionnaire'), onClick: () => setOnboardingOpen(true) },

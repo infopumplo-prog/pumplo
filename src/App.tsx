@@ -54,6 +54,7 @@ import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
 import SharedExercisePage from "@/pages/SharedExercise";
+import MyExercisesPage from "@/pages/MyExercises";
 import ResetPassword from "@/pages/ResetPassword";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
@@ -273,6 +274,7 @@ const AppRoutes = () => {
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/history" element={<WorkoutHistory />} />
       <Route path="/profile/plan" element={<MyPlan />} />
+      <Route path="/profile/exercises" element={<MyExercisesPage />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/messages" element={<Messages />} />
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
