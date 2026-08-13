@@ -86,7 +86,8 @@ export async function fetchGymBoundAlternatives(opts: {
   let query = supabase
     .from('exercises')
     .select('id, name, name_en, primary_role, machine_id, category, video_path, primary_muscles')
-    .eq('allowed_phase', 'main');
+    .eq('allowed_phase', 'main')
+    .is('owner_id', null); // custom cviky NIKDY do Pumplo tréninku ani jako alternativa (i kdyby admin doplnil role)
   query = isCardio ? query.eq('category', 'cardio') : query.eq('primary_role', primaryRole!);
 
   const { data: candidates, error } = await query;
