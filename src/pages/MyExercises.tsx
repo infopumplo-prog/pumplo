@@ -102,7 +102,7 @@ export default function MyExercisesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-md mx-auto px-4 pt-6 pb-28">
+      <div className="max-w-md mx-auto px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 20px)' }}>
         <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
           <ArrowLeft className="w-4 h-4" /> {t('my_exercises.title')}
         </button>
@@ -132,7 +132,7 @@ export default function MyExercisesPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 px-4 pt-4 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}>
         <div className="max-w-md mx-auto">
           <button onClick={openNew} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2">
             <Plus className="w-5 h-5" /> {t('my_exercises.new')}

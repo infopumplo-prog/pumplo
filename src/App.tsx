@@ -266,6 +266,8 @@ const AppRoutes = () => {
         <StationPage />
       </Suspense>
     } />
+    {/* Moje cviky = plná stránka bez spodní lišty a feedbacku (jen auth guard) */}
+    <Route path="/profile/exercises" element={<ProtectedRoute><MyExercisesPage /></ProtectedRoute>} />
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
@@ -274,7 +276,6 @@ const AppRoutes = () => {
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/history" element={<WorkoutHistory />} />
       <Route path="/profile/plan" element={<MyPlan />} />
-      <Route path="/profile/exercises" element={<MyExercisesPage />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/messages" element={<Messages />} />
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
