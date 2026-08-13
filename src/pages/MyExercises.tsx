@@ -14,10 +14,12 @@ const MUSCLE_GROUPS: { label: string; category: string }[] = [
 ];
 
 const emptyForm = {
-  id: '', name: '', name_en: '', muscle: 'Prsa', category: 'chest',
+  id: '', name: '', name_en: '', muscles: [] as string[],
   units: 'weight_reps' as 'weight_reps' | 'reps' | 'time_min',
   description: '', description_en: '', video_path: '' as string | null,
 };
+const categoryForMuscles = (muscles: string[]) =>
+  MUSCLE_GROUPS.find(g => g.label === muscles[0])?.category ?? 'full_body';
 
 export default function MyExercisesPage() {
   const { t } = useTranslation();
@@ -45,10 +47,11 @@ export default function MyExercisesPage() {
       .select('id, name, name_en, category, unit_type, description, description_en, video_path, primary_muscles')
       .eq('id', it.id).single();
     const d = data as any;
-    const mg = MUSCLE_GROUPS.find(m => m.label === (d?.primary_muscles?.[0])) ?? MUSCLE_GROUPS.find(m => m.category === d?.category) ?? MUSCLE_GROUPS[0];
+    const matched = (d?.primary_muscles || []).filter((m: string) => MUSCLE_GROUPS.some(g => g.label === m));
+    const fallback = MUSCLE_GROUPS.find(m => m.category === d?.category);
     setForm({
       id: d.id, name: d.name ?? '', name_en: d.name_en ?? '',
-      muscle: mg.label, category: mg.category,
+      muscles: matched.length ? matched : (fallback ? [fallback.label] : []),
       units: d.unit_type === 'time_min' ? 'time_min' : (d.exercise_with_weights === false ? 'reps' : 'weight_reps'),
       description: d.description ?? '', description_en: d.description_en ?? '', video_path: d.video_path ?? '',
     });
@@ -73,7 +76,7 @@ export default function MyExercisesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const payload: Record<string, unknown> = {
       name: form.name.trim(), name_en: form.name_en.trim() || null,
-      category: form.category, primary_muscles: [form.muscle],
+      category: categoryForMuscles(form.muscles), primary_muscles: form.muscles.length ? form.muscles : ['Celé tělo'],
       unit_type: form.units === 'time_min' ? 'time_min' : 'reps',
       exercise_with_weights: form.units === 'weight_reps',
       equipment_type: form.units === 'weight_reps' ? 'free_weight' : 'bodyweight',
@@ -157,23 +160,29 @@ export default function MyExercisesPage() {
               <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.name_en')}</label>
               <input value={form.name_en} onChange={e => setForm({ ...form, name_en: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" placeholder="English name…" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.muscle')}</label>
-                <select value={form.muscle} onChange={e => { const m = MUSCLE_GROUPS.find(x => x.label === e.target.value)!; setForm({ ...form, muscle: m.label, category: m.category }); }}
-                  className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm">
-                  {MUSCLE_GROUPS.map(m => <option key={m.label} value={m.label}>{m.label}</option>)}
-                </select>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.muscle')}</label>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {MUSCLE_GROUPS.map(m => {
+                  const on = form.muscles.includes(m.label);
+                  return (
+                    <button key={m.label} type="button"
+                      onClick={() => setForm({ ...form, muscles: on ? form.muscles.filter(x => x !== m.label) : [...form.muscles, m.label] })}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'border-input text-muted-foreground'}`}>
+                      {m.label}
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.units')}</label>
-                <select value={form.units} onChange={e => setForm({ ...form, units: e.target.value as typeof form.units })}
-                  className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm">
-                  <option value="weight_reps">{t('exercise_picker.custom_units_weight')}</option>
-                  <option value="reps">{t('exercise_picker.custom_units_reps')}</option>
-                  <option value="time_min">{t('exercise_picker.custom_units_time')}</option>
-                </select>
-              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.units')}</label>
+              <select value={form.units} onChange={e => setForm({ ...form, units: e.target.value as typeof form.units })}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm">
+                <option value="weight_reps">{t('exercise_picker.custom_units_weight')}</option>
+                <option value="reps">{t('exercise_picker.custom_units_reps')}</option>
+                <option value="time_min">{t('exercise_picker.custom_units_time')}</option>
+              </select>
             </div>
 
             <div>
