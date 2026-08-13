@@ -13,6 +13,7 @@ import { openAppOrStore } from '@/lib/appRedirect';
 interface SharedPlanExercise {
   exercise_id: string;
   exercise_name: string;
+  owner_id?: string | null;
   sets: number;
   reps: number;
   reps_per_set: number[] | null;
@@ -94,7 +95,7 @@ const SharedPlan = () => {
       const { data: exercisesData } = dayIds.length
         ? await supabase
             .from('custom_plan_exercises')
-            .select('day_id, exercise_id, sets, reps, reps_per_set, weight_kg, weight_per_set, rest_seconds, rest_per_set, exercises(name, unit_type)')
+            .select('day_id, exercise_id, sets, reps, reps_per_set, weight_kg, weight_per_set, rest_seconds, rest_per_set, exercises(name, unit_type, owner_id)')
             .in('day_id', dayIds)
             .order('order_index')
         : { data: [] };
@@ -108,6 +109,7 @@ const SharedPlan = () => {
           .map((e: any) => ({
             exercise_id: e.exercise_id,
             exercise_name: e.exercises?.name || 'Exercise',
+            owner_id: e.exercises?.owner_id ?? null,
             sets: e.sets,
             reps: e.reps,
             reps_per_set: e.reps_per_set ?? null,
@@ -165,6 +167,13 @@ const SharedPlan = () => {
           order_index: idx,
         }))
       );
+    }
+
+    // Custom cviky ve sdíleném plánu: založit odkaz (saved_exercises), ať je příjemce
+    // vidí i po uložení — jeho kopie plánu je privátní, jinak by je RLS skryla.
+    const customIds = [...new Set(plan.days.flatMap(d => d.exercises).filter(ex => ex.owner_id && ex.owner_id !== user.id).map(ex => ex.exercise_id))];
+    for (const exId of customIds) {
+      await supabase.rpc('save_shared_exercise', { p_id: exId });
     }
 
     sessionStorage.removeItem(PENDING_SAVE_KEY);
@@ -327,7 +336,12 @@ const SharedPlan = () => {
                         onClick={() => setExpandedExerciseKey(isExpanded ? null : key)}
                         className="w-full flex items-center justify-between text-left"
                       >
-                        <span className="text-sm font-medium">{ex.exercise_name}</span>
+                        <span className="text-sm font-medium flex items-center gap-1.5">
+                          {ex.exercise_name}
+                          {ex.owner_id && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-600">{t('exercise_picker.custom_badge')}</span>
+                          )}
+                        </span>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="text-xs font-semibold text-primary">
                             {ex.sets}×{formatReps(ex.reps, ex.unit_type, repsAbbr)}
