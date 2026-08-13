@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { type LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -553,7 +554,9 @@ export const WorkoutShareCard = ({
   const renderTemplate = templates[templateIndex % templates.length];
 
 
-  return (
+  // Portál do body: uniká stacking contextu historie, takže karta překryje i
+  // spodní lištu a feedback tlačítko (jinak by přes ni koukaly).
+  return createPortal(
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[70] flex flex-col overflow-hidden"
       style={{ background: '#111', width: '100%', height: '100%' }}>
@@ -621,6 +624,7 @@ export const WorkoutShareCard = ({
           {isSaving ? t('workout.saving') : (finishLabel ?? t('workout.finish'))}
         </button>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
