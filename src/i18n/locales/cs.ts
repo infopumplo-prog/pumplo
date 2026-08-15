@@ -246,6 +246,7 @@ const cs = {
   'profile.edit_questionnaire': 'Upravit dotazník',
   'profile.settings': 'Nastavení',
   'profile.feedback': 'Zpětná vazba',
+  'profile.avatar_upload_failed': 'Nahrání fotky se nepovedlo. Zkus to prosím znovu.',
 
   // Statistics
   'stats.period_today': 'Dnes',

@@ -16,6 +16,7 @@ import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import ProfilePageSkeleton from '@/components/skeletons/ProfilePageSkeleton';
 import { AppFeedbackDialog } from '@/components/feedback/AppFeedbackDialog';
+import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
@@ -30,6 +31,7 @@ const Profile = () => {
     { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { user, logout } = useAuth();
   const { profile, isLoading, updateProfile, refetch } = useUserProfile();
   const { role, isLoading: roleLoading } = useUserRole();
@@ -74,6 +76,7 @@ const Profile = () => {
       await updateProfile({ avatar_url: avatarUrl } as any);
     } catch (err) {
       console.error('Avatar upload error:', err);
+      toast({ title: t('profile.avatar_upload_failed'), variant: 'destructive' });
     } finally {
       setAvatarUploading(false);
     }

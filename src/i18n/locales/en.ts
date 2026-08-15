@@ -244,6 +244,7 @@ const en = {
   'profile.edit_questionnaire': 'Edit questionnaire',
   'profile.settings': 'Settings',
   'profile.feedback': 'Feedback',
+  'profile.avatar_upload_failed': 'Photo upload failed. Please try again.',
 
   // Statistics
   'stats.period_today': 'Today',
