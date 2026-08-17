@@ -7,10 +7,19 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface MyEx { id: string; name: string; name_en: string | null; category: string | null; video_path: string | null; primary_muscles: string[] | null; save_count: number }
 
-const MUSCLE_GROUPS: { label: string; category: string }[] = [
-  { label: 'Prsa', category: 'chest' }, { label: 'Záda', category: 'back' }, { label: 'Ramena', category: 'shoulders' },
-  { label: 'Ruce', category: 'arms' }, { label: 'Nohy', category: 'legs' }, { label: 'Hýždě', category: 'legs' },
-  { label: 'Břicho / core', category: 'core' }, { label: 'Kardio', category: 'cardio' }, { label: 'Celé tělo', category: 'full_body' },
+// Všech 10 partií jako v appce (getMuscleGroups). store = česká hodnota, kterou
+// výběr cviků (ExercisePicker) rozpozná; label se bere z i18n custom_plan.muscle_<key>.
+const MUSCLE_GROUPS: { key: string; store: string; category: string }[] = [
+  { key: 'chest', store: 'Prsa', category: 'chest' },
+  { key: 'back', store: 'Záda', category: 'back' },
+  { key: 'shoulders', store: 'Ramena', category: 'shoulders' },
+  { key: 'biceps', store: 'Biceps', category: 'arms' },
+  { key: 'triceps', store: 'Triceps', category: 'arms' },
+  { key: 'arms', store: 'Paže', category: 'arms' },
+  { key: 'legs', store: 'Nohy', category: 'legs' },
+  { key: 'glutes', store: 'Hýždě', category: 'glutes' },
+  { key: 'calves', store: 'Lýtka', category: 'legs' },
+  { key: 'core', store: 'Břicho', category: 'core' },
 ];
 
 const emptyForm = {
@@ -19,7 +28,20 @@ const emptyForm = {
   description: '', description_en: '', video_path: '' as string | null,
 };
 const categoryForMuscles = (muscles: string[]) =>
-  MUSCLE_GROUPS.find(g => g.label === muscles[0])?.category ?? 'full_body';
+  MUSCLE_GROUPS.find(g => g.store === muscles[0])?.category ?? 'full_body';
+
+const MAX_VIDEO_SEC = 20;
+const MAX_VIDEO_MB = 50;
+// Délka videa z metadat (bez přehrání) — pro validaci před uploadem.
+function videoDuration(file: File): Promise<number> {
+  return new Promise(resolve => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(v.src); resolve(Number.isFinite(d) ? d : 0); };
+    v.onerror = () => resolve(0);
+    v.src = URL.createObjectURL(file);
+  });
+}
 
 export default function MyExercisesPage() {
   const { t } = useTranslation();
@@ -47,7 +69,7 @@ export default function MyExercisesPage() {
       .select('id, name, name_en, category, unit_type, description, description_en, video_path, primary_muscles')
       .eq('id', it.id).single();
     const d = data as any;
-    const matched = (d?.primary_muscles || []).filter((m: string) => MUSCLE_GROUPS.some(g => g.label === m));
+    const matched = (d?.primary_muscles || []).filter((m: string) => MUSCLE_GROUPS.some(g => g.store === m));
     const fallback = MUSCLE_GROUPS.find(m => m.category === d?.category);
     setForm({
       id: d.id, name: d.name ?? '', name_en: d.name_en ?? '',
@@ -59,12 +81,18 @@ export default function MyExercisesPage() {
   }
 
   async function uploadVideo(file: File) {
+    // Krátký záběr = rychlé přehrávání. Storage limit je 50 MB → radši ověřit předem
+    // a dát jasnou hlášku, ne tiché selhání (to David narazil u 40s videa).
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) { toast.error(t('my_exercises.video_too_big', { mb: MAX_VIDEO_MB })); return; }
+    const dur = await videoDuration(file);
+    if (dur > MAX_VIDEO_SEC + 0.5) { toast.error(t('my_exercises.video_too_long', { sec: MAX_VIDEO_SEC })); return; }
+
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const ext = file.name.split('.').pop() || 'mp4';
+    const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
     const path = `custom/${user?.id}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: false, contentType: file.type || 'video/mp4' });
-    if (error) { setUploading(false); toast.error(t('my_exercises.video_failed')); return; }
+    if (error) { setUploading(false); toast.error(t('my_exercises.video_failed') + ': ' + error.message); return; }
     const { data: { publicUrl } } = supabase.storage.from('exercise-videos').getPublicUrl(path);
     setForm(f => ({ ...f, video_path: publicUrl }));
     setUploading(false);
@@ -164,12 +192,12 @@ export default function MyExercisesPage() {
               <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.muscle')}</label>
               <div className="flex flex-wrap gap-2 mt-1.5">
                 {MUSCLE_GROUPS.map(m => {
-                  const on = form.muscles.includes(m.label);
+                  const on = form.muscles.includes(m.store);
                   return (
-                    <button key={m.label} type="button"
-                      onClick={() => setForm({ ...form, muscles: on ? form.muscles.filter(x => x !== m.label) : [...form.muscles, m.label] })}
+                    <button key={m.key} type="button"
+                      onClick={() => setForm({ ...form, muscles: on ? form.muscles.filter(x => x !== m.store) : [...form.muscles, m.store] })}
                       className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'border-input text-muted-foreground'}`}>
-                      {m.label}
+                      {t(`custom_plan.muscle_${m.key}`)}
                     </button>
                   );
                 })}
@@ -201,6 +229,7 @@ export default function MyExercisesPage() {
               )}
               <input ref={videoInput} type="file" accept="video/mp4,video/quicktime,.mov" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
+              <p className="text-xs text-muted-foreground mt-1.5">{t('my_exercises.video_hint', { sec: MAX_VIDEO_SEC, mb: MAX_VIDEO_MB })}</p>
             </div>
 
             <div>
