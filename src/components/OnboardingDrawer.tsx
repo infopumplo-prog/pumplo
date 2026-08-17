@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
@@ -55,6 +55,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [hasJustCompleted, setHasJustCompleted] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const isEditMode = profile?.onboarding_completed ?? false;
 
@@ -121,6 +122,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   };
 
   const handleClose = async (isOpen: boolean) => {
+    // Během generování plánu nejde drawer zavřít (reload/zavření by nechalo rozdělaný stav)
+    if (isCompleting) return;
     if (!isOpen) {
       // Save all data and determine if onboarding is complete
       const allValid = areAllStepsValid();
@@ -201,12 +204,16 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     
     // Set flag to prevent useEffect from resetting state during refetch
     setHasJustCompleted(true);
-    
+    setIsCompleting(true);
+
+    try {
     const trainingSplit = trainingDays.length > 0 && userLevel
       ? resolveSplit(trainingDays.length, userLevel, splitOverride)
       : splitOverride;
-    
-    // 1. Always save profile first
+
+    // 1. Save answers first — onboarding_completed goes true only AFTER the plan
+    // exists, so a reload mid-generation drops the user back into the questionnaire
+    // instead of a broken half-onboarded state (tutorials firing with no plan).
     await updateProfile({
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,
@@ -223,10 +230,10 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       split_override: splitOverride,
       equipment_preference: equipmentPreference,
       user_level: userLevel as any,
-      onboarding_completed: true,
+      onboarding_completed: isEditMode,
       current_step: TOTAL_STEPS - 1,
     });
-    
+
     // 2. Check if there's an active workout plan
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -234,29 +241,29 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       onOpenChange(false);
       return;
     }
-    
+
     const { data: activePlan } = await supabase
       .from('user_workout_plans')
       .select('id, training_days')
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
       .maybeSingle();
-    
+
     if (!activePlan) {
       // NO active plan exists -> create new one with training_days snapshot
       const selectedGymId = profile?.selected_gym_id;
-      
+
       if (primaryGoal) {
         // Reset day index first
         await supabase
           .from('user_profiles')
           .update({ current_day_index: 0 })
           .eq('user_id', userData.user.id);
-        
+
         // If user has a gym selected, generate workout plan with exercises
         if (selectedGymId && userLevel) {
           console.log('[OnboardingDrawer] Generating workout plan with exercises...');
-          
+
           // generateWorkoutPlan creates the plan and assigns exercises
           const planId = await generateWorkoutPlan(
             selectedGymId,
@@ -266,15 +273,24 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             equipmentPreference,
             trainingDuration // Pass duration for dynamic slot calculation
           );
-          
+
           if (planId) {
             // Update the plan with snapshotted training_days (generator doesn't set this)
             await supabase
               .from('user_workout_plans')
               .update({ training_days: trainingDays })
               .eq('id', planId);
-            
+
             console.log('[OnboardingDrawer] Plan created with exercises, ID:', planId);
+          } else if (!isEditMode) {
+            // Generation failed for a new user — keep onboarding open so they can retry
+            setHasJustCompleted(false);
+            toast({
+              title: t('onboarding.generate_failed_title'),
+              description: t('onboarding.generate_failed_desc'),
+              variant: 'destructive',
+            });
+            return;
           }
         } else {
           // No gym selected - create empty plan (exercises will be generated when gym is selected)
@@ -301,19 +317,23 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         }
       }
       
-      await refetch();
+      // 3. Plan exists now -> mark onboarding as completed
+      await updateProfile({ onboarding_completed: true });
       toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen a plán připraven!' });
     } else {
       // Active plan EXISTS -> DO NOT touch it!
       // Just save profile and show warning
-      await refetch();
-      toast({ 
-        title: 'Změny uloženy', 
+      await updateProfile({ onboarding_completed: true });
+      toast({
+        title: 'Změny uloženy',
         description: 'Změny se projeví až v novém tréninkovém plánu.',
       });
     }
-    
+
     onOpenChange(false);
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const renderStep = () => {
@@ -421,6 +441,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
+          {isCompleting ? (
+            <div className="flex flex-col items-center justify-center text-center py-16">
+              <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+              <p className="font-semibold">{t('onboarding.generating_title')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('onboarding.generating_desc')}</p>
+            </div>
+          ) : (
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -432,6 +459,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               {renderStep()}
             </motion.div>
           </AnimatePresence>
+          )}
         </div>
 
         {/* Navigation */}
@@ -456,12 +484,16 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
-              <Button 
-                onClick={handleComplete} 
+              <Button
+                onClick={handleComplete}
                 className="flex-1 bg-green-500 hover:bg-green-600"
-                disabled={!areAllStepsValid() || isGenerating}
+                disabled={!areAllStepsValid() || isGenerating || isCompleting}
               >
-                {isEditMode ? 'Uložit' : 'Dokončit'}
+                {isCompleting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('onboarding.generating_button')}</>
+                ) : (
+                  isEditMode ? 'Uložit' : 'Dokončit'
+                )}
               </Button>
             )}
           </div>
