@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Phone, Mail, Facebook, Instagram, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Facebook, Instagram, MessageCircle, Globe } from 'lucide-react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConversations } from '@/hooks/useConversations';
@@ -98,13 +98,25 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                   <Mail className="w-4 h-4 text-primary" />
                 </a>
               )}
+              {trainer.contact.web && (
+                <a
+                  href={trainer.contact.web.startsWith('http') ? trainer.contact.web : `https://${trainer.contact.web}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <Globe className="w-4 h-4 text-primary" />
+                </a>
+              )}
             </div>
 
-            {/* Tabs: Certifikace | Ceník */}
+            {/* Tabs: Certifikace | Ceník (ceník jen když ho trenér vyplnil — je dobrovolný) */}
             <Tabs defaultValue="certifications" className="w-full">
-              <TabsList className="w-full grid grid-cols-2 h-auto p-1">
+              <TabsList className={`w-full grid h-auto p-1 ${trainer.pricing.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <TabsTrigger value="certifications" className="text-xs py-2">{t('business.trainer_certifications')}</TabsTrigger>
-                <TabsTrigger value="pricing" className="text-xs py-2">{t('business.trainer_pricing')}</TabsTrigger>
+                {trainer.pricing.length > 0 && (
+                  <TabsTrigger value="pricing" className="text-xs py-2">{t('business.trainer_pricing')}</TabsTrigger>
+                )}
               </TabsList>
 
               {/* Certifications Tab */}
@@ -142,8 +154,8 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
               </TabsContent>
 
               {/* Pricing Tab */}
-              <TabsContent value="pricing" className="mt-4">
-                {trainer.pricing.length > 0 ? (
+              {trainer.pricing.length > 0 && (
+                <TabsContent value="pricing" className="mt-4">
                   <div>
                     <h4 className="text-sm font-semibold mb-3">{t('business.trainer_services')}</h4>
                     <div className="space-y-0">
@@ -160,12 +172,8 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground py-4 text-center">
-                    {t('business.pricing_unavailable')}
-                  </div>
-                )}
-              </TabsContent>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

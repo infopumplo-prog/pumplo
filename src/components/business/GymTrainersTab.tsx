@@ -20,6 +20,7 @@ export interface Trainer {
     email?: string;
     facebook?: string;
     instagram?: string;
+    web?: string;
   };
 }
 

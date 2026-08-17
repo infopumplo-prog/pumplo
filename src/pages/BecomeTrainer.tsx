@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, ChevronLeft, Check, Building2, MessageSquare, User, Camera, Plus, X, Phone, Mail, Award } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronLeft, Check, Building2, MessageSquare, User, Camera, Plus, X, Phone, Mail, Award, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +56,7 @@ const BecomeTrainer = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState(user?.email || '');
   const [instagram, setInstagram] = useState('');
+  const [web, setWeb] = useState('');
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [pricing, setPricing] = useState<PricingItem[]>([
     { name: '', price: null },
@@ -149,7 +150,7 @@ const BecomeTrainer = () => {
         specializations: specsArray,
         certifications: certifications.filter(c => c.name),
         pricing: pricing.filter(p => p.name && p.price),
-        contact: { phone: phone || undefined, email: email || undefined, instagram: instagram || undefined },
+        contact: { phone: phone || undefined, email: email || undefined, instagram: instagram || undefined, web: web.trim() || undefined },
         status: isAutoApproved ? 'approved' : 'pending',
         is_active: isAutoApproved,
       } as any);
@@ -285,6 +286,10 @@ const BecomeTrainer = () => {
                   <span className="text-muted-foreground text-sm shrink-0 w-4 text-center">@</span>
                   <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder={t('trainer.instagram_placeholder')} />
                 </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Input value={web} onChange={(e) => setWeb(e.target.value)} placeholder={t('trainer.web_placeholder')} />
+                </div>
               </motion.div>
 
               {/* Certifications */}
@@ -307,7 +312,7 @@ const BecomeTrainer = () => {
               {/* Pricing */}
               <motion.div variants={itemVariants}>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>{t('trainer.pricing_label')}</Label>
+                  <Label>{t('trainer.pricing_label')} <span className="text-muted-foreground font-normal">({t('business.optional').toLowerCase()})</span></Label>
                   <button onClick={() => setPricing([...pricing, { name: '', price: null }])} className="text-xs text-primary font-medium flex items-center gap-1">
                     <Plus className="w-3 h-3" /> {t('trainer.pricing_add')}
                   </button>

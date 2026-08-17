@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Building2, Phone, Mail, Instagram, DollarSign, Plus, X, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Building2, Phone, Mail, Instagram, DollarSign, Plus, X, Clock, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ interface TrainerRecord {
   bio: string | null;
   specializations: string[] | null;
   pricing: { name: string; price: number }[] | null;
-  contact: { phone?: string; email?: string; instagram?: string } | null;
+  contact: { phone?: string; email?: string; instagram?: string; web?: string } | null;
   status: string | null;
   is_active: boolean;
   gym_name?: string;
@@ -69,6 +69,7 @@ const TrainerProfile = () => {
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactInstagram, setContactInstagram] = useState('');
+  const [contactWeb, setContactWeb] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -116,10 +117,11 @@ const TrainerProfile = () => {
       setBio(first.bio || '');
       setSpecializations((first.specializations || []).join(', '));
       setPricing((first.pricing as PricingItem[]) || []);
-      const contact = (first.contact || {}) as { phone?: string; email?: string; instagram?: string };
+      const contact = (first.contact || {}) as { phone?: string; email?: string; instagram?: string; web?: string };
       setContactPhone(contact.phone || '');
       setContactEmail(contact.email || '');
       setContactInstagram(contact.instagram || '');
+      setContactWeb(contact.web || '');
     }
 
     setIsLoading(false);
@@ -157,6 +159,7 @@ const TrainerProfile = () => {
       if (contactPhone.trim()) contact.phone = contactPhone.trim();
       if (contactEmail.trim()) contact.email = contactEmail.trim();
       if (contactInstagram.trim()) contact.instagram = contactInstagram.trim();
+      if (contactWeb.trim()) contact.web = contactWeb.trim();
 
       // Update all trainer records for this user
       for (const record of trainerRecords) {
@@ -317,7 +320,7 @@ const TrainerProfile = () => {
               <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-green-500" />
               </div>
-              <h2 className="text-lg font-semibold">{t('trainer_profile.pricing_title')}</h2>
+              <h2 className="text-lg font-semibold">{t('trainer_profile.pricing_title')} <span className="text-sm text-muted-foreground font-normal">({t('business.optional').toLowerCase()})</span></h2>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               {pricing.map((item, index) => (
@@ -405,6 +408,18 @@ const TrainerProfile = () => {
                   value={contactInstagram}
                   onChange={(e) => setContactInstagram(e.target.value)}
                   placeholder="@username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contactWeb" className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  {t('trainer_profile.web_label')}
+                </Label>
+                <Input
+                  id="contactWeb"
+                  value={contactWeb}
+                  onChange={(e) => setContactWeb(e.target.value)}
+                  placeholder="www.mujweb.cz"
                 />
               </div>
             </div>

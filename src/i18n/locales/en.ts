@@ -1189,6 +1189,7 @@ const en = {
   'trainer.phone_placeholder': 'Phone',
   'trainer.email_placeholder': 'Email',
   'trainer.instagram_placeholder': 'Instagram',
+  'trainer.web_placeholder': 'Website (page, references…)',
   'trainer.certifications_label': 'Certifications',
   'trainer.cert_add': 'Add',
   'trainer.cert_name_placeholder': 'Certification name',
@@ -2177,6 +2178,7 @@ const en = {
   'trainer_profile.contact_title': 'Contact',
   'trainer_profile.phone_label': 'Phone',
   'trainer_profile.email_label': 'E-mail',
+  'trainer_profile.web_label': 'Website',
   'trainer_profile.saving': 'Saving...',
   'trainer_profile.save_changes': 'Save changes',
 
@@ -2308,6 +2310,11 @@ const en = {
   'onboarding.split_upper_lower': 'Upper / Lower A/B',
   'onboarding.split_ppl': 'Push / Pull / Legs A/B/C',
   'onboarding.split_days': 'days {{days}}',
+  'onboarding.generating_title': 'Generating your training plan…',
+  'onboarding.generating_desc': 'Hang tight, picking exercises just for you. Don\'t close the app.',
+  'onboarding.generating_button': 'Generating…',
+  'onboarding.generate_failed_title': 'Plan generation failed',
+  'onboarding.generate_failed_desc': 'Please tap Finish again.',
 
   'terms.title': 'Terms of Service',
   'terms.last_updated': 'Last updated: May 2, 2026',

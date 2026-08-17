@@ -1188,6 +1188,7 @@ const cs = {
   'trainer.phone_placeholder': 'Telefon',
   'trainer.email_placeholder': 'Email',
   'trainer.instagram_placeholder': 'Instagram',
+  'trainer.web_placeholder': 'Web (stránky, reference…)',
   'trainer.certifications_label': 'Certifikace',
   'trainer.cert_add': 'Přidat',
   'trainer.cert_name_placeholder': 'Název certifikace',
@@ -2168,6 +2169,7 @@ const cs = {
   'trainer_profile.contact_title': 'Kontakt',
   'trainer_profile.phone_label': 'Telefon',
   'trainer_profile.email_label': 'E-mail',
+  'trainer_profile.web_label': 'Web',
   'trainer_profile.saving': 'Ukládám...',
   'trainer_profile.save_changes': 'Uložit změny',
 
@@ -2293,6 +2295,11 @@ const cs = {
   'onboarding.split_upper_lower': 'Horní / Dolní tělo A/B',
   'onboarding.split_ppl': 'Push / Pull / Legs A/B/C',
   'onboarding.split_days': 'dny {{days}}',
+  'onboarding.generating_title': 'Generuji tvůj tréninkový plán…',
+  'onboarding.generating_desc': 'Chviličku strpení, vybírám cviky přesně pro tebe. Nezavírej appku.',
+  'onboarding.generating_button': 'Generuji…',
+  'onboarding.generate_failed_title': 'Generování plánu se nepovedlo',
+  'onboarding.generate_failed_desc': 'Zkus prosím Dokončit ještě jednou.',
 
   'terms.title': 'Podmínky používání',
   'terms.last_updated': 'Poslední aktualizace: 2. května 2026',
