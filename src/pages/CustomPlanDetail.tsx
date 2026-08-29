@@ -660,6 +660,40 @@ const CustomPlanDetail = () => {
     }
   };
 
+  // Proceed into the workout for the already-chosen gym. Shared by the normal
+  // path and by "start anyway", so the location gate behaves identically in both.
+  const proceedToWorkout = async (gymId: string) => {
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('latitude, longitude, name')
+      .eq('id', gymId)
+      .single();
+
+    if (gymData?.latitude != null && gymData?.longitude != null) {
+      setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
+      setLocationGymLat(gymData.latitude);
+      setLocationGymLng(gymData.longitude);
+      setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
+      setShowLocationGate(true);
+    } else {
+      navigate(`/custom-workout/${id}?gym=${gymId}`);
+    }
+  };
+
+  // Escape hatch for the equipment gate. A missing machine in the catalogue does
+  // not mean the exercise is impossible — the gym may simply not have that piece
+  // listed. Blocking the workout outright was the single most common complaint,
+  // so the warning stays but it is no longer a dead end.
+  const handleStartAnyway = async () => {
+    if (!selectedWorkoutGymId) return;
+    setIsCheckingEquipment(true);
+    try {
+      await proceedToWorkout(selectedWorkoutGymId);
+    } finally {
+      setIsCheckingEquipment(false);
+    }
+  };
+
   // Called after all incompatible exercises are fixed and user retries
   const handleRetryAfterFix = async () => {
     if (!id || !selectedWorkoutGymId) return;
@@ -669,20 +703,7 @@ const CustomPlanDetail = () => {
       setIncompatibleExercises(incompatible);
       if (incompatible.length > 0) return;
 
-      const { data: gymData } = await supabase
-        .from('gyms')
-        .select('latitude, longitude')
-        .eq('id', selectedWorkoutGymId)
-        .single();
-
-      if (gymData?.latitude != null && gymData?.longitude != null) {
-        setLocationGymLat(gymData.latitude);
-        setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
-        setShowLocationGate(true);
-      } else {
-        navigate(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
-      }
+      await proceedToWorkout(selectedWorkoutGymId);
     } finally {
       setIsCheckingEquipment(false);
     }
@@ -1327,13 +1348,22 @@ const CustomPlanDetail = () => {
                 {t('custom_plan.incompatible_count', { count: incompatibleExercises.length, gym: locationGymName })}
               </p>
             </div>
-            <button
-              onClick={handleRetryAfterFix}
-              disabled={isCheckingEquipment}
-              className="text-xs font-semibold text-primary shrink-0"
-            >
-              {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={handleRetryAfterFix}
+                disabled={isCheckingEquipment}
+                className="text-xs font-semibold text-primary"
+              >
+                {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
+              </button>
+              <button
+                onClick={handleStartAnyway}
+                disabled={isCheckingEquipment}
+                className="text-xs font-semibold text-muted-foreground underline underline-offset-2"
+              >
+                {t('custom_plan.start_anyway')}
+              </button>
+            </div>
           </div>
         </div>
       )}
