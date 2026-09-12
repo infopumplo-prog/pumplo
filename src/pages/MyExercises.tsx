@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, Video, Users, Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -64,6 +64,18 @@ export default function MyExercisesPage() {
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm({ ...emptyForm }); setEditorOpen(true); }
+
+  // Příchod z výběru cviků do vlastního plánu („+ Vytvořit vlastní cvik“): rovnou otevřít editor,
+  // případně s předvyplněným názvem z vyhledávání.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    const name = searchParams.get('name') ?? '';
+    setForm({ ...emptyForm, name });
+    setEditorOpen(true);
+    searchParams.delete('new'); searchParams.delete('name');
+    setSearchParams(searchParams, { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function openEdit(it: MyEx) {
     const { data } = await supabase.from('exercises')
       .select('id, name, name_en, category, unit_type, description, description_en, video_path, primary_muscles')
