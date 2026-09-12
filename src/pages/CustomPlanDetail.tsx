@@ -226,7 +226,10 @@ const publicVideoUrl = (videoPath: string | null): string | null => {
 // (<video> thumbnails stall iOS when many render at once).
 const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
   const [error, setError] = useState(false);
-  const url = useRef(getVideoThumbUrl(videoPath)).current;
+  // Klíčované na videoPath: dřív useRef zmrazil první URL, takže po výměně cviku
+  // zůstal starý obrázek (nález 12. 9.)
+  const url = useMemo(() => getVideoThumbUrl(videoPath), [videoPath]);
+  useEffect(() => { setError(false); }, [videoPath]);
   if (!url || error) {
     return (
       <div className="shrink-0 w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
@@ -719,7 +722,7 @@ const CustomPlanDetail = () => {
     for (const day of plan.days) {
       for (const ex of day.exercises) {
         if (ex.exercise_id === oldExerciseId) {
-          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name, exercise_name_en: alt.name_en ?? null });
+          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name, exercise_name_en: alt.name_en ?? null, video_path: alt.video_path ?? null } as Parameters<typeof updateExercise>[1]);
         }
       }
     }
@@ -745,7 +748,7 @@ const CustomPlanDetail = () => {
 
   // Replace a row's exercise with the picked alternative (persists via updateExercise).
   const applyRowSwap = async (row: CustomPlanExercise, pick: SwapCandidate) => {
-    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null });
+    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null, video_path: pick.video_path ?? null } as Parameters<typeof updateExercise>[1]);
     toast({ title: t('workout.swap_success', { name: pick.name }) });
   };
 
