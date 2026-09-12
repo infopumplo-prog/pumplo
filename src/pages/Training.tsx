@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
+import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
+import { prefetchVideos } from '@/lib/videoCache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -960,24 +962,29 @@ const Training = () => {
     const targetMuscles: string[] = [];
     for (const ex of mainExercises) {
       if (ex.exerciseId) {
-        const { data } = await supabase
-          .from('exercises')
-          .select('primary_muscles, secondary_muscles')
-          .eq('id', ex.exerciseId)
-          .single();
+        // Sdílená cache detailu cviku (stejný klíč jako přehrávač) — offline nespadne
+        const { data } = await fetchWithCache<{ primary_muscles: string[] | null; secondary_muscles: string[] | null }>(
+          SHARED_SCOPE, `exercise:${ex.exerciseId}`, () =>
+            supabase.from('exercises').select('*').eq('id', ex.exerciseId).single(),
+        );
         if (data?.primary_muscles) targetMuscles.push(...data.primary_muscles);
         if (data?.secondary_muscles) targetMuscles.push(...data.secondary_muscles);
       }
     }
 
     // 3. Fetch exercises for the given phase with body_region
-    const { data: exercisesData } = await supabase
-      .from('exercises')
-      .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
-      .is('owner_id', null) // custom cviky nikdy do rozcvičky/protažení
-      .eq('allowed_phase', phase);
+    // Offline: pool rozcvičky/protažení z cache, videa poolu se předstáhnou do telefonu
+    const { data: exercisesData, source } = await fetchWithCache<Array<{ id: string; video_path: string | null } & Record<string, unknown>>>(
+      SHARED_SCOPE, `exercisePool:${phase}`, () =>
+        supabase
+          .from('exercises')
+          .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
+          .is('owner_id', null) // custom cviky nikdy do rozcvičky/protažení
+          .eq('allowed_phase', phase),
+    );
 
     if (!exercisesData || exercisesData.length === 0) return [];
+    if (source === 'network') void prefetchVideos(exercisesData.map(e => e.video_path));
 
     // 4. Use appropriate selection helper
     if (phase === 'warmup') {

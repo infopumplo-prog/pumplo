@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { FETCH_TIMEOUT_MS, readCache, resolveWithCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserProfile {
@@ -56,14 +57,36 @@ export const useUserProfile = () => {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    // Offline-first: poslední známý profil z telefonu ukážeme hned, síť ho pak
+    // jen obnoví. Bez toho offline vyskočil zámek „vyplň dotazník" (profil null).
+    const cached = readCache<UserProfile>(user.id, 'profile');
+    if (cached) {
+      setProfile((prev) => prev ?? cached);
+      setIsLoading(false);
+    }
+
+    let data: UserProfile | null = null;
+    let error: { code?: string; message: string } | null = null;
+    try {
+      const res = await withNetworkTimeout(
+        Promise.resolve(
+          supabase.from('user_profiles').select('*').eq('user_id', user.id).single(),
+        ),
+        FETCH_TIMEOUT_MS,
+      );
+      data = res.data as UserProfile | null;
+      error = res.error;
+    } catch (e) {
+      error = { code: 'NETWORK', message: e instanceof Error ? e.message : String(e) };
+    }
 
     if (error) {
       console.error('Error fetching profile:', error);
+      if (error.code !== 'PGRST116') {
+        // Síť selhala nebo visí — zůstaň u cache, nikdy nezamykej trénink kvůli signálu
+        const fallback = resolveWithCache<UserProfile>(user.id, 'profile', { ok: false });
+        if (fallback.data) setProfile(fallback.data);
+      }
       // If no profile exists, create one
       if (error.code === 'PGRST116') {
         const { data: newProfile, error: insertError } = await supabase
@@ -76,8 +99,9 @@ export const useUserProfile = () => {
           setProfile(newProfile as UserProfile);
         }
       }
-    } else {
-      setProfile(data as UserProfile);
+    } else if (data) {
+      resolveWithCache(user.id, 'profile', { ok: true, data });
+      setProfile(data);
       // Backfill the persisted language for push localization: if the DB value
       // is missing or out of sync with the user's local choice, push it up.
       const localLang = (localStorage.getItem('pumplo_lang') as 'cs' | 'en' | null) || 'cs';
@@ -101,6 +125,12 @@ export const useUserProfile = () => {
       return { success: false, error: error.message };
     }
 
+    // Cache drž v souladu i bez čekání na refetch (ten může offline selhat)
+    setProfile((prev) => {
+      const merged = prev ? ({ ...prev, ...updates } as UserProfile) : prev;
+      if (merged) writeCache(user.id, 'profile', merged);
+      return merged;
+    });
     await fetchProfile();
     return { success: true };
   };

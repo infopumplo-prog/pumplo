@@ -15,6 +15,8 @@ import {
 } from '@/lib/trainingGoals';
 import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/workoutRotation';
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
+import { FETCH_TIMEOUT_MS, SHARED_SCOPE, readCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
+import { prefetchVideos } from '@/lib/videoCache';
 
 // Role categories for split type detection
 const LOWER_BODY_ROLES = ['squat', 'hinge', 'lunge', 'step', 'jump'];
@@ -48,6 +50,22 @@ const deriveSplitTypeFromExercises = (exercises: Array<{ day_letter: string; rol
   return 'upper_lower';
 };
 
+let warmingKey = '';
+/** Stáhne detaily cviků plánu do cache a jejich videa do telefonu. Idempotentní, běží na pozadí. */
+const warmOfflineCache = async (exerciseIds: string[], videoUrls: string[]) => {
+  const key = exerciseIds.slice().sort().join(',');
+  if (!key || key === warmingKey) return;
+  warmingKey = key;
+  try {
+    const { data } = await supabase.from('exercises').select('*').in('id', exerciseIds);
+    (data || []).forEach((row) => writeCache(SHARED_SCOPE, `exercise:${row.id}`, row));
+    await prefetchVideos(videoUrls);
+  } catch (e) {
+    console.warn('[useWorkoutPlan] offline warm-up failed', e);
+    warmingKey = '';
+  }
+};
+
 interface WorkoutPlanData {
   id: string;
   gymId: string;
@@ -67,6 +85,8 @@ interface WorkoutPlanData {
   needsRegeneration: boolean;
   inputsSnapshot: PlanInputsSnapshot | null;
   validationReport: ValidationReport | null;
+  /** exercise_id → URL videa; slouží k předstažení videí plánu do telefonu (offline) */
+  videoPaths?: Record<string, string>;
 }
 
 export const useWorkoutPlan = () => {
@@ -83,25 +103,40 @@ export const useWorkoutPlan = () => {
       return;
     }
 
-    setIsLoading(true);
+    // Offline-first: poslední načtený plán z telefonu ukážeme hned (stale-while-
+    // revalidate). Síť ho pak jen obnoví; když selže nebo visí, plán zůstane
+    // a uživatel může trénovat i bez signálu.
+    const cachedPlan = readCache<WorkoutPlanData>(user.id, 'plan');
+    if (cachedPlan) {
+      setPlan((prev) => prev ?? cachedPlan);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     setEquipmentWarning(null);
 
     try {
       // 1. Get active plan with v2.0 fields
-      const { data: planData, error: planError } = await supabase
-        .from('user_workout_plans')
-        .select(`
-          *,
-          training_goals (day_count, name)
-        `)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
+      const { data: planData, error: planError } = await withNetworkTimeout(
+        Promise.resolve(
+          supabase
+            .from('user_workout_plans')
+            .select(`
+              *,
+              training_goals (day_count, name)
+            `)
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single(),
+        ),
+        FETCH_TIMEOUT_MS,
+      );
 
       if (planError) {
         if (planError.code === 'PGRST116') {
-          // No active plan
+          // No active plan — potvrzeno serverem, cache už neplatí
+          writeCache(user.id, 'plan', null);
           setPlan(null);
           setIsLoading(false);
           return;
@@ -121,15 +156,20 @@ export const useWorkoutPlan = () => {
       const goalName = (planData.training_goals as { name: string } | null)?.name || 'Trénink';
 
       // 3. Get exercises for this plan with machine info
-      const { data: exercisesData, error: exError } = await supabase
-        .from('user_workout_exercises')
-        .select(`
-          *,
-          exercises (id, name, name_en, video_path, machine_id, machines!exercises_machine_id_fkey (name, name_en))
-        `)
-        .eq('plan_id', planData.id)
-        .order('day_letter')
-        .order('slot_order');
+      const { data: exercisesData, error: exError } = await withNetworkTimeout(
+        Promise.resolve(
+          supabase
+            .from('user_workout_exercises')
+            .select(`
+              *,
+              exercises (id, name, name_en, video_path, machine_id, machines!exercises_machine_id_fkey (name, name_en))
+            `)
+            .eq('plan_id', planData.id)
+            .order('day_letter')
+            .order('slot_order'),
+        ),
+        FETCH_TIMEOUT_MS,
+      );
 
       if (exError) throw exError;
 
@@ -308,7 +348,7 @@ export const useWorkoutPlan = () => {
         };
       });
 
-      setPlan({
+      const resolvedPlan: WorkoutPlanData = {
         id: planData.id,
         gymId: planData.gym_id,
         goalId: planData.goal_id as TrainingGoalId,
@@ -326,11 +366,27 @@ export const useWorkoutPlan = () => {
         methodologyVersion: planData.methodology_version || null,
         needsRegeneration: planData.needs_regeneration || false,
         inputsSnapshot,
-        validationReport
-      });
+        validationReport,
+        videoPaths: Object.fromEntries(
+          (exercisesData || [])
+            .map(ex => [ex.exercise_id, (ex.exercises as Record<string, unknown> | null)?.video_path as string | null])
+            .filter(([, v]) => Boolean(v)) as [string, string][],
+        ),
+      };
+      writeCache(user.id, 'plan', resolvedPlan);
+      setPlan(resolvedPlan);
+      // Offline příprava (na pozadí, nic neblokuje): detaily cviků do cache a
+      // videa plánu do telefonu, ať trénink jede i bez signálu.
+      void warmOfflineCache(Object.keys(resolvedPlan.videoPaths || {}), Object.values(resolvedPlan.videoPaths || {}));
     } catch (err) {
       console.error('Error fetching workout plan:', err);
-      setError('Nepodařilo se načíst tréninkový plán');
+      // Síť selhala / visí: když máme plán z cache, jedeme dál bez chyby
+      const fallback = readCache<WorkoutPlanData>(user.id, 'plan');
+      if (fallback) {
+        setPlan(fallback);
+      } else {
+        setError('Nepodařilo se načíst tréninkový plán');
+      }
     } finally {
       setIsLoading(false);
     }
