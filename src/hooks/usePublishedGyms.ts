@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
 import { OpeningHours } from './useGym';
 import { GymPricing } from '@/contexts/GymContext';
 
@@ -31,15 +32,17 @@ export interface PublicGym {
 export const usePublishedGyms = () => {
   const { data: gyms, isLoading, error, refetch } = useQuery({
     queryKey: ['published-gyms'],
+    // Offline: react-query by dotaz jinak „pozastavil“ a výběr posilovny zůstal prázdný
+    networkMode: 'always',
     queryFn: async () => {
-      // Use the secure public_gyms view that excludes owner_id
-      const { data, error } = await supabase
-        .from('public_gyms')
-        .select('*');
+      // Use the secure public_gyms view that excludes owner_id.
+      // Offline-first: seznam posiloven z cache (sdílený, ne per uživatel).
+      const { data, source } = await fetchWithCache<Record<string, unknown>[]>(SHARED_SCOPE, 'publishedGyms', () =>
+        supabase.from('public_gyms').select('*'),
+      );
+      if (!data) throw new Error(source === 'none' ? 'Seznam posiloven není dostupný (offline bez cache)' : 'no data');
 
-      if (error) throw error;
-
-      const normalized = (data || []).map(gym => ({
+      const normalized = (data as unknown as Array<Record<string, unknown>>).map(gym => ({
         ...gym,
         opening_hours: gym.opening_hours as OpeningHours,
         pricing: gym.pricing as unknown as GymPricing | null,
