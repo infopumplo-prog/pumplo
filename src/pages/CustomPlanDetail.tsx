@@ -545,11 +545,14 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
       {isIncompatible && alternatives && alternatives.length > 0 && (
         <div className="ml-7 mt-2 mb-1">
           <p className="text-xs text-destructive font-medium mb-1.5">{t('custom_plan.incompatible_alternatives')}</p>
+          <p className="text-[11px] text-muted-foreground mb-1.5">{t('custom_plan.swap_hint')}</p>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {alternatives.map(alt => (
               <button
                 key={alt.id}
-                onClick={() => onSwapExercise?.(exercise.exercise_id, alt)}
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onSwapExercise?.(exercise.exercise_id, alt); }}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
               >
                 <ArrowRightLeft className="w-3 h-3 shrink-0" />

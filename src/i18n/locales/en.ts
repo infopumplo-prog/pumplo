@@ -618,6 +618,7 @@ const en = {
   'custom_plan.incompatible_alternatives': 'Available alternatives at this gym:',
   'custom_plan.no_alternatives': 'No alternative available at this gym.',
   'custom_plan.check_equipment': 'Check',
+  'custom_plan.swap_hint': 'Tap ⟳ for a random swap, hold ⟳ to pick from the full list.',
   'custom_plan.start_anyway': 'Start anyway',
   'custom_plan.video_loading': 'Loading video...',
   'custom_plan.video_unavailable': 'Video unavailable',

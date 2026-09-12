@@ -276,7 +276,10 @@ export function useCustomPlanDetail(planId: string | null) {
     // them separately (best-effort) so a missing column can't fail the whole
     // update, and apply them optimistically so the UI reflects the change even
     // before the DDL is applied.
-    const { notes, set_types, ...known } = updates;
+    // exercise_name / exercise_name_en jsou jen pro optimistické překreslení —
+    // v tabulce custom_plan_exercises takové sloupce nejsou (zápis by spadl:
+    // „Saving failed“ při výměně cviku, nález 12. 9.). Do DB jde jen exercise_id.
+    const { notes, set_types, exercise_name: _n, exercise_name_en: _ne, ...known } = updates as typeof updates & { exercise_name?: string; exercise_name_en?: string | null };
     const hasMeta = notes !== undefined || set_types !== undefined;
 
     // Optimistic update for EVERYTHING — every field here maps 1:1 onto the

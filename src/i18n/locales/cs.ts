@@ -620,6 +620,7 @@ const cs = {
   'custom_plan.incompatible_alternatives': 'Dostupné náhrady v této posilovně:',
   'custom_plan.no_alternatives': 'Žádná náhrada v této posilovně není k dispozici.',
   'custom_plan.check_equipment': 'Zkontrolovat',
+  'custom_plan.swap_hint': 'Ťukni na ⟳ pro náhodnou výměnu, podrž ⟳ pro celý seznam cviků.',
   'custom_plan.start_anyway': 'Spustit i tak',
   'custom_plan.video_loading': 'Video se načítá...',
   'custom_plan.video_unavailable': 'Video nedostupné',
