@@ -9,6 +9,8 @@ interface OnboardingDemographicsStepProps {
   height: string;
   weight: string;
   onFirstNameChange: (v: string) => void;
+  /** Zobrazit pole jména — jen v editaci profilu (při registraci se sbírá jinde). */
+  showName?: boolean;
   onLastNameChange: (v: string) => void;
   onGenderChange: (gender: string) => void;
   onAgeChange: (age: string) => void;
@@ -24,6 +26,7 @@ const OnboardingDemographicsStep = ({
   height,
   weight,
   onFirstNameChange,
+  showName = false,
   onLastNameChange,
   onGenderChange,
   onAgeChange,
@@ -41,7 +44,20 @@ const OnboardingDemographicsStep = ({
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-center">{t('onboarding.demographics_title')}</h2>
 
-      {/* Name is collected at account creation (required there) — not here. */}
+      {/* Jméno se sbírá při registraci; v editaci profilu (dotazník z Profilu) ho
+          ale musí jít změnit — dřív nikde nešlo (nález 12. 9.). */}
+      {showName && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">{t('onboarding.first_name_label')}</label>
+            <Input value={firstName} onChange={(e) => onFirstNameChange(e.target.value)} placeholder={t('onboarding.first_name_ph')} autoComplete="given-name" />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">{t('onboarding.last_name_label')}</label>
+            <Input value={lastName} onChange={(e) => onLastNameChange(e.target.value)} placeholder={t('onboarding.last_name_ph')} autoComplete="family-name" />
+          </div>
+        </div>
+      )}
 
       {/* Gender Selection */}
       <div className="space-y-2">

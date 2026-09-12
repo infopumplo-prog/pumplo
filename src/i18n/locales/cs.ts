@@ -378,6 +378,7 @@ const cs = {
   'workout.allow_location': 'Povolit polohu',
   'workout.open_settings': 'Otevřít nastavení',
   'workout.cancel': 'Zrušit',
+  'workout.outside_proceed_toast': 'Nejsi v posilovně {{gymName}} — trénink jde spustit i tak.',
   'workout.not_in_gym': 'Nejsi v posilovně',
   'workout.outside_soft_desc': 'Jsi mimo dosah posilovny {{gymName}} — stroje v plánu nemusí odpovídat tomu, co máš kolem sebe. Trénovat ale můžeš klidně dál.',
   'workout.continue_anyway': 'Pokračovat i tak',

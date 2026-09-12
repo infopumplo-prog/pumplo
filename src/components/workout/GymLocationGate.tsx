@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -19,16 +20,21 @@ interface GymLocationGateProps {
 export const GymLocationGate = ({ gymLat, gymLng, gymName, onConfirmed, onCancel }: GymLocationGateProps) => {
   const { status, distanceFromGym, checkLocation, GYM_RADIUS_METRES } = useGymLocation();
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { t } = useTranslation();
 
   // Pumplo team/staff can start a workout anywhere — skip the location check.
   const isStaff = profile?.is_staff === true;
 
   // Wait for the profile so a staff member never gets a stray location prompt.
+  // Brána jen varuje, nikdy neblokuje (rozhodnutí 4. 8. + David 12. 9.: „měl jsem
+  // vidět svůj plán, i když v posilovně nejsem“). Mimo posilovnu / bez povolení /
+  // při chybě → krátká hláška a trénink se pustí.
   useEffect(() => {
     if (profileLoading) return;
     if (isStaff) { onConfirmed(); return; }
     checkLocation(gymLat, gymLng).then((ok) => {
-      if (ok) onConfirmed();
+      if (!ok) toast.info(t('workout.outside_proceed_toast', { gymName }), { id: 'gym-location' });
+      onConfirmed();
     });
   }, [isStaff, profileLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 

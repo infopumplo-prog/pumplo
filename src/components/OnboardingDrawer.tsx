@@ -132,6 +132,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         : splitOverride;
       
       const saveResult = await updateProfile({
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim() || null,
         gender,
         primary_goal: primaryGoal,
         training_days: trainingDays,
@@ -416,6 +418,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             weight={weight}
             onFirstNameChange={setFirstName}
             onLastNameChange={setLastName}
+            showName={isEditMode}
             onGenderChange={setGender}
             onAgeChange={setAge}
             onHeightChange={setHeight}

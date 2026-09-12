@@ -376,6 +376,7 @@ const en = {
   'workout.allow_location': 'Allow location',
   'workout.open_settings': 'Open Settings',
   'workout.cancel': 'Cancel',
+  'workout.outside_proceed_toast': 'You are not at {{gymName}} — starting the workout anyway.',
   'workout.not_in_gym': 'You are not at the gym',
   'workout.outside_soft_desc': 'You are away from {{gymName}} — the machines in your plan may not match what is around you. You can still train.',
   'workout.continue_anyway': 'Continue anyway',
