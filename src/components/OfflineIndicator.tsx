@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, Wifi } from 'lucide-react';
+import { WifiOff, Wifi, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,9 @@ const OfflineIndicator = () => {
   const { t } = useTranslation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showReconnected, setShowReconnected] = useState(false);
+  // Lišta jde zavřít křížkem — překrývala ovládání nahoře (křížek dotazníku apod., nález 12. 9.).
+  // Po dalším výpadku sítě se ukáže znovu.
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -19,6 +22,7 @@ const OfflineIndicator = () => {
     const handleOffline = () => {
       setIsOnline(false);
       setShowReconnected(false);
+      setDismissed(false);
     };
 
     window.addEventListener('online', handleOnline);
@@ -32,7 +36,7 @@ const OfflineIndicator = () => {
 
   return (
     <AnimatePresence>
-      {(!isOnline || showReconnected) && (
+      {((!isOnline && !dismissed) || showReconnected) && (
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -54,6 +58,14 @@ const OfflineIndicator = () => {
             <>
               <WifiOff className="w-4 h-4" />
               <span>{t('misc.offline_mode')}</span>
+              <button
+                type="button"
+                onClick={() => setDismissed(true)}
+                aria-label="Zavřít"
+                className="ml-2 -mr-2 p-1 rounded-full hover:bg-white/20"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </>
           )}
         </motion.div>
