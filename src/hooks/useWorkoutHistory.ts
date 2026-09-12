@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { enqueueWorkoutSave } from '@/lib/workoutSaveQueue';
+import { newSessionId, saveWorkoutWriteAhead } from '@/lib/workoutSaveQueue';
 
 interface SetData {
   completed: boolean;
@@ -57,7 +56,10 @@ export const useWorkoutHistory = () => {
       });
     });
 
+    const sessionId = newSessionId();
+
     const sessionInsert = {
+      id: sessionId,
       user_id: user.id,
       plan_id: data.planId,
       gym_id: data.gymId,
@@ -85,41 +87,14 @@ export const useWorkoutHistory = () => {
       }))
     ).filter(g => g.length > 0);
 
-    let sessionId: string | null = null;
-    let groupsInserted = 0;
-
+    // Write-ahead: park the workout before touching the network. A request that
+    // hangs instead of failing never reaches a catch block, so enqueueing there
+    // (as this used to) lost the workout on a bad signal.
     try {
-      // 1. Create workout session
-      const { data: session, error: sessionError } = await supabase
-        .from('workout_sessions')
-        .insert(sessionInsert)
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
-      sessionId = session.id;
-
-      // 2. Create set records, batch per exercise
-      for (const group of setGroups) {
-        const { error: setsError } = await supabase
-          .from('workout_session_sets')
-          .insert(group.map(s => ({ ...s, session_id: session.id })));
-        if (setsError) throw setsError;
-        groupsInserted++;
-      }
-
-      return session.id;
-    } catch (err) {
-      console.error('Error saving workout session:', err);
-      setError('Nepodařilo se uložit trénink');
-      // Queue for a later retry (flushed on app start/resume) so the
-      // workout is never lost to a network dead spot.
-      if (sessionId) {
-        // Session row exists — requeue only the set groups that didn't make it
-        enqueueWorkoutSave({ type: 'sets', sessionId, setGroups: setGroups.slice(groupsInserted) });
-      } else {
-        enqueueWorkoutSave({ type: 'full', session: sessionInsert, setGroups });
-      }
+      const saved = await saveWorkoutWriteAhead({ sessionId, session: sessionInsert, setGroups });
+      if (saved) return sessionId;
+      // Still queued; App.tsx flushes on start and on reconnect.
+      setError('Trénink se zatím neuložil, zkusíme to znovu po připojení');
       return null;
     } finally {
       setIsSaving(false);
