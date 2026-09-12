@@ -1341,25 +1341,26 @@ const CustomPlanDetail = () => {
       {/* Equipment incompatibility banner */}
       {incompatibleExercises.length > 0 && (
         <div className="fixed left-0 right-0 px-4 z-[52]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-              <p className="text-sm text-destructive font-medium">
+          {/* Neprůhledný pruh: dřív byl poloprůhledný přes seznam a nešel číst (nález 12. 9.) */}
+          <div className="bg-background border-2 border-destructive/60 rounded-xl px-4 py-3 shadow-lg flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-foreground font-semibold leading-snug">
                 {t('custom_plan.incompatible_count', { count: incompatibleExercises.length, gym: locationGymName })}
               </p>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center justify-end gap-2">
               <button
                 onClick={handleRetryAfterFix}
                 disabled={isCheckingEquipment}
-                className="text-xs font-semibold text-primary"
+                className="text-sm font-semibold text-primary px-3 py-1.5 rounded-lg bg-primary/10"
               >
                 {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
               </button>
               <button
                 onClick={handleStartAnyway}
                 disabled={isCheckingEquipment}
-                className="text-xs font-semibold text-muted-foreground underline underline-offset-2"
+                className="text-sm font-semibold text-foreground px-3 py-1.5 rounded-lg bg-muted"
               >
                 {t('custom_plan.start_anyway')}
               </button>

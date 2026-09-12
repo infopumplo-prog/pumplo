@@ -8,7 +8,7 @@ import { fetchWithCache } from '@/lib/offlineCache';
 export const fetchLastWeight = async (exerciseId: string): Promise<{ data: { weight_kg: number | null } | null }> => {
   const { data: { session } } = await supabase.auth.getSession();
   const scope = session?.user?.id ?? 'anon';
-  const { data } = await fetchWithCache<{ weight_kg: number | null }>(scope, `lastWeight:${exerciseId}`, () =>
+  const res = await fetchWithCache<{ weight_kg: number | null }>(scope, `lastWeight:${exerciseId}`, () =>
     supabase
       .from('workout_session_sets')
       .select('weight_kg')
@@ -19,5 +19,6 @@ export const fetchLastWeight = async (exerciseId: string): Promise<{ data: { wei
       .limit(1)
       .maybeSingle(),
   );
-  return { data };
+  console.info('[lastWeight] ' + JSON.stringify({ exerciseId, scope, source: res.source, data: res.data }));
+  return { data: res.data };
 };

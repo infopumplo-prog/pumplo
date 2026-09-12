@@ -125,11 +125,12 @@ export const fetchWithCache = async <T>(
 ): Promise<Resolved<T>> => {
   try {
     const res = await withNetworkTimeout(Promise.resolve(fetcher()), timeoutMs);
+    if (res.error) console.warn('[offlineCache] ' + name + ' error: ' + JSON.stringify(res.error));
     if (!res.error && res.data !== null && res.data !== undefined) {
       return resolveWithCache<T>(scope, name, { ok: true, data: res.data });
     }
-  } catch {
-    /* síť selhala nebo visí — níže cache */
+  } catch (e) {
+    console.warn('[offlineCache] ' + name + ' failed: ' + (e instanceof Error ? e.message : String(e)));
   }
   return resolveWithCache<T>(scope, name, { ok: false });
 };
