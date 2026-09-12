@@ -88,8 +88,8 @@ export const useUserProfile = () => {
     setIsLoading(false);
   };
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return { success: false };
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Nejsi přihlášen.' };
 
     const { error } = await supabase
       .from('user_profiles')
