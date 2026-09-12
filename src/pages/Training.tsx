@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
+import { adaptExercisesToGym, supabaseAdaptDeps } from '@/lib/gymAdaptation';
 import { prefetchVideos } from '@/lib/videoCache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
@@ -155,6 +156,7 @@ const Training = () => {
   // Missing exercises dialog
   const [showMissingExercisesDialog, setShowMissingExercisesDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
+  const [isAdaptingToGym, setIsAdaptingToGym] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   
   // Workout preview and warmup state
@@ -432,12 +434,27 @@ const Training = () => {
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
 
       if (exercisesFromPlan.length > 0) {
-        setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(gymIdParam);
-        if (fromWatch) {
-          startWorkoutFromWatch(exercisesFromPlan);
+        // Jiná posilovna než ta, pro kterou je plán: cviky na chybějících strojích
+        // nahradit alternativou dostupnou v této posilovně (jen pro dnešní session).
+        const startWith = (list: WorkoutExercise[]) => {
+          setGeneratedExercises(list);
+          if (fromWatch) startWorkoutFromWatch(list);
+          else setShowWorkoutPreview(true);
+        };
+        if (gymIdParam !== plan.gymId) {
+          setIsAdaptingToGym(true);
+          adaptExercisesToGym(exercisesFromPlan, gymIdParam, supabaseAdaptDeps)
+            .then((r) => {
+              if (r.skipped) toast.info(t('training.gym_adapt_offline'));
+              else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }));
+              if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }));
+              startWith(r.exercises);
+            })
+            .catch(() => startWith(exercisesFromPlan))
+            .finally(() => setIsAdaptingToGym(false));
         } else {
-          setShowWorkoutPreview(true);
+          startWith(exercisesFromPlan);
         }
       } else if (plan.exercises.length === 0) {
         // Bare plan (questionnaire done, first gym just picked): fill the
@@ -1460,6 +1477,7 @@ const Training = () => {
         estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
         gymId={selectedWorkoutGymId || plan?.gymId}
         planId={plan?.id}
+        isLoading={isAdaptingToGym}
         onStartWarmup={handleStartWarmup}
         onClose={handleEndFromPreview}
         onPause={handlePauseFromPreview}

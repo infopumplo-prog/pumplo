@@ -892,6 +892,9 @@ const cs = {
 
   // Training page
   'training.title': 'Trénink',
+  'training.gym_adapted': 'Cviky přizpůsobeny posilovně: {{count}} nahrazeno alternativou na dostupném stroji.',
+  'training.gym_adapt_unresolved': '{{count}} cviků nemá v této posilovně náhradu ({{names}}) — vyměň je v tréninku ručně.',
+  'training.gym_adapt_offline': 'Bez připojení nejde ověřit vybavení posilovny — trénink jede podle domácího plánu.',
   'training.locked_title': 'Trénink je uzamčený',
   'training.gym_fallback': 'Posilovna',
   'training.exercises_loaded': 'Cviky byly načteny!',
