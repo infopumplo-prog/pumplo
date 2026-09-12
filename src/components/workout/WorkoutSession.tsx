@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
 import { getPlayableVideoUrl } from '@/lib/videoCache';
+import { fetchLastWeight } from '@/lib/lastWeight';
 import type { Database } from '@/integrations/supabase/types';
 
 type ExerciseDetailRow = Database['public']['Tables']['exercises']['Row'];
@@ -775,15 +776,7 @@ export const WorkoutSession = ({
     const inSession = [...(setsDataByExercise.get(currentExerciseIndex) || [])].reverse().find(st => st.completed && st.weight != null);
     if (inSession?.weight != null) { setCurrentExWeight(inSession.weight); return; }
     if (!ex?.exerciseId) { setCurrentExWeight(null); return; }
-    supabase
-      .from('workout_session_sets')
-      .select('weight_kg')
-      .eq('exercise_id', ex.exerciseId)
-      .not('weight_kg', 'is', null)
-      .gt('weight_kg', 0)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    fetchLastWeight(ex.exerciseId)
       .then(({ data }) => { if (!cancelled) setCurrentExWeight((data as any)?.weight_kg ?? null); });
     return () => { cancelled = true; };
   }, [currentExerciseIndex, liveExercises, setsDataByExercise]);
@@ -1448,19 +1441,7 @@ const ExercisePlayerWithVideo = ({
       if (!exercise.exerciseId) return;
 
       // Offline: poslední váha z cache (per uživatel), online se obnoví
-      const { data: { session } } = await supabase.auth.getSession();
-      const scope = session?.user?.id ?? 'anon';
-      const { data } = await fetchWithCache<{ weight_kg: number | null }>(scope, `lastWeight:${exercise.exerciseId}`, () =>
-        supabase
-          .from('workout_session_sets')
-          .select('weight_kg')
-          .eq('exercise_id', exercise.exerciseId)
-          .not('weight_kg', 'is', null)
-          .gt('weight_kg', 0)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single(),
-      );
+      const { data } = await fetchLastWeight(exercise.exerciseId);
 
       if (data?.weight_kg) {
         setLastWeight(data.weight_kg);
