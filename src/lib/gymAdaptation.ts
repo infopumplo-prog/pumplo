@@ -70,6 +70,7 @@ export const adaptExercisesToGym = async (
   deps: AdaptDeps,
 ): Promise<AdaptResult> => {
   const machineIds = await deps.getGymMachineIds(gymId);
+  console.info('[gymAdapt] gym machines', gymId, machineIds ? machineIds.size : null);
   if (!machineIds) return { exercises, swapped: [], unresolved: [], skipped: true };
 
   const metaById = new Map<string, ExerciseMeta>();
@@ -80,6 +81,9 @@ export const adaptExercisesToGym = async (
     }
     return metaById.get(id) ?? null;
   };
+
+  // Metadata všech cviků naráz (dřív jeden dotaz za druhým → sekundy čekání)
+  await Promise.all(exercises.map(e => (e.exerciseId ? metaOf(e.exerciseId) : Promise.resolve(null))));
 
   const result: WorkoutExercise[] = [];
   const swapped: AdaptResult['swapped'] = [];
@@ -100,7 +104,7 @@ export const adaptExercisesToGym = async (
       baseExerciseId: ex.exerciseId,
     });
     const candMuscles = new Map<string, string[]>();
-    for (const c of candidates) candMuscles.set(c.id, (await metaOf(c.id))?.primary_muscles ?? []);
+    await Promise.all(candidates.map(async c => { candMuscles.set(c.id, (await metaOf(c.id))?.primary_muscles ?? []); }));
     const best = pickBestAlternative(candidates, meta.primary_muscles ?? [], id => candMuscles.get(id) ?? []);
 
     if (!best) {

@@ -404,10 +404,12 @@ const Training = () => {
   // Jedna cesta pro všechny starty: jiná posilovna než ta z plánu → cviky na
   // chybějících strojích nahradit alternativou dostupnou tam (jen dnešní session).
   const adaptForGym = useCallback(async (list: WorkoutExercise[], gymId: string | null): Promise<WorkoutExercise[]> => {
+    console.info('[gymAdapt] start ' + JSON.stringify({ gymId, planGym: plan?.gymId, n: list.length }));
     if (!gymId || !plan || gymId === plan.gymId) return list;
     setIsAdaptingToGym(true);
     try {
       const r = await adaptExercisesToGym(list, gymId, supabaseAdaptDeps);
+      console.info('[gymAdapt] result ' + JSON.stringify({ skipped: r.skipped, swapped: r.swapped, unresolved: r.unresolved, out: r.exercises.map(e => e.exerciseName) }));
       if (r.skipped) toast.info(t('training.gym_adapt_offline'));
       else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }));
       if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }));
@@ -964,8 +966,10 @@ const Training = () => {
 
     if (exercisesFromPlan.length > 0) {
       setSelectedWorkoutGymId(gymId);
-      setShowWorkoutPreview(true); // náhled hned (isLoading), cviky dorazí po přizpůsobení
-      setGeneratedExercises(await adaptForGym(exercisesFromPlan, gymId));
+      // Nejdřív přizpůsobit posilovně, až pak otevřít náhled — náhled si seznam drží
+      const adapted = await adaptForGym(exercisesFromPlan, gymId);
+      setGeneratedExercises(adapted);
+      setShowWorkoutPreview(true);
     } else {
       setShowMissingExercisesDialog(true);
     }
@@ -1699,6 +1703,32 @@ const Training = () => {
   }
 
   // Plan loading
+  // Po dobu přizpůsobení cviků vybrané posilovně nesmí prosvitnout stránka plánu
+  if (isAdaptingToGym) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-background p-4">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">{t('training.adapting_gym_title')}</h1>
+          </div>
+
+          <div className="text-center py-12">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 mx-auto mb-4"
+            >
+              <RefreshCw className="w-16 h-16 text-primary" />
+            </motion.div>
+            <h2 className="text-lg font-medium mb-2">{t('training.adapting_gym')}</h2>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
   if (planLoading) {
     return (
       <PageTransition>
