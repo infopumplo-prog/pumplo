@@ -52,13 +52,29 @@ const deriveSplitTypeFromExercises = (exercises: Array<{ day_letter: string; rol
 
 let warmingKey = '';
 /** Stáhne detaily cviků plánu do cache a jejich videa do telefonu. Idempotentní, běží na pozadí. */
-const warmOfflineCache = async (exerciseIds: string[], videoUrls: string[]) => {
-  const key = exerciseIds.slice().sort().join(',');
-  if (!key || key === warmingKey) return;
+const warmOfflineCache = async (exerciseIds: string[], videoUrls: string[], userId: string) => {
+  const key = userId + ':' + exerciseIds.slice().sort().join(',');
+  if (!exerciseIds.length || key === warmingKey) return;
   warmingKey = key;
   try {
     const { data } = await supabase.from('exercises').select('*').in('id', exerciseIds);
     (data || []).forEach((row) => writeCache(SHARED_SCOPE, `exercise:${row.id}`, row));
+    // Poslední váhy všech cviků plánu do cache (RLS vrací jen vlastní série),
+    // aby se offline předvyplnily i u cviku, který uživatel ještě v tomhle buildu neotevřel.
+    const { data: sets } = await supabase
+      .from('workout_session_sets')
+      .select('exercise_id, weight_kg, created_at')
+      .in('exercise_id', exerciseIds)
+      .not('weight_kg', 'is', null)
+      .gt('weight_kg', 0)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    const seen = new Set<string>();
+    (sets || []).forEach((s) => {
+      if (!s.exercise_id || seen.has(s.exercise_id)) return;
+      seen.add(s.exercise_id);
+      writeCache(userId, `lastWeight:${s.exercise_id}`, { weight_kg: s.weight_kg });
+    });
     await prefetchVideos(videoUrls);
   } catch (e) {
     console.warn('[useWorkoutPlan] offline warm-up failed', e);
@@ -377,7 +393,11 @@ export const useWorkoutPlan = () => {
       setPlan(resolvedPlan);
       // Offline příprava (na pozadí, nic neblokuje): detaily cviků do cache a
       // videa plánu do telefonu, ať trénink jede i bez signálu.
-      void warmOfflineCache(Object.keys(resolvedPlan.videoPaths || {}), Object.values(resolvedPlan.videoPaths || {}));
+      void warmOfflineCache(
+        (exercisesData || []).map(ex => ex.exercise_id).filter((x): x is string => Boolean(x)),
+        Object.values(resolvedPlan.videoPaths || {}),
+        user.id,
+      );
     } catch (err) {
       console.error('Error fetching workout plan:', err);
       // Síť selhala / visí: když máme plán z cache, jedeme dál bez chyby

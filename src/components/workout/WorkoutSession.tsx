@@ -1437,17 +1437,16 @@ const ExercisePlayerWithVideo = ({
 
   // Fetch last weight used for this exercise
   useEffect(() => {
-    const fetchLastWeight = async () => {
+    // Pozor: lokální název nesmí stínit importovanou fetchLastWeight (dřív se
+    // funkce volala sama a poslední váha se nikdy nenačetla → prázdné váhy v sériích).
+    const loadLastWeight = async () => {
       if (!exercise.exerciseId) return;
-
-      // Offline: poslední váha z cache (per uživatel), online se obnoví
       const { data } = await fetchLastWeight(exercise.exerciseId);
-
       if (data?.weight_kg) {
         setLastWeight(data.weight_kg);
       }
     };
-    fetchLastWeight();
+    loadLastWeight();
   }, [exercise.exerciseId]);
 
   return (
