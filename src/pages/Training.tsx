@@ -463,7 +463,10 @@ const Training = () => {
           if (fromWatch) startWorkoutFromWatch(list);
           else setShowWorkoutPreview(true);
         };
-        void adaptForGym(exercisesFromPlan, gymIdParam).then(startWith);
+        // Stejná posilovna jako plán: start synchronně (asynchronní krok by na
+        // okamžik ukázal stránku plánu „Den A / Den B“ — nález 12. 9. 18:00)
+        if (gymIdParam === plan.gymId) startWith(exercisesFromPlan);
+        else void adaptForGym(exercisesFromPlan, gymIdParam).then(startWith);
       } else if (plan.exercises.length === 0) {
         // Bare plan (questionnaire done, first gym just picked): fill the
         // plan from this gym's equipment, then auto-start below.
@@ -828,7 +831,7 @@ const Training = () => {
       
       if (exercisesFromPlan.length > 0) {
         // Máme cviky v DB - použijeme je (přizpůsobené vybrané posilovně)
-        setGeneratedExercises(await adaptForGym(exercisesFromPlan, gymId));
+        setGeneratedExercises(gymId === plan.gymId ? exercisesFromPlan : await adaptForGym(exercisesFromPlan, gymId));
         setSelectedWorkoutGymId(gymId);
         setShowGymSelector(false);
         
@@ -966,8 +969,9 @@ const Training = () => {
 
     if (exercisesFromPlan.length > 0) {
       setSelectedWorkoutGymId(gymId);
-      // Nejdřív přizpůsobit posilovně, až pak otevřít náhled — náhled si seznam drží
-      const adapted = await adaptForGym(exercisesFromPlan, gymId);
+      // Nejdřív přizpůsobit posilovně, až pak otevřít náhled — náhled si seznam drží.
+      // Stejná posilovna → synchronně, bez záblesku stránky plánu.
+      const adapted = gymId === plan?.gymId ? exercisesFromPlan : await adaptForGym(exercisesFromPlan, gymId);
       setGeneratedExercises(adapted);
       setShowWorkoutPreview(true);
     } else {
