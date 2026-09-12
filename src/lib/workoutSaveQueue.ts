@@ -204,6 +204,12 @@ export const flushWorkoutSaveQueue = async (): Promise<number> => {
     flushInFlight = false;
   }
 
+  // Dej vědět zbytku appky (plán, profil), že tréninky dorazily na server —
+  // bez toho zůstal po offline tréninku ukazatel plánu na starých procentech.
+  if (flushed > 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pumplo:workout-synced', { detail: { count: flushed } }));
+  }
+
   return flushed;
 };
 

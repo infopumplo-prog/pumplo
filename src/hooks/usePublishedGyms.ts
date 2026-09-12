@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
+import { prefetchFiles } from '@/lib/videoCache';
 import { OpeningHours } from './useGym';
 import { GymPricing } from '@/contexts/GymContext';
 
@@ -49,6 +50,8 @@ export const usePublishedGyms = () => {
         is_verified: Boolean((gym as { is_verified?: boolean }).is_verified),
       })) as PublicGym[];
 
+      // Loga do telefonu, ať výběr posilovny offline nevypadá rozbitě
+      if (source === 'network') void prefetchFiles(normalized.map(g => g.logo_url));
       return normalized.sort((a, b) => a.name.localeCompare(b.name));
     },
   });

@@ -398,6 +398,12 @@ export const useWorkoutPlan = () => {
 
     const { nextIndex } = getNextDayLetter(plan.dayCount, plan.currentDayIndex);
 
+    // Optimisticky hned lokálně (i offline): procenta a další den se posunou
+    // okamžitě; server se srovná při dalším načtení (self-heal podle poslední session).
+    const optimistic = { ...plan, currentDayIndex: nextIndex, currentDayLetter: getCurrentDayLetter(plan.dayCount, nextIndex) };
+    setPlan(optimistic);
+    writeCache(user.id, 'plan', optimistic);
+
     const { error } = await supabase
       .from('user_profiles')
       .update({ current_day_index: nextIndex })
@@ -434,6 +440,17 @@ export const useWorkoutPlan = () => {
 
   useEffect(() => {
     fetchActivePlan();
+  }, [fetchActivePlan]);
+
+  // Po douložení offline tréninků a po návratu sítě plán znovu načíst
+  useEffect(() => {
+    const refetch = () => { fetchActivePlan(); };
+    window.addEventListener('pumplo:workout-synced', refetch);
+    window.addEventListener('online', refetch);
+    return () => {
+      window.removeEventListener('pumplo:workout-synced', refetch);
+      window.removeEventListener('online', refetch);
+    };
   }, [fetchActivePlan]);
 
   // Refetch when tab/page becomes visible again (e.g., navigating back from Training)

@@ -38,6 +38,7 @@ const OfflineIndicator = () => {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
           className={`fixed top-0 left-0 right-0 z-[1000] px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium ${
             isOnline 
               ? 'bg-green-500 text-white' 

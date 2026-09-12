@@ -18,7 +18,7 @@ export const fileNameForUrl = (url: string): string => {
     h ^= url.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
   }
-  const extMatch = /\.(mp4|mov|webm|m4v)(\?|$)/i.exec(url);
+  const extMatch = /\.(mp4|mov|webm|m4v|png|jpg|jpeg|webp|gif|svg)(\?|$)/i.exec(url);
   const ext = extMatch ? extMatch[1].toLowerCase() : 'mp4';
   return `${h.toString(16)}.${ext}`;
 };
@@ -111,3 +111,7 @@ export const prefetchVideos = async (remoteUrls: Array<string | null | undefined
   }
   return ok;
 };
+
+/** Stejná cache funguje i pro obrázky (loga posiloven, náhledy) — alias kvůli čitelnosti. */
+export const getCachedFileUrl = getPlayableVideoUrl;
+export const prefetchFiles = prefetchVideos;
