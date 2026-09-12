@@ -61,12 +61,22 @@ describe('přizpůsobení posilovně', () => {
     expect(e.fallbackReason).toBe('gym_adapt:Hip thrust Booty Builder');
   });
 
-  it('bez náhrady cvik zůstane a nahlásí se jako nevyřešený', async () => {
+  it('bez náhrady se cvik z dnešního tréninku vynechá a nahlásí', async () => {
     const d = deps(['m-bar'], { booty: [] });
-    const r = await adaptExercisesToGym([ex('booty', 'Hip thrust Booty Builder')], 'nextgen', d);
+    const r = await adaptExercisesToGym([ex('pushup', 'Klik'), ex('booty', 'Hip thrust Booty Builder')], 'nextgen', d);
     expect(r.unresolved).toEqual(['Hip thrust Booty Builder']);
-    expect(r.exercises[0].exerciseId).toBe('booty');
-    expect(r.exercises[0].isFallback).toBe(false);
+    expect(r.exercises.map(e => e.exerciseId)).toEqual(['pushup']);
+  });
+
+  it('INVARIANT: výsledek obsahuje jen cviky bez stroje nebo na stroji, který posilovna má', async () => {
+    const gym = ['m-bar'];
+    const d = deps(gym, { booty: ['bridge'], bench: [] });
+    const r = await adaptExercisesToGym([ex('booty', 'Booty'), ex('bench', 'Bench press'), ex('pushup', 'Klik'), ex('rdl', 'RDL')], 'nextgen', d);
+    for (const e of r.exercises) {
+      const m = META[e.exerciseId!].machine_id;
+      expect(m === null || gym.includes(m)).toBe(true);
+    }
+    expect(r.exercises.map(e => e.exerciseId)).toEqual(['bridge', 'pushup', 'rdl']);
   });
 
   it('náhrada nikdy nezdvojí cvik, který už v tréninku je', async () => {

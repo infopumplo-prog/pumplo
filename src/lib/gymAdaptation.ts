@@ -5,8 +5,8 @@
  * trénovat jinam (Eurogym → NextGen), cviky na stroji, který tam není (např.
  * Booty Builder), se nahradí alternativou se stejnou rolí dostupnou v dané
  * posilovně; nejlepší je ta s největším překryvem hlavních svalů. Plán v DB se
- * nemění — jde jen o dnešní session. Cvik bez náhrady zůstane a nahlásí se,
- * uživatel ho může vyměnit ručně v přehrávači.
+ * nemění — jde jen o dnešní session. Cvik bez náhrady se z dnešního tréninku
+ * vynechá a nahlásí — trénink smí obsahovat jen cviky proveditelné v dané posilovně.
  */
 import { supabase } from '@/integrations/supabase/client';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
@@ -40,7 +40,7 @@ export interface AdaptDeps {
 export interface AdaptResult {
   exercises: WorkoutExercise[];
   swapped: Array<{ from: string; to: string }>;
-  /** Cviky, pro které v posilovně není náhrada (zůstaly v tréninku). */
+  /** Cviky, pro které v posilovně není náhrada — z dnešního tréninku VYNECHANÉ. */
   unresolved: string[];
   /** true = nedalo se rozhodnout (stroje posilovny nedostupné), trénink beze změny */
   skipped: boolean;
@@ -104,8 +104,9 @@ export const adaptExercisesToGym = async (
     const best = pickBestAlternative(candidates, meta.primary_muscles ?? [], id => candMuscles.get(id) ?? []);
 
     if (!best) {
+      // Tvrdé pravidlo: trénink obsahuje JEN cviky proveditelné ve vybrané posilovně.
+      // Bez náhrady se cvik pro dnešní session vynechá (a nahlásí).
       unresolved.push(ex.exerciseName || meta.name);
-      result.push(ex);
       continue;
     }
     const machine = best.machine_id ? await deps.getMachineName(best.machine_id) : null;

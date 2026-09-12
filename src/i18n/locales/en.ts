@@ -894,7 +894,7 @@ const en = {
   // Training page
   'training.title': 'Training',
   'training.gym_adapted': 'Exercises adapted to this gym: {{count}} replaced with an alternative on available equipment.',
-  'training.gym_adapt_unresolved': '{{count}} exercises have no alternative here ({{names}}) — swap them manually during the workout.',
+  'training.gym_adapt_unresolved': '{{count}} exercises have no alternative at this gym and are skipped today: {{names}}.',
   'training.gym_adapt_offline': 'No connection to check gym equipment — using your home plan as is.',
   'training.locked_title': 'Workout is locked',
   'training.gym_fallback': 'Gym',
