@@ -43,6 +43,30 @@ function videoDuration(file: File): Promise<number> {
   });
 }
 
+
+// První snímek videa jako JPEG (max 480 px na delší straně). Vrací null, když
+// prohlížeč snímek nedokáže vykreslit (např. nepodporovaný kodek).
+function captureFirstFrame(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    const done = (b: Blob | null) => { URL.revokeObjectURL(v.src); resolve(b); };
+    v.onerror = () => done(null);
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); } catch { done(null); } };
+    v.onseeked = () => {
+      try {
+        const scale = Math.min(1, 480 / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+        const ctx = c.getContext('2d'); if (!ctx) return done(null);
+        ctx.drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => done(b), 'image/jpeg', 0.85);
+      } catch { done(null); }
+    };
+    v.src = URL.createObjectURL(file);
+  });
+}
+
 export default function MyExercisesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -105,9 +129,17 @@ export default function MyExercisesPage() {
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-    const path = `custom/${user?.id}/${Date.now()}.${ext}`;
+    // Každý cvik má vlastní složku, aby vedle videa mohl ležet thumb.jpg
+    // (stejná konvence jako katalog: <folder>/thumb.jpg → getVideoThumbUrl).
+    const folder = `custom/${user?.id}/${Date.now()}`;
+    const path = `${folder}/video.${ext}`;
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: false, contentType: file.type || 'video/mp4' });
     if (error) { setUploading(false); toast.error(t('my_exercises.video_failed') + ': ' + error.message); return; }
+    // Náhledový obrázek z prvního snímku — best effort, bez něj se ve výběru cviků ukáže video
+    try {
+      const thumb = await captureFirstFrame(file);
+      if (thumb) await supabase.storage.from('exercise-videos').upload(`${folder}/thumb.jpg`, thumb, { upsert: false, contentType: 'image/jpeg' });
+    } catch (e) { console.warn('[my_exercises] thumb failed', e); }
     const { data: { publicUrl } } = supabase.storage.from('exercise-videos').getPublicUrl(path);
     setForm(f => ({ ...f, video_path: publicUrl }));
     setUploading(false);

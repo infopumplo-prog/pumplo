@@ -692,7 +692,7 @@ const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?:
     if (videoPath) {
       return (
         <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
-          <video src={videoPath} muted playsInline preload="metadata" className="w-full h-full object-cover pointer-events-none" />
+          <video src={`${videoPath}#t=0.1`} muted playsInline preload="auto" className="w-full h-full object-cover pointer-events-none" />
         </div>
       );
     }
