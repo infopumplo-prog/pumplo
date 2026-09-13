@@ -403,7 +403,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
               rychlý formulář tady byl osekaný a matoucí (David 12. 9.). */}
           {!createOpen ? (
             <button
-              onClick={() => { onClose(); navigate(`/profile/exercises?new=1${query.trim() ? `&name=${encodeURIComponent(query.trim())}` : ''}`); }}
+              onClick={() => { onClose(); navigate(`/profile/exercises?new=1${query.trim() ? `&name=${encodeURIComponent(query.trim())}` : ''}`, { state: { back: window.location.pathname } }); }}
               className="w-full mb-2 py-2.5 rounded-xl border border-dashed border-[#5BC8F5]/60 text-[#5BC8F5] text-sm font-medium"
             >
               + {t('exercise_picker.custom_create_in_profile')}
@@ -468,11 +468,6 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <p className="text-sm font-medium truncate">{(isEn && ex.name_en) ? ex.name_en : ex.name}</p>
-                      {ex.owner_id && (
-                        <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-[#5BC8F5]/15 text-[#5BC8F5] align-middle">
-                          {t('exercise_picker.custom_badge')}
-                        </span>
-                      )}
                       {(ex.allowed_phase === 'warmup' || ex.allowed_phase === 'cooldown') && (
                         <span className={cn(
                           'shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
@@ -689,9 +684,18 @@ const FilterOptionList = ({ options, selected, onSelect }: {
 // <video> in the list — 200 of them stall the whole picker on iOS.
 const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?: () => void }) => {
   const [error, setError] = useState(false);
-  const url = useRef(getVideoThumbUrl(videoPath)).current;
+  const url = useMemo(() => getVideoThumbUrl(videoPath), [videoPath]);
+  useEffect(() => { setError(false); }, [videoPath]);
   const handleTap = onTap ? (e: React.MouseEvent) => { e.stopPropagation(); onTap(); } : undefined;
   if (!url || error) {
+    // Vlastní cviky nemají vygenerovaný thumb.jpg — první snímek videa místo činky (David 13. 9.)
+    if (videoPath) {
+      return (
+        <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
+          <video src={videoPath} muted playsInline preload="metadata" className="w-full h-full object-cover pointer-events-none" />
+        </div>
+      );
+    }
     return (
       <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
         <Dumbbell className="w-5 h-5 text-muted-foreground/50" />

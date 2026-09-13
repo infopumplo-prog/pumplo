@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, Video, Users, Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -68,6 +68,9 @@ export default function MyExercisesPage() {
   // Příchod z výběru cviků do vlastního plánu („+ Vytvořit vlastní cvik“): rovnou otevřít editor,
   // případně s předvyplněným názvem z vyhledávání.
   const [searchParams, setSearchParams] = useSearchParams();
+  // Zpět vede tam, odkud uživatel přišel (výběr cviků ve vlastním plánu), jinak na Profil.
+  const location = useLocation();
+  const [backTo] = useState<string>(() => (location.state as { back?: string } | null)?.back || '/profile');
   useEffect(() => {
     if (searchParams.get('new') !== '1') return;
     const name = searchParams.get('name') ?? '';
@@ -146,7 +149,7 @@ export default function MyExercisesPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 20px)' }}>
-        <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
+        <button onClick={() => navigate(backTo)} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
           <ArrowLeft className="w-4 h-4" /> {t('my_exercises.title')}
         </button>
 
