@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typová kontrola
+        run: npx tsc --noEmit
+      - name: Testy
+        run: npx vitest run
+      - name: Parita verzí iOS/Android
+        run: node scripts/check-version-parity.mjs
+      - name: Produkční build
+        run: npm run build
+      - name: Telegram — výsledek běhu
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATUS: ${{ job.status }}
+          TITLE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: node scripts/ci/telegram-notify.mjs
