@@ -141,14 +141,14 @@ export default function MyExercisesPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function openEdit(it: MyEx) {
     const { data } = await supabase.from('exercises')
-      .select('id, name, name_en, category, unit_type, description, description_en, video_path, primary_muscles')
+      .select('id, name, name_en, category, unit_type, exercise_with_weights, description, description_en, video_path, primary_muscles')
       .eq('id', it.id).single();
     const d = data as any;
     const matched = (d?.primary_muscles || []).filter((m: string) => MUSCLE_GROUPS.some(g => g.store === m));
     const fallback = MUSCLE_GROUPS.find(m => m.category === d?.category);
     setForm({
       id: d.id, name: d.name ?? '', name_en: d.name_en ?? '',
-      muscles: matched.length ? matched : (fallback ? [fallback.label] : []),
+      muscles: matched.length ? matched : (fallback ? [fallback.store] : []),
       units: d.unit_type === 'time_min' ? 'time_min' : (d.exercise_with_weights === false ? 'reps' : 'weight_reps'),
       description: d.description ?? '', description_en: d.description_en ?? '', video_path: d.video_path ?? '',
     });
