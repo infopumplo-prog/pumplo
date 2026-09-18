@@ -1262,6 +1262,23 @@ const CustomWorkoutPlayer = () => {
   }
 
   // --- Day Selection ---
+  // Když se den spouští automaticky (den v URL, obnovení rozdělaného tréninku,
+  // nebo plán s jediným dnem), výběr dne nesmí na půl sekundy probliknout —
+  // místo něj spinner, dokud se nenačtou cviky (nález 12. 9.).
+  const autoStarting =
+    playerState === 'select_day' && !!plan && (
+      (!!dayParam && plan.days.some(d => d.id === dayParam)) ||
+      (resumeMode && !!pausedWorkout && pausedWorkout.planId === id) ||
+      plan.days.length === 1
+    );
+  if (autoStarting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#5BC8F5] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (playerState === 'select_day') {
     return (
       <div className="min-h-screen bg-background safe-top">

@@ -78,9 +78,10 @@ const OnboardingTimeStep = ({
               className="w-full"
             />
             <div className="relative w-full mt-2 h-5 text-sm text-muted-foreground">
+              {/* Popisky odvozené z rozsahu slideru — dřív natvrdo 60/90, takže při minimu 60 bylo „60 60 90 120“ (nález 12. 9.) */}
               <span className="absolute left-0">{minDuration}</span>
-              <span className="absolute left-1/3 -translate-x-1/2">60</span>
-              <span className="absolute left-2/3 -translate-x-1/2">90</span>
+              <span className="absolute left-1/3 -translate-x-1/2">{Math.round(minDuration + (120 - minDuration) / 3)}</span>
+              <span className="absolute left-2/3 -translate-x-1/2">{Math.round(minDuration + (120 - minDuration) * 2 / 3)}</span>
               <span className="absolute right-0">120 min</span>
             </div>
             {isStrength && (

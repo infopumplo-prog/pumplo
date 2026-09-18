@@ -17,6 +17,7 @@ import { getMuscleLabel } from '@/lib/muscleLabels';
 import { WarmupExercise } from './WarmupPlayer';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
+import { getPlayableVideoUrl } from '@/lib/videoCache';
 import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 
 interface CooldownPlayerProps {
@@ -136,7 +137,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     let cancelled = false;
     setSignedVideoUrl(null);
     setVideoError(false);
-    getSignedVideoUrl(currentExercise?.videoPath ?? null).then(url => {
+    getSignedVideoUrl(currentExercise?.videoPath ?? null).then(getPlayableVideoUrl).then(url => {
       if (!cancelled) setSignedVideoUrl(url);
     });
     return () => { cancelled = true; };

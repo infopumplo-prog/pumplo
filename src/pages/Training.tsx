@@ -2,6 +2,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
+import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
+import { adaptExercisesToGym, supabaseAdaptDeps } from '@/lib/gymAdaptation';
+import { prefetchVideos } from '@/lib/videoCache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -153,6 +156,7 @@ const Training = () => {
   // Missing exercises dialog
   const [showMissingExercisesDialog, setShowMissingExercisesDialog] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
+  const [isAdaptingToGym, setIsAdaptingToGym] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   
   // Workout preview and warmup state
@@ -397,6 +401,27 @@ const Training = () => {
     }
   }, [profile?.onboarding_completed, profileLoading, notificationsSupported, notificationsEnabled, notificationPreferences.onboardingShown]);
   
+  // Jedna cesta pro všechny starty: jiná posilovna než ta z plánu → cviky na
+  // chybějících strojích nahradit alternativou dostupnou tam (jen dnešní session).
+  const adaptForGym = useCallback(async (list: WorkoutExercise[], gymId: string | null): Promise<WorkoutExercise[]> => {
+    console.info('[gymAdapt] start ' + JSON.stringify({ gymId, planGym: plan?.gymId, n: list.length }));
+    if (!gymId || !plan || gymId === plan.gymId) return list;
+    setIsAdaptingToGym(true);
+    try {
+      const r = await adaptExercisesToGym(list, gymId, supabaseAdaptDeps);
+      console.info('[gymAdapt] result ' + JSON.stringify({ skipped: r.skipped, swapped: r.swapped, unresolved: r.unresolved, out: r.exercises.map(e => e.exerciseName) }));
+      if (r.skipped) toast.info(t('training.gym_adapt_offline'));
+      else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }));
+      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }));
+      return r.exercises;
+    } catch (e) {
+      console.warn('[Training] gym adaptation failed', e);
+      return list;
+    } finally {
+      setIsAdaptingToGym(false);
+    }
+  }, [plan, t]);
+
   // Auto-start workout when navigating from Home with ?start=true
   useEffect(() => {
     const shouldAutoStart = searchParams.get('start') === 'true';
@@ -430,13 +455,18 @@ const Training = () => {
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
 
       if (exercisesFromPlan.length > 0) {
-        setGeneratedExercises(exercisesFromPlan);
         setSelectedWorkoutGymId(gymIdParam);
-        if (fromWatch) {
-          startWorkoutFromWatch(exercisesFromPlan);
-        } else {
-          setShowWorkoutPreview(true);
-        }
+        // Jiná posilovna než ta, pro kterou je plán: cviky na chybějících strojích
+        // nahradit alternativou dostupnou v této posilovně (jen pro dnešní session).
+        const startWith = (list: WorkoutExercise[]) => {
+          setGeneratedExercises(list);
+          if (fromWatch) startWorkoutFromWatch(list);
+          else setShowWorkoutPreview(true);
+        };
+        // Stejná posilovna jako plán: start synchronně (asynchronní krok by na
+        // okamžik ukázal stránku plánu „Den A / Den B“ — nález 12. 9. 18:00)
+        if (gymIdParam === plan.gymId) startWith(exercisesFromPlan);
+        else void adaptForGym(exercisesFromPlan, gymIdParam).then(startWith);
       } else if (plan.exercises.length === 0) {
         // Bare plan (questionnaire done, first gym just picked): fill the
         // plan from this gym's equipment, then auto-start below.
@@ -446,7 +476,7 @@ const Training = () => {
         setShowMissingExercisesDialog(true);
       }
     }
-  }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams]);
+  }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams, adaptForGym]);
 
   // Once the bare plan has been generated for the picked gym, start the workout.
   useEffect(() => {
@@ -800,8 +830,8 @@ const Training = () => {
       const exercisesFromPlan = getCurrentDayExercises();
       
       if (exercisesFromPlan.length > 0) {
-        // Máme cviky v DB - použijeme je
-        setGeneratedExercises(exercisesFromPlan);
+        // Máme cviky v DB - použijeme je (přizpůsobené vybrané posilovně)
+        setGeneratedExercises(gymId === plan.gymId ? exercisesFromPlan : await adaptForGym(exercisesFromPlan, gymId));
         setSelectedWorkoutGymId(gymId);
         setShowGymSelector(false);
         
@@ -818,7 +848,7 @@ const Training = () => {
     } finally {
       setIsGeneratingDayExercises(false);
     }
-  }, [plan, profile, getCurrentDayExercises]);
+  }, [plan, profile, getCurrentDayExercises, adaptForGym]);
 
   // Per-category rest times (seconds) per goal — must match WorkoutSession.tsx
   // Trainer rules v3: main gets full rest, secondary reduced, isolation/core short
@@ -932,14 +962,17 @@ const Training = () => {
   };
 
   // Spustí trénink po ověření polohy (nebo bez ověření)
-  const handleProceedWithGym = (gymId: string) => {
+  const handleProceedWithGym = async (gymId: string) => {
     setShowLocationGateForStart(false);
     const exercisesFromPlan = getCurrentDayExercises()
       .filter(ex => ex.exerciseId);
 
     if (exercisesFromPlan.length > 0) {
-      setGeneratedExercises(exercisesFromPlan);
       setSelectedWorkoutGymId(gymId);
+      // Nejdřív přizpůsobit posilovně, až pak otevřít náhled — náhled si seznam drží.
+      // Stejná posilovna → synchronně, bez záblesku stránky plánu.
+      const adapted = gymId === plan?.gymId ? exercisesFromPlan : await adaptForGym(exercisesFromPlan, gymId);
+      setGeneratedExercises(adapted);
       setShowWorkoutPreview(true);
     } else {
       setShowMissingExercisesDialog(true);
@@ -960,24 +993,29 @@ const Training = () => {
     const targetMuscles: string[] = [];
     for (const ex of mainExercises) {
       if (ex.exerciseId) {
-        const { data } = await supabase
-          .from('exercises')
-          .select('primary_muscles, secondary_muscles')
-          .eq('id', ex.exerciseId)
-          .single();
+        // Sdílená cache detailu cviku (stejný klíč jako přehrávač) — offline nespadne
+        const { data } = await fetchWithCache<{ primary_muscles: string[] | null; secondary_muscles: string[] | null }>(
+          SHARED_SCOPE, `exercise:${ex.exerciseId}`, () =>
+            supabase.from('exercises').select('*').eq('id', ex.exerciseId).single(),
+        );
         if (data?.primary_muscles) targetMuscles.push(...data.primary_muscles);
         if (data?.secondary_muscles) targetMuscles.push(...data.secondary_muscles);
       }
     }
 
     // 3. Fetch exercises for the given phase with body_region
-    const { data: exercisesData } = await supabase
-      .from('exercises')
-      .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
-      .is('owner_id', null) // custom cviky nikdy do rozcvičky/protažení
-      .eq('allowed_phase', phase);
+    // Offline: pool rozcvičky/protažení z cache, videa poolu se předstáhnou do telefonu
+    const { data: exercisesData, source } = await fetchWithCache<Array<{ id: string; video_path: string | null } & Record<string, unknown>>>(
+      SHARED_SCOPE, `exercisePool:${phase}`, () =>
+        supabase
+          .from('exercises')
+          .select('id, name, name_en, primary_muscles, video_path, body_region, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, tips')
+          .is('owner_id', null) // custom cviky nikdy do rozcvičky/protažení
+          .eq('allowed_phase', phase),
+    );
 
     if (!exercisesData || exercisesData.length === 0) return [];
+    if (source === 'network') void prefetchVideos(exercisesData.map(e => e.video_path));
 
     // 4. Use appropriate selection helper
     if (phase === 'warmup') {
@@ -1453,6 +1491,7 @@ const Training = () => {
         estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
         gymId={selectedWorkoutGymId || plan?.gymId}
         planId={plan?.id}
+        isLoading={isAdaptingToGym}
         onStartWarmup={handleStartWarmup}
         onClose={handleEndFromPreview}
         onPause={handlePauseFromPreview}
@@ -1668,6 +1707,32 @@ const Training = () => {
   }
 
   // Plan loading
+  // Po dobu přizpůsobení cviků vybrané posilovně nesmí prosvitnout stránka plánu
+  if (isAdaptingToGym) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-background p-4">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">{t('training.adapting_gym_title')}</h1>
+          </div>
+
+          <div className="text-center py-12">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 mx-auto mb-4"
+            >
+              <RefreshCw className="w-16 h-16 text-primary" />
+            </motion.div>
+            <h2 className="text-lg font-medium mb-2">{t('training.adapting_gym')}</h2>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
   if (planLoading) {
     return (
       <PageTransition>

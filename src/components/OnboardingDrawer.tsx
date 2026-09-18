@@ -131,7 +131,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         ? resolveSplit(trainingDays.length, userLevel, splitOverride)
         : splitOverride;
       
-      await updateProfile({
+      const saveResult = await updateProfile({
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim() || null,
         gender,
         primary_goal: primaryGoal,
         training_days: trainingDays,
@@ -148,14 +150,21 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         current_step: currentStep,
         onboarding_completed: allValid,
       });
-      
+
       await refetch();
-      
-      if (allValid) {
+
+      if (!saveResult.success) {
+        // Save actually failed — do NOT pretend it worked (dřív se ukázalo „Uloženo" i při chybě)
+        toast({
+          title: 'Uložení selhalo',
+          description: saveResult.error || 'Změny se nepodařilo uložit. Zkus to prosím znovu.',
+          variant: 'destructive'
+        });
+      } else if (allValid) {
         toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
       } else {
-        toast({ 
-          title: 'Dotazník není kompletní', 
+        toast({
+          title: 'Dotazník není kompletní',
           description: 'Některé odpovědi chybí. Vyplň je prosím.',
           variant: 'destructive'
         });
@@ -214,7 +223,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     // 1. Save answers first — onboarding_completed goes true only AFTER the plan
     // exists, so a reload mid-generation drops the user back into the questionnaire
     // instead of a broken half-onboarded state (tutorials firing with no plan).
-    await updateProfile({
+    const saveResult = await updateProfile({
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,
       gender,
@@ -234,6 +243,17 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       current_step: TOTAL_STEPS - 1,
     });
 
+    if (!saveResult.success) {
+      // Zápis selhal — nepokračovat na generování a přiznat chybu (dřív se tvářilo jako úspěch)
+      setHasJustCompleted(false);
+      toast({
+        title: 'Uložení selhalo',
+        description: saveResult.error || 'Změny se nepodařilo uložit. Zkus to prosím znovu.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     // 2. Check if there's an active workout plan
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -244,90 +264,108 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
 
     const { data: activePlan } = await supabase
       .from('user_workout_plans')
-      .select('id, training_days')
+      .select('id')
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
       .maybeSingle();
 
-    if (!activePlan) {
-      // NO active plan exists -> create new one with training_days snapshot
+    // Regenerovat plán jen když se změnilo něco, co plán ovlivňuje (dny/split/cíl/úroveň/délka/vybavení/zranění).
+    // Dřív se u existujícího plánu NIC nepřegenerovalo ("DO NOT touch it") → změna splitu se nikdy neprojevila.
+    // Editace jména/demografie plán nepřegeneruje, aby uživatel nepřišel o rozdělaný postup.
+    const sortedJoin = (a?: string[] | null) => [...(a || [])].sort().join(',');
+    const mappedOldGoal = profile?.primary_goal
+      ? (PRIMARY_GOAL_TO_TRAINING_GOAL[profile.primary_goal] || null)
+      : null;
+    const planInputsChanged =
+      !profile ||
+      sortedJoin(trainingDays) !== sortedJoin(profile.training_days) ||
+      ((splitOverride ?? null) !== ((profile.split_override as SplitType | null) ?? null)) ||
+      primaryGoal !== mappedOldGoal ||
+      userLevel !== (profile.user_level ?? null) ||
+      trainingDuration !== (profile.training_duration_minutes || 45) ||
+      ((equipmentPreference ?? null) !== (profile.equipment_preference ?? null)) ||
+      sortedJoin(injuries) !== sortedJoin(profile.injuries);
+
+    const shouldRegenerate = Boolean(primaryGoal) && (!activePlan || planInputsChanged);
+
+    if (shouldRegenerate && primaryGoal) {
       const selectedGymId = profile?.selected_gym_id;
 
-      if (primaryGoal) {
-        // Reset day index first
+      // Deaktivovat stávající plán — stavíme nový
+      if (activePlan?.id) {
         await supabase
-          .from('user_profiles')
-          .update({ current_day_index: 0 })
-          .eq('user_id', userData.user.id);
+          .from('user_workout_plans')
+          .update({ is_active: false })
+          .eq('id', activePlan.id);
+      }
 
-        // If user has a gym selected, generate workout plan with exercises
-        if (selectedGymId && userLevel) {
-          console.log('[OnboardingDrawer] Generating workout plan with exercises...');
+      if (selectedGymId && userLevel) {
+        const planId = await generateWorkoutPlan(
+          selectedGymId,
+          primaryGoal,
+          userLevel as UserLevel,
+          injuries || [],
+          equipmentPreference,
+          trainingDuration,
+          trainingDays, // předat dny → generátor odvodí správný split (dřív chybělo)
+        );
 
-          // generateWorkoutPlan creates the plan and assigns exercises
-          const planId = await generateWorkoutPlan(
-            selectedGymId,
-            primaryGoal,
-            userLevel as UserLevel,
-            injuries || [],
-            equipmentPreference,
-            trainingDuration // Pass duration for dynamic slot calculation
-          );
-
-          if (planId) {
-            // Update the plan with snapshotted training_days (generator doesn't set this)
+        if (planId) {
+          await supabase
+            .from('user_workout_plans')
+            .update({ training_days: trainingDays })
+            .eq('id', planId);
+        } else {
+          // Generování selhalo — reaktivovat starý plán, ať uživatel nezůstane bez plánu
+          if (activePlan?.id) {
             await supabase
               .from('user_workout_plans')
-              .update({ training_days: trainingDays })
-              .eq('id', planId);
-
-            console.log('[OnboardingDrawer] Plan created with exercises, ID:', planId);
-          } else if (!isEditMode) {
-            // Generation failed for a new user — keep onboarding open so they can retry
-            setHasJustCompleted(false);
-            toast({
-              title: t('onboarding.generate_failed_title'),
-              description: t('onboarding.generate_failed_desc'),
-              variant: 'destructive',
-            });
-            return;
+              .update({ is_active: true })
+              .eq('id', activePlan.id);
           }
-        } else {
-          // No gym selected - create empty plan (exercises will be generated when gym is selected)
-          console.log('[OnboardingDrawer] No gym selected, creating empty plan...');
-          
-          // Deactivate any leftover plans
-          await supabase
-            .from('user_workout_plans')
-            .update({ is_active: false })
-            .eq('user_id', userData.user.id);
-          
-          // Create plan without exercises
-          await supabase
-            .from('user_workout_plans')
-            .insert({
-              user_id: userData.user.id,
-              goal_id: primaryGoal,
-              is_active: true,
-              started_at: new Date().toISOString(),
-              current_week: 1,
-              gym_id: null,
-              training_days: trainingDays // SNAPSHOT of current training days
-            });
+          setHasJustCompleted(false);
+          toast({
+            title: t('onboarding.generate_failed_title'),
+            description: t('onboarding.generate_failed_desc'),
+            variant: 'destructive',
+          });
+          return;
         }
+      } else {
+        // Bez posilovny — deaktivovat zbytky + vytvořit prázdný plán (cviky se doplní po výběru gymu)
+        await supabase
+          .from('user_workout_plans')
+          .update({ is_active: false })
+          .eq('user_id', userData.user.id);
+
+        await supabase
+          .from('user_workout_plans')
+          .insert({
+            user_id: userData.user.id,
+            goal_id: primaryGoal,
+            is_active: true,
+            started_at: new Date().toISOString(),
+            current_week: 1,
+            gym_id: null,
+            training_days: trainingDays,
+          });
       }
-      
-      // 3. Plan exists now -> mark onboarding as completed
-      await updateProfile({ onboarding_completed: true });
-      toast({ title: 'Hotovo!', description: 'Tvůj profil byl vytvořen a plán připraven!' });
-    } else {
-      // Active plan EXISTS -> DO NOT touch it!
-      // Just save profile and show warning
+
+      // Nový plán začíná od začátku
+      await supabase
+        .from('user_profiles')
+        .update({ current_day_index: 0 })
+        .eq('user_id', userData.user.id);
+
       await updateProfile({ onboarding_completed: true });
       toast({
-        title: 'Změny uloženy',
-        description: 'Změny se projeví až v novém tréninkovém plánu.',
+        title: 'Hotovo!',
+        description: activePlan ? 'Plán byl přegenerován podle nových odpovědí.' : 'Tvůj profil byl vytvořen a plán připraven!',
       });
+    } else {
+      // Nic plán-ovlivňujícího se nezměnilo (nebo chybí cíl) — stávající plán necháme být
+      await updateProfile({ onboarding_completed: true });
+      toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
     }
 
     onOpenChange(false);
@@ -380,6 +418,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             weight={weight}
             onFirstNameChange={setFirstName}
             onLastNameChange={setLastName}
+            showName={isEditMode}
             onGenderChange={setGender}
             onAgeChange={setAge}
             onHeightChange={setHeight}

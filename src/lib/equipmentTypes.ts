@@ -11,6 +11,7 @@ export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
   plate_loaded: 'Kotoučové stroje',
   resistance_bands: 'Odporové gumy',
   resistance_band: 'Odporová guma',
+  expander: 'Expandér',
   kettlebell: 'Kettlebell',
   barbell: 'Velká činka',
   dumbbell: 'Jednoručky',
