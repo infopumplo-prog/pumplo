@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Typová kontrola
-        run: npx tsc --noEmit
+        run: node scripts/ci/typecheck-baseline.mjs
       - name: Testy
         run: npx vitest run
       - name: Parita verzí iOS/Android
