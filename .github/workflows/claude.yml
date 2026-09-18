@@ -30,6 +30,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
           prompt: |
-            ${{ github.event_name == 'pull_request' && 'Zreviduj tento PR jako senior TypeScript/React reviewer. Hledej chyby (správnost, async, offline cache, Supabase RLS, i18n klíče, regrese v tréninkovém playeru), ne styl. Piš česky, stručně, ke každému nálezu soubor:řádek a návrh opravy. Když nic vážného nenajdeš, řekni to jednou větou.' || '' }}
-          claude_args: --max-turns 25
+            ${{ github.event_name == 'pull_request' && format('Zreviduj PR #{0} jako senior TypeScript/React reviewer. Hledej chyby (správnost, async, offline cache, Supabase RLS, i18n klíče, regrese v tréninkovém playeru), ne styl. Piš česky, stručně, ke každému nálezu soubor:řádek a návrh opravy. Když nic vážného nenajdeš, řekni to jednou větou. Hotový review ZAPIŠ jako komentář k PR příkazem: gh pr comment {0} --body-file <soubor>. Bez komentáře review neexistuje.', github.event.pull_request.number) || '' }}
+          claude_args: --max-turns 30 --allowedTools "Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
