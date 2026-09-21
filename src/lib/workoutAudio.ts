@@ -60,17 +60,23 @@ export const unlockAudio = () => {
 };
 
 // --- Playback: each beep gets its own short-lived Audio element ---
-function playUrl(url: string | null, volume: number) {
-  if (_muted || !url || !unlocked) return;
-  if (isIosNative) {
-    const tone = TONES[url];
-    if (tone && nativeBeep(tone.freq, tone.ms, volume)) return;
-  }
+function playWeb(url: string, volume: number) {
   try {
     const a = new Audio(url);
     a.volume = volume;
     a.play().catch(() => {});
   } catch {}
+}
+
+function playUrl(url: string | null, volume: number) {
+  if (_muted || !url || !unlocked) return;
+  const tone = isIosNative ? TONES[url] : undefined;
+  if (tone) {
+    // Nativní pípnutí; když plugin selže, teprve pak web <audio> (ten hudbu přeruší).
+    nativeBeep(tone.freq, tone.ms, volume).then((ok) => { if (!ok) playWeb(url, volume); });
+    return;
+  }
+  playWeb(url, volume);
 }
 
 export const playBeep        = () => playUrl(beepUrl, 0.6);

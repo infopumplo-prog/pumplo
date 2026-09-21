@@ -31,8 +31,12 @@ export async function stopRestBeeps(): Promise<void> {
 
 // Krátké pípnutí nativně (iOS): AVAudioPlayer s .mixWithOthers nepřeruší hudbu,
 // zatímco web <audio> ve WKWebView ano. Vrací false, když plugin není k dispozici.
-export function nativeBeep(freq: number, ms: number, volume: number): boolean {
+export async function nativeBeep(freq: number, ms: number, volume: number): Promise<boolean> {
   if (Capacitor.getPlatform() !== 'ios') return false;
-  RestAudio.beep({ freq, ms, volume }).catch(() => { /* fallback řeší volající */ });
-  return true;
+  try {
+    await RestAudio.beep({ freq, ms, volume });
+    return true;
+  } catch {
+    return false; // plugin chybí / AVAudioSession selhal → volající pustí web fallback
+  }
 }
