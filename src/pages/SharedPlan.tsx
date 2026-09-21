@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { openAppOrStore } from '@/lib/appRedirect';
+import { Capacitor } from '@capacitor/core';
 
 interface SharedPlanExercise {
   exercise_id: string;
@@ -39,6 +40,17 @@ interface SharedPlanData {
 }
 
 const PENDING_SAVE_KEY = 'pumplo_pending_plan_save';
+const SAVED_TOKENS_KEY = 'pumplo:saved-plan-tokens';
+// Rozdělané uložení musí přežít přihlášení/registraci i skok Safari → appka → localStorage, ne session.
+const pendingStore = {
+  get: () => { try { return localStorage.getItem(PENDING_SAVE_KEY); } catch { return null; } },
+  set: (v: string) => { try { localStorage.setItem(PENDING_SAVE_KEY, v); } catch { /* noop */ } },
+  clear: () => { try { localStorage.removeItem(PENDING_SAVE_KEY); } catch { /* noop */ } },
+};
+const savedTokens = {
+  has: (tok: string) => { try { return (JSON.parse(localStorage.getItem(SAVED_TOKENS_KEY) || '[]') as string[]).includes(tok); } catch { return false; } },
+  add: (tok: string) => { try { const a = JSON.parse(localStorage.getItem(SAVED_TOKENS_KEY) || '[]') as string[]; if (!a.includes(tok)) a.push(tok); localStorage.setItem(SAVED_TOKENS_KEY, JSON.stringify(a)); } catch { /* noop */ } },
+};
 
 const formatReps = (reps: number, unitType: string | null, repsAbbr: string) => {
   if (unitType === 'time' || unitType === 'time_min') {
@@ -176,30 +188,48 @@ const SharedPlan = () => {
       await supabase.rpc('save_shared_exercise', { p_id: exId });
     }
 
-    sessionStorage.removeItem(PENDING_SAVE_KEY);
+    pendingStore.clear();
+    if (token) savedTokens.add(token);
     setSaved(true);
     setIsSaving(false);
     toast({ title: t('shared_plan.saved_title'), description: t('shared_plan.saved_desc', { name: plan.name }) });
   }, [user, plan, toast, t]);
 
-  // Auto-save after login redirect
+  // Už uložený trénink (stejný odkaz podruhé) → rovnou stav „uloženo", žádná duplicita.
+  useEffect(() => { if (token && savedTokens.has(token)) setSaved(true); }, [token]);
+
+  // Auto-uložení: (a) po přihlášení/registraci, když bylo uložení rozdělané,
+  // (b) v nativní appce vždy, když je uživatel přihlášený (David: „ať se mi to přidalo do vlastních plánů").
   useEffect(() => {
     if (!user || !plan || saved || isSaving) return;
-    const pending = sessionStorage.getItem(PENDING_SAVE_KEY);
-    if (pending === token) {
+    const pending = pendingStore.get();
+    if (pending === token || Capacitor.isNativePlatform()) {
       handleSave();
     }
   }, [user, plan, saved, isSaving, token, handleSave]);
+
+  // Safari Smart App Banner: „Otevřít" v Pumplo s předáním odkazu (bez skoku do App Storu).
+  useEffect(() => {
+    if (!token || typeof document === 'undefined') return;
+    const meta = document.createElement('meta');
+    meta.name = 'apple-itunes-app';
+    meta.content = `app-id=6768619318, app-argument=https://app.pumplo.com/plan/${token}`;
+    document.head.appendChild(meta);
+    return () => { meta.remove(); };
+  }, [token]);
 
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
   const isMobile = isIOS || isAndroid;
 
   const handleLoginAndSave = () => {
-    // Mobile: open the app at this plan (or fall back to its store).
+    // Rozdělané uložení si pamatujeme vždy — přežije přihlášení i registraci.
+    pendingStore.set(token!);
+    // V nativní appce: přihlásit a vrátit se sem (auto-uložení nahoře).
+    if (Capacitor.isNativePlatform()) { navigate(`/auth?redirect=/plan/${token}`); return; }
+    // Mobilní web: zkusit otevřít appku (universal/app link), jinak obchod.
     if (openAppOrStore(`plan/${token}`)) return;
-    // Desktop: keep the web save flow.
-    sessionStorage.setItem(PENDING_SAVE_KEY, token!);
+    // Desktop: web přihlášení.
     navigate(`/auth?redirect=/plan/${token}`);
   };
 

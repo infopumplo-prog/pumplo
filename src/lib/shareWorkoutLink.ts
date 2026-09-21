@@ -37,6 +37,12 @@ async function ensurePlan(sessionKey: string, name: string, exercises: Shareable
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('not signed in');
+  // Název plánu nese jméno toho, kdo sdílí (David: „s názvem uživatele co trénink sdílel").
+  try {
+    const { data: prof } = await supabase.from('user_profiles').select('first_name, last_name').eq('user_id', user.id).maybeSingle();
+    const who = [prof?.first_name, prof?.last_name ? `${String(prof.last_name)[0]}.` : ''].filter(Boolean).join(' ').trim();
+    if (who) name = `${name} od ${who}`;
+  } catch { /* bez jména */ }
   const usable = exercises.filter(e => e.exerciseId && e.sets.length > 0);
   if (!usable.length) throw new Error('no exercises');
 

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
@@ -76,6 +76,23 @@ const PlanDeepLinkNavigator = () => {
     });
     return () => { listener.then(h => h.remove()); };
   }, [navigate]);
+  return null;
+};
+
+// Po přihlášení/registraci vrátí uživatele na sdílený plán, jehož uložení bylo rozdělané
+// (localStorage 'pumplo_pending_plan_save'), ať odkaz z WhatsAppu „nezmizí" (David 21. 9.).
+const PendingSharedPlanResume = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    let pending: string | null = null;
+    try { pending = localStorage.getItem('pumplo_pending_plan_save'); } catch { /* noop */ }
+    if (pending && !location.pathname.startsWith('/plan/') && !location.pathname.startsWith('/auth')) {
+      navigate(`/plan/${pending}`);
+    }
+  }, [user, location.pathname, navigate]);
   return null;
 };
 
@@ -236,6 +253,7 @@ const AppRoutes = () => {
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+    <PendingSharedPlanResume />
     <SaveQueueFlusher />
     <GymDataRefresher />
   <WebGate>
