@@ -12,7 +12,8 @@ import { Capacitor } from '@capacitor/core';
 // drives app installs), with its own prominent app/store CTA. Legal pages stay
 // public (required for App Store / Play review) and /reset-password is the
 // member auth callback. Everything else funnels straight to the app/store.
-const PUBLIC_PREFIXES: string[] = ['/s/'];
+// /plan/ a /cvik/ = sdílený trénink a cvik: musí být vidět v prohlížeči i bez appky (David 21. 9.)
+const PUBLIC_PREFIXES: string[] = ['/s/', '/plan/', '/cvik/'];
 const PUBLIC_EXACT = ['/privacy', '/terms', '/reset-password'];
 
 /** True when running inside the native (Capacitor) shell. */
