@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Square, Timer, Info, Trophy, Plus } from 'lucide-react';
 import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchLastWeight } from '@/lib/lastWeight';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -256,15 +257,7 @@ export const CompactWorkoutView = ({
     }
 
     if (currentExercise.exerciseId) {
-      supabase
-        .from('workout_session_sets')
-        .select('weight_kg')
-        .eq('exercise_id', currentExercise.exerciseId)
-        .not('weight_kg', 'is', null)
-        .gt('weight_kg', 0)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+      fetchLastWeight(currentExercise.exerciseId)
         .then(({ data }) => {
           setWeight(data?.weight_kg ? `${data.weight_kg}` : '');
         });

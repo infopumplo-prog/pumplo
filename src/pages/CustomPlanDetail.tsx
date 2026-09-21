@@ -226,7 +226,10 @@ const publicVideoUrl = (videoPath: string | null): string | null => {
 // (<video> thumbnails stall iOS when many render at once).
 const CardThumb = ({ videoPath }: { videoPath: string | null }) => {
   const [error, setError] = useState(false);
-  const url = useRef(getVideoThumbUrl(videoPath)).current;
+  // Klíčované na videoPath: dřív useRef zmrazil první URL, takže po výměně cviku
+  // zůstal starý obrázek (nález 12. 9.)
+  const url = useMemo(() => getVideoThumbUrl(videoPath), [videoPath]);
+  useEffect(() => { setError(false); }, [videoPath]);
   if (!url || error) {
     return (
       <div className="shrink-0 w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
@@ -545,11 +548,14 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
       {isIncompatible && alternatives && alternatives.length > 0 && (
         <div className="ml-7 mt-2 mb-1">
           <p className="text-xs text-destructive font-medium mb-1.5">{t('custom_plan.incompatible_alternatives')}</p>
+          <p className="text-[11px] text-muted-foreground mb-1.5">{t('custom_plan.swap_hint')}</p>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {alternatives.map(alt => (
               <button
                 key={alt.id}
-                onClick={() => onSwapExercise?.(exercise.exercise_id, alt)}
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onSwapExercise?.(exercise.exercise_id, alt); }}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
               >
                 <ArrowRightLeft className="w-3 h-3 shrink-0" />
@@ -660,6 +666,40 @@ const CustomPlanDetail = () => {
     }
   };
 
+  // Proceed into the workout for the already-chosen gym. Shared by the normal
+  // path and by "start anyway", so the location gate behaves identically in both.
+  const proceedToWorkout = async (gymId: string) => {
+    const { data: gymData } = await supabase
+      .from('gyms')
+      .select('latitude, longitude, name')
+      .eq('id', gymId)
+      .single();
+
+    if (gymData?.latitude != null && gymData?.longitude != null) {
+      setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
+      setLocationGymLat(gymData.latitude);
+      setLocationGymLng(gymData.longitude);
+      setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
+      setShowLocationGate(true);
+    } else {
+      navigate(`/custom-workout/${id}?gym=${gymId}`);
+    }
+  };
+
+  // Escape hatch for the equipment gate. A missing machine in the catalogue does
+  // not mean the exercise is impossible — the gym may simply not have that piece
+  // listed. Blocking the workout outright was the single most common complaint,
+  // so the warning stays but it is no longer a dead end.
+  const handleStartAnyway = async () => {
+    if (!selectedWorkoutGymId) return;
+    setIsCheckingEquipment(true);
+    try {
+      await proceedToWorkout(selectedWorkoutGymId);
+    } finally {
+      setIsCheckingEquipment(false);
+    }
+  };
+
   // Called after all incompatible exercises are fixed and user retries
   const handleRetryAfterFix = async () => {
     if (!id || !selectedWorkoutGymId) return;
@@ -669,20 +709,7 @@ const CustomPlanDetail = () => {
       setIncompatibleExercises(incompatible);
       if (incompatible.length > 0) return;
 
-      const { data: gymData } = await supabase
-        .from('gyms')
-        .select('latitude, longitude')
-        .eq('id', selectedWorkoutGymId)
-        .single();
-
-      if (gymData?.latitude != null && gymData?.longitude != null) {
-        setLocationGymLat(gymData.latitude);
-        setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
-        setShowLocationGate(true);
-      } else {
-        navigate(`/custom-workout/${id}?gym=${selectedWorkoutGymId}`);
-      }
+      await proceedToWorkout(selectedWorkoutGymId);
     } finally {
       setIsCheckingEquipment(false);
     }
@@ -695,7 +722,7 @@ const CustomPlanDetail = () => {
     for (const day of plan.days) {
       for (const ex of day.exercises) {
         if (ex.exercise_id === oldExerciseId) {
-          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name, exercise_name_en: alt.name_en ?? null });
+          await updateExercise(ex.id, { exercise_id: alt.id, exercise_name: alt.name, exercise_name_en: alt.name_en ?? null, video_path: alt.video_path ?? null } as Parameters<typeof updateExercise>[1]);
         }
       }
     }
@@ -721,7 +748,7 @@ const CustomPlanDetail = () => {
 
   // Replace a row's exercise with the picked alternative (persists via updateExercise).
   const applyRowSwap = async (row: CustomPlanExercise, pick: SwapCandidate) => {
-    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null });
+    await updateExercise(row.id, { exercise_id: pick.id, exercise_name: pick.name, exercise_name_en: pick.name_en ?? null, video_path: pick.video_path ?? null } as Parameters<typeof updateExercise>[1]);
     toast({ title: t('workout.swap_success', { name: pick.name }) });
   };
 
@@ -1320,20 +1347,30 @@ const CustomPlanDetail = () => {
       {/* Equipment incompatibility banner */}
       {incompatibleExercises.length > 0 && (
         <div className="fixed left-0 right-0 px-4 z-[52]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-              <p className="text-sm text-destructive font-medium">
+          {/* Neprůhledný pruh: dřív byl poloprůhledný přes seznam a nešel číst (nález 12. 9.) */}
+          <div className="bg-background border-2 border-destructive/60 rounded-xl px-4 py-3 shadow-lg flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-foreground font-semibold leading-snug">
                 {t('custom_plan.incompatible_count', { count: incompatibleExercises.length, gym: locationGymName })}
               </p>
             </div>
-            <button
-              onClick={handleRetryAfterFix}
-              disabled={isCheckingEquipment}
-              className="text-xs font-semibold text-primary shrink-0"
-            >
-              {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
-            </button>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={handleRetryAfterFix}
+                disabled={isCheckingEquipment}
+                className="text-sm font-semibold text-primary px-3 py-1.5 rounded-lg bg-primary/10"
+              >
+                {isCheckingEquipment ? '...' : t('custom_plan.check_equipment')}
+              </button>
+              <button
+                onClick={handleStartAnyway}
+                disabled={isCheckingEquipment}
+                className="text-sm font-semibold text-foreground px-3 py-1.5 rounded-lg bg-muted"
+              >
+                {t('custom_plan.start_anyway')}
+              </button>
+            </div>
           </div>
         </div>
       )}

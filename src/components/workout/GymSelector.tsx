@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Check, X, Building2 } from 'lucide-react';
@@ -8,6 +8,21 @@ import { usePublishedGyms } from '@/hooks/usePublishedGyms';
 import { getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 import { OpeningHours } from '@/hooks/useGym';
+import { getCachedFileUrl } from '@/lib/videoCache';
+
+/** Logo posilovny: z telefonu (cache), jinak ze sítě; když se nenačte, ikona místo rozbitého obrázku. */
+const GymLogo = ({ url, name }: { url: string; name: string }) => {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setFailed(false);
+    getCachedFileUrl(url).then((s) => { if (!cancelled) setSrc(s); });
+    return () => { cancelled = true; };
+  }, [url]);
+  if (failed || !src) return <Building2 className="w-6 h-6 text-muted-foreground" />;
+  return <img src={src} alt={name} className="w-full h-full object-contain p-1" onError={() => setFailed(true)} />;
+};
 
 interface GymSelectorProps {
   onSelect: (gymId: string) => void;
@@ -106,11 +121,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                     gym.is_featured ? "ring-2 ring-[#5BC8F5]/40" : "ring-1 ring-border"
                   )}>
                     {gym.logo_url ? (
-                      <img
-                        src={gym.logo_url}
-                        alt={gym.name}
-                        className="w-full h-full object-contain p-1"
-                      />
+                      <GymLogo url={gym.logo_url} name={gym.name} />
                     ) : (
                       <Building2 className="w-6 h-6 text-muted-foreground" />
                     )}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, Video, Users, Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getVideoThumbUrl } from '@/lib/videoUtils';
 
 interface MyEx { id: string; name: string; name_en: string | null; category: string | null; video_path: string | null; primary_muscles: string[] | null; save_count: number }
 
@@ -43,6 +44,61 @@ function videoDuration(file: File): Promise<number> {
   });
 }
 
+
+
+// Složka souboru v bucketu exercise-videos z veřejné URL (pro thumb.jpg vedle videa).
+function storageFolderOf(publicUrl: string): string | null {
+  const marker = '/exercise-videos/';
+  const i = publicUrl.indexOf(marker);
+  if (i === -1) return null;
+  const file = publicUrl.substring(i + marker.length).split('?')[0];
+  const slash = file.lastIndexOf('/');
+  return slash === -1 ? null : file.substring(0, slash);
+}
+
+// Zmenší obrázek na maxPx po delší straně a vrátí JPEG.
+function resizeImage(file: File, maxPx: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const ctx = c.getContext('2d'); if (!ctx) throw new Error('canvas');
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob((b) => { URL.revokeObjectURL(url); b ? resolve(b) : reject(new Error('toBlob')); }, 'image/jpeg', 0.88);
+      } catch (e) { URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    img.src = url;
+  });
+}
+
+// První snímek videa jako JPEG (max 480 px na delší straně). Vrací null, když
+// prohlížeč snímek nedokáže vykreslit (např. nepodporovaný kodek).
+function captureFirstFrame(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    const done = (b: Blob | null) => { URL.revokeObjectURL(v.src); resolve(b); };
+    v.onerror = () => done(null);
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); } catch { done(null); } };
+    v.onseeked = () => {
+      try {
+        const scale = Math.min(1, 480 / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+        const ctx = c.getContext('2d'); if (!ctx) return done(null);
+        ctx.drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => done(b), 'image/jpeg', 0.85);
+      } catch { done(null); }
+    };
+    v.src = URL.createObjectURL(file);
+  });
+}
+
 export default function MyExercisesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -54,6 +110,10 @@ export default function MyExercisesPage() {
   const [uploading, setUploading] = useState(false);
   const [deleteItem, setDeleteItem] = useState<MyEx | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const thumbInput = useRef<HTMLInputElement>(null);
+  const [thumbUploading, setThumbUploading] = useState(false);
+  // Po nahrání vlastního náhledu má URL stejné jméno (thumb.jpg) → cache-buster, ať se ukáže nový
+  const [thumbVersion, setThumbVersion] = useState(0);
 
   async function load() {
     setLoading(true);
@@ -64,20 +124,54 @@ export default function MyExercisesPage() {
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm({ ...emptyForm }); setEditorOpen(true); }
+
+  // Příchod z výběru cviků do vlastního plánu („+ Vytvořit vlastní cvik“): rovnou otevřít editor,
+  // případně s předvyplněným názvem z vyhledávání.
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Zpět vede tam, odkud uživatel přišel (výběr cviků ve vlastním plánu), jinak na Profil.
+  const location = useLocation();
+  const [backTo] = useState<string>(() => (location.state as { back?: string } | null)?.back || '/profile');
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    const name = searchParams.get('name') ?? '';
+    setForm({ ...emptyForm, name });
+    setEditorOpen(true);
+    searchParams.delete('new'); searchParams.delete('name');
+    setSearchParams(searchParams, { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function openEdit(it: MyEx) {
     const { data } = await supabase.from('exercises')
-      .select('id, name, name_en, category, unit_type, description, description_en, video_path, primary_muscles')
+      .select('id, name, name_en, category, unit_type, exercise_with_weights, description, description_en, video_path, primary_muscles')
       .eq('id', it.id).single();
     const d = data as any;
     const matched = (d?.primary_muscles || []).filter((m: string) => MUSCLE_GROUPS.some(g => g.store === m));
     const fallback = MUSCLE_GROUPS.find(m => m.category === d?.category);
     setForm({
       id: d.id, name: d.name ?? '', name_en: d.name_en ?? '',
-      muscles: matched.length ? matched : (fallback ? [fallback.label] : []),
+      muscles: matched.length ? matched : (fallback ? [fallback.store] : []),
       units: d.unit_type === 'time_min' ? 'time_min' : (d.exercise_with_weights === false ? 'reps' : 'weight_reps'),
       description: d.description ?? '', description_en: d.description_en ?? '', video_path: d.video_path ?? '',
     });
     setEditorOpen(true);
+  }
+
+  // Vlastní náhledový obrázek (trenéři chtějí svoje): zmenšit na ≤640 px a přepsat <folder>/thumb.jpg
+  async function uploadThumb(file: File) {
+    if (!form.video_path) { toast.error(t('my_exercises.thumb_need_video')); return; }
+    const folder = storageFolderOf(form.video_path);
+    if (!folder) { toast.error(t('my_exercises.thumb_failed')); return; }
+    setThumbUploading(true);
+    try {
+      const blob = await resizeImage(file, 640);
+      const { error } = await supabase.storage.from('exercise-videos').upload(`${folder}/thumb.jpg`, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (error) throw error;
+      setThumbVersion(v => v + 1);
+      toast.success(t('my_exercises.thumb_saved'));
+    } catch (e) {
+      toast.error(t('my_exercises.thumb_failed') + ': ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setThumbUploading(false);
+    }
   }
 
   async function uploadVideo(file: File) {
@@ -90,9 +184,17 @@ export default function MyExercisesPage() {
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-    const path = `custom/${user?.id}/${Date.now()}.${ext}`;
+    // Každý cvik má vlastní složku, aby vedle videa mohl ležet thumb.jpg
+    // (stejná konvence jako katalog: <folder>/thumb.jpg → getVideoThumbUrl).
+    const folder = `custom/${user?.id}/${Date.now()}`;
+    const path = `${folder}/video.${ext}`;
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: false, contentType: file.type || 'video/mp4' });
     if (error) { setUploading(false); toast.error(t('my_exercises.video_failed') + ': ' + error.message); return; }
+    // Náhledový obrázek z prvního snímku — best effort, bez něj se ve výběru cviků ukáže video
+    try {
+      const thumb = await captureFirstFrame(file);
+      if (thumb) await supabase.storage.from('exercise-videos').upload(`${folder}/thumb.jpg`, thumb, { upsert: false, contentType: 'image/jpeg' });
+    } catch (e) { console.warn('[my_exercises] thumb failed', e); }
     const { data: { publicUrl } } = supabase.storage.from('exercise-videos').getPublicUrl(path);
     setForm(f => ({ ...f, video_path: publicUrl }));
     setUploading(false);
@@ -134,7 +236,7 @@ export default function MyExercisesPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 20px)' }}>
-        <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
+        <button onClick={() => navigate(backTo)} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
           <ArrowLeft className="w-4 h-4" /> {t('my_exercises.title')}
         </button>
 
@@ -230,6 +332,27 @@ export default function MyExercisesPage() {
               <input ref={videoInput} type="file" accept="video/mp4,video/quicktime,.mov" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
               <p className="text-xs text-muted-foreground mt-1.5">{t('my_exercises.video_hint', { sec: MAX_VIDEO_SEC, mb: MAX_VIDEO_MB })}</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{t('my_exercises.thumb')}</label>
+              <div className="mt-1 flex items-center gap-3">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center">
+                  {form.video_path
+                    ? <img key={thumbVersion} src={`${getVideoThumbUrl(form.video_path)}?v=${thumbVersion}`} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} />
+                    : <Video className="w-5 h-5 text-muted-foreground/50" />}
+                </div>
+                <div className="flex-1">
+                  <button onClick={() => thumbInput.current?.click()} disabled={thumbUploading || !form.video_path}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-input text-sm disabled:opacity-50">
+                    {thumbUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {t('my_exercises.thumb_upload')}
+                  </button>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('my_exercises.thumb_hint')}</p>
+                </div>
+              </div>
+              <input ref={thumbInput} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadThumb(f); e.target.value = ''; }} />
             </div>
 
             <div>

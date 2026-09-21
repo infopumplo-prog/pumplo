@@ -276,7 +276,10 @@ export function useCustomPlanDetail(planId: string | null) {
     // them separately (best-effort) so a missing column can't fail the whole
     // update, and apply them optimistically so the UI reflects the change even
     // before the DDL is applied.
-    const { notes, set_types, ...known } = updates;
+    // exercise_name / exercise_name_en jsou jen pro optimistické překreslení —
+    // v tabulce custom_plan_exercises takové sloupce nejsou (zápis by spadl:
+    // „Saving failed“ při výměně cviku, nález 12. 9.). Do DB jde jen exercise_id.
+    const { notes, set_types, exercise_name: _n, exercise_name_en: _ne, video_path: _vp, ...known } = updates as typeof updates & { exercise_name?: string; exercise_name_en?: string | null; video_path?: string | null };
     const hasMeta = notes !== undefined || set_types !== undefined;
 
     // Optimistic update for EVERYTHING — every field here maps 1:1 onto the
@@ -291,7 +294,11 @@ export function useCustomPlanDetail(planId: string | null) {
 
     if (Object.keys(known).length > 0) {
       const { error } = await supabase.from('custom_plan_exercises').update(known).eq('id', exerciseId);
-      if (error) { toast.error(i18n.t('custom_plan.save_failed')); fetchPlan(); }
+      if (error) {
+        console.warn('[customPlan] update failed ' + JSON.stringify({ exerciseId, known, error }));
+        toast.error(i18n.t('custom_plan.save_failed'));
+        fetchPlan();
+      }
     }
     if (hasMeta) {
       const meta: Record<string, unknown> = {};

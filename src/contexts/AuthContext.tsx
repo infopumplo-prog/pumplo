@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { clearUserCache } from '@/lib/offlineCache';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -9,6 +10,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { updateWatchAuth } from '@/lib/watchWorkout';
 import { createRegistrationLock } from '@/lib/registrationLock';
 import { signUpErrorMessage } from '@/lib/authErrors';
+
+/**
+ * Poslední uložená relace Supabase (klíč `sb-<ref>-auth-token`), použitá jen když
+ * jsme offline a token vypršel — supabase-js ji v úložišti nechává, jen ji
+ * getSession() nevrátí. Online cestu neovlivňuje.
+ */
+const readStoredSessionOffline = (): Session | null => {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.onLine) return null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !/^sb-.*-auth-token$/.test(key)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as Partial<Session> | null;
+      if (parsed && parsed.user && parsed.access_token && parsed.refresh_token) {
+        return parsed as Session;
+      }
+    }
+  } catch {
+    /* úložiště nedostupné nebo poškozené */
+  }
+  return null;
+};
+
 
 interface AuthContextType {
   user: User | null;
@@ -82,9 +108,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      void pushSessionToWatch(session);
-      setUser(session?.user ?? null);
+      // Offline s vypršelým tokenem: refresh selže a getSession vrátí null, ale
+      // relace v úložišti zůstává. Bez tohohle fallbacku skončil uživatel bez
+      // signálu na přihlašovací obrazovce a nemohl spustit trénink z cache.
+      const effective = session ?? readStoredSessionOffline();
+      setSession(effective);
+      void pushSessionToWatch(effective);
+      setUser(effective?.user ?? null);
       setIsLoading(false);
     });
 
@@ -281,6 +311,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    // Cache profilu/plánu je per uživatel — po odhlášení ji smaž, ať se dalšímu účtu nikdy neukáže cizí plán
+    if (user?.id) clearUserCache(user.id);
     await supabase.auth.signOut();
   };
 

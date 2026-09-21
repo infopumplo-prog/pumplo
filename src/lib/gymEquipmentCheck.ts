@@ -67,13 +67,14 @@ export async function checkCustomPlanEquipment(
 
   const gymMachineIds = new Set((gymMachines || []).map(m => m.machine_id));
 
-  // 4. Find exercises whose machine is NOT in the gym
+  // 4. Find exercises whose PRIMARY machine is NOT in the gym.
+  // Secondary machine (in practice only "Osa"/barbell — a basic accessory) must
+  // NOT gate availability: a gym that has the main bench but no separately-listed
+  // barbell would otherwise wrongly flag every barbell exercise as incompatible.
   const incompatible = uniqueExercises.filter(pe => {
     const ex = pe.exercises as any;
     if (!ex || !ex.machine_id) return false;
-    const primaryMissing = !gymMachineIds.has(ex.machine_id);
-    const secondaryMissing = ex.secondary_machine_id && !gymMachineIds.has(ex.secondary_machine_id);
-    return primaryMissing || secondaryMissing;
+    return !gymMachineIds.has(ex.machine_id);
   });
 
   if (incompatible.length === 0) return [];

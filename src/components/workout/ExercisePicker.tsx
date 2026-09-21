@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, X, Check, Dumbbell, ChevronDown, Maximize2, Share2 } from 'lucide-react';
 import { Share } from '@capacitor/share';
@@ -67,6 +68,7 @@ const getMuscleGroups = () => [
 ];
 
 const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) => {
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
 
@@ -205,7 +207,18 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
       .from('exercises')
       .select('id, name, name_en, primary_muscles, primary_muscles_en, equipment_type, video_path, category, machine_id, unit_type, allowed_phase, owner_id')
       .order('name', { ascending: true });
-    setAllExercises((data || []).map((e: any) => ({
+    // Vlastní + od někoho nasdílené (uložené) cviky: RPC my_custom_exercises je vrací
+    // i tehdy, když je RLS katalogu neukáže. Sloučit bez duplicit a dát nahoru.
+    const { data: mine } = await supabase.rpc('my_custom_exercises');
+    const mineRows = ((mine ?? []) as any[]).map((m) => ({
+      id: m.id, name: m.name, name_en: m.name_en ?? null,
+      primary_muscles: m.primary_muscles || [], primary_muscles_en: null,
+      equipment_type: null, video_path: m.video_path ?? null, category: m.category || '',
+      machine_id: null, unit_type: 'reps', allowed_phase: null, owner_id: 'custom',
+    }));
+    const mineIds = new Set(mineRows.map(r => r.id));
+    const catalog = (data || []).filter((e: any) => !mineIds.has(e.id));
+    setAllExercises([...mineRows, ...catalog].map((e: any) => ({
       id: e.id,
       name: e.name,
       name_en: e.name_en ?? null,
@@ -298,8 +311,8 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
 
   const equipmentLabel = equipment === 'warmup' ? t('exercise_picker.phase_warmup')
     : equipment === 'cooldown' ? t('exercise_picker.phase_cooldown')
-    : equipment ? t(`equipment.${equipment}`) : t('exercise_picker.all');
-  const muscleLabel = muscle ? t(`custom_plan.muscle_${muscle}`) : t('exercise_picker.all');
+    : equipment ? t(`equipment.${equipment}`) : t('exercise_picker.equipment_all');
+  const muscleLabel = muscle ? t(`custom_plan.muscle_${muscle}`) : t('exercise_picker.muscle_all');
 
   // Czech-correct plural for the "Add N exercises" CTA.
   const exerciseWord = (n: number): string =>
@@ -386,12 +399,14 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
 
         {/* Exercise list */}
         <div className="flex-1 overflow-y-auto px-4 pb-28 overscroll-contain">
+          {/* Tvorba vlastního cviku jde přes Profil → Moje cviky (video, partie, popis);
+              rychlý formulář tady byl osekaný a matoucí (David 12. 9.). */}
           {!createOpen ? (
             <button
-              onClick={() => { setCreateOpen(true); if (query.trim()) setCName(query.trim()); }}
+              onClick={() => { onClose(); navigate(`/profile/exercises?new=1${query.trim() ? `&name=${encodeURIComponent(query.trim())}` : ''}`, { state: { back: window.location.pathname } }); }}
               className="w-full mb-2 py-2.5 rounded-xl border border-dashed border-[#5BC8F5]/60 text-[#5BC8F5] text-sm font-medium"
             >
-              + {t('exercise_picker.custom_create')}
+              + {t('exercise_picker.custom_create_in_profile')}
             </button>
           ) : (
             <div className="mb-3 p-3 rounded-xl border border-border bg-card space-y-3">
@@ -669,9 +684,18 @@ const FilterOptionList = ({ options, selected, onSelect }: {
 // <video> in the list — 200 of them stall the whole picker on iOS.
 const ExerciseThumb = ({ videoPath, onTap }: { videoPath: string | null; onTap?: () => void }) => {
   const [error, setError] = useState(false);
-  const url = useRef(getVideoThumbUrl(videoPath)).current;
+  const url = useMemo(() => getVideoThumbUrl(videoPath), [videoPath]);
+  useEffect(() => { setError(false); }, [videoPath]);
   const handleTap = onTap ? (e: React.MouseEvent) => { e.stopPropagation(); onTap(); } : undefined;
   if (!url || error) {
+    // Vlastní cviky nemají vygenerovaný thumb.jpg — první snímek videa místo činky (David 13. 9.)
+    if (videoPath) {
+      return (
+        <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
+          <video src={`${videoPath}#t=0.1`} muted playsInline preload="auto" className="w-full h-full object-cover pointer-events-none" />
+        </div>
+      );
+    }
     return (
       <div onClick={handleTap} className="shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
         <Dumbbell className="w-5 h-5 text-muted-foreground/50" />

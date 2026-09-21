@@ -1,4 +1,6 @@
 import { createRoot } from "react-dom/client";
+import * as Sentry from "@sentry/capacitor";
+import * as SentryReact from "@sentry/react";
 import { registerSW } from "virtual:pwa-register";
 import { Capacitor } from "@capacitor/core";
 import App from "./App.tsx";
@@ -102,5 +104,22 @@ onNeedRefresh() {
 
 // Export updateSW for use in components
 export { updateSW };
+
+// Sběr chyb: bez DSN (lokální dev) se Sentry neinicializuje a nic neposílá.
+// Projekt do 17. 9. 2026 žádný sběr chyb neměl — tichá selhání (ztráta tréninku
+// 23. 8.) se nedala zpětně dohledat.
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+if (sentryDsn) {
+  Sentry.init(
+    {
+      dsn: sentryDsn,
+      release: `pumplo@${import.meta.env.VITE_APP_VERSION ?? "1.3.0"}`,
+      environment: import.meta.env.MODE,
+      tracesSampleRate: 0.1,
+      sendDefaultPii: false,
+    },
+    SentryReact.init,
+  );
+}
 
 createRoot(document.getElementById("root")!).render(<App />);

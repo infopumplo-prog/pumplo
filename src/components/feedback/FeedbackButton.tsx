@@ -9,7 +9,8 @@ export const FeedbackButton = () => {
   const location = useLocation();
 
   // Hide during active workout - feedback is accessible via info button there
-  if (location.pathname.startsWith('/custom-workout/') || location.pathname === '/training') return null;
+  // …a na detailu vlastního plánu překrývalo pruh s varováním o vybavení (nález 12. 9.)
+  if (location.pathname.startsWith('/custom-workout/') || location.pathname.startsWith('/custom-plan/') || location.pathname === '/training') return null;
 
   return (
     <>

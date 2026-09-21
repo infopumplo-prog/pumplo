@@ -12,6 +12,12 @@ import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
+import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
+import { getPlayableVideoUrl } from '@/lib/videoCache';
+import { fetchLastWeight } from '@/lib/lastWeight';
+import type { Database } from '@/integrations/supabase/types';
+
+type ExerciseDetailRow = Database['public']['Tables']['exercises']['Row'];
 import { showSetActivity, endRestActivity, startRestActivity, consumePendingEvents, addLockScreenListener, type NextSetPayload } from '@/lib/restLiveActivity';
 import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
@@ -170,10 +176,13 @@ export const WorkoutSession = ({
     let cancelled = false;
     const nextId = liveExercises[currentExerciseIndex + 1]?.exerciseId;
     if (!nextId) { setNextVideoUrl(null); return; }
-    supabase.from('exercises').select('video_path').eq('id', nextId).single()
-      .then(({ data }) => {
+    // Offline: detail cviku z cache, video z telefonu (když je stažené)
+    fetchWithCache<{ video_path: string | null }>(SHARED_SCOPE, `exercise:${nextId}`, () =>
+      supabase.from('exercises').select('*').eq('id', nextId).single(),
+    )
+      .then(({ data }) => getPlayableVideoUrl(data?.video_path || null))
+      .then((url) => {
         if (cancelled) return;
-        const url = data?.video_path || null;
         setNextVideoUrl(url);
         // Warm the cache NOW (during the current exercise) via a single reused
         // detached video so the rest screen shows it instantly/smoothly.
@@ -767,15 +776,7 @@ export const WorkoutSession = ({
     const inSession = [...(setsDataByExercise.get(currentExerciseIndex) || [])].reverse().find(st => st.completed && st.weight != null);
     if (inSession?.weight != null) { setCurrentExWeight(inSession.weight); return; }
     if (!ex?.exerciseId) { setCurrentExWeight(null); return; }
-    supabase
-      .from('workout_session_sets')
-      .select('weight_kg')
-      .eq('exercise_id', ex.exerciseId)
-      .not('weight_kg', 'is', null)
-      .gt('weight_kg', 0)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    fetchLastWeight(ex.exerciseId)
       .then(({ data }) => { if (!cancelled) setCurrentExWeight((data as any)?.weight_kg ?? null); });
     return () => { cancelled = true; };
   }, [currentExerciseIndex, liveExercises, setsDataByExercise]);
@@ -1403,15 +1404,15 @@ const ExercisePlayerWithVideo = ({
     const fetchVideoData = async () => {
       if (!exercise.exerciseId) return;
 
-      const { data } = await supabase
-        .from('exercises')
-        .select('video_path, difficulty, exercise_with_weights, category, equipment_type, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en')
-        .eq('id', exercise.exerciseId)
-        .single();
+      // Offline-first: detail cviku z cache (naplněné při načtení plánu), video z telefonu
+      const { data } = await fetchWithCache<ExerciseDetailRow>(SHARED_SCOPE, `exercise:${exercise.exerciseId}`, () =>
+        supabase.from('exercises').select('*').eq('id', exercise.exerciseId).single(),
+      );
+      const playableUrl = await getPlayableVideoUrl(data?.video_path || null);
 
       if (data) {
         setVideoData({
-          url: data.video_path || null,
+          url: playableUrl,
           description: data.description || null,
           descriptionEn: data.description_en || null,
           setupInstructions: data.setup_instructions || null,
@@ -1436,24 +1437,16 @@ const ExercisePlayerWithVideo = ({
 
   // Fetch last weight used for this exercise
   useEffect(() => {
-    const fetchLastWeight = async () => {
+    // Pozor: lokální název nesmí stínit importovanou fetchLastWeight (dřív se
+    // funkce volala sama a poslední váha se nikdy nenačetla → prázdné váhy v sériích).
+    const loadLastWeight = async () => {
       if (!exercise.exerciseId) return;
-
-      const { data } = await supabase
-        .from('workout_session_sets')
-        .select('weight_kg')
-        .eq('exercise_id', exercise.exerciseId)
-        .not('weight_kg', 'is', null)
-        .gt('weight_kg', 0)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
+      const { data } = await fetchLastWeight(exercise.exerciseId);
       if (data?.weight_kg) {
         setLastWeight(data.weight_kg);
       }
     };
-    fetchLastWeight();
+    loadLastWeight();
   }, [exercise.exerciseId]);
 
   return (
