@@ -110,6 +110,7 @@ export default function MyExercisesPage() {
   const [uploading, setUploading] = useState(false);
   const [deleteItem, setDeleteItem] = useState<MyEx | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null); // capture → Android nabídne kameru, iOS otevře rovnou natáčení
   const thumbInput = useRef<HTMLInputElement>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
   // Po nahrání vlastního náhledu má URL stejné jméno (thumb.jpg) → cache-buster, ať se ukáže nový
@@ -323,13 +324,22 @@ export default function MyExercisesPage() {
                   <button onClick={() => setForm({ ...form, video_path: '' })} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white"><X className="w-4 h-4" /></button>
                 </div>
               ) : (
-                <button onClick={() => videoInput.current?.click()} disabled={uploading}
-                  className="w-full mt-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {uploading ? t('my_exercises.uploading') : t('my_exercises.upload_video')}
-                </button>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button onClick={() => videoInput.current?.click()} disabled={uploading}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {uploading ? t('my_exercises.uploading') : t('my_exercises.upload_video')}
+                  </button>
+                  <button onClick={() => cameraInput.current?.click()} disabled={uploading}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
+                    <Video className="w-4 h-4" />
+                    {t('my_exercises.record_video')}
+                  </button>
+                </div>
               )}
-              <input ref={videoInput} type="file" accept="video/mp4,video/quicktime,.mov" className="hidden"
+              <input ref={videoInput} type="file" accept="video/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
+              <input ref={cameraInput} type="file" accept="video/*" capture="environment" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
               <p className="text-xs text-muted-foreground mt-1.5">{t('my_exercises.video_hint', { sec: MAX_VIDEO_SEC, mb: MAX_VIDEO_MB })}</p>
             </div>
