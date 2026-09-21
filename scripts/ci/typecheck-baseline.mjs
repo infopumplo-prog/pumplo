@@ -17,6 +17,10 @@ const run = spawnSync('npx', ['tsc', '-p', 'tsconfig.app.json', '--noEmit', '--p
   encoding: 'utf8',
   maxBuffer: 64 * 1024 * 1024,
 });
+if (run.error || run.status === null) {
+  console.error(`TYPECHECK_FAIL: tsc se nespustil (${run.error?.message ?? `signal ${run.signal}`})`);
+  process.exit(1);
+}
 const out = `${run.stdout ?? ''}${run.stderr ?? ''}`;
 const errors = out.split('\n').filter((l) => /error TS\d+/.test(l));
 const count = errors.length;
