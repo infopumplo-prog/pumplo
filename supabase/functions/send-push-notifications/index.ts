@@ -95,7 +95,8 @@ function pickLang(value: string | null | undefined): Lang {
 type ComebackSignal = 'streak' | 'workouts' | 'goal' | null;
 interface ComebackTpl { needs: ComebackSignal; hook: string; generic: string }
 
-const COMEBACK_STAGES = [2, 4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
+// Od 21. 9. 2026 začíná comeback až 4. dnem — uživatel se 3 tréninky týdně dostával „2 dny pauza" obden (rozhodnutí David).
+const COMEBACK_STAGES = [4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
 const COMEBACK_TAIL_FROM = 44; // day 44+ all use the gentle "tail" template
 
 const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl>; tail: ComebackTpl }> = {
