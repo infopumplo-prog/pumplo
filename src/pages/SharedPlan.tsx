@@ -220,7 +220,7 @@ const SharedPlan = () => {
 
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
-  const isMobile = isIOS || isAndroid;
+  const isMobile = (isIOS || isAndroid) && !Capacitor.isNativePlatform(); // banner Otevrit + obchod jen v prohlizeci, ne v nativni appce
 
   const handleLoginAndSave = () => {
     // Rozdělané uložení si pamatujeme vždy — přežije přihlášení i registraci.
