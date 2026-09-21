@@ -22,7 +22,7 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,4 +33,4 @@ jobs:
           track_progress: true
           prompt: |
             ${{ github.event_name == 'pull_request' && format('Zreviduj PR #{0} jako senior TypeScript/React reviewer. Hledej chyby (správnost, async, offline cache, Supabase RLS, i18n klíče, regrese v tréninkovém playeru), ne styl. Piš česky, stručně, ke každému nálezu soubor:řádek a návrh opravy. Když nic vážného nenajdeš, řekni to jednou větou. Hotový review ZAPIŠ jako komentář k PR příkazem: gh pr comment {0} --body-file <soubor>. Bez komentáře review neexistuje.', github.event.pull_request.number) || '' }}
-          claude_args: --max-turns 30 --allowedTools "Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
+          claude_args: --max-turns 60 --allowedTools "Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
