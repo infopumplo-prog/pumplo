@@ -117,6 +117,8 @@ export default function MyExercisesPage() {
   const [deleteItem, setDeleteItem] = useState<MyEx | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  // iOS nabízí „Take Video“ přímo v systémovém výběru souboru, tlačítko Natočit je jen pro Android (David 21. 9.)
+  const showRecordButton = Capacitor.getPlatform() === 'android';
   const [uploadStage, setUploadStage] = useState<'compress' | 'upload'>('upload'); // capture → Android nabídne kameru, iOS otevře rovnou natáčení
   const thumbInput = useRef<HTMLInputElement>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
