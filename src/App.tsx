@@ -70,10 +70,14 @@ const PlanDeepLinkNavigator = () => {
   const navigate = useNavigate();
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    const listener = CapApp.addListener('appUrlOpen', ({ url }) => {
+    const handle = (url: string) => {
       const m = url.match(/\/(plan|cvik)\/([^/?#]+)/);
       if (m) navigate(`/${m[1]}/${m[2]}`);
-    });
+    };
+    const listener = CapApp.addListener('appUrlOpen', ({ url }) => handle(url));
+    // Studený start: appUrlOpen se vyvolá dřív, než je posluchač zaregistrovaný →
+    // odkaz, kterým se appka spustila, vzít z getLaunchUrl (David 21. 9.: „otevře apku, ale ne ten trénink").
+    CapApp.getLaunchUrl().then((r) => { if (r?.url) handle(r.url); }).catch(() => {});
     return () => { listener.then(h => h.remove()); };
   }, [navigate]);
   return null;
