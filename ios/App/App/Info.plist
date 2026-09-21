@@ -42,6 +42,8 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mikrofon se používá jen při natáčení videa vlastního cviku.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pumplo používá fotoaparát, abys mohl přidat vlastní fotku ke sdílení svého tréninku.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

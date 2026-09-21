@@ -29,6 +29,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.pumplo.app" />
             </intent-filter>
+            <!-- Android App Links: https://app.pumplo.com/plan/… a /cvik/… otevřou appku
+                 (ověření přes /.well-known/assetlinks.json: Google podpis + upload + debug klíč) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.pumplo.com" android:pathPrefix="/plan/" />
+                <data android:scheme="https" android:host="app.pumplo.com" android:pathPrefix="/cvik/" />
+            </intent-filter>
 
         </activity>
 
@@ -52,6 +61,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Natáčení videa vlastního cviku přímo z výběru souboru (Capacitor nabídne kameru jen s deklarovaným oprávněním) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 

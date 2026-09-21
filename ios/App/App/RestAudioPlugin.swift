@@ -13,10 +13,37 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "RestAudio"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "beep", returnType: CAPPluginReturnPromise)
     ]
 
     private var player: AVAudioPlayer?
+    private var beepPlayer: AVAudioPlayer?
+
+    // Krátké pípnutí (série hotová, odpočet, konec tréninku) přehrané nativně
+    // s .mixWithOthers. Web <audio> ve WKWebView si bere vlastní non-mixing
+    // audio session a přerušuje Spotify/Apple Music — proto pípá native.
+    @objc func beep(_ call: CAPPluginCall) {
+        let freq = call.getDouble("freq") ?? 660
+        let ms = call.getDouble("ms") ?? 150
+        let vol = call.getDouble("volume") ?? 0.6
+        let data = RestAudioPlugin.toneWav(freq: freq, durationMs: ms, vol: vol)
+        DispatchQueue.main.async {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, options: [.mixWithOthers])
+                try session.setActive(true)
+                self.beepPlayer?.stop()
+                let p = try AVAudioPlayer(data: data)
+                p.prepareToPlay()
+                p.play()
+                self.beepPlayer = p
+                call.resolve()
+            } catch {
+                call.reject("beep failed: \(error.localizedDescription)")
+            }
+        }
+    }
 
     @objc func start(_ call: CAPPluginCall) {
         let seconds = call.getDouble("seconds") ?? 0
@@ -45,8 +72,31 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func stop(_ call: CAPPluginCall) {
         player?.stop()
         player = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        // Session zůstává aktivní (.mixWithOthers) — opakované setActive(false)
+        // po každé pauze způsobovalo výpadky hudby na pozadí.
         call.resolve()
+    }
+
+    private static func toneWav(freq: Double, durationMs: Double, vol: Double) -> Data {
+        let sr = 22050
+        let n = max(1, Int(Double(sr) * durationMs / 1000.0))
+        var samples = [Int16](repeating: 0, count: n)
+        for i in 0..<n {
+            let t = Double(i) / Double(sr)
+            let env = i > Int(Double(n) * 0.8) ? Double(n - i) / (Double(n) * 0.2) : 1.0
+            let v = sin(2.0 * Double.pi * freq * t) * env * vol * 32000.0
+            samples[i] = Int16(max(-32768.0, min(32767.0, v)))
+        }
+        var d = Data()
+        func u32(_ v: UInt32) -> Data { var x = v.littleEndian; return Data(bytes: &x, count: 4) }
+        func u16(_ v: UInt16) -> Data { var x = v.littleEndian; return Data(bytes: &x, count: 2) }
+        let dataLen = UInt32(samples.count * 2)
+        d.append("RIFF".data(using: .ascii)!); d.append(u32(36 + dataLen)); d.append("WAVE".data(using: .ascii)!)
+        d.append("fmt ".data(using: .ascii)!); d.append(u32(16)); d.append(u16(1)); d.append(u16(1))
+        d.append(u32(UInt32(sr))); d.append(u32(UInt32(sr * 2))); d.append(u16(2)); d.append(u16(16))
+        d.append("data".data(using: .ascii)!); d.append(u32(dataLen))
+        samples.withUnsafeBufferPointer { d.append(Data(buffer: $0)) }
+        return d
     }
 
     // 16-bit signed mono PCM WAV. The whole clip carries an inaudibly quiet

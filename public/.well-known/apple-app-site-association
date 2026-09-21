@@ -1,0 +1,9 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      { "appID": "DF748BR59G.com.pumplo.app", "paths": ["/plan/*", "/cvik/*"] }
+    ]
+  },
+  "webcredentials": { "apps": ["DF748BR59G.com.pumplo.app"] }
+}

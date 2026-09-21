@@ -95,14 +95,14 @@ function pickLang(value: string | null | undefined): Lang {
 type ComebackSignal = 'streak' | 'workouts' | 'goal' | null;
 interface ComebackTpl { needs: ComebackSignal; hook: string; generic: string }
 
-const COMEBACK_STAGES = [2, 4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
+// Od 21. 9. 2026 začíná comeback až 4. dnem — uživatel se 3 tréninky týdně dostával „2 dny pauza" obden (rozhodnutí David).
+const COMEBACK_STAGES = [4, 7, 11, 16, 23, 30, 44, 58, 72, 86];
 const COMEBACK_TAIL_FROM = 44; // day 44+ all use the gentle "tail" template
 
 const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl>; tail: ComebackTpl }> = {
   cs: {
     title: 'Pumplo 💪',
     stages: {
-      2: { needs: null, hook: '👋 Hej {name}, dva dny pauza? Tělo už kouká, kde seš.', generic: '👋 Hej {name}, dva dny pauza? Uvidíme se v posilce?' },
       4: { needs: 'streak', hook: '🙏 {name}, čtyři dny… tvůj rekord {streak} dní by to neschvaloval.', generic: '🙏 {name}, čtyři dny ticho. Dáme to zítra?' },
       7: { needs: 'workouts', hook: '🔥 Týden bez tréninku, {name}. {workouts} tréninků za tebou — teď to nezahodíš.', generic: '🔥 Týden bez tréninku, {name}. Pojď zpátky do hry.' },
       11: { needs: 'goal', hook: '😅 {name}, svaly ti píšou, že jim chybíš. Tvůj cíl ({goal}) pořád čeká.', generic: '😅 {name}, svaly ti píšou, že jim chybíš. Vrátíš se?' },
@@ -115,7 +115,6 @@ const COMEBACK: Record<Lang, { title: string; stages: Record<number, ComebackTpl
   en: {
     title: 'Pumplo 💪',
     stages: {
-      2: { needs: null, hook: "👋 Hey {name}, two days off? Your body's asking where you are.", generic: '👋 Hey {name}, two days off? See you at the gym?' },
       4: { needs: 'streak', hook: '🙏 {name}, four days… your {streak}-day record wouldn’t approve.', generic: '🙏 {name}, four quiet days. Get back to it tomorrow?' },
       7: { needs: 'workouts', hook: "🔥 A week off, {name}. {workouts} workouts behind you — don't throw it away now.", generic: '🔥 A week off, {name}. Come back into the game.' },
       11: { needs: 'goal', hook: '😅 {name}, your muscles say they miss you. Your goal ({goal}) is still waiting.', generic: '😅 {name}, your muscles say they miss you. Coming back?' },

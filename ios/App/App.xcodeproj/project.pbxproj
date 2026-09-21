@@ -12,6 +12,7 @@
 		06553C7F2FFD57B300A92F27 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06553C7E2FFD57B300A92F27 /* SwiftUI.framework */; };
 		06553C8C2FFD57B500A92F27 /* PumploWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06553C7A2FFD57B300A92F27 /* PumploWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		06C5271A2FE0200000000001 /* RestAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000002 /* RestAudioPlugin.swift */; };
+		0CF6462D426E316750F1841D /* VideoCompressPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA840A6BEB4F97DC9C00F93 /* VideoCompressPlugin.swift */; };
 		06C5271A2FE0200000000003 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000004 /* MainViewController.swift */; };
 		06C5271A2FE0200000000005 /* InstagramSharePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000006 /* InstagramSharePlugin.swift */; };
 		06C5271A2FE0200000000007 /* rest_beep.wav in Resources */ = {isa = PBXBuildFile; fileRef = 06C5271A2FE0200000000008 /* rest_beep.wav */; };
@@ -100,6 +101,7 @@
 		06553C7E2FFD57B300A92F27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		06C526F82FE011D7001C225D /* Eurogym.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = Eurogym.gpx; path = App/Eurogym.gpx; sourceTree = "<group>"; };
 		06C5271A2FE0200000000002 /* RestAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestAudioPlugin.swift; sourceTree = "<group>"; };
+		2FA840A6BEB4F97DC9C00F93 /* VideoCompressPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompressPlugin.swift; sourceTree = "<group>"; };
 		06C5271A2FE0200000000004 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		06C5271A2FE0200000000006 /* InstagramSharePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstagramSharePlugin.swift; sourceTree = "<group>"; };
 		06C5271A2FE0200000000008 /* rest_beep.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = rest_beep.wav; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				06C5271A2FE0200000000002 /* RestAudioPlugin.swift */,
+				2FA840A6BEB4F97DC9C00F93 /* VideoCompressPlugin.swift */,
 				06C5271A2FE020000000000A /* RestActivityPlugin.swift */,
 				06C5271A2FE020000000000C /* RestActivityAttributes.swift */,
 				06C5271A2FE020000000000F /* RestActivityIntents.swift */,
@@ -441,6 +444,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				06C5271A2FE0200000000001 /* RestAudioPlugin.swift in Sources */,
+				0CF6462D426E316750F1841D /* VideoCompressPlugin.swift in Sources */,
 				06C5271A2FE0200000000009 /* RestActivityPlugin.swift in Sources */,
 				06C5271A2FE020000000000B /* RestActivityAttributes.swift in Sources */,
 				06C5271A2FE020000000000E /* RestActivityIntents.swift in Sources */,

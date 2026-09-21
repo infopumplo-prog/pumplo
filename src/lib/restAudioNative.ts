@@ -6,6 +6,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 interface RestAudioPlugin {
   start(options: { seconds: number }): Promise<void>;
   stop(): Promise<void>;
+  beep(options: { freq: number; ms: number; volume: number }): Promise<void>;
 }
 
 const RestAudio = registerPlugin<RestAudioPlugin>('RestAudio');
@@ -26,4 +27,16 @@ export async function startRestBeeps(seconds: number): Promise<boolean> {
 export async function stopRestBeeps(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   try { await RestAudio.stop(); } catch { /* noop */ }
+}
+
+// Krátké pípnutí nativně (iOS): AVAudioPlayer s .mixWithOthers nepřeruší hudbu,
+// zatímco web <audio> ve WKWebView ano. Vrací false, když plugin není k dispozici.
+export async function nativeBeep(freq: number, ms: number, volume: number): Promise<boolean> {
+  if (Capacitor.getPlatform() !== 'ios') return false;
+  try {
+    await RestAudio.beep({ freq, ms, volume });
+    return true;
+  } catch {
+    return false; // plugin chybí / AVAudioSession selhal → volající pustí web fallback
+  }
 }

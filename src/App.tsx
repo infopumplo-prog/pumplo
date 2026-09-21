@@ -64,16 +64,15 @@ import WebGate from "@/components/WebGate";
 const StationPage = lazy(() => import('./pages/StationPage'));
 const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
 
-// Handles com.pumplo.app://plan/{token} deep links
+// Handles deep links: com.pumplo.app://plan/{token} (custom scheme) and
+// https://app.pumplo.com/plan/{token} | /cvik/{id} (Universal Links, iOS applinks)
 const PlanDeepLinkNavigator = () => {
   const navigate = useNavigate();
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const listener = CapApp.addListener('appUrlOpen', ({ url }) => {
-      if (url.includes('://plan/')) {
-        const token = url.split('/plan/')[1]?.split('?')[0];
-        if (token) navigate(`/plan/${token}`);
-      }
+      const m = url.match(/\/(plan|cvik)\/([^/?#]+)/);
+      if (m) navigate(`/${m[1]}/${m[2]}`);
     });
     return () => { listener.then(h => h.remove()); };
   }, [navigate]);

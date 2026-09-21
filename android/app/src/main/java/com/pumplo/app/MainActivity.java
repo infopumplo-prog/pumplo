@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RestActivityPlugin.class);
         registerPlugin(InstagramSharePlugin.class);
         registerPlugin(WatchWorkoutPlugin.class);
+        registerPlugin(VideoCompressPlugin.class);
         super.onCreate(savedInstanceState);
         // Edge-to-edge: app content goes behind status bar and nav bar,
         // so env(safe-area-inset-*) returns correct values in the WebView.

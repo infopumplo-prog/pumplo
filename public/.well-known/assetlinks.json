@@ -1,0 +1,14 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.pumplo.app",
+      "sha256_cert_fingerprints": [
+        "01:95:96:CC:2D:5C:F3:80:5D:48:DE:C8:88:AA:5D:4E:4B:41:3E:B2:1F:BE:E9:71:6B:5F:6C:1F:A6:E5:62:A5",
+        "92:19:79:F5:81:21:D5:F2:6E:84:5C:77:74:6D:49:19:19:F2:0F:6E:6D:97:15:84:C2:2B:7C:90:D7:F9:60:A2",
+        "DB:E5:3C:82:3D:D7:B6:21:92:C8:DC:69:4F:C0:70:87:D4:F3:B3:95:AB:88:14:3B:1B:8E:A7:9A:87:E1:BE:43"
+      ]
+    }
+  }
+]

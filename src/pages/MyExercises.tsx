@@ -3,6 +3,9 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, Video, Users, Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { cn } from '@/lib/utils';
+import { compressVideoFile } from '@/lib/videoCompress';
 import { supabase } from '@/integrations/supabase/client';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
 
@@ -82,7 +85,10 @@ function captureFirstFrame(file: File): Promise<Blob | null> {
   return new Promise((resolve) => {
     const v = document.createElement('video');
     v.muted = true; v.playsInline = true; v.preload = 'auto';
-    const done = (b: Blob | null) => { URL.revokeObjectURL(v.src); resolve(b); };
+    let finished = false;
+    const done = (b: Blob | null) => { if (finished) return; finished = true; clearTimeout(timer); URL.revokeObjectURL(v.src); resolve(b); };
+    // iOS občas loadeddata/seeked vůbec nevyvolá → bez limitu by upload visel navždy (21. 9.)
+    const timer = setTimeout(() => done(null), 6000);
     v.onerror = () => done(null);
     v.onloadeddata = () => { try { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); } catch { done(null); } };
     v.onseeked = () => {
@@ -110,6 +116,10 @@ export default function MyExercisesPage() {
   const [uploading, setUploading] = useState(false);
   const [deleteItem, setDeleteItem] = useState<MyEx | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  // iOS nabízí „Take Video“ přímo v systémovém výběru souboru, tlačítko Natočit je jen pro Android (David 21. 9.)
+  const showRecordButton = Capacitor.getPlatform() === 'android';
+  const [uploadStage, setUploadStage] = useState<'compress' | 'upload'>('upload'); // capture → Android nabídne kameru, iOS otevře rovnou natáčení
   const thumbInput = useRef<HTMLInputElement>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
   // Po nahrání vlastního náhledu má URL stejné jméno (thumb.jpg) → cache-buster, ať se ukáže nový
@@ -174,14 +184,19 @@ export default function MyExercisesPage() {
     }
   }
 
-  async function uploadVideo(file: File) {
-    // Krátký záběr = rychlé přehrávání. Storage limit je 50 MB → radši ověřit předem
-    // a dát jasnou hlášku, ne tiché selhání (to David narazil u 40s videa).
-    if (file.size > MAX_VIDEO_MB * 1024 * 1024) { toast.error(t('my_exercises.video_too_big', { mb: MAX_VIDEO_MB })); return; }
-    const dur = await videoDuration(file);
+  async function uploadVideo(original: File) {
+    const dur = await videoDuration(original);
     if (dur > MAX_VIDEO_SEC + 0.5) { toast.error(t('my_exercises.video_too_long', { sec: MAX_VIDEO_SEC })); return; }
 
+    // Nativní komprese před uploadem (720p, ~2 Mb/s, bez zvuku) — záznam z kamery
+    // Motoroly má 15 MB za pár sekund, po kompresi ~2 MB. Na webu se nahrává originál.
     setUploading(true);
+    setUploadStage('compress');
+    const file = await compressVideoFile(original);
+    setUploadStage('upload');
+    // Storage limit je 50 MB → radši ověřit předem a dát jasnou hlášku, ne tiché selhání.
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) { setUploading(false); toast.error(t('my_exercises.video_too_big', { mb: MAX_VIDEO_MB })); return; }
+
     const { data: { user } } = await supabase.auth.getUser();
     const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
     // Každý cvik má vlastní složku, aby vedle videa mohl ležet thumb.jpg
@@ -192,7 +207,7 @@ export default function MyExercisesPage() {
     if (error) { setUploading(false); toast.error(t('my_exercises.video_failed') + ': ' + error.message); return; }
     // Náhledový obrázek z prvního snímku — best effort, bez něj se ve výběru cviků ukáže video
     try {
-      const thumb = await captureFirstFrame(file);
+      const thumb = await captureFirstFrame(original); // originál, ne zkomprimovaný blob — ten iOS nemusí načíst
       if (thumb) await supabase.storage.from('exercise-videos').upload(`${folder}/thumb.jpg`, thumb, { upsert: false, contentType: 'image/jpeg' });
     } catch (e) { console.warn('[my_exercises] thumb failed', e); }
     const { data: { publicUrl } } = supabase.storage.from('exercise-videos').getPublicUrl(path);
@@ -323,13 +338,22 @@ export default function MyExercisesPage() {
                   <button onClick={() => setForm({ ...form, video_path: '' })} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white"><X className="w-4 h-4" /></button>
                 </div>
               ) : (
-                <button onClick={() => videoInput.current?.click()} disabled={uploading}
-                  className="w-full mt-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {uploading ? t('my_exercises.uploading') : t('my_exercises.upload_video')}
-                </button>
+                <div className={cn("mt-1 grid gap-2", showRecordButton ? "grid-cols-2" : "grid-cols-1")}>
+                  <button onClick={() => videoInput.current?.click()} disabled={uploading}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {uploading ? (uploadStage === 'compress' ? t('my_exercises.compressing') : t('my_exercises.uploading')) : t('my_exercises.upload_video')}
+                  </button>
+                  {showRecordButton && <button onClick={() => cameraInput.current?.click()} disabled={uploading}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
+                    <Video className="w-4 h-4" />
+                    {t('my_exercises.record_video')}
+                  </button>}
+                </div>
               )}
-              <input ref={videoInput} type="file" accept="video/mp4,video/quicktime,.mov" className="hidden"
+              <input ref={videoInput} type="file" accept="video/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
+              <input ref={cameraInput} type="file" accept="video/*" capture="environment" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(f); e.target.value = ''; }} />
               <p className="text-xs text-muted-foreground mt-1.5">{t('my_exercises.video_hint', { sec: MAX_VIDEO_SEC, mb: MAX_VIDEO_MB })}</p>
             </div>

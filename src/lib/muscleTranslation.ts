@@ -1,5 +1,12 @@
 export const MUSCLE_MAP: Record<string, string> = {
   // Czech proper names
+  // Hodnoty partií vlastních cviků (MyExercises MUSCLE_GROUPS.store)
+  'Nohy': 'Legs',
+  'Hýždě': 'Glutes',
+  'Prsa': 'Chest',
+  'Biceps': 'Biceps',
+  'Triceps': 'Triceps',
+  'Paže': 'Arms',
   'Kvadricepsy': 'Quadriceps',
   'Hamstringy': 'Hamstrings',
   'Hýžďové svaly': 'Glutes',
