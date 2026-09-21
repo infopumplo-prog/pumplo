@@ -530,6 +530,8 @@ const cs = {
   'myplan.set_training_days': 'Nastav si tréninkové dny',
   'myplan.week': 'Blok {{n}}',
   'myplan.today': 'Dnes',
+  'myplan.preview_hint': 'Náhled tréninku · {{n}} cviků. Pořadí a váhy se doladí až při spuštění.',
+  'myplan.preview_start': 'Spustit tento trénink',
   'myplan.next_workout': 'Další',
   'myplan.workout_n': '{{n}}. trénink',
   'myplan.current': 'Aktuální',

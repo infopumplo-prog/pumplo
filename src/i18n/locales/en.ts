@@ -528,6 +528,8 @@ const en = {
   'myplan.set_training_days': 'Set your training days',
   'myplan.week': 'Block {{n}}',
   'myplan.today': 'Today',
+  'myplan.preview_hint': 'Workout preview · {{n}} exercises. Order and weights are finalized when you start.',
+  'myplan.preview_start': 'Start this workout',
   'myplan.next_workout': 'Next',
   'myplan.workout_n': 'Workout {{n}}',
   'myplan.current': 'Current',

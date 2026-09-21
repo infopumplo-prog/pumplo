@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
@@ -100,6 +101,8 @@ const MyPlan = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [viewingWeek, setViewingWeek] = useState<number>(1);
+  // Náhled libovolného dne plánu (feedback: „nejde rozkliknout následující trénink“)
+  const [previewDay, setPreviewDay] = useState<{ dayLetter: string; isNext: boolean } | null>(null);
   const [planSessions, setPlanSessions] = useState<{ day_letter: string; started_at: string }[]>([]);
 
   const totalWeeks = PLAN_DURATION_WEEKS;
@@ -545,10 +548,12 @@ const MyPlan = () => {
                               : t('training.workout_letter', { letter: day.dayLetter });
 
                             return (
-                              <div
+                              <button
+                                type="button"
                                 key={`${day.dayOfWeek}-${index}`}
+                                onClick={() => setPreviewDay({ dayLetter: day.dayLetter, isNext: day.isNext })}
                                 className={cn(
-                                  "flex items-center justify-between p-3 rounded-xl",
+                                  "w-full text-left flex items-center justify-between p-3 rounded-xl active:scale-[0.99] transition-transform",
                                   isDayCompleted
                                     ? "bg-green-500/10 border border-green-500/20"
                                     : isToday
@@ -577,7 +582,7 @@ const MyPlan = () => {
                                 ) : isToday ? (
                                   <Badge className="bg-primary/20 text-primary border-0 text-xs">{t('myplan.next_workout')}</Badge>
                                 ) : null}
-                              </div>
+                              </button>
                             );
                           })
                         )}
@@ -588,6 +593,54 @@ const MyPlan = () => {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Náhled cviků vybraného dne */}
+          <Drawer open={!!previewDay} onOpenChange={(o) => { if (!o) setPreviewDay(null); }}>
+            <DrawerContent className="max-h-[85vh]">
+              {previewDay && plan && (() => {
+                const tpl = plan.allDays?.find(d => d.dayLetter === previewDay.dayLetter);
+                const title = tpl?.dayName
+                  ? ((isEn && DAY_NAME_EN[tpl.dayName]) ? DAY_NAME_EN[tpl.dayName] : tpl.dayName)
+                  : t('training.workout_letter', { letter: previewDay.dayLetter });
+                const list = plan.exercises
+                  .filter(e => e.dayLetter === previewDay.dayLetter && !e.isExtension)
+                  .sort((a, b) => a.slotOrder - b.slotOrder);
+                return (
+                  <>
+                    <DrawerHeader className="pb-2 text-left">
+                      <DrawerTitle className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">{previewDay.dayLetter}</span>
+                        {title}
+                      </DrawerTitle>
+                      <DrawerDescription>{t('myplan.preview_hint', { n: list.length })}</DrawerDescription>
+                    </DrawerHeader>
+                    <div className="px-4 pb-6 overflow-y-auto space-y-2">
+                      {list.map((ex, i) => {
+                        const name = (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || ex.roleId);
+                        const machine = (isEn && ex.machineNameEn) ? ex.machineNameEn : ex.machineName;
+                        return (
+                          <div key={ex.id} className="flex items-center gap-3 p-3 rounded-xl bg-background/60 border border-border/50">
+                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">{i + 1}</div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {t('workout.sets_x_reps', { sets: ex.sets, min: ex.repMin, max: ex.repMax })}{machine ? ` · ${machine}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {previewDay.isNext && (
+                        <Button className="w-full mt-2" size="lg" onClick={() => { setPreviewDay(null); navigate('/training?start=true'); }}>
+                          {t('myplan.preview_start')}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </DrawerContent>
+          </Drawer>
 
           {/* Action Buttons */}
           <motion.div variants={itemVariants} className="space-y-3">

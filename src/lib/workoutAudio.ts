@@ -1,6 +1,13 @@
 // Workout audio — beep patterns + mute support
 // Uses HTMLAudioElement (no AudioContext/decodeAudioData) to avoid
 // WebKit libpas heap crashes on iOS 26.
+// On iOS native the beeps go through RestAudioPlugin (AVAudioPlayer, .mixWithOthers):
+// a web <audio> element in WKWebView grabs a non-mixing audio session and pauses
+// Spotify/Apple Music — that was the "music stops when I start a workout" bug.
+import { Capacitor } from '@capacitor/core';
+import { nativeBeep } from './restAudioNative';
+
+const isIosNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 
 // --- Mute state ---
 let _muted = false;
@@ -27,9 +34,13 @@ function generateWavBlob(freq: number, ms: number, sr = 22050): string | null {
   } catch { return null; }
 }
 
+const TONES: Record<string, { freq: number; ms: number }> = {};
 const beepUrl = generateWavBlob(660, 150);
 const alarmBeepUrl = generateWavBlob(880, 120);
 const alarmFinishUrl = generateWavBlob(1175, 500);
+if (beepUrl) TONES[beepUrl] = { freq: 660, ms: 150 };
+if (alarmBeepUrl) TONES[alarmBeepUrl] = { freq: 880, ms: 120 };
+if (alarmFinishUrl) TONES[alarmFinishUrl] = { freq: 1175, ms: 500 };
 
 let unlocked = false;
 
@@ -39,8 +50,10 @@ export const unlockAudio = () => {
   unlocked = true;
   // Warm up by creating a silent audio element — lets iOS allow future HTMLAudioElement plays
   // without interrupting background music (short, immediate, then discarded)
+  if (isIosNative) return; // native beeps need no WebKit unlock
   try {
     const warm = new Audio(beepUrl ?? '');
+    warm.muted = true; // volume=0 is still "audible" for WebKit and interrupts background music
     warm.volume = 0;
     warm.play().catch(() => {}).finally(() => { warm.src = ''; });
   } catch {}
@@ -49,6 +62,10 @@ export const unlockAudio = () => {
 // --- Playback: each beep gets its own short-lived Audio element ---
 function playUrl(url: string | null, volume: number) {
   if (_muted || !url || !unlocked) return;
+  if (isIosNative) {
+    const tone = TONES[url];
+    if (tone && nativeBeep(tone.freq, tone.ms, volume)) return;
+  }
   try {
     const a = new Audio(url);
     a.volume = volume;
