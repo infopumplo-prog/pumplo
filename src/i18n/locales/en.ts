@@ -231,6 +231,7 @@ const en = {
   'my_exercises.upload_video': 'Upload video',
   'my_exercises.uploading': 'Uploading…',
   'my_exercises.record_video': 'Record',
+  'my_exercises.compressing': 'Compressing video…',
   'my_exercises.video_failed': 'Video upload failed',
   'my_exercises.video_hint': 'Short clip (max {{sec}}s), portrait, good light — so it plays fast. Trim long videos in Photos. Limit {{mb}} MB.',
   'my_exercises.video_too_long': 'Video is too long (max {{sec}}s). Trim it in Photos so it plays fast.',
