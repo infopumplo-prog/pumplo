@@ -29,6 +29,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.pumplo.app" />
             </intent-filter>
+            <!-- Android App Links: https://app.pumplo.com/plan/… a /cvik/… otevřou appku
+                 (ověření přes /.well-known/assetlinks.json: Google podpis + upload + debug klíč) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.pumplo.com" android:pathPrefix="/plan/" />
+                <data android:scheme="https" android:host="app.pumplo.com" android:pathPrefix="/cvik/" />
+            </intent-filter>
 
         </activity>
 
