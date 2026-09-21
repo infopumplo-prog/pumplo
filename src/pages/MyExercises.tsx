@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, Video, Users, Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { cn } from '@/lib/utils';
 import { compressVideoFile } from '@/lib/videoCompress';
 import { supabase } from '@/integrations/supabase/client';
 import { getVideoThumbUrl } from '@/lib/videoUtils';
@@ -334,17 +336,17 @@ export default function MyExercisesPage() {
                   <button onClick={() => setForm({ ...form, video_path: '' })} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white"><X className="w-4 h-4" /></button>
                 </div>
               ) : (
-                <div className="mt-1 grid grid-cols-2 gap-2">
+                <div className={cn("mt-1 grid gap-2", showRecordButton ? "grid-cols-2" : "grid-cols-1")}>
                   <button onClick={() => videoInput.current?.click()} disabled={uploading}
                     className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
                     {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     {uploading ? (uploadStage === 'compress' ? t('my_exercises.compressing') : t('my_exercises.uploading')) : t('my_exercises.upload_video')}
                   </button>
-                  <button onClick={() => cameraInput.current?.click()} disabled={uploading}
+                  {showRecordButton && <button onClick={() => cameraInput.current?.click()} disabled={uploading}
                     className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-input text-sm text-muted-foreground disabled:opacity-50">
                     <Video className="w-4 h-4" />
                     {t('my_exercises.record_video')}
-                  </button>
+                  </button>}
                 </div>
               )}
               <input ref={videoInput} type="file" accept="video/*" className="hidden"
