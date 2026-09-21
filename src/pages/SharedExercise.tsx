@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Check, Download, ArrowLeft, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SharedExercise {
@@ -59,11 +60,11 @@ export default function SharedExercisePage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-[100dvh] overflow-y-auto bg-background">
       <div className="max-w-md mx-auto px-4 pt-6 pb-24">
-        <button onClick={() => navigate('/')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
+        {Capacitor.isNativePlatform() && <button onClick={() => navigate('/')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
           <ArrowLeft className="w-4 h-4" /> Pumplo
-        </button>
+        </button>}
 
         {ex.video_path && (
           <video src={ex.video_path} className="w-full rounded-2xl border border-border bg-black mb-4" controls loop muted playsInline />
