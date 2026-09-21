@@ -10,6 +10,7 @@ import { RestTimer } from './RestTimer';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { WorkoutShareCard } from './WorkoutShareCard';
 import { WorkoutExercise, TrainingGoalId } from '@/lib/trainingGoals';
+import { shareWorkoutAsLink } from '@/lib/shareWorkoutLink';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl } from '@/lib/videoUtils';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
@@ -1114,6 +1115,20 @@ export const WorkoutSession = ({
         isSaving={isSaving}
         onAbandon={handleFinishWorkout}
         abandonDescription={t('workout.abandon_desc')}
+        onShareLink={async () => {
+          const name = `${t('training.workout_letter', { letter: dayLetter })} · ${new Date().toLocaleDateString('cs-CZ')}`;
+          try {
+            const r = await shareWorkoutAsLink({
+              sessionKey: `summary-${dayLetter}-${new Date().toISOString().slice(0, 10)}`, name,
+              exercises: results.map(r => ({
+                exerciseId: r.exerciseId || null, name: r.exerciseName,
+                sets: r.sets.filter(s => s.completed).map(s => ({ reps: s.reps || 0, weightKg: s.weight || 0 })),
+              })),
+              title: t('workout.share_link_title'), text: t('workout.share_link_text', { name }),
+            });
+            if (r?.copied) toast.success(t('workout.share_link_copied'));
+          } catch (e) { console.warn('[share-link]', e); toast.error(t('workout.share_link_failed')); }
+        }}
       />
     );
   }

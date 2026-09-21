@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { type LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Camera, Images, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Images, X, ArrowLeft, Clock, Dumbbell, Weight, Flame, MapPin, Share2, ChevronLeft, ChevronRight, Link2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
@@ -25,6 +25,8 @@ interface WorkoutShareCardProps {
   muscleIntensities?: Record<string, number>;
   isBonus?: boolean; onClose: () => void; onFinish: () => void; isSaving?: boolean;
   onAbandon?: () => void; abandonDescription?: string; finishLabel?: string;
+  /** Sdílení tréninku odkazem (příjemce si ho uloží jako vlastní plán) */
+  onShareLink?: () => Promise<void>;
 }
 
 interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
@@ -304,10 +306,10 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
 // ===== MAIN COMPONENT =====
 export const WorkoutShareCard = ({
   dayLetter, dayName, goalId, gymName, gymInstagram, totalDuration, totalSets, totalWeight, totalReps,
-  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription, finishLabel,
-}: WorkoutShareCardProps) => {
+  exerciseCount, exerciseDetails = [], muscleIntensities, isBonus, onClose, onFinish, isSaving, onAbandon, abandonDescription, finishLabel, onShareLink}: WorkoutShareCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
+  const [linkBusy, setLinkBusy] = useState(false);
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -618,6 +620,14 @@ export const WorkoutShareCard = ({
           <Share2 className="w-4 h-4" />
           {(isGenerating || !imageReady) ? t('workout.preparing') : igInstalled ? t('workout.share_instagram') : t('workout.share')}
         </button>
+        {onShareLink && (
+          <button type="button" onClick={async () => { setLinkBusy(true); try { await onShareLink(); } finally { setLinkBusy(false); } }} disabled={linkBusy}
+            className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
+            style={{ height: '44px', border: '1px solid rgba(76,201,255,0.6)', color: '#4CC9FF', fontSize: '15px', fontWeight: 600, background: 'rgba(76,201,255,0.08)' }}>
+            <Link2 className="w-4 h-4" />
+            {linkBusy ? t('workout.share_link_busy') : t('workout.share_link')}
+          </button>
+        )}
         <button type="button" onClick={onFinish} disabled={isSaving || isGenerating}
           className="w-full flex items-center justify-center rounded-xl disabled:opacity-50"
           style={{ height: '44px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '15px', fontWeight: 600, background: 'transparent' }}>

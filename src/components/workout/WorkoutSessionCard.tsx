@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, Clock, Dumbbell, Weight, Flame, Share2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { shareWorkoutAsLink } from '@/lib/shareWorkoutLink';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
@@ -335,6 +337,20 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
         onClose={() => setShareOpen(false)}
         onFinish={() => setShareOpen(false)}
         finishLabel={isEn ? 'Close' : 'Zavřít'}
+        onShareLink={async () => {
+          const name = `${displayTitle} · ${format(new Date(session.started_at), 'd. M. yyyy')}`;
+          try {
+            const r = await shareWorkoutAsLink({
+              sessionKey: session.id, name,
+              exercises: Object.values(exerciseGroups).map(g => ({
+                exerciseId: g.exerciseId ?? null, name: g.exerciseName,
+                sets: g.sets.filter(s => s.completed).map(s => ({ reps: s.reps || 0, weightKg: s.weight_kg || 0 })),
+              })),
+              title: t('workout.share_link_title'), text: t('workout.share_link_text', { name }),
+            });
+            if (r?.copied) toast.success(t('workout.share_link_copied'));
+          } catch (e) { console.warn('[share-link]', e); toast.error(t('workout.share_link_failed')); }
+        }}
       />
     )}
     </>
