@@ -263,7 +263,8 @@ const SharedPlan = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background safe-top pb-nav">
+    // Web: html/body mají overflow-hidden (appka roluje ve vlastním kontejneru) → stránka roluje sama.
+    <div className="h-[100dvh] overflow-y-auto bg-background safe-top pb-nav">
       {/* Open in app banner — shown in browsers only */}
       {isMobile && (
         <div className="bg-[#5BC8F5]/10 border-b border-[#5BC8F5]/20 px-4 py-3 flex items-center gap-3">
@@ -310,12 +311,15 @@ const SharedPlan = () => {
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
         <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => navigate('/')}
-            className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          {/* Zpět jen v appce — v prohlížeči vedlo na domovskou stránku za bránou (David 21. 9.) */}
+          {Capacitor.isNativePlatform() && (
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           <span className="text-sm text-muted-foreground">{t('shared_plan.header_label')}</span>
         </div>
 
