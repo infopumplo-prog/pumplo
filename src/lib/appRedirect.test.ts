@@ -21,12 +21,19 @@ const setupBrowser = (userAgent: string) => {
     removeEventListener: () => {},
     setTimeout: (fn: () => void, ms?: number) => setTimeout(fn, ms),
   });
+  iframes = [];
   vi.stubGlobal('document', {
     addEventListener: () => {},
     removeEventListener: () => {},
     visibilityState: 'visible',
+    hidden: false,
+    createElement: (tag: string) => { const el = { tag, src: '', style: {}, remove: () => {} }; if (tag === 'iframe') iframes.push(el); return el; },
+    body: { appendChild: () => {} },
   });
 };
+
+/** Hidden iframes the code created (iOS custom-scheme attempt). */
+let iframes: { src: string }[] = [];
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -35,23 +42,36 @@ afterEach(() => {
 });
 
 describe('openAppOrStore', () => {
-  it('never navigates iOS to the custom scheme — Safari shows a blocking "address is invalid" alert when the app is not installed', () => {
+  it('iOS: tries the app through a hidden iframe, never via location (Safari would show a blocking alert)', () => {
     setupBrowser(IOS_UA);
 
-    const attempted = openAppOrStore('station');
-    vi.advanceTimersByTime(5000);
+    const attempted = openAppOrStore('plan/abc');
 
     expect(attempted).toBe(true);
+    expect(iframes.map((f) => f.src)).toEqual(['com.pumplo.app://plan/abc']);
     expect(navigations.some((url) => url.startsWith('com.pumplo.app://'))).toBe(false);
   });
 
-  it('sends iOS straight to the App Store', () => {
+  it('iOS: falls back to the App Store only after the attempt, while the page is still visible', () => {
     setupBrowser(IOS_UA);
 
     openAppOrStore('station');
-    vi.advanceTimersByTime(5000);
+    expect(navigations).toEqual([]);
+    vi.advanceTimersByTime(1799);
+    expect(navigations).toEqual([]);
+    vi.advanceTimersByTime(2);
 
     expect(navigations).toEqual([APP_STORE_URL]);
+  });
+
+  it('iOS: does not go to the App Store when the app took over (page hidden)', () => {
+    setupBrowser(IOS_UA);
+
+    openAppOrStore('station');
+    (globalThis.document as unknown as { hidden: boolean }).hidden = true;
+    vi.advanceTimersByTime(5000);
+
+    expect(navigations).toEqual([]);
   });
 
   it('keeps the Android intent URL with its Play Store fallback', () => {

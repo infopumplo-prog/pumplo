@@ -39,7 +39,20 @@ export const openAppOrStore = (path: string): boolean => {
   // shows everyone else exactly what they need. Universal Links are the real
   // fix and need an apple-app-site-association file plus an `applinks:`
   // entitlement in a new build; until that ships, the store is the safe route.
-  window.location.href = APP_STORE_URL;
+  // iOS (21. 9.): pokus o otevření appky přes skrytý iframe s custom schématem —
+  // když je appka nainstalovaná, otevře se (a stránka se schová); když ne, iframe
+  // tiše selže a po chvíli pošleme do App Storu. Universal Links na app.pumplo.com
+  // navíc otevírají appku rovnou z odkazu ve WhatsAppu/SMS.
+  const started = Date.now();
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = `com.pumplo.app://${path}`;
+  document.body.appendChild(iframe);
+  window.setTimeout(() => {
+    iframe.remove();
+    const stillHere = !document.hidden && Date.now() - started < 3000;
+    if (stillHere) window.location.href = APP_STORE_URL;
+  }, 1800);
   return true;
 };
 
