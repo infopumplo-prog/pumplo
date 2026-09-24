@@ -1242,6 +1242,8 @@ const en = {
   'trainer.approved_desc': 'You are now a trainer at {{gymName}}.',
   'trainer.request_sent': 'Request sent',
   'trainer.request_pending': 'Wait for approval from the gym owner.',
+  'trainer.session_expired': 'Your session expired. Please sign in again.',
+  'trainer.no_gym_selected': 'Please select a gym first.',
   'trainer.error': 'Error',
   'trainer.request_failed': 'Failed to send request.',
 
