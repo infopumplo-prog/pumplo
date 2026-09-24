@@ -436,7 +436,7 @@ export const ExercisePlayer = ({
               <div className="flex-1">
                 <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-[#5BC8F5] rounded-full"
+                    className="h-full bg-primary rounded-full"
                     animate={{ width: `${progressPercent}%` }}
                     transition={{ duration: 0.3 }}
                   />
@@ -528,7 +528,7 @@ export const ExercisePlayer = ({
                   <div className="w-11 h-11 rounded-lg bg-white/10 shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-[#5BC8F5] text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">{t('workout.next_label')}</p>
+                  <p className="text-primary text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">{t('workout.next_label')}</p>
                   <p className="text-white text-sm font-semibold truncate leading-tight">{nextExerciseName}</p>
                 </div>
               </div>
@@ -545,7 +545,7 @@ export const ExercisePlayer = ({
                 <div className="flex items-center gap-4">
                   <button
                     onClick={handleCardioPause}
-                    className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform"
+                    className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform"
                   >
                     {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
                   </button>
@@ -604,7 +604,7 @@ export const ExercisePlayer = ({
                             placeholder={t('workout.weight_placeholder')}
                             value={weight}
                             onChange={(e) => setWeight(e.target.value)}
-                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30"
+                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-white/30"
                           />
                         </div>
                         <div className="flex-1">
@@ -614,7 +614,7 @@ export const ExercisePlayer = ({
                             inputMode="numeric"
                             value={reps}
                             onChange={(e) => setReps(e.target.value)}
-                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50"
+                            className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-primary/50"
                           />
                         </div>
                       </div>
@@ -626,7 +626,7 @@ export const ExercisePlayer = ({
                     <button
                       data-coach="player-complete"
                       onClick={handleCompleteSet}
-                      className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform shrink-0"
+                      className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform shrink-0"
                     >
                       <ChevronRight className="w-8 h-8 text-white" />
                     </button>
@@ -667,7 +667,7 @@ export const ExercisePlayer = ({
                 }}
                 className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
+                <MessageSquarePlus className="w-4 h-4 text-primary" />
                 {t('workout.feedback_btn')}
               </button>
             </ExerciseInfoContent>

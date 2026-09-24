@@ -1210,16 +1210,16 @@ export const WorkoutSession = ({
                 <div className="flex items-center gap-2">
                   <button onClick={() => adjustListRest(-15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">-15 s</button>
                   <div className="flex-1 text-center">
-                    <p className="text-[11px] font-semibold text-[#5BC8F5] truncate">{restLabel}</p>
+                    <p className="text-[11px] font-semibold text-primary truncate">{restLabel}</p>
                     <span className={restRemaining <= 3 ? 'text-2xl font-black tabular-nums text-red-400' : 'text-2xl font-black tabular-nums text-white'}>
                       {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, '0')}
                     </span>
                     <div className="h-1 mt-1 bg-white/15 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#5BC8F5] rounded-full" style={{ width: `${restDuration > 0 ? (restRemaining / restDuration) * 100 : 0}%` }} />
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${restDuration > 0 ? (restRemaining / restDuration) * 100 : 0}%` }} />
                     </div>
                   </div>
                   <button onClick={() => adjustListRest(15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">+15 s</button>
-                  <button onClick={() => { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); }} className="px-3 py-1.5 rounded-lg bg-[#5BC8F5] text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
+                  <button onClick={() => { stopRestBeeps(); cancelRestEndNotification(); handleRestComplete(); }} className="px-3 py-1.5 rounded-lg bg-primary text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
                 </div>
               </div>
             </motion.div>

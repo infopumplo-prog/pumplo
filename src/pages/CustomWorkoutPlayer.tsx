@@ -1234,7 +1234,7 @@ const CustomWorkoutPlayer = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#5BC8F5] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -1274,7 +1274,7 @@ const CustomWorkoutPlayer = () => {
   if (autoStarting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#5BC8F5] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -1310,10 +1310,10 @@ const CustomWorkoutPlayer = () => {
               <button
                 key={day.id}
                 onClick={() => handleStartDay(day.id)}
-                className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-[#5BC8F5]/50 transition-colors text-left"
+                className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-primary/50 transition-colors text-left"
               >
-                <div className="w-12 h-12 bg-[#5BC8F5]/10 rounded-xl flex items-center justify-center shrink-0">
-                  <Play className="w-5 h-5 text-[#5BC8F5]" />
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Play className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{day.name || t('workout.day_label', { number: day.day_number })}</p>
@@ -1665,7 +1665,7 @@ const CustomWorkoutPlayer = () => {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
-                        <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
+                        <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{m}</span>
                       ))}
                     </div>
                   </div>
@@ -1760,7 +1760,7 @@ const CustomWorkoutPlayer = () => {
                   <div className="flex-1">
                     <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-[#5BC8F5] rounded-full"
+                        className="h-full bg-primary rounded-full"
                         animate={{ width: `${progressPercent}%` }}
                         transition={{ duration: 0.3 }}
                       />
@@ -1832,7 +1832,7 @@ const CustomWorkoutPlayer = () => {
                       {cardioPaused && <p className="text-white/50 text-xs mt-1">{t('workout.cardio_paused')}</p>}
                     </div>
                     <div className="flex items-center gap-4">
-                      <button onClick={handleCardioPauseToggle} className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform">
+                      <button onClick={handleCardioPauseToggle} className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform">
                         {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
                       </button>
                       <button onClick={handleCardioComplete} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform">
@@ -1858,15 +1858,15 @@ const CustomWorkoutPlayer = () => {
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.weight_label')}</label>
-                            <input type="number" inputMode="decimal" placeholder={t('workout.weight_placeholder')} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 placeholder:text-white/30" />
+                            <input type="number" inputMode="decimal" placeholder={t('workout.weight_placeholder')} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-white/30" />
                           </div>
                           <div className="flex-1">
                             <label className="text-[10px] text-white/50 mb-0.5 block px-1">{t('workout.reps_label')}</label>
-                            <input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50" />
+                            <input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="w-full bg-white/15 backdrop-blur-sm text-white text-center text-lg font-semibold rounded-xl h-12 border-0 outline-none focus:ring-2 focus:ring-primary/50" />
                           </div>
                         </div>
                       </div>
-                      <button onClick={() => { setVideoError(false); handleCompleteSet(); }} className="w-16 h-16 rounded-full bg-[#5BC8F5] flex items-center justify-center shadow-lg shadow-[#5BC8F5]/40 active:scale-95 transition-transform">
+                      <button onClick={() => { setVideoError(false); handleCompleteSet(); }} className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform">
                         <ChevronRight className="w-8 h-8 text-white" />
                       </button>
                     </div>
@@ -1908,7 +1908,7 @@ const CustomWorkoutPlayer = () => {
               <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
                 <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="6" className="text-neutral-100" />
                 <circle
-                  cx="100" cy="100" r="90" fill="none" stroke="#5BC8F5" strokeWidth="6"
+                  cx="100" cy="100" r="90" fill="none" stroke="hsl(var(--primary))" strokeWidth="6"
                   strokeDasharray={565.5}
                   strokeDashoffset={565.5 * (1 - restSeconds / currentRestTotal)}
                   strokeLinecap="round"
@@ -2062,7 +2062,7 @@ const CustomWorkoutPlayer = () => {
                 }}
                 className="flex items-center gap-2 w-full px-4 py-3 mb-4 rounded-xl border border-border bg-muted/50 text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <MessageSquarePlus className="w-4 h-4 text-[#5BC8F5]" />
+                <MessageSquarePlus className="w-4 h-4 text-primary" />
                 {t('workout.feedback_btn')}
               </button>
 
@@ -2071,7 +2071,7 @@ const CustomWorkoutPlayer = () => {
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {(isEn && exerciseDetail.primary_muscles_en.length ? exerciseDetail.primary_muscles_en : exerciseDetail.primary_muscles).map((m) => (
-                      <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">{m}</span>
+                      <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{m}</span>
                     ))}
                   </div>
                 </div>

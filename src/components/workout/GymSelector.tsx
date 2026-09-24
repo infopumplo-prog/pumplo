@@ -109,7 +109,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                 whileTap={!isDisabled ? { scale: 0.98 } : undefined}
               >
                 {gym.is_featured && !isDisabled && (
-                  <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#5BC8F5] text-white text-[10px] font-bold shadow-sm">
+                  <div className="absolute -top-2 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold shadow-sm">
                     <Check className="w-2.5 h-2.5" />
                     {t('workout.verified')}
                   </div>
@@ -118,7 +118,7 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
                   {/* Logo/Icon */}
                   <div className={cn(
                     "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white",
-                    gym.is_featured ? "ring-2 ring-[#5BC8F5]/40" : "ring-1 ring-border"
+                    gym.is_featured ? "ring-2 ring-primary/40" : "ring-1 ring-border"
                   )}>
                     {gym.logo_url ? (
                       <GymLogo url={gym.logo_url} name={gym.name} />

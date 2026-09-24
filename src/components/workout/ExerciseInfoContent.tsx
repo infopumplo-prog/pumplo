@@ -73,7 +73,7 @@ export function ExerciseInfoContent({
           <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.primary_muscles')}</p>
           <div className="flex flex-wrap gap-1.5">
             {(primaryMusclesDisplay ?? primaryMuscles).map((m) => (
-              <span key={m} className="text-xs bg-[#5BC8F5]/15 text-[#5BC8F5] px-2.5 py-1 rounded-full font-medium">
+              <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">
                 {primaryMusclesDisplay ? m : translateMuscle(m, isEn)}
               </span>
             ))}

@@ -389,7 +389,7 @@ export const CompactWorkoutView = ({
           <div className="flex-1 grid grid-cols-3 gap-2">
             <div>
               <p className="text-[11px] text-muted-foreground">{t('log_workout.duration')}</p>
-              <p className="text-lg font-bold tabular-nums text-[#5BC8F5]">{formatTimer(elapsedSec)}</p>
+              <p className="text-lg font-bold tabular-nums text-primary">{formatTimer(elapsedSec)}</p>
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground">{t('log_workout.volume')}</p>
@@ -425,7 +425,7 @@ export const CompactWorkoutView = ({
                 ref={isActive ? activeRef : undefined}
                 className={cn(
                   'rounded-2xl border bg-card overflow-hidden transition-all',
-                  isActive ? 'border-[#5BC8F5] shadow-sm' : 'border-border',
+                  isActive ? 'border-primary shadow-sm' : 'border-border',
                   isDone && !isActive && 'opacity-60'
                 )}
               >
@@ -440,7 +440,7 @@ export const CompactWorkoutView = ({
                   </button>
                   <button onClick={() => onSelectExercise(idx)} className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className="font-bold text-[15px] text-[#5BC8F5] truncate">{exName}</p>
+                      <p className="font-bold text-[15px] text-primary truncate">{exName}</p>
                       {ex.slotCategory && slotCategoryLabels[ex.slotCategory] && (
                         <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border shrink-0', slotCategoryLabels[ex.slotCategory].color)}>
                           {slotCategoryLabels[ex.slotCategory].label}
@@ -504,7 +504,7 @@ export const CompactWorkoutView = ({
                         data-coach={isCurrent ? 'wlist-current' : undefined}
                         className={cn(
                           'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
-                          done ? 'bg-green-500/15' : isCurrent ? 'bg-[#5BC8F5]/10' : ''
+                          done ? 'bg-green-500/15' : isCurrent ? 'bg-primary/10' : ''
                         )}
                       >
                         <button
@@ -515,7 +515,7 @@ export const CompactWorkoutView = ({
                         </button>
                         <div className="text-center text-xs text-muted-foreground truncate">{prevText}</div>
                         {isExCardio ? (
-                          <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isCurrent && (timerRunning || externalCardioSecondsRemaining !== undefined) && 'text-[#5BC8F5]')}>
+                          <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isCurrent && (timerRunning || externalCardioSecondsRemaining !== undefined) && 'text-primary')}>
                             {done
                               ? (s?.durationSeconds ? formatTimer(s.durationSeconds) : fmtExTarget)
                               : isCurrent
@@ -562,13 +562,13 @@ export const CompactWorkoutView = ({
                               type="number" inputMode="decimal"
                               value={effectiveWeight}
                               onChange={(e) => setEffectiveWeight(e.target.value)}
-                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50 bg-muted"
                             />
                             <input
                               type="number" inputMode="numeric"
                               value={effectiveReps}
                               onChange={(e) => setEffectiveReps(e.target.value)}
-                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50 bg-muted"
                             />
                           </>
                         ) : isBackfill ? (
@@ -577,13 +577,13 @@ export const CompactWorkoutView = ({
                               type="number" inputMode="decimal"
                               value={bfW}
                               onChange={(e) => setBackfill(prev => ({ ...prev, [bfKey]: { ...prev[bfKey], w: e.target.value } }))}
-                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50 bg-muted"
                             />
                             <input
                               type="number" inputMode="numeric"
                               value={bfR}
                               onChange={(e) => setBackfill(prev => ({ ...prev, [bfKey]: { ...prev[bfKey], r: e.target.value } }))}
-                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50 bg-muted"
+                              className="w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50 bg-muted"
                             />
                           </>
                         ) : (
@@ -613,7 +613,7 @@ export const CompactWorkoutView = ({
                               onCompleteSet(idx, si, isNaN(wNum) ? undefined : wNum, isNaN(rNum) ? ex.repMax : rNum);
                               setBackfill(prev => { const { [bfKey]: _, ...rest } = prev; return rest; });
                             }}
-                            className="w-8 h-8 mx-auto rounded-lg bg-muted border border-[#5BC8F5]/40 text-[#5BC8F5] flex items-center justify-center active:scale-90 transition-transform"
+                            className="w-8 h-8 mx-auto rounded-lg bg-muted border border-primary/40 text-primary flex items-center justify-center active:scale-90 transition-transform"
                           >
                             <Check className="w-4 h-4" />
                           </button>
@@ -628,7 +628,7 @@ export const CompactWorkoutView = ({
                                 ? 'bg-red-500'
                                 : isExCardio || (showTimer && timerSeconds === 0)
                                 ? 'bg-green-500'
-                                : 'bg-[#5BC8F5]'
+                                : 'bg-primary'
                             )}
                           >
                             {externalCardioSecondsRemaining !== undefined ? (

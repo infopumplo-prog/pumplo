@@ -363,7 +363,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
             onClick={() => setSheet('equipment')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
-              equipment ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-card border-border text-foreground'
+              equipment ? 'bg-primary text-white border-primary' : 'bg-card border-border text-foreground'
             )}
           >
             {equipmentLabel}
@@ -373,7 +373,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
             onClick={() => setSheet('muscle')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
-              muscle ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-card border-border text-foreground'
+              muscle ? 'bg-primary text-white border-primary' : 'bg-card border-border text-foreground'
             )}
           >
             {muscleLabel}
@@ -389,7 +389,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
               onClick={() => setOnlyMyGym(v => !v)}
               className={cn(
                 'relative w-11 h-6 rounded-full transition-colors',
-                onlyMyGym ? 'bg-[#5BC8F5]' : 'bg-muted-foreground/30'
+                onlyMyGym ? 'bg-primary' : 'bg-muted-foreground/30'
               )}
             >
               <span className={cn('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', onlyMyGym && 'translate-x-5')} />
@@ -404,7 +404,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
           {!createOpen ? (
             <button
               onClick={() => { onClose(); navigate(`/profile/exercises?new=1${query.trim() ? `&name=${encodeURIComponent(query.trim())}` : ''}`, { state: { back: window.location.pathname } }); }}
-              className="w-full mb-2 py-2.5 rounded-xl border border-dashed border-[#5BC8F5]/60 text-[#5BC8F5] text-sm font-medium"
+              className="w-full mb-2 py-2.5 rounded-xl border border-dashed border-primary/60 text-primary text-sm font-medium"
             >
               + {t('exercise_picker.custom_create_in_profile')}
             </button>
@@ -421,7 +421,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                 {([['weight_reps', t('exercise_picker.custom_units_weight')], ['reps', t('exercise_picker.custom_units_reps')], ['time_min', t('exercise_picker.custom_units_time')]] as const).map(([val, label]) => (
                   <button key={val} onClick={() => setCUnits(val)}
                     className={cn('flex-1 py-2 rounded-lg text-xs font-medium border',
-                      cUnits === val ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-muted border-border text-muted-foreground')}>
+                      cUnits === val ? 'bg-primary text-white border-primary' : 'bg-muted border-border text-muted-foreground')}>
                     {label}
                   </button>
                 ))}
@@ -430,7 +430,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                 {muscleGroups.map(g => (
                   <button key={g.key} onClick={() => setCMuscle(g.key)}
                     className={cn('px-2.5 py-1.5 rounded-lg text-xs font-medium border',
-                      cMuscle === g.key ? 'bg-[#5BC8F5] text-white border-[#5BC8F5]' : 'bg-muted border-border text-muted-foreground')}>
+                      cMuscle === g.key ? 'bg-primary text-white border-primary' : 'bg-muted border-border text-muted-foreground')}>
                     {t(`exercise_picker.muscle_${g.key}`)}
                   </button>
                 ))}
@@ -442,7 +442,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                   {t('workout.cancel')}
                 </button>
                 <button onClick={createCustomExercise} disabled={cSaving || !cName.trim()}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-[#5BC8F5] disabled:opacity-50">
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-primary disabled:opacity-50">
                   {cSaving ? '…' : t('exercise_picker.custom_save')}
                 </button>
               </div>
@@ -459,11 +459,11 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                   onClick={() => toggleSelect(ex)}
                   className={cn(
                     'w-full flex items-center gap-3 rounded-xl pr-3 py-2 text-left transition-colors overflow-hidden',
-                    isSel ? 'bg-[#5BC8F5]/10' : 'hover:bg-muted'
+                    isSel ? 'bg-primary/10' : 'hover:bg-muted'
                   )}
                 >
                   {/* Left accent bar (Hevy style) */}
-                  <span className={cn('self-stretch w-1 rounded-full shrink-0', isSel ? 'bg-[#5BC8F5]' : 'bg-transparent')} />
+                  <span className={cn('self-stretch w-1 rounded-full shrink-0', isSel ? 'bg-primary' : 'bg-transparent')} />
                   <ExerciseThumb videoPath={ex.video_path} onTap={() => openInfo(ex)} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -495,7 +495,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                     </span>
                   )}
                   {isSel && (
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-[#5BC8F5] flex items-center justify-center">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                       <Check className="w-4 h-4 text-white" />
                     </span>
                   )}
@@ -672,8 +672,8 @@ const FilterOptionList = ({ options, selected, onSelect }: {
         onClick={() => onSelect(o.key)}
         className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-muted transition-colors"
       >
-        <span className={cn('text-sm', selected === o.key ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{o.label}</span>
-        {selected === o.key && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+        <span className={cn('text-sm', selected === o.key ? 'font-semibold text-primary' : 'text-foreground')}>{o.label}</span>
+        {selected === o.key && <Check className="w-4 h-4 text-primary" />}
       </button>
     ))}
   </div>

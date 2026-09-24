@@ -422,7 +422,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
           onClick={() => onShowDetail(exercise.exercise_id)}
           className={cn(
             "flex-1 min-w-0 text-sm font-semibold truncate text-left transition-colors",
-            isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-[#5BC8F5]"
+            isIncompatible ? "text-destructive hover:text-destructive/80" : "hover:text-primary"
           )}
         >
           {isIncompatible && <AlertTriangle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
@@ -476,7 +476,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
       {/* Rest timer per exercise */}
       <button
         onClick={() => onOpenRestSheet(exercise)}
-        className="ml-7 mt-1 flex items-center gap-2 text-xs font-medium text-[#5BC8F5] hover:opacity-80 transition-opacity"
+        className="ml-7 mt-1 flex items-center gap-2 text-xs font-medium text-primary hover:opacity-80 transition-opacity"
       >
         <Clock className="w-3.5 h-3.5" />
         <span>{t('custom_plan.rest_row_label')}: {formatRest(exercise.rest_seconds, t)}</span>
@@ -1485,8 +1485,8 @@ const CustomPlanDetail = () => {
                   onClick={() => handleSelectRest(sec)}
                   className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-muted transition-colors"
                 >
-                  <span className={cn('text-sm', selected ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{formatRest(sec, t)}</span>
-                  {selected && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+                  <span className={cn('text-sm', selected ? 'font-semibold text-primary' : 'text-foreground')}>{formatRest(sec, t)}</span>
+                  {selected && <Check className="w-4 h-4 text-primary" />}
                 </button>
               );
             })}
@@ -1511,8 +1511,8 @@ const CustomPlanDetail = () => {
                     className="flex-1 flex items-center gap-3 px-3 py-3.5 rounded-xl hover:bg-muted transition-colors text-left"
                   >
                     <span className={cn('w-7 text-center font-bold', meta.color)}>{type === 'normal' ? '1' : type}</span>
-                    <span className={cn('text-sm', isCurrent ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{t(meta.labelKey)}</span>
-                    {isCurrent && <Check className="w-4 h-4 text-[#5BC8F5] ml-auto" />}
+                    <span className={cn('text-sm', isCurrent ? 'font-semibold text-primary' : 'text-foreground')}>{t(meta.labelKey)}</span>
+                    {isCurrent && <Check className="w-4 h-4 text-primary ml-auto" />}
                   </button>
                   <button onClick={() => setExplainType(type)} className="p-2.5 text-muted-foreground hover:text-foreground transition-colors">
                     <HelpCircle className="w-4 h-4" />
