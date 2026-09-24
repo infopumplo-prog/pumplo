@@ -379,7 +379,7 @@ const Home = () => {
           <>
                   {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants} data-coach="home-today">
-                    <div className="rounded-3xl bg-[#5BC8F5] overflow-hidden">
+                    <div className="rounded-3xl bg-[#5BC8F5] dark:bg-[#101B30] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
                         <div className="flex items-center justify-between mb-1">
@@ -399,7 +399,7 @@ const Home = () => {
                       </div>
 
                       {/* Progress section */}
-                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] px-4 py-3">
+                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] dark:bg-[#1B2A45] px-4 py-3">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white/80 text-xs font-medium">{t('home.total_progress')}</span>
                           <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
@@ -489,15 +489,15 @@ const Home = () => {
                           }
 
                           return (
-                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white">
+                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[#16233C]">
                               <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] text-white">
                                 {nextDay.dayLetter}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm text-[#1F2937]">
+                                <p className="font-semibold text-sm text-[#1F2937] dark:text-white">
                                   {dayTypeName || `Den ${nextDay.dayLetter}`}
                                 </p>
-                                <p className="text-xs text-[#6B7280]">
+                                <p className="text-xs text-[#6B7280] dark:text-white/60">
                                   {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}
                                 </p>
                               </div>
