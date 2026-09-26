@@ -207,8 +207,8 @@ const Home = () => {
           <svg viewBox="0 0 400 150" preserveAspectRatio="none" className="w-full h-full">
             <defs>
               <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#5BC8F5" stopOpacity="0.15" />
-                <stop offset="100%" stopColor="#5BC8F5" stopOpacity="0" />
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
               </linearGradient>
             </defs>
             <path d="M0,0 L400,0 L400,80 Q300,130 200,90 Q100,50 0,100 Z" fill="url(#waveGrad)" />
@@ -292,7 +292,7 @@ const Home = () => {
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'pumplo'
-                    ? "border-[#5BC8F5] text-foreground"
+                    ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
@@ -318,7 +318,7 @@ const Home = () => {
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
                   activeTab === 'custom'
-                    ? "border-[#5BC8F5] text-foreground"
+                    ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
@@ -379,7 +379,7 @@ const Home = () => {
           <>
                   {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants} data-coach="home-today">
-                    <div className="rounded-3xl bg-[#5BC8F5] overflow-hidden">
+                    <div className="rounded-3xl bg-[#5BC8F5] dark:bg-[#101B30] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
                         <div className="flex items-center justify-between mb-1">
@@ -399,7 +399,7 @@ const Home = () => {
                       </div>
 
                       {/* Progress section */}
-                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] px-4 py-3">
+                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] dark:bg-[#16233C] px-4 py-3">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white/80 text-xs font-medium">{t('home.total_progress')}</span>
                           <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
@@ -489,15 +489,15 @@ const Home = () => {
                           }
 
                           return (
-                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white">
-                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] text-white">
+                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[#16233C]">
+                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] dark:bg-white/10 text-white dark:text-primary">
                                 {nextDay.dayLetter}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm text-[#1F2937]">
+                                <p className="font-semibold text-sm text-[#1F2937] dark:text-white">
                                   {dayTypeName || `Den ${nextDay.dayLetter}`}
                                 </p>
-                                <p className="text-xs text-[#6B7280]">
+                                <p className="text-xs text-[#6B7280] dark:text-white/60">
                                   {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}
                                 </p>
                               </div>

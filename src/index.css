@@ -90,17 +90,22 @@
     --popover: 220 20% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 195 100% 59%;
-    --primary-foreground: 0 0% 0%;
+    /* Sytá brand cyan (#4CC9FF) v tmavém režimu na velkých plochách "svítí" a
+       spolu s dalšími akcenty působí jako moc barev najednou (David 24. 9.:
+       "udělej všechno kromě loga tmavší modrou") — proto tu jen v tmavém
+       režimu tlumenější, tmavší modrá. Logo je statický obrázek, tuhle
+       proměnnou vůbec nepoužívá, takže zůstane beze změny. */
+    --primary: 205 65% 42%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 220 20% 18%;
-    --secondary-foreground: 195 100% 70%;
+    --secondary-foreground: 205 55% 72%;
 
     --muted: 220 15% 20%;
     --muted-foreground: 215 15% 65%;
 
-    --accent: 195 100% 50%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 205 65% 42%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
@@ -113,7 +118,7 @@
 
     --border: 220 15% 20%;
     --input: 220 15% 20%;
-    --ring: 195 100% 59%;
+    --ring: 205 65% 42%;
 
     /* Na tmavém podkladu by původní navy splynula s pozadím — o dva odstíny výš. */
     --action: 220 38% 32%;
@@ -121,8 +126,10 @@
 
     /* Tmavé varianty gradientů a stínů — na tmavém podkladu musí být stíny
        výraznější a plochy tlumenější, jinak karty splynou s pozadím. */
-    --gradient-primary: linear-gradient(135deg, hsl(195 100% 55%), hsl(200 100% 40%));
-    --gradient-hero: linear-gradient(180deg, hsl(195 100% 59% / 0.14), transparent);
+    /* David 24. 9.: chce přesně stejnou modrou jako písmenko dne v pilulce
+       "další trénink" (to je barva --primary) — žádný přechod dvou odstínů. */
+    --gradient-primary: linear-gradient(135deg, hsl(205 65% 42%), hsl(205 65% 42%));
+    --gradient-hero: linear-gradient(180deg, hsl(205 65% 42% / 0.14), transparent);
     --gradient-card: linear-gradient(145deg, hsl(220 20% 13%), hsl(220 20% 10%));
 
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);

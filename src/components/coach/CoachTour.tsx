@@ -112,7 +112,7 @@ export const CoachTour = ({ screenId, steps, version = 1, open, onClose }: {
             : { bottom: Math.max(window.innerHeight - rect.top + 14, 96) }) : undefined}
         >
           <div className="bg-card border border-border rounded-2xl shadow-2xl p-4">
-            <p className="text-sm font-bold text-[#5BC8F5] mb-1">{step.title}</p>
+            <p className="text-sm font-bold text-primary mb-1">{step.title}</p>
             <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">{step.body}</p>
             <div className="flex items-center justify-between mt-4">
               <button onClick={finish} className="text-xs text-muted-foreground py-2 pr-3 active:opacity-70">
@@ -120,12 +120,12 @@ export const CoachTour = ({ screenId, steps, version = 1, open, onClose }: {
               </button>
               <div className="flex items-center gap-1.5">
                 {steps.map((_, i) => (
-                  <div key={i} className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === idx ? 'bg-[#5BC8F5]' : 'bg-muted-foreground/30')} />
+                  <div key={i} className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === idx ? 'bg-primary' : 'bg-muted-foreground/30')} />
                 ))}
               </div>
               <button
                 onClick={() => (isLast ? finish() : setIdx(i => i + 1))}
-                className="text-sm font-bold text-white bg-[#5BC8F5] rounded-xl px-4 py-2 active:scale-95 transition-transform"
+                className="text-sm font-bold text-white bg-primary rounded-xl px-4 py-2 active:scale-95 transition-transform"
               >
                 {isLast ? t('tour.done') : t('tour.next')}
               </button>

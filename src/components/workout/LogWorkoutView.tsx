@@ -582,10 +582,10 @@ const LogWorkoutView = ({
           <button onClick={onToggleMute} className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors">
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
-          <button onClick={() => setAlarmOpen(true)} className={cn('p-2 rounded-xl hover:bg-muted transition-colors', restTimerEnabled ? 'text-[#5BC8F5]' : 'text-muted-foreground')}>
+          <button onClick={() => setAlarmOpen(true)} className={cn('p-2 rounded-xl hover:bg-muted transition-colors', restTimerEnabled ? 'text-primary' : 'text-muted-foreground')}>
             <AlarmClock className="w-5 h-5" />
           </button>
-          <button onClick={onFinish} className="px-3.5 py-2 rounded-xl bg-[#5BC8F5] text-white text-sm font-bold active:scale-95 transition-transform">
+          <button onClick={onFinish} className="px-3.5 py-2 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 transition-transform">
             {t('log_workout.finish')}
           </button>
         </div>
@@ -595,7 +595,7 @@ const LogWorkoutView = ({
           <div className="flex-1 grid grid-cols-3 gap-2">
             <div>
               <p className="text-[11px] text-muted-foreground">{t('log_workout.duration')}</p>
-              <p className="text-lg font-bold tabular-nums text-[#5BC8F5]">{fmt(durationSec)}</p>
+              <p className="text-lg font-bold tabular-nums text-primary">{fmt(durationSec)}</p>
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground">{t('log_workout.volume')}</p>
@@ -606,7 +606,7 @@ const LogWorkoutView = ({
               <p className="text-lg font-bold tabular-nums">{stats.sets}</p>
             </div>
           </div>
-          <button onClick={() => setMuscleOpen(true)} className="w-12 rounded-xl bg-muted flex items-center justify-center text-[#5BC8F5] active:scale-95 transition-transform" aria-label={t('stats.muscle_distribution')}>
+          <button onClick={() => setMuscleOpen(true)} className="w-12 rounded-xl bg-muted flex items-center justify-center text-primary active:scale-95 transition-transform" aria-label={t('stats.muscle_distribution')}>
             <PersonStanding className="w-6 h-6" />
           </button>
         </div>
@@ -623,7 +623,7 @@ const LogWorkoutView = ({
                 <div className="flex items-center gap-3 p-3">
                   <ExerciseThumb path={ex.video_path} onClick={() => onShowInfo(ex.exercise_id)} />
                   <button onClick={() => onShowInfo(ex.exercise_id)} className="flex-1 min-w-0 text-left">
-                    <p className="font-bold text-[15px] text-[#5BC8F5] truncate">{exName(ex)}</p>
+                    <p className="font-bold text-[15px] text-primary truncate">{exName(ex)}</p>
                   </button>
                   {onSwapQuick && onSwapLong && (
                     <RowSwapButton idx={idx} onQuick={onSwapQuick} onLong={onSwapLong} swapping={swappingIdx === idx} label={t('workout.swap')} />
@@ -647,7 +647,7 @@ const LogWorkoutView = ({
                 {/* Rest timer row — tap to edit, persists to the routine */}
                 <button
                   onClick={() => setRestEditIdx(idx)}
-                  className="px-3 pb-2 flex items-center gap-1.5 text-xs text-[#5BC8F5] font-medium"
+                  className="px-3 pb-2 flex items-center gap-1.5 text-xs text-primary font-medium"
                 >
                   <Timer className="w-3.5 h-3.5" />
                   <span>{t('log_workout.rest')}: {restRowLabel(ex.rest_seconds)}</span>
@@ -686,7 +686,7 @@ const LogWorkoutView = ({
                         onDragEnd={(_, info) => { if (info.offset.x < -60 || info.velocity.x < -400) removeSet(idx, si); }}
                         className={cn(
                           'grid grid-cols-[2rem_1fr_1fr_1fr_2.25rem] gap-1 items-center py-1 rounded-lg mb-1 transition-colors',
-                          done ? 'bg-green-500/15' : isRunning ? 'bg-[#5BC8F5]/15' : ''
+                          done ? 'bg-green-500/15' : isRunning ? 'bg-primary/15' : ''
                         )}
                       >
                         <button
@@ -698,7 +698,7 @@ const LogWorkoutView = ({
                         <div className="text-center text-xs text-muted-foreground truncate">{prevText}</div>
                         {isCardio ? (
                           <>
-                            <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isRunning && 'text-[#5BC8F5]')}>
+                            <div className={cn('text-center text-sm font-semibold tabular-nums col-span-2', isRunning && 'text-primary')}>
                               {isRunning ? fmt(rest?.remaining ?? 0) : fmt(ex.reps || 0)}
                             </div>
                           </>
@@ -708,13 +708,13 @@ const LogWorkoutView = ({
                               type="number" inputMode="decimal"
                               value={inputs[key]?.w ?? ''}
                               onChange={(e) => setInput(key, 'w', e.target.value)}
-                              className={cn('w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50', done ? 'bg-transparent' : 'bg-muted')}
+                              className={cn('w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50', done ? 'bg-transparent' : 'bg-muted')}
                             />
                             <GestureSafeInput
                               type="number" inputMode="numeric"
                               value={inputs[key]?.r ?? ''}
                               onChange={(e) => setInput(key, 'r', e.target.value)}
-                              className={cn('w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-[#5BC8F5]/50', done ? 'bg-transparent' : 'bg-muted')}
+                              className={cn('w-full text-center text-sm font-semibold rounded-lg h-9 border-0 outline-none focus:ring-2 focus:ring-primary/50', done ? 'bg-transparent' : 'bg-muted')}
                             />
                           </>
                         )}
@@ -722,7 +722,7 @@ const LogWorkoutView = ({
                           onClick={() => toggleSet(ex, idx, si)}
                           className={cn(
                             'w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors active:scale-90',
-                            done ? 'bg-green-500 text-white' : isRunning ? 'bg-[#5BC8F5] text-white' : 'bg-muted text-muted-foreground'
+                            done ? 'bg-green-500 text-white' : isRunning ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                           )}
                         >
                           {isRunning ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
@@ -746,7 +746,7 @@ const LogWorkoutView = ({
           {/* Add exercise */}
           <button
             onClick={onAddExercise}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-border text-[#5BC8F5] font-semibold text-sm active:scale-[0.98] transition-transform"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-border text-primary font-semibold text-sm active:scale-[0.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             {t('custom_plan.add_exercise')}
@@ -766,7 +766,7 @@ const LogWorkoutView = ({
           >
             <div className={cn('mx-auto max-w-md text-white rounded-2xl shadow-xl px-3 py-2.5', rest.mode === 'work' ? 'bg-[#0E3A52]' : 'bg-action')}>
               {rest.mode === 'work' && workCtxRef.current && (
-                <p className="text-[11px] font-semibold text-[#5BC8F5] text-center mb-0.5 truncate">
+                <p className="text-[11px] font-semibold text-primary text-center mb-0.5 truncate">
                   {exName(workCtxRef.current.ex)}
                 </p>
               )}
@@ -775,14 +775,14 @@ const LogWorkoutView = ({
                 <div className="flex-1 text-center">
                   <span className={cn('text-2xl font-black tabular-nums', rest.remaining <= 3 ? 'text-red-400' : 'text-white')}>{fmt(rest.remaining)}</span>
                   <div className="h-1 mt-1 bg-white/15 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#5BC8F5] rounded-full" style={{ width: `${(rest.remaining / rest.total) * 100}%` }} />
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${(rest.remaining / rest.total) * 100}%` }} />
                   </div>
                 </div>
                 <button onClick={() => adjustRest(15)} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-xs font-semibold active:scale-95 transition-transform">+15 s</button>
                 {rest.mode === 'work' ? (
                   <button onClick={() => { stopRestBeeps(); restNativeRef.current = false; restBeeps.current.done = true; completeWork(); }} className="px-3 py-1.5 rounded-lg bg-green-500 text-xs font-bold active:scale-95 transition-transform">{t('log_workout.work_done')}</button>
                 ) : (
-                  <button onClick={skipRest} className="px-3 py-1.5 rounded-lg bg-[#5BC8F5] text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
+                  <button onClick={skipRest} className="px-3 py-1.5 rounded-lg bg-primary text-xs font-bold active:scale-95 transition-transform">{t('log_workout.rest_skip')}</button>
                 )}
               </div>
             </div>
@@ -813,7 +813,7 @@ const LogWorkoutView = ({
                 className="w-full flex items-center justify-between py-3 border-b border-border"
               >
                 <span className="text-sm font-medium">{t('log_workout.rest_timer')}</span>
-                <span className={cn('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', restTimerEnabled ? 'bg-[#5BC8F5] justify-end' : 'bg-muted justify-start')}>
+                <span className={cn('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', restTimerEnabled ? 'bg-primary justify-end' : 'bg-muted justify-start')}>
                   <span className="w-5 h-5 rounded-full bg-white shadow" />
                 </span>
               </button>
@@ -822,7 +822,7 @@ const LogWorkoutView = ({
                 className="w-full flex items-center justify-between py-3"
               >
                 <span className="text-sm font-medium">{t('log_workout.sound')}</span>
-                <span className={cn('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', !isMuted ? 'bg-[#5BC8F5] justify-end' : 'bg-muted justify-start')}>
+                <span className={cn('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', !isMuted ? 'bg-primary justify-end' : 'bg-muted justify-start')}>
                   <span className="w-5 h-5 rounded-full bg-white shadow" />
                 </span>
               </button>
@@ -856,8 +856,8 @@ const LogWorkoutView = ({
                     onClick={() => { onUpdateRest(exercises[restEditIdx].id, sec); setRestEditIdx(null); }}
                     className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-muted transition-colors"
                   >
-                    <span className={cn('text-sm', (exercises[restEditIdx].rest_seconds ?? 0) === sec ? 'font-semibold text-[#5BC8F5]' : 'text-foreground')}>{restRowLabel(sec)}</span>
-                    {(exercises[restEditIdx].rest_seconds ?? 0) === sec && <Check className="w-4 h-4 text-[#5BC8F5]" />}
+                    <span className={cn('text-sm', (exercises[restEditIdx].rest_seconds ?? 0) === sec ? 'font-semibold text-primary' : 'text-foreground')}>{restRowLabel(sec)}</span>
+                    {(exercises[restEditIdx].rest_seconds ?? 0) === sec && <Check className="w-4 h-4 text-primary" />}
                   </button>
                 ))}
               </div>
@@ -901,7 +901,7 @@ const LogWorkoutView = ({
                       <div key={m.label} className="flex items-center gap-3">
                         <span className="w-24 shrink-0 text-sm font-medium truncate">{m.label}</span>
                         <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-[#5BC8F5] rounded-full" style={{ width: `${(m.value / muscleMax) * 100}%` }} />
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${(m.value / muscleMax) * 100}%` }} />
                         </div>
                         <span className="w-8 text-right text-sm font-semibold tabular-nums">{m.value % 1 === 0 ? m.value : m.value.toFixed(1)}</span>
                       </div>

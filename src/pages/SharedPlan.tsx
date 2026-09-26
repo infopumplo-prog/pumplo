@@ -267,8 +267,8 @@ const SharedPlan = () => {
     <div className="h-[100dvh] overflow-y-auto bg-background safe-top pb-nav">
       {/* Open in app banner — shown in browsers only */}
       {isMobile && (
-        <div className="bg-[#5BC8F5]/10 border-b border-[#5BC8F5]/20 px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#5BC8F5] flex items-center justify-center shrink-0">
+        <div className="bg-primary/10 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
             <Dumbbell className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -277,7 +277,7 @@ const SharedPlan = () => {
           </div>
           <button
             onClick={handleOpenInApp}
-            className="shrink-0 px-4 py-2 rounded-xl bg-[#5BC8F5] text-white text-sm font-semibold"
+            className="shrink-0 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold"
           >
             Otevřít
           </button>
@@ -290,7 +290,7 @@ const SharedPlan = () => {
           {isIOS && (
             <a
               href="https://apps.apple.com/app/pumplo/id6768619318"
-              className="text-[#5BC8F5] font-medium"
+              className="text-primary font-medium"
               target="_blank" rel="noopener noreferrer"
             >
               App Store
@@ -299,7 +299,7 @@ const SharedPlan = () => {
           {isAndroid && (
             <a
               href="https://play.google.com/store/apps/details?id=com.pumplo.app"
-              className="text-[#5BC8F5] font-medium"
+              className="text-primary font-medium"
               target="_blank" rel="noopener noreferrer"
             >
               Google Play
