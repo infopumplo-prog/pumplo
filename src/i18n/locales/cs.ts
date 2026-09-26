@@ -1241,6 +1241,8 @@ const cs = {
   'trainer.approved_desc': 'Nyní jste trenérem v {{gymName}}.',
   'trainer.request_sent': 'Žádost odeslána',
   'trainer.request_pending': 'Vyčkejte na schválení majitelem posilovny.',
+  'trainer.session_expired': 'Přihlášení vypršelo. Přihlaste se prosím znovu.',
+  'trainer.no_gym_selected': 'Nejdřív vyber posilovnu.',
   'trainer.error': 'Chyba',
   'trainer.request_failed': 'Nepodařilo se odeslat žádost.',
 

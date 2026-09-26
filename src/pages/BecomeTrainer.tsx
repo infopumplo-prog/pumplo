@@ -128,7 +128,24 @@ const BecomeTrainer = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user || !selectedGymId || !photoUrl) return;
+    // Dřív tiché return bez hlášky (David 24. 9.: appka „vyšlo" ukázala, ale do DB nic
+    // nezapsala) — typicky výpadek přihlášení v okamžiku odeslání. Teď to appka řekne
+    // a odešle uživatele zpět místo tichého selhání.
+    if (!user) {
+      toast({ title: t('trainer.error'), description: t('trainer.session_expired'), variant: 'destructive' });
+      navigate('/auth');
+      return;
+    }
+    if (!selectedGymId) {
+      toast({ title: t('trainer.error'), description: t('trainer.no_gym_selected'), variant: 'destructive' });
+      setStep(2);
+      return;
+    }
+    if (!photoUrl) {
+      toast({ title: t('trainer.error'), description: t('trainer.photo_required'), variant: 'destructive' });
+      setStep(1);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Trainer';
