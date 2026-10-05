@@ -1382,7 +1382,7 @@ const en = {
   'station.invalid_qr': 'QR code is invalid or has been removed.',
   'station.no_videos': 'We don\'t have videos for this station yet.',
   'station.title_suffix': 'exercises',
-  'station.lead_title': '{{gym}}: training tips by e-mail 💪',
+  'station.lead_title': 'Pumplo: training tips by e-mail 💪',
   'station.lead_placeholder': 'your@email.com',
   'station.lead_submit': 'Subscribe',
   'station.lead_consent': 'By sending you agree to receive tips and news from Pumplo. You can unsubscribe anytime.',

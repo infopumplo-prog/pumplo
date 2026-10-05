@@ -1381,7 +1381,7 @@ const cs = {
   'station.invalid_qr': 'QR kód je neplatný nebo byl odstraněn.',
   'station.no_videos': 'Pro toto cvičiště zatím nemáme videa.',
   'station.title_suffix': 'cviky',
-  'station.lead_title': '{{gym}}: tréninkové tipy do mailu 💪',
+  'station.lead_title': 'Pumplo: tréninkové tipy do mailu 💪',
   'station.lead_placeholder': 'tvuj@email.cz',
   'station.lead_submit': 'Odebírat',
   'station.lead_consent': 'Odesláním souhlasíš se zasíláním tipů a novinek od Pumpla. Odhlásit se můžeš kdykoli.',
