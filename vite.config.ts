@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => ({
       // Native-only FCM plugin imports firebase/messaging in its web entry;
       // Pumplo uses VAPID on web, so stub it out of the web build.
       "firebase/messaging": path.resolve(__dirname, "./src/lib/firebaseMessagingWebStub.ts"),
+      // Same for the native-only Firebase Analytics plugin (measurement is app-only).
+      "firebase/analytics": path.resolve(__dirname, "./src/lib/firebaseAnalyticsWebStub.ts"),
     },
   },
 }));
