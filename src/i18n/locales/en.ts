@@ -1382,6 +1382,15 @@ const en = {
   'station.invalid_qr': 'QR code is invalid or has been removed.',
   'station.no_videos': 'We don\'t have videos for this station yet.',
   'station.title_suffix': 'exercises',
+  'station.lead_title': 'Training tips from {{gym}} by e-mail 💪',
+  'station.lead_placeholder': 'your@email.com',
+  'station.lead_submit': 'Subscribe',
+  'station.lead_consent': 'By sending you agree to receive tips and news from Pumplo. You can unsubscribe anytime.',
+  'station.lead_terms': 'Terms',
+  'station.lead_thanks': "Done, you're subscribed ✅",
+  'station.lead_bad_email': 'Check your e-mail',
+  'station.lead_error': 'Something went wrong, try again',
+  'station.lead_close': 'Close',
 
   // Training page — extended
   'training.fill_questionnaire_hint': 'Fill in the questionnaire to access training',
