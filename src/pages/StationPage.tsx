@@ -19,7 +19,7 @@ const StationPage = () => {
   useEffect(() => {
     if (data) {
       const titleName = (i18n.language === 'en' && data.machineName_en) ? data.machineName_en : data.machineName;
-      document.title = `${titleName} — ${t('station.title_suffix')} | ${data.gymName} | Pumplo`;
+      document.title = `${titleName} — ${t('station.title_suffix')} | Pumplo`;
     }
   }, [data, t]);
 
@@ -52,7 +52,7 @@ const StationPage = () => {
   if (data.exercises.length === 0) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: '#0B1222' }}>
-        <StationBanner gymName={data.gymName} gymIsVerified={data.gymIsVerified} />
+        <StationBanner />
         <p style={{ color: '#fff', fontSize: '20px', fontWeight: 700, marginBottom: '8px', marginTop: '60px' }}>
           {(i18n.language === 'en' && data.machineName_en) ? data.machineName_en : data.machineName}
         </p>
@@ -66,7 +66,7 @@ const StationPage = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#000' }}>
-      <StationBanner gymName={data.gymName} gymIsVerified={data.gymIsVerified} onDismiss={() => setBannerDismissed(true)} />
+      <StationBanner onDismiss={() => setBannerDismissed(true)} />
       <div className="flex-1">
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} machineName_en={data.machineName_en} bannerVisible={!bannerDismissed} />
       </div>

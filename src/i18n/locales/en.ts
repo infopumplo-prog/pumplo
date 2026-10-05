@@ -1376,6 +1376,7 @@ const en = {
   'station.common_mistakes': 'Common mistakes',
   'station.tips': 'Tips',
   'station.open_btn': 'Open',
+  'station.tagline': 'Your digital trainer in your pocket',
   'station.cta_btn': 'Create your free training plan',
   'station.exercise_label': 'Exercise {{n}}',
   'station.not_found': 'Station not found',

@@ -1,15 +1,16 @@
-import { X, CheckCircle2 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 
 interface StationBannerProps {
-  gymName: string;
-  gymIsVerified?: boolean;
   onDismiss?: () => void;
 }
 
-export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBannerProps) => {
+/** Pumplo brand bar on the machine page. Deliberately no gym name: the page is the same Pumplo everywhere. */
+export const StationBanner = ({ onDismiss }: StationBannerProps) => {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -21,12 +22,7 @@ export const StationBanner = ({ gymName, gymIsVerified, onDismiss }: StationBann
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         <div>
           <p style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>Pumplo</p>
-          <div className="flex items-center gap-1">
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{gymName}</p>
-            {gymIsVerified && (
-              <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-            )}
-          </div>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>{t('station.tagline')}</p>
         </div>
       </div>
       <div className="flex items-center gap-2">

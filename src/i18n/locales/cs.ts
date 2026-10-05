@@ -1375,6 +1375,7 @@ const cs = {
   'station.common_mistakes': 'Časté chyby',
   'station.tips': 'Tipy',
   'station.open_btn': 'Otevřít',
+  'station.tagline': 'Tvůj digitální trenér v kapse',
   'station.cta_btn': 'Vytvoř si tréninkový plán zdarma',
   'station.exercise_label': 'Cvik {{n}}',
   'station.not_found': 'Cvičiště nenalezeno',
