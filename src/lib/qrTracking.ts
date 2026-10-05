@@ -45,3 +45,30 @@ export const logStoreClick = (sourceType: QrSource, code: string): { appStoreUrl
   } catch { /* noop */ }
   return { appStoreUrl: APP_STORE_URL, playStoreUrl: scan?.playStoreUrl ?? PLAY_STORE_URL };
 };
+
+export const getLastScanId = (code: string): string | null => (lastScan && lastScan.code === code ? lastScan.scanId : null);
+
+// Funnel events of the e-mail prompt on the machine page. Fire-and-forget.
+export const logLeadPromptEvent = (code: string, action: 'lead_prompt_shown' | 'lead_prompt_dismissed'): void => {
+  try {
+    fetch(FN_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+      body: JSON.stringify({ action, sourceType: 'station', code, scanId: getLastScanId(code), platform: detectPlatform() }),
+    }).catch(() => {});
+  } catch { /* noop */ }
+};
+
+export const submitLead = async (code: string, email: string, lang: 'cs' | 'en', website: string): Promise<'ok' | 'bad_email' | 'error'> => {
+  try {
+    const res = await fetch(FN_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'lead', sourceType: 'station', code, scanId: getLastScanId(code), platform: detectPlatform(), email, lang, website }),
+    });
+    if (res.ok) return 'ok';
+    if (res.status === 400) {
+      const body = await res.json().catch(() => null);
+      if (body?.error === 'bad email') return 'bad_email';
+    }
+    return 'error';
+  } catch { return 'error'; }
+};

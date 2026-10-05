@@ -1381,6 +1381,15 @@ const cs = {
   'station.invalid_qr': 'QR kód je neplatný nebo byl odstraněn.',
   'station.no_videos': 'Pro toto cvičiště zatím nemáme videa.',
   'station.title_suffix': 'cviky',
+  'station.lead_title': 'Pumplo: tréninkové tipy do mailu 💪',
+  'station.lead_placeholder': 'tvuj@email.cz',
+  'station.lead_submit': 'Odebírat',
+  'station.lead_consent': 'Odesláním souhlasíš se zasíláním tipů a novinek od Pumpla. Odhlásit se můžeš kdykoli.',
+  'station.lead_terms': 'Podmínky',
+  'station.lead_thanks': 'Hotovo, jsi přihlášený ✅',
+  'station.lead_bad_email': 'Zkontroluj e-mail',
+  'station.lead_error': 'Nepodařilo se, zkus to znovu',
+  'station.lead_close': 'Zavřít',
 
   // Training page — extended
   'training.fill_questionnaire_hint': 'Pro přístup k tréninku nejdříve vyplň dotazník',

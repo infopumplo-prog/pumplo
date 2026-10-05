@@ -4,6 +4,7 @@ import { useStationData } from '@/hooks/useStationData';
 import { StationBanner } from '@/components/station/StationBanner';
 import { StationCTA } from '@/components/station/StationCTA';
 import { StationVideoPlayer } from '@/components/station/StationVideoPlayer';
+import { StationLeadPopup } from '@/components/station/StationLeadPopup';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +71,7 @@ const StationPage = () => {
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} machineName_en={data.machineName_en} bannerVisible={!bannerDismissed} />
       </div>
       <StationCTA />
+      {code && <StationLeadPopup code={code} gymName={data.gymName} />}
     </div>
   );
 };

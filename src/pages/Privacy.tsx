@@ -97,8 +97,19 @@ const Privacy = () => {
           </p>
         </section>
 
+        <section id="email" className="space-y-3 scroll-mt-20">
+          <h2 className="text-base font-bold">8. E-maily z QR stránek strojů</h2>
+          <p className="text-muted-foreground">
+            Když na stránce stroje (app.pumplo.com/s/…) zadáš e-mail a klikneš na Odebírat, souhlasíš se zasíláním
+            tréninkových tipů a novinek od Pumpla. Uložíme e-mail, posilovnu a stroj, ze kterého ses přihlásil, jazyk,
+            typ zařízení, čas a přesné znění souhlasu (a anonymizovaný otisk IP adresy jako důkaz). Údaje držíme do
+            odhlášení, nejdéle 3 roky od posledního kontaktu. Odhlásit se můžeš kdykoli odkazem v každém e-mailu nebo
+            na info.pumplo@gmail.com. Správce: GynTools CZ s.r.o., IČ 27804461.
+          </p>
+        </section>
+
         <section className="space-y-3">
-          <h2 className="text-base font-bold">8. Kontakt</h2>
+          <h2 className="text-base font-bold">9. Kontakt</h2>
           <p className="text-muted-foreground">
             Pro uplatnění práv nebo dotazy ohledně zpracování osobních údajů nás kontaktujte na{' '}
             <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>.

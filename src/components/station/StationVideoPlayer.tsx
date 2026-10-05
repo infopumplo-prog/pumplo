@@ -236,7 +236,7 @@ export const StationVideoPlayer = ({ exercises, machineName, machineName_en, ban
 
         {/* Exercise name overlay — z-20 above gradient+video, well above CTA */}
         <div className="absolute left-0 right-0 px-4 z-20" style={{ bottom: '160px' }}>
-          <p className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
+          <p data-station-title className="font-bold text-xl leading-tight" style={{ color: '#fff', textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}>
             {displayName}
           </p>
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>

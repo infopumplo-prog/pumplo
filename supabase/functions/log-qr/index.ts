@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { CONSENT_TEXT_VERSION, LEAD_RATE_LIMIT_PER_HOUR, consentTextFor, isBot, isValidEmail, normalizeEmail, toLang } from "./lead.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,8 @@ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.pumplo
 // Scans from the same phone within this window count as one (page refreshes,
 // double scans) — the funnel should count people, not page loads.
 const DEDUP_WINDOW_MIN = 10;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const sha256 = async (input: string): Promise<string> => {
   const data = new TextEncoder().encode(input);
@@ -116,8 +119,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { action, sourceType, code, scanId, platform } = await req.json();
-    if (!["scan", "store_click"].includes(action)) return json({ error: "bad action" }, 400);
+    const body = await req.json();
+    const { action, sourceType, code, scanId, platform } = body;
+    if (!["scan", "store_click", "lead_prompt_shown", "lead_prompt_dismissed", "lead"].includes(action)) return json({ error: "bad action" }, 400);
     if (!["station", "flyer"].includes(sourceType)) return json({ error: "bad sourceType" }, 400);
     if (typeof code !== "string" || !code || code.length > 64) return json({ error: "bad code" }, 400);
     const plat = ["ios", "android"].includes(platform) ? platform : "other";
@@ -160,6 +164,65 @@ Deno.serve(async (req) => {
         .select("id").single();
       if (error) return json({ error: error.message }, 500);
       return json({ scanId: data.id, appStoreUrl: APP_STORE_URL, playStoreUrl: playUrl(data.id) });
+    }
+
+    if (action === "lead_prompt_shown" || action === "lead_prompt_dismissed") {
+      await supabase.from("qr_events").insert({
+        event_type: action, source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
+        scan_id: typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+      });
+      return json({ ok: true });
+    }
+
+    if (action === "lead") {
+      if (isBot(body.website)) return json({ ok: true });
+      const email = normalizeEmail(body.email);
+      if (!isValidEmail(email)) return json({ error: "bad email" }, 400);
+      const lang = toLang(body.lang);
+
+      // Rate limit every submission from one IP (gym Wi-Fi shares one), new or repeated.
+      if (ipHash) {
+        const since = new Date(Date.now() - 3_600_000).toISOString();
+        const { count } = await supabase.from("qr_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "lead_submitted").eq("ip_hash", ipHash).gte("created_at", since);
+        if ((count ?? 0) >= LEAD_RATE_LIMIT_PER_HOUR) return json({ ok: true });
+      }
+
+      const now = new Date().toISOString();
+      // scan_id is an FK: only a well-formed UUID of an existing scan is kept, never a reason to fail.
+      const validScanId = typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null;
+      const context = { scan_id: validScanId, source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, lang, ip_hash: ipHash, updated_at: now };
+      // An existing address only moves its context. This unauthenticated form never
+      // touches consent or unsubscribed_at: anyone can type anyone's address, so an
+      // unsubscribe stays final here.
+      const updateContext = async (ctx: typeof context) =>
+        await supabase.from("qr_leads").update(ctx).eq("email_normalized", email);
+      const { data: existing } = await supabase.from("qr_leads").select("id").eq("email_normalized", email).maybeSingle();
+      let { error: leadErr } = existing
+        ? await updateContext(context)
+        : await supabase.from("qr_leads").insert({
+            email, ...context,
+            consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now,
+          });
+      // Parallel submit of the same address: the other request inserted first.
+      if (leadErr?.code === "23505") ({ error: leadErr } = await updateContext(context));
+      // Scan event gone (FK): keep the lead without it.
+      if (leadErr?.code === "23503") ({ error: leadErr } = existing
+        ? await updateContext({ ...context, scan_id: null })
+        : await supabase.from("qr_leads").insert({
+            email, ...context, scan_id: null,
+            consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now,
+          }));
+      if (leadErr) {
+        console.error("qr lead failed", leadErr.code, leadErr.message);
+        return json({ error: "lead failed" }, 500);
+      }
+
+      await supabase.from("qr_events").insert({
+        event_type: "lead_submitted", source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
+        scan_id: validScanId, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+      });
+      return json({ ok: true });
     }
 
     // store_click — tied to its scan when the page still knows it.
