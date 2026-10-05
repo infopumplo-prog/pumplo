@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signUpErrorMessage } from '@/lib/authErrors';
 import PageTransition from '@/components/PageTransition';
 import { Capacitor } from '@capacitor/core';
-import { useAppConsent } from '@/components/AppConsentScreen';
+import { useAppConsent } from '@/hooks/useAppConsent';
 import { openAppConsentSettings } from '@/lib/appAnalytics';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {

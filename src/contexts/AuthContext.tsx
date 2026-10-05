@@ -10,6 +10,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { updateWatchAuth } from '@/lib/watchWorkout';
 import { createRegistrationLock } from '@/lib/registrationLock';
 import { signUpErrorMessage } from '@/lib/authErrors';
+import { trackSignUp } from '@/lib/appAnalytics';
+import { newOAuthSignupMethod } from '@/lib/appAnalyticsCore';
+
+const SIGNUP_TRACKED_KEY = 'pumplo_signup_tracked_user';
+
+// sign_up pro nové účty přes Google / Apple (e-mail se měří v Auth.tsx).
+const trackOAuthSignUp = (user: User) => {
+  const method = newOAuthSignupMethod(user);
+  if (!method) return;
+  try {
+    if (localStorage.getItem(SIGNUP_TRACKED_KEY) === user.id) return;
+    localStorage.setItem(SIGNUP_TRACKED_KEY, user.id);
+  } catch { /* noop */ }
+  trackSignUp(method);
+};
 
 /**
  * Poslední uložená relace Supabase (klíč `sb-<ref>-auth-token`), použitá jen když
@@ -103,6 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (event === 'PASSWORD_RECOVERY') {
           setPendingPasswordReset(true);
         }
+        if (event === 'SIGNED_IN' && session?.user) trackOAuthSignUp(session.user);
       }
     );
 

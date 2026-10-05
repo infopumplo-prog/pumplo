@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
@@ -7,8 +7,9 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppConsent } from '@/lib/appConsent';
+import { useAppConsent } from '@/hooks/useAppConsent';
 import {
-  getAppConsent, isWorkoutActive, onAnalyticsUiChange, saveAppConsent, takeConsentPromptRequest,
+  isWorkoutActive, onAnalyticsUiChange, saveAppConsent, takeConsentPromptRequest,
 } from '@/lib/appAnalytics';
 
 const NONE: AppConsent = { analytics: false, marketing: false };
@@ -16,13 +17,6 @@ const ALL: AppConsent = { analytics: true, marketing: true };
 
 // Never interrupt sign-in, public share pages, the policy itself or a workout.
 const BLOCKED_PREFIXES = ['/auth', '/reset-password', '/privacy', '/terms', '/install', '/plan/', '/cvik/', '/s/', '/go/', '/custom-workout/'];
-
-/** Re-renders whenever the analytics UI state changes (consent saved, workout start/end). */
-export const useAppConsent = () => {
-  const [, bump] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => onAnalyticsUiChange(bump), []);
-  return getAppConsent();
-};
 
 const AppConsentScreen = ({ startCustomizing, initial, onSave, onCancel }: {
   startCustomizing: boolean;

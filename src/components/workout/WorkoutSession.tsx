@@ -24,6 +24,7 @@ import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/restNotification';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
+import { setWorkoutActive, trackFirstWorkoutIfFirst, trackWorkoutComplete, trackWorkoutStart } from '@/lib/appAnalytics';
 import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
@@ -234,6 +235,12 @@ export const WorkoutSession = ({
   // Track sets data per exercise for compact mode
   const [setsDataByExercise, setSetsDataByExercise] = useState<Map<number, SetData[]>>(new Map());
   const { saveWorkoutSession, isSaving } = useWorkoutHistory();
+
+  useEffect(() => {
+    trackWorkoutStart(initialExerciseIndex > 0 || initialResults.length > 0);
+    setWorkoutActive(true);
+    return () => setWorkoutActive(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Track the highest exercise index reached (for forward progress)
   const [highestIndexReached, setHighestIndexReached] = useState(initialExerciseIndex);
 
@@ -489,6 +496,19 @@ export const WorkoutSession = ({
         if (!sessionId) {
           // Save failed → it's queued for retry (workoutSaveQueue); tell the user
           toast.info(t('workout.save_queued'), { duration: 6000 });
+        }
+
+        trackWorkoutComplete(isBonus);
+        if (sessionId) {
+          void trackFirstWorkoutIfFirst(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) return null;
+            const { count, error } = await supabase
+              .from('workout_sessions')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', session.user.id);
+            return error ? null : count;
+          });
         }
 
         setWorkoutSaved(true);

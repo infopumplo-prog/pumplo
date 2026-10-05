@@ -10,6 +10,7 @@ import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import { trackSelectGym } from '@/lib/appAnalytics';
 import GymMap, { GymMapHandle } from '@/components/map/GymMap';
 import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
@@ -309,7 +310,8 @@ const Map = () => {
     if (!gym) return;
     setIsSelectingGym(true);
     try {
-      await updateProfile({ selected_gym_id: gym.id });
+      const saved = await updateProfile({ selected_gym_id: gym.id });
+      if (saved.success) trackSelectGym(gym.id);
       toast({
         title: t('map.gym_selected'),
         description: t('map.gym_selected_desc', { name: gym.name })

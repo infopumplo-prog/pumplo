@@ -28,6 +28,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { saveOnboardingDraft, loadOnboardingDraft, clearOnboardingDraft } from '@/lib/onboardingDraft';
+import { trackSignUp, trackTutorialComplete } from '@/lib/appAnalytics';
 
 type AuthMode = 'login' | 'register';
 
@@ -186,6 +187,7 @@ const Auth = () => {
       // 1. Register user - returns userId directly
       const result = await register(regEmail, regPassword, firstName, lastName);
       let userId = result.userId;
+      if (result.success && userId) trackSignUp('email');
 
       if (!result.success || !userId) {
         // A failed signUp does not prove the account was not created: a slow
@@ -319,6 +321,7 @@ const Auth = () => {
 
       // 7. The answers are safely on the profile — the draft has done its job.
       clearOnboardingDraft();
+      trackTutorialComplete();
 
       // 8. All done - release the registration lock and navigate home
       setIsRegistering(false);
