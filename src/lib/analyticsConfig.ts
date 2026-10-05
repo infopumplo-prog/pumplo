@@ -6,4 +6,5 @@
 export const META_APP_ID: string = '';
 export const META_CLIENT_TOKEN: string = '';
 
+// Enabling Meta also requires adding NSUserTrackingUsageDescription back to ios/App/App/Info.plist (ATT prompt).
 export const META_ENABLED = META_APP_ID !== '' && META_CLIENT_TOKEN !== '';
