@@ -22,9 +22,9 @@ Z anonymního skenu QR samolepky na stroji (`app.pumplo.com/s/<code>`) udělat a
 
 ## UX
 
-1. Otevře se stránka stroje, běží video. Po **6 s** se zobrazí okno (pokud platí podmínky níže). Fade-in, ztmavení `rgba(0,0,0,.6)` přes celou obrazovku.
+1. Otevře se stránka stroje, běží video. Hned po otevření (≈ 0,8 s, David 5. 10. 2026) se zobrazí okno (pokud platí podmínky níže). Fade-in, ztmavení `rgba(0,0,0,.6)` přes celou obrazovku.
 2. Okno: `left/right 16px`, horní hrana zarovnaná s horní hranou názvu cviku. Obsah: nadpis „Tréninkové tipy z {posilovna} do mailu 💪“, pole e-mail (`type=email`, `autocomplete=email`, `inputmode=email`, 16px kvůli iOS zoomu), tlačítko „Odebírat“, pod tím 10,5px `rgba(255,255,255,.55)`: „Odesláním souhlasíš se zasíláním tipů a novinek od Pumpla. Odhlásit se můžeš kdykoli. Podmínky“ (odkaz na `/privacy#email`).
-3. × nebo klik na ztmavení = zavřít. Uloží `pumplo_lead_dismissed_at` do localStorage; znovu nejdřív za 7 dní.
+3. Zavřít jde jen × (klepnutí na ztmavení nic nedělá — dřív zavíralo okno při klepnutí na šipku dalšího cviku). Uloží `pumplo_lead_dismissed_at` do localStorage; znovu nejdřív za 7 dní.
 4. Odeslání: validace formátu → POST na edge funkci → stav „Hotovo, jsi přihlášený ✅“ → po 3 s `translateY(120%)` + fade 300 ms → odebrat. Uloží `pumplo_lead_email_sent=1` (localStorage) a cookie `pumplo_lead=1` (Max-Age 400 dní, SameSite=Lax) → na tomhle zařízení a prohlížeči se okno už nikdy neukáže, u žádného stroje. Pozn.: Safari (ITP) maže úložiště webu, který člověk 7 dní neotevřel; kdo skenuje jednou za čas, může okno vidět znovu. Opětovné zadání stejného e-mailu nevytvoří duplicitu (upsert), takže to nevadí.
 5. Chyba sítě: text „Nepodařilo se, zkus to znovu“ v okně, okno zůstane.
 6. CZ/EN podle jazyka stránky (i18n `station.lead_*`).

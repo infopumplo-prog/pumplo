@@ -36,28 +36,29 @@ const popup = (p) => p.evaluate(() => { const e = document.querySelector("[data-
 const has = (p, s) => p.evaluate((s) => !!document.querySelector(s), s);
 
 try {
-  // 1-3: appears after ~6 s, dimmed, aligned with title, shown event
+  // 1-3: appears right away (≤ 2 s), dimmed, aligned with title, shown event
   let { ctx, page, posts } = await open();
-  await wait(3500);
-  if (await popup(page)) fail("popup before 6 s");
-  await wait(4000);
-  const pp = await popup(page); if (!pp) fail("no popup after 7.5 s");
+  await wait(2000);
+  const pp = await popup(page); if (!pp) fail("no popup within 2 s");
   if (!(await has(page, "[data-lead-dim]"))) fail("no dim");
   const titleTop = await page.evaluate(() => document.querySelector("[data-station-title]")?.getBoundingClientRect().top);
   if (titleTop == null) fail("no title in DOM");
   if (Math.abs(pp.r.top - (titleTop - 6)) > 12) fail(`not aligned: popup ${pp.r.top} title ${titleTop}`);
   if (!posts.some((b) => b.action === "lead_prompt_shown")) fail("no lead_prompt_shown");
+  // tap on the dimmed area (e.g. where the next-exercise arrow is) must NOT close it
+  await page.mouse.click(360, 420); await wait(300);
+  if (!(await popup(page))) fail("tap on dim closed the popup");
   // 4: close → gone, dismissed event, not again after reload
   await page.click("[data-lead-close]"); await wait(300);
   if (await popup(page)) fail("popup still there after close");
   if (!posts.some((b) => b.action === "lead_prompt_dismissed")) fail("no dismissed event");
-  await page.reload({ waitUntil: "networkidle2" }); await wait(7500);
+  await page.reload({ waitUntil: "networkidle2" }); await wait(2500);
   if (await popup(page)) fail("popup back after dismiss");
   await ctx.close();
 
   // 5: bad email message, then valid submit → thanks → gone within 3.6 s
   ({ ctx, page, posts } = await open());
-  await wait(7500);
+  await wait(2500);
   await page.type("input[type=email]", "nope"); await page.click("[data-lead-submit]"); await wait(300);
   if (!(await has(page, "[data-lead-message]"))) fail("no bad email message");
   await page.$eval("input[type=email]", (el) => el.select()); await page.type("input[type=email]", "qa@pumplo.com");
@@ -70,13 +71,13 @@ try {
   if (await popup(page)) fail("popup not gone 3.6 s after submit");
   // 6: cookie alone blocks (localStorage cleared)
   await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: "networkidle2" }); await wait(7500);
+  await page.reload({ waitUntil: "networkidle2" }); await wait(2500);
   if (await popup(page)) fail("popup back after submit (cookie should block)");
   await ctx.close();
 
   // 7: server error → message, popup stays, button enabled
   ({ ctx, page, posts } = await open({ leadStatus: 500 }));
-  await wait(7500);
+  await wait(2500);
   await page.type("input[type=email]", "qa@pumplo.com"); await page.click("[data-lead-submit]"); await wait(500);
   if (!(await has(page, "[data-lead-message]"))) fail("no error message on 500");
   if ((await popup(page))?.phase !== "form") fail("popup left form on error");
@@ -85,7 +86,7 @@ try {
 
   // 3b: short viewport (keyboard) → popup bottom inside viewport
   ({ ctx, page, posts } = await open({ viewport: { width: 390, height: 500 } }));
-  await wait(7500);
+  await wait(2500);
   const sp = await popup(page); if (!sp) fail("no popup on short viewport");
   if (sp.r.bottom > 500) fail("popup below viewport: " + sp.r.bottom);
   await ctx.close();
@@ -93,7 +94,7 @@ try {
   // 8: title missing → fallback bottom 176px
   ({ ctx, page, posts } = await open());
   await page.evaluate(() => document.querySelector("[data-station-title]")?.removeAttribute("data-station-title"));
-  await wait(7500);
+  await wait(2500);
   const fp = await popup(page); if (!fp || fp.bottom !== "176px") fail("fallback position wrong " + JSON.stringify(fp));
   await ctx.close();
 

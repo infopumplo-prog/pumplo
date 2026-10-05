@@ -82,7 +82,8 @@ export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: str
 
   return (
     <>
-      {dimmed && <div data-lead-dim onClick={close} className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,.6)' }} />}
+      {/* Dim blocks the page; only × or sending closes the card (taps on the arrows used to dismiss it). */}
+      {dimmed && <div data-lead-dim className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,.6)' }} />}
       <div
         data-lead-popup={phase}
         role="dialog"

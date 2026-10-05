@@ -1,6 +1,6 @@
 // When the e-mail prompt on the machine page (/s/<code>) may appear.
 // Once sent: never again on this device (localStorage + long cookie, either one blocks).
-export const LEAD_PROMPT_DELAY_MS = 6_000;
+export const LEAD_PROMPT_DELAY_MS = 800; // right away, after the page layout settles
 export const LEAD_DISMISS_DAYS = 7;
 export const LEAD_THANKS_MS = 3_000;
 export const LEAD_STORAGE_KEY = 'pumplo_lead_prompt';
