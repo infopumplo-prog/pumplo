@@ -21,6 +21,20 @@ const isIOS = () => Capacitor.getPlatform() === 'ios';
 let metaReady = false;
 let lastScreen: string | null = null;
 
+// ── UI coordination (consent screen) ─────────────────────────────────────────
+type UiListener = () => void;
+const uiListeners = new Set<UiListener>();
+let workoutActive = false;
+let promptRequested: 'first' | 'settings' | null = null;
+const notifyUi = () => uiListeners.forEach((l) => l());
+
+export const onAnalyticsUiChange = (l: UiListener) => { uiListeners.add(l); return () => { uiListeners.delete(l); }; };
+export const isWorkoutActive = () => workoutActive;
+export const setWorkoutActive = (active: boolean) => { workoutActive = active; notifyUi(); };
+/** 'first' = onboarding just finished; 'settings' = reopen from Settings. Consumed by the screen. */
+export const takeConsentPromptRequest = () => { const r = promptRequested; promptRequested = null; return r; };
+export const openAppConsentSettings = () => { promptRequested = 'settings'; notifyUi(); };
+
 const storageGet = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const storageSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* noop */ } };
 
@@ -117,22 +131,9 @@ export const saveAppConsent = async (c: AppConsent) => {
   writeAppConsent(c);
   await applyConsent(c);
   core.flushPending();
+  notifyUi();
   await processInstallReferrer();
 };
-
-// ── UI coordination (consent screen) ─────────────────────────────────────────
-type UiListener = () => void;
-const uiListeners = new Set<UiListener>();
-let workoutActive = false;
-let promptRequested: 'first' | 'settings' | null = null;
-const notifyUi = () => uiListeners.forEach((l) => l());
-
-export const onAnalyticsUiChange = (l: UiListener) => { uiListeners.add(l); return () => { uiListeners.delete(l); }; };
-export const isWorkoutActive = () => workoutActive;
-export const setWorkoutActive = (active: boolean) => { workoutActive = active; notifyUi(); };
-/** 'first' = onboarding just finished; 'settings' = reopen from Settings. Consumed by the screen. */
-export const takeConsentPromptRequest = () => { const r = promptRequested; promptRequested = null; return r; };
-export const openAppConsentSettings = () => { promptRequested = 'settings'; notifyUi(); };
 
 // ── Events ───────────────────────────────────────────────────────────────────
 export const trackSignUp = (method: 'email' | 'google' | 'apple') => track('sign_up', { method });

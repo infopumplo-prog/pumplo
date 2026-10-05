@@ -4,7 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { HevyImportSection } from '@/components/settings/HevyImportSection';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone, BarChart3 } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -17,6 +17,9 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { signUpErrorMessage } from '@/lib/authErrors';
 import PageTransition from '@/components/PageTransition';
+import { Capacitor } from '@capacitor/core';
+import { useAppConsent } from '@/components/AppConsentScreen';
+import { openAppConsentSettings } from '@/lib/appAnalytics';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {
   AlertDialog,
@@ -52,6 +55,8 @@ const Settings = () => {
     { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   ];
   const currentLang = i18n.language as 'cs' | 'en';
+  const appConsent = useAppConsent();
+  const onOff = (v: boolean | undefined) => t(v ? 'settings.measurement_on' : 'settings.measurement_off');
 
   // Profile state
   const [firstName, setFirstName] = useState('');
@@ -694,6 +699,17 @@ const Settings = () => {
                 <Download className="w-4 h-4" />
                 {t('settings.download_data')}
               </Button>
+              {Capacitor.isNativePlatform() && (
+                <div className="space-y-1">
+                  <Button variant="outline" className="w-full justify-start gap-2" data-consent-settings onClick={openAppConsentSettings}>
+                    <BarChart3 className="w-4 h-4" />
+                    {t('settings.measurement')}
+                  </Button>
+                  <p className="text-xs text-muted-foreground px-1">
+                    {t('consent.cat_analytics')}: {onOff(appConsent?.analytics)} · {t('consent.cat_marketing')}: {onOff(appConsent?.marketing)}
+                  </p>
+                </div>
+              )}
               <Button variant="outline" className="w-full justify-start gap-2" onClick={() => navigate('/privacy')}>
                 <ExternalLink className="w-4 h-4" />
                 {t('settings.privacy_policy')}
