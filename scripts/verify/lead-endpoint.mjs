@@ -20,6 +20,10 @@ try {
   if (rows[0].email !== E) fail("not normalized: " + rows[0].email);
   if (!rows[0].gym_id || !rows[0].machine_id) fail("gym/machine not resolved");
   if (rows[0].consent_text_version !== "qr-lead-2026-10-05") fail("consent version");
+  await q(`update qr_leads set unsubscribed_at = now() where email_normalized='${E}'`);
+  r = await post({ ...base, email: E }); if (r.s !== 200 || !r.j.ok) fail("post after unsubscribe");
+  const unsub = await q(`select unsubscribed_at from qr_leads where email_normalized='${E}'`);
+  if (!unsub[0]?.unsubscribed_at) fail("form re-subscribed an unsubscribed address");
   r = await post({ ...base, email: "nope" }); if (r.s !== 400) fail("bad email not rejected: " + r.s);
   const bot = `qa+bot-${Date.now()}@pumplo.com`;
   r = await post({ ...base, email: bot, website: "x" }); if (!r.j.ok) fail("bot not fake-ok");

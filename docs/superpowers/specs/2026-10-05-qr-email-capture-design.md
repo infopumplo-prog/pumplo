@@ -61,7 +61,7 @@ Nová tabulka `public.marketing_leads`:
 | created_at | timestamptz default now() | |
 | updated_at | timestamptz default now() | |
 
-- Opakované odeslání téhož e-mailu aktualizuje `gym_id`, `machine_id`, `qr_code`, `scan_id`, `updated_at`. Pokud byl odhlášený, nové odeslání je nový souhlas: `unsubscribed_at = null`, nový `consent_at`.
+- Opakované odeslání téhož e-mailu aktualizuje `gym_id`, `machine_id`, `qr_code`, `scan_id`, `updated_at`. Odhlášení je z tohoto formuláře konečné: formulář je bez přihlášení a kdokoli může zadat cizí adresu, proto nikdy nemaže `unsubscribed_at` ani nemění souhlas (bezpečnostní nález 5. 10. 2026). Znovupřihlášení odhlášené adresy až ve fázi 2 přes potvrzovací odkaz.
 - RLS zapnuté, žádné veřejné policy. Zápis jen přes edge funkci (service role). Čtení: super_admin.
 
 ## Backend

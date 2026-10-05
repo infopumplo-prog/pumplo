@@ -178,21 +178,26 @@ Deno.serve(async (req) => {
       if (!isValidEmail(email)) return json({ error: "bad email" }, 400);
       const lang = toLang(body.lang);
 
-      const { data: existing } = await supabase.from("qr_leads").select("id, unsubscribed_at").eq("email_normalized", email).maybeSingle();
-      if (!existing && ipHash) {
+      // Rate limit every submission from one IP (gym Wi-Fi shares one), new or repeated.
+      if (ipHash) {
         const since = new Date(Date.now() - 3_600_000).toISOString();
-        const { count } = await supabase.from("qr_leads").select("id", { count: "exact", head: true })
-          .eq("ip_hash", ipHash).gte("created_at", since);
+        const { count } = await supabase.from("qr_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "lead_submitted").eq("ip_hash", ipHash).gte("created_at", since);
         if ((count ?? 0) >= LEAD_RATE_LIMIT_PER_HOUR) return json({ ok: true });
       }
 
+      const { data: existing } = await supabase.from("qr_leads").select("id").eq("email_normalized", email).maybeSingle();
       const now = new Date().toISOString();
       const context = { scan_id: scanId ?? null, source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, lang, ip_hash: ipHash, updated_at: now };
-      const consent = { consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now, unsubscribed_at: null };
-      // Re-sending after an unsubscribe is a new consent; otherwise only the context moves.
+      // An existing address only moves its context. This unauthenticated form never
+      // touches consent or unsubscribed_at: anyone can type anyone's address, so an
+      // unsubscribe stays final here.
       const { error: leadErr } = existing
-        ? await supabase.from("qr_leads").update({ ...context, ...(existing.unsubscribed_at ? consent : {}) }).eq("id", existing.id)
-        : await supabase.from("qr_leads").insert({ email, ...context, ...consent });
+        ? await supabase.from("qr_leads").update(context).eq("id", existing.id)
+        : await supabase.from("qr_leads").insert({
+            email, ...context,
+            consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now,
+          });
       if (leadErr) return json({ error: leadErr.message }, 500);
 
       await supabase.from("qr_events").insert({
