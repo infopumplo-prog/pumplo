@@ -70,8 +70,9 @@ const trackingAuthorized = async (requestIfUndetermined: boolean): Promise<boole
 };
 
 const applyConsent = async (c: AppConsent) => {
+  // Ads signals only exist with Meta configured; without it we never ask for tracking (no ATT prompt, no ad storage).
   // Marketing on iOS needs the system tracking permission; asked only for this choice.
-  const adsAllowed = c.marketing && (await trackingAuthorized(true));
+  const adsAllowed = META_ENABLED && c.marketing && (await trackingAuthorized(true));
   const status = (on: boolean) => (on ? ConsentStatus.Granted : ConsentStatus.Denied);
   try {
     await FirebaseAnalytics.setConsent({ type: ConsentType.AnalyticsStorage, status: status(c.analytics) });
