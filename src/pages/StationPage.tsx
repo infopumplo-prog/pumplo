@@ -5,8 +5,10 @@ import { StationBanner } from '@/components/station/StationBanner';
 import { StationCTA } from '@/components/station/StationCTA';
 import { StationVideoPlayer } from '@/components/station/StationVideoPlayer';
 import { StationLeadPopup } from '@/components/station/StationLeadPopup';
+import { StationCookieBanner } from '@/components/station/StationCookieBanner';
+import { initWebAnalytics, trackEvent, trackPixel } from '@/lib/webAnalytics';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 
@@ -14,6 +16,9 @@ const StationPage = () => {
   const { code } = useParams<{ code: string }>();
   const { data, isLoading, error } = useStationData(code);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // Cookie banner waits until the e-mail prompt is out of the way (David 5. 10. 2026).
+  const [leadDone, setLeadDone] = useState(false);
+  const leadSubmittedRef = useRef(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -27,6 +32,17 @@ const StationPage = () => {
   useEffect(() => {
     if (code) logQrScan('station', code);
   }, [code]);
+
+  // GA4 / Meta Pixel only with a stored consent (returning visitors).
+  useEffect(() => { initWebAnalytics(); }, []);
+
+  // A lead sent before the cookie choice is reported once consent exists.
+  const reportLeadAfterConsent = () => {
+    if (!leadSubmittedRef.current) return;
+    leadSubmittedRef.current = false;
+    trackEvent('generate_lead', { form: 'qr_station', code });
+    trackPixel('Lead', { content_name: 'qr_station' });
+  };
 
   if (isLoading) {
     return (
@@ -60,6 +76,7 @@ const StationPage = () => {
           {t('station.no_videos')}
         </p>
         <StationCTA />
+        <StationCookieBanner active />
       </div>
     );
   }
@@ -71,7 +88,10 @@ const StationPage = () => {
         <StationVideoPlayer exercises={data.exercises} machineName={data.machineName} machineName_en={data.machineName_en} bannerVisible={!bannerDismissed} />
       </div>
       <StationCTA />
-      {code && <StationLeadPopup code={code} gymName={data.gymName} />}
+      {code && <StationLeadPopup code={code} gymName={data.gymName}
+        onSubmitted={() => { leadSubmittedRef.current = true; }}
+        onDone={() => setLeadDone(true)} />}
+      <StationCookieBanner active={leadDone} onDecided={reportLeadAfterConsent} />
     </div>
   );
 };

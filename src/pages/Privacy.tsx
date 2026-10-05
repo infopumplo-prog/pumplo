@@ -89,11 +89,18 @@ const Privacy = () => {
           </ul>
         </section>
 
-        <section className="space-y-3">
+        <section id="cookies" className="space-y-3 scroll-mt-20">
           <h2 className="text-base font-bold">7. Cookies a sledování</h2>
           <p className="text-muted-foreground">
-            Aplikace nepoužívá marketingové cookies ani sledovací nástroje třetích stran.
+            Mobilní aplikace nepoužívá marketingové cookies ani sledovací nástroje třetích stran.
             Technické cookies jsou nezbytné pro fungování přihlášení a relace.
+          </p>
+          <p className="text-muted-foreground">
+            Veřejné stránky strojů (app.pumplo.com/s/…), na které vedou QR kódy v posilovnách, používají
+            analytické cookies (Google Analytics, Google Ireland Ltd.) a marketingové cookies (Meta Pixel,
+            Meta Platforms Ireland Ltd.; Google Ads) pouze s tvým souhlasem, který udělíš nebo odmítneš po
+            kategoriích v cookie liště. Souhlas můžeš kdykoli změnit vymazáním dat stránky v prohlížeči.
+            Analytická data uchováváme nejvýše 14 měsíců.
           </p>
         </section>
 
