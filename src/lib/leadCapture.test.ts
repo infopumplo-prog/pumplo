@@ -13,3 +13,12 @@ describe('isValidLeadEmail', () => {
   it('accepts', () => ['ana@gmail.com', ' Ana@Seznam.CZ '].forEach((e) => expect(isValidLeadEmail(e)).toBe(true)));
   it('rejects', () => ['', 'ana', 'ana@gmail', 'a na@x.cz'].forEach((e) => expect(isValidLeadEmail(e)).toBe(false)));
 });
+
+import { leadCardTop } from './leadCapture';
+describe('leadCardTop', () => {
+  it('aligns with title when it fits', () => expect(leadCardTop(600, 844, 0)).toBe(600));
+  it('stays above keyboard (short visual viewport)', () => expect(leadCardTop(600, 400, 0)).toBe(200));
+  it('adds visual viewport offset when iOS scrolls for the keyboard', () => expect(leadCardTop(600, 400, 250)).toBe(450));
+  it('never under the top bar', () => expect(leadCardTop(20, 844, 0)).toBe(72));
+  it('null title → null (fallback position)', () => expect(leadCardTop(null, 844, 0)).toBeNull());
+});

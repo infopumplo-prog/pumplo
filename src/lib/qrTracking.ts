@@ -64,7 +64,11 @@ export const submitLead = async (code: string, email: string, lang: 'cs' | 'en',
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'lead', sourceType: 'station', code, scanId: getLastScanId(code), platform: detectPlatform(), email, lang, website }),
     });
-    if (res.status === 400) return 'bad_email';
-    return res.ok ? 'ok' : 'error';
+    if (res.ok) return 'ok';
+    if (res.status === 400) {
+      const body = await res.json().catch(() => null);
+      if (body?.error === 'bad email') return 'bad_email';
+    }
+    return 'error';
   } catch { return 'error'; }
 };

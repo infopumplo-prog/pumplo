@@ -41,3 +41,8 @@ export const writeLeadPromptState = (state: Stored['state']): void => {
     try { document.cookie = `${LEAD_COOKIE}; Max-Age=34560000; Path=/; SameSite=Lax`; } catch { /* blocked */ }
   }
 };
+
+// Card top in layout-viewport px: aligned with the exercise title, but kept inside the
+// visible area (iOS scrolls the visual viewport by offsetTop when the keyboard opens).
+export const leadCardTop = (titleTop: number | null, vvHeight: number, vvOffsetTop: number): number | null =>
+  titleTop === null ? null : Math.max(vvOffsetTop + 72, Math.min(titleTop, vvOffsetTop + vvHeight - 200));

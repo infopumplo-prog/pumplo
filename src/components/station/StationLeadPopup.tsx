@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 import i18n from '@/i18n';
 import {
-  LEAD_PROMPT_DELAY_MS, LEAD_THANKS_MS, isValidLeadEmail, readLeadPromptState,
+  LEAD_PROMPT_DELAY_MS, LEAD_THANKS_MS, isValidLeadEmail, leadCardTop, readLeadPromptState,
   shouldAutoShowLeadPrompt, writeLeadPromptState,
 } from '@/lib/leadCapture';
 import { logLeadPromptEvent, submitLead } from '@/lib/qrTracking';
@@ -38,14 +38,19 @@ export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: str
     if (phase === 'hidden') return;
     const place = () => {
       const el = document.querySelector('[data-station-title]');
-      const vh = window.visualViewport?.height ?? window.innerHeight;
+      const vv = window.visualViewport;
       const titleTop = el ? el.getBoundingClientRect().top - 6 : null;
-      setTop(titleTop === null ? null : Math.max(72, Math.min(titleTop, vh - 200)));
+      setTop(leadCardTop(titleTop, vv?.height ?? window.innerHeight, vv?.offsetTop ?? 0));
     };
     place();
     window.visualViewport?.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('scroll', place);
     window.addEventListener('resize', place);
-    return () => { window.visualViewport?.removeEventListener('resize', place); window.removeEventListener('resize', place); };
+    return () => {
+      window.visualViewport?.removeEventListener('resize', place);
+      window.visualViewport?.removeEventListener('scroll', place);
+      window.removeEventListener('resize', place);
+    };
   }, [phase]);
 
   if (phase === 'hidden') return null;

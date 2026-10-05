@@ -13,6 +13,8 @@ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.pumplo
 // double scans) — the funnel should count people, not page loads.
 const DEDUP_WINDOW_MIN = 10;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const sha256 = async (input: string): Promise<string> => {
   const data = new TextEncoder().encode(input);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -167,7 +169,7 @@ Deno.serve(async (req) => {
     if (action === "lead_prompt_shown" || action === "lead_prompt_dismissed") {
       await supabase.from("qr_events").insert({
         event_type: action, source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
-        scan_id: scanId ?? null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+        scan_id: typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
       });
       return json({ ok: true });
     }
@@ -186,23 +188,39 @@ Deno.serve(async (req) => {
         if ((count ?? 0) >= LEAD_RATE_LIMIT_PER_HOUR) return json({ ok: true });
       }
 
-      const { data: existing } = await supabase.from("qr_leads").select("id").eq("email_normalized", email).maybeSingle();
       const now = new Date().toISOString();
-      const context = { scan_id: scanId ?? null, source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, lang, ip_hash: ipHash, updated_at: now };
+      // scan_id is an FK: only a well-formed UUID of an existing scan is kept, never a reason to fail.
+      const validScanId = typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null;
+      const context = { scan_id: validScanId, source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, lang, ip_hash: ipHash, updated_at: now };
       // An existing address only moves its context. This unauthenticated form never
       // touches consent or unsubscribed_at: anyone can type anyone's address, so an
       // unsubscribe stays final here.
-      const { error: leadErr } = existing
-        ? await supabase.from("qr_leads").update(context).eq("id", existing.id)
+      const updateContext = async (ctx: typeof context) =>
+        await supabase.from("qr_leads").update(ctx).eq("email_normalized", email);
+      const { data: existing } = await supabase.from("qr_leads").select("id").eq("email_normalized", email).maybeSingle();
+      let { error: leadErr } = existing
+        ? await updateContext(context)
         : await supabase.from("qr_leads").insert({
             email, ...context,
             consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now,
           });
-      if (leadErr) return json({ error: leadErr.message }, 500);
+      // Parallel submit of the same address: the other request inserted first.
+      if (leadErr?.code === "23505") ({ error: leadErr } = await updateContext(context));
+      // Scan event gone (FK): keep the lead without it.
+      if (leadErr?.code === "23503") ({ error: leadErr } = existing
+        ? await updateContext({ ...context, scan_id: null })
+        : await supabase.from("qr_leads").insert({
+            email, ...context, scan_id: null,
+            consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now,
+          }));
+      if (leadErr) {
+        console.error("qr lead failed", leadErr.code, leadErr.message);
+        return json({ error: "lead failed" }, 500);
+      }
 
       await supabase.from("qr_events").insert({
         event_type: "lead_submitted", source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
-        scan_id: scanId ?? null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+        scan_id: validScanId, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
       });
       return json({ ok: true });
     }

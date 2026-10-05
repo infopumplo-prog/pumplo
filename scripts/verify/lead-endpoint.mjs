@@ -24,6 +24,11 @@ try {
   r = await post({ ...base, email: E }); if (r.s !== 200 || !r.j.ok) fail("post after unsubscribe");
   const unsub = await q(`select unsubscribed_at from qr_leads where email_normalized='${E}'`);
   if (!unsub[0]?.unsubscribed_at) fail("form re-subscribed an unsubscribed address");
+  const E2 = `qa+race-${Date.now()}@pumplo.com`;
+  const race = await Promise.all([1, 2, 3].map(() => post({ ...base, email: E2 })));
+  if (race.some((x) => x.s !== 200 || !x.j.ok)) fail("parallel submit not ok: " + JSON.stringify(race));
+  if ((await q(`select 1 from qr_leads where email_normalized='${E2}'`)).length !== 1) fail("race row count");
+  r = await post({ ...base, email: `qa+uuid-${Date.now()}@pumplo.com`, scanId: "not-a-uuid" }); if (r.s !== 200 || !r.j.ok) fail("bad scanId broke submit: " + JSON.stringify(r));
   r = await post({ ...base, email: "nope" }); if (r.s !== 400) fail("bad email not rejected: " + r.s);
   const bot = `qa+bot-${Date.now()}@pumplo.com`;
   r = await post({ ...base, email: bot, website: "x" }); if (!r.j.ok) fail("bot not fake-ok");
