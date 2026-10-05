@@ -12,7 +12,12 @@ import { logLeadPromptEvent, submitLead } from '@/lib/qrTracking';
 type Phase = 'hidden' | 'form' | 'sending' | 'thanks' | 'leaving';
 
 /** Small subscribe card over the exercise title; dims the page until closed or sent. */
-export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: string }) => {
+export const StationLeadPopup = ({ code, gymName, onDone, onSubmitted }: {
+  code: string; gymName: string;
+  /** Called once the prompt is out of the way: not shown, closed, or sent and gone. */
+  onDone?: () => void;
+  onSubmitted?: () => void;
+}) => {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>('hidden');
   const [email, setEmail] = useState('');
@@ -21,16 +26,19 @@ export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: str
   const [top, setTop] = useState<number | null>(null);
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) return;
+    if (Capacitor.isNativePlatform()) { onDone?.(); return; }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
-      if (cancelled || !shouldAutoShowLeadPrompt(readLeadPromptState(), document.cookie, Date.now())) return;
+      if (cancelled) return;
+      if (!shouldAutoShowLeadPrompt(readLeadPromptState(), document.cookie, Date.now())) { onDone?.(); return; }
       const { data } = await supabase.auth.getSession();
-      if (cancelled || data.session) return;
+      if (cancelled) return;
+      if (data.session) { onDone?.(); return; }
       setPhase('form');
       logLeadPromptEvent(code, 'lead_prompt_shown');
     }, LEAD_PROMPT_DELAY_MS);
     return () => { cancelled = true; window.clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per machine code
   }, [code]);
 
   // Align the card's top edge with the exercise title; keep it above the keyboard.
@@ -60,6 +68,7 @@ export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: str
     writeLeadPromptState('dismissed');
     logLeadPromptEvent(code, 'lead_prompt_dismissed');
     setPhase('hidden');
+    onDone?.();
   };
 
   const send = async (e: React.FormEvent) => {
@@ -72,9 +81,10 @@ export const StationLeadPopup = ({ code, gymName }: { code: string; gymName: str
     if (result === 'bad_email') { setMessage(t('station.lead_bad_email')); setPhase('form'); return; }
     if (result === 'error') { setMessage(t('station.lead_error')); setPhase('form'); return; }
     writeLeadPromptState('submitted');
+    onSubmitted?.();
     setPhase('thanks');
     window.setTimeout(() => setPhase('leaving'), LEAD_THANKS_MS);
-    window.setTimeout(() => setPhase('hidden'), LEAD_THANKS_MS + 300);
+    window.setTimeout(() => { setPhase('hidden'); onDone?.(); }, LEAD_THANKS_MS + 300);
   };
 
   const dimmed = phase === 'form' || phase === 'sending';
