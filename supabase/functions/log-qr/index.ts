@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { CONSENT_TEXT_VERSION, LEAD_RATE_LIMIT_PER_HOUR, consentTextFor, isBot, isValidEmail, normalizeEmail, toLang } from "./lead.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,8 +117,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { action, sourceType, code, scanId, platform } = await req.json();
-    if (!["scan", "store_click"].includes(action)) return json({ error: "bad action" }, 400);
+    const body = await req.json();
+    const { action, sourceType, code, scanId, platform } = body;
+    if (!["scan", "store_click", "lead_prompt_shown", "lead_prompt_dismissed", "lead"].includes(action)) return json({ error: "bad action" }, 400);
     if (!["station", "flyer"].includes(sourceType)) return json({ error: "bad sourceType" }, 400);
     if (typeof code !== "string" || !code || code.length > 64) return json({ error: "bad code" }, 400);
     const plat = ["ios", "android"].includes(platform) ? platform : "other";
@@ -160,6 +162,44 @@ Deno.serve(async (req) => {
         .select("id").single();
       if (error) return json({ error: error.message }, 500);
       return json({ scanId: data.id, appStoreUrl: APP_STORE_URL, playStoreUrl: playUrl(data.id) });
+    }
+
+    if (action === "lead_prompt_shown" || action === "lead_prompt_dismissed") {
+      await supabase.from("qr_events").insert({
+        event_type: action, source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
+        scan_id: scanId ?? null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+      });
+      return json({ ok: true });
+    }
+
+    if (action === "lead") {
+      if (isBot(body.website)) return json({ ok: true });
+      const email = normalizeEmail(body.email);
+      if (!isValidEmail(email)) return json({ error: "bad email" }, 400);
+      const lang = toLang(body.lang);
+
+      const { data: existing } = await supabase.from("qr_leads").select("id, unsubscribed_at").eq("email_normalized", email).maybeSingle();
+      if (!existing && ipHash) {
+        const since = new Date(Date.now() - 3_600_000).toISOString();
+        const { count } = await supabase.from("qr_leads").select("id", { count: "exact", head: true })
+          .eq("ip_hash", ipHash).gte("created_at", since);
+        if ((count ?? 0) >= LEAD_RATE_LIMIT_PER_HOUR) return json({ ok: true });
+      }
+
+      const now = new Date().toISOString();
+      const context = { scan_id: scanId ?? null, source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, lang, ip_hash: ipHash, updated_at: now };
+      const consent = { consent_text: consentTextFor(lang), consent_text_version: CONSENT_TEXT_VERSION, consent_at: now, unsubscribed_at: null };
+      // Re-sending after an unsubscribe is a new consent; otherwise only the context moves.
+      const { error: leadErr } = existing
+        ? await supabase.from("qr_leads").update({ ...context, ...(existing.unsubscribed_at ? consent : {}) }).eq("id", existing.id)
+        : await supabase.from("qr_leads").insert({ email, ...context, ...consent });
+      if (leadErr) return json({ error: leadErr.message }, 500);
+
+      await supabase.from("qr_events").insert({
+        event_type: "lead_submitted", source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
+        scan_id: scanId ?? null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+      });
+      return json({ ok: true });
     }
 
     // store_click — tied to its scan when the page still knows it.
