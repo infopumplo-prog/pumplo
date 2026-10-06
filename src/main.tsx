@@ -113,7 +113,7 @@ if (sentryDsn) {
   Sentry.init(
     {
       dsn: sentryDsn,
-      release: `pumplo@${import.meta.env.VITE_APP_VERSION ?? "1.3.0"}`,
+      release: `pumplo@${import.meta.env.VITE_APP_VERSION ?? "1.3.1"}`,
       environment: import.meta.env.MODE,
       tracesSampleRate: 0.1,
       sendDefaultPii: false,

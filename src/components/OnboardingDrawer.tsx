@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { trackTutorialComplete } from '@/lib/appAnalytics';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -368,6 +369,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
     }
 
+    if (!isEditMode) trackTutorialComplete();
     onOpenChange(false);
     } finally {
       setIsCompleting(false);
