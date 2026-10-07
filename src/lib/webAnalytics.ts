@@ -1,10 +1,14 @@
-// GA4 + Meta Pixel for the public web pages of app.pumplo.com (QR machine pages),
+// GA4 + Meta Pixel + TikTok Pixel for the public web pages of app.pumplo.com (QR machine pages),
 // behind per-category cookie consent (basic Consent Mode v2). Same IDs as pumplo.com,
 // so both sites feed one GA4 property and one Pixel. Never runs in the native app.
 import { Capacitor } from '@capacitor/core';
 
 export const GA_MEASUREMENT_ID = 'G-HXXC0FX8SQ';
 export const META_PIXEL_ID = '1577216264451707';
+// TikTok Pixel "Pumplo web" (same as pumplo.com); Vercel env VITE_TIKTOK_PIXEL_ID overrides.
+export const TIKTOK_PIXEL_ID: string = import.meta.env.VITE_TIKTOK_PIXEL_ID || 'DB34H8JC77U534NEHGPG';
+// Meta event -> TikTok standard event, so every call site reports to both ad platforms.
+const TIKTOK_EVENT: Record<string, string> = { Lead: 'SubmitForm', ClickStore: 'Download', Contact: 'Contact', InitiateCheckout: 'ClickButton' };
 
 const CONSENT_KEY = 'pumplo_cookie_consent';
 export const CONSENT_VERSION = 2;
@@ -16,12 +20,18 @@ type Gtag = (...args: unknown[]) => void;
 type Fbq = ((...args: unknown[]) => void) & {
   queue?: unknown[]; loaded?: boolean; version?: string; push?: unknown; callMethod?: (...a: unknown[]) => void;
 };
+type Ttq = unknown[] & Record<string, unknown> & {
+  load?: (id: string) => void;
+  page?: () => void;
+  track?: (name: string, params?: Record<string, unknown>) => void;
+};
 declare global {
-  interface Window { dataLayer?: unknown[]; gtag?: Gtag; fbq?: Fbq; _fbq?: Fbq }
+  interface Window { dataLayer?: unknown[]; gtag?: Gtag; fbq?: Fbq; _fbq?: Fbq; ttq?: Ttq; TiktokAnalyticsObject?: string }
 }
 
 let gaLoaded = false;
 let pixelLoaded = false;
+let tiktokLoaded = false;
 
 /** Native app and the build-time headless browser never load trackers or show the banner. */
 export const trackingDisabled = (): boolean =>
@@ -85,9 +95,40 @@ const loadPixel = () => {
   fbq('track', 'PageView');
 };
 
+const loadTikTok = () => {
+  if (tiktokLoaded || !TIKTOK_PIXEL_ID || trackingDisabled()) return;
+  tiktokLoaded = true;
+  // Standard TikTok Pixel bootstrap: queue calls until events.js arrives.
+  window.TiktokAnalyticsObject = 'ttq';
+  const ttq = (window.ttq = window.ttq || ([] as unknown as Ttq));
+  const methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie', 'holdConsent', 'revokeConsent', 'grantConsent'];
+  for (const m of methods) ttq[m] = (...args: unknown[]) => { (ttq as unknown[]).push([m, ...args]); };
+  ttq.load = (id: string) => {
+    const src = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+    const i = (ttq._i = (ttq._i as Record<string, Record<string, unknown>>) || {});
+    i[id] = [] as unknown as Record<string, unknown>;
+    i[id]._u = src;
+    ttq._t = { ...((ttq._t as Record<string, unknown>) || {}), [id]: Date.now() };
+    ttq._o = { ...((ttq._o as Record<string, unknown>) || {}), [id]: {} };
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = `${src}?sdkid=${id}&lib=ttq`;
+    document.head.appendChild(s);
+  };
+  ttq.load(TIKTOK_PIXEL_ID);
+  ttq.page!();
+};
+
+const trackTikTok = (metaName: string, params: Record<string, unknown>) => {
+  const name = TIKTOK_EVENT[metaName];
+  if (!name || !tiktokLoaded || !window.ttq?.track) return;
+  window.ttq.track(name, params);
+};
+
 const apply = (c: ConsentCategories) => {
   if (c.analytics) loadGA(c.marketing);
   if (c.marketing) loadPixel();
+  if (c.marketing) loadTikTok();
 };
 
 /** Loads only what the visitor accepted earlier. */
@@ -114,7 +155,7 @@ export const setConsent = (c: ConsentCategories) => {
       }
     });
   if (previous?.analytics && !c.analytics) drop(['_ga']);
-  if (previous?.marketing && !c.marketing) drop(['_fbp', '_fbc', '_gcl']);
+  if (previous?.marketing && !c.marketing) drop(['_fbp', '_fbc', '_gcl', '_ttp', 'ttcsid']);
 };
 
 /** GA4 event; no-op without analytics consent. */
@@ -122,13 +163,15 @@ export const trackEvent = (name: string, params: Record<string, unknown> = {}) =
   if (gaLoaded && window.gtag) window.gtag('event', name, params);
 };
 
-/** Meta Pixel standard event; no-op without marketing consent. */
+/** Meta Pixel standard event (mirrored to TikTok); no-op without marketing consent. */
 export const trackPixel = (name: string, params: Record<string, unknown> = {}) => {
+  trackTikTok(name, params);
   if (pixelLoaded && window.fbq) window.fbq('track', name, params);
 };
 
-/** Meta Pixel custom event (not a Meta standard event), e.g. ClickStore. */
+/** Meta Pixel custom event (not a Meta standard event), e.g. ClickStore; mirrored to TikTok. */
 export const trackPixelCustom = (name: string, params: Record<string, unknown> = {}) => {
+  trackTikTok(name, params);
   if (pixelLoaded && window.fbq) window.fbq('trackCustom', name, params);
 };
 

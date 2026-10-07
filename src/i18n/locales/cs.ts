@@ -1388,7 +1388,7 @@ const cs = {
   'station.cookie_cat_analytics': 'Analytické',
   'station.cookie_cat_analytics_desc': 'Google Analytics: anonymní statistiky návštěvnosti.',
   'station.cookie_cat_marketing': 'Marketingové',
-  'station.cookie_cat_marketing_desc': 'Meta (Facebook, Instagram) a Google Ads: měření kampaní a relevantní reklamy.',
+  'station.cookie_cat_marketing_desc': 'Meta (Facebook, Instagram), TikTok (TikTok Technology Ltd.) a Google Ads: měření kampaní a relevantní reklamy.',
   'station.cta_btn': 'Vytvoř si tréninkový plán zdarma',
   'station.exercise_label': 'Cvik {{n}}',
   'station.not_found': 'Cvičiště nenalezeno',

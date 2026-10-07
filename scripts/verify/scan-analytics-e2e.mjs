@@ -1,5 +1,5 @@
-// Browser E2E: GA4 + Meta Pixel on the QR machine page behind consent, cookie banner after the
-// e-mail prompt. log-qr intercepted (no production writes); GA/Meta hits observed and aborted.
+// Browser E2E: GA4 + Meta Pixel + TikTok Pixel on the QR machine page behind consent, cookie banner after the
+// e-mail prompt. log-qr intercepted (no production writes); GA/Meta/TikTok hits observed and aborted.
 // Prints SCAN_ANALYTICS_E2E_OK.
 import { createRequire } from "node:module";
 const require = createRequire("/Users/davidnovotny/pumplo-web/package.json");
@@ -11,6 +11,7 @@ const fail = (m) => { throw new Error(m); };
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true });
 const GA = /googletagmanager\.com|google-analytics\.com|analytics\.google\.com/;
 const FB = /connect\.facebook\.net|facebook\.com\/tr/;
+const TT = /analytics(-ipv6)?\.tiktok\.com/;
 async function open() {
   const ctx = await browser.createBrowserContext(); const page = await ctx.newPage();
   await page.setUserAgent(UA);
@@ -25,7 +26,7 @@ async function open() {
       if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: { ...h, "access-control-allow-headers": "*" } });
       return r.respond({ status: 200, headers: h, body: '{"ok":true,"scanId":"00000000-0000-0000-0000-000000000000","appStoreUrl":"","playStoreUrl":""}' });
     }
-    if (GA.test(u) || FB.test(u)) { hits.push(u + " " + (r.postData() || "")); if (/gtag\/js|fbevents\.js|signals\/config/.test(u)) return r.continue(); return r.abort(); }
+    if (GA.test(u) || FB.test(u) || TT.test(u)) { hits.push(u + " " + (r.postData() || "")); if (/gtag\/js|fbevents\.js|signals\/config/.test(u) || (TT.test(u) && /\.js(\?|$)/.test(u))) return r.continue(); return r.abort(); }
     if (/apps\.apple\.com|play\.google\.com/.test(u)) return r.abort();
     r.continue();
   });
@@ -61,6 +62,11 @@ try {
   if (!hits.some((u) => /\/g\/collect/.test(u) && u.includes("en=generate_lead"))) fail("generate_lead not sent after consent");
   if (!hits.some((u) => u.includes("fbevents.js"))) fail("Pixel not loaded");
   if (!hits.some((u) => /facebook\.com\/tr/.test(u) && u.includes("id=1577216264451707") && u.includes("ev=PageView"))) fail("no Pixel PageView");
+  if (!hits.some((u) => TT.test(u) && u.includes("events.js") && u.includes("sdkid=DB34H8JC77U534NEHGPG"))) fail("TikTok events.js not loaded");
+  const ttEvents = (list) => list.filter((u) => TT.test(u) && /\/api\/v2\/pixel/.test(u));
+  if (!ttEvents(hits).some((u) => u.includes("DB34H8JC77U534NEHGPG") && /"event":"Pageview"/.test(u))) fail("no TikTok Pageview");
+  // pixel.js translates the legacy SubmitForm we send into its current "Lead" event name.
+  if (!ttEvents(hits).some((u) => /"event":"(SubmitForm|Lead)"/.test(u) && u.includes("qr_station"))) fail("TikTok SubmitForm (lead after consent) not sent");
   const before = hits.length;
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /plán|plan/i.test(b.textContent || ""))?.click());
   await wait(6000);
@@ -68,6 +74,7 @@ try {
   const fbAfter = hits.slice(before).filter((u) => /facebook\.com\/tr/.test(u));
   if (!fbAfter.some((u) => u.includes("ev=ClickStore"))) fail("Pixel ClickStore not sent");
   if (fbAfter.some((u) => u.includes("ev=Lead"))) fail("store click still sent as Pixel Lead");
+  if (!ttEvents(hits.slice(before)).some((u) => /"event":"Download"/.test(u))) fail("TikTok Download not sent");
   await ctx.close();
   console.log("SCAN_ANALYTICS_E2E_OK");
 } catch (e) { console.error("FAIL:", e.message); process.exitCode = 1; }
