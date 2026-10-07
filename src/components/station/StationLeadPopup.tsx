@@ -4,8 +4,8 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 import i18n from '@/i18n';
 import {
-  LEAD_PROMPT_DELAY_MS, LEAD_THANKS_MS, isValidLeadEmail, leadCardTop, readLeadPromptState,
-  shouldAutoShowLeadPrompt, writeLeadPromptState,
+  LEAD_PROMPT_DELAY_MS, LEAD_THANKS_MS, isValidLeadEmail, leadCardTop, leadPromptSkipReason, readLeadPromptState,
+  writeLeadPromptState, type LeadSkipReason,
 } from '@/lib/leadCapture';
 import { logLeadPromptEvent, submitLead } from '@/lib/qrTracking';
 
@@ -26,16 +26,22 @@ export const StationLeadPopup = ({ code, gymName, onDone, onSubmitted }: {
   const [top, setTop] = useState<number | null>(null);
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) { onDone?.(); return; }
+    // Members in the app and logged-in visitors never see the prompt; every skip is
+    // logged with its reason so the funnel shows why a device got no prompt.
+    const skip = (reason: LeadSkipReason) => { void logLeadPromptEvent(code, 'lead_prompt_skipped', { reason }); onDone?.(); };
+    if (Capacitor.isNativePlatform()) { skip('native_app'); return; }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       if (cancelled) return;
-      if (!shouldAutoShowLeadPrompt(readLeadPromptState(), document.cookie, Date.now())) { onDone?.(); return; }
+      const local = { native: false, raw: readLeadPromptState(), cookie: document.cookie, now: Date.now(), loggedIn: false };
+      const stored = leadPromptSkipReason(local);
+      if (stored) { skip(stored); return; }
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
-      if (data.session) { onDone?.(); return; }
+      const reason = leadPromptSkipReason({ ...local, loggedIn: !!data.session });
+      if (reason) { skip(reason); return; }
       setPhase('form');
-      logLeadPromptEvent(code, 'lead_prompt_shown');
+      void logLeadPromptEvent(code, 'lead_prompt_shown');
     }, LEAD_PROMPT_DELAY_MS);
     return () => { cancelled = true; window.clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per machine code
@@ -66,7 +72,7 @@ export const StationLeadPopup = ({ code, gymName, onDone, onSubmitted }: {
   const close = () => {
     if (phase !== 'form') return;
     writeLeadPromptState('dismissed');
-    logLeadPromptEvent(code, 'lead_prompt_dismissed');
+    void logLeadPromptEvent(code, 'lead_prompt_dismissed');
     setPhase('hidden');
     onDone?.();
   };

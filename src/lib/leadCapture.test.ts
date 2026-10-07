@@ -22,3 +22,36 @@ describe('leadCardTop', () => {
   it('never under the top bar', () => expect(leadCardTop(20, 844, 0)).toBe(72));
   it('null title → null (fallback position)', () => expect(leadCardTop(null, 844, 0)).toBeNull());
 });
+
+import { leadPromptSkipReason } from './leadCapture';
+describe('leadPromptSkipReason', () => {
+  const base = { native: false, raw: null as string | null, cookie: '', now: NOW, loggedIn: false };
+  it('new web visitor → show (null)', () => expect(leadPromptSkipReason(base)).toBeNull());
+  it('native app wins over everything', () =>
+    expect(leadPromptSkipReason({ ...base, native: true, loggedIn: true, raw: leadPromptRecord('submitted', NOW) })).toBe('native_app'));
+  it('submitted (localStorage)', () => expect(leadPromptSkipReason({ ...base, raw: leadPromptRecord('submitted', NOW - 400 * DAY) })).toBe('already_submitted'));
+  it('submitted (cookie only)', () => expect(leadPromptSkipReason({ ...base, cookie: 'pumplo_lead=1' })).toBe('already_submitted'));
+  it('dismissed within 7 days', () => expect(leadPromptSkipReason({ ...base, raw: leadPromptRecord('dismissed', NOW - 6 * DAY) })).toBe('dismissed_recently'));
+  it('dismissed long ago → show', () => expect(leadPromptSkipReason({ ...base, raw: leadPromptRecord('dismissed', NOW - 8 * DAY) })).toBeNull());
+  it('logged-in member', () => expect(leadPromptSkipReason({ ...base, loggedIn: true })).toBe('logged_in'));
+  it('stored state outranks login', () => expect(leadPromptSkipReason({ ...base, loggedIn: true, raw: leadPromptRecord('dismissed', NOW) })).toBe('dismissed_recently'));
+  it('agrees with shouldAutoShowLeadPrompt for web visitors', () => {
+    for (const raw of [null, '{oops', leadPromptRecord('submitted', NOW), leadPromptRecord('dismissed', NOW - DAY), leadPromptRecord('dismissed', NOW - 30 * DAY)])
+      expect(leadPromptSkipReason({ ...base, raw }) === null).toBe(shouldAutoShowLeadPrompt(raw, '', NOW));
+  });
+});
+
+import { leadCookieDomain } from './leadCapture';
+describe('state shared with pumplo.com (cookies on .pumplo.com)', () => {
+  const base = { native: false, raw: null as string | null, cookie: '', now: NOW, loggedIn: false };
+  it('dismiss cookie from the website blocks for 7 days (cookie expiry does the timing)', () =>
+    expect(leadPromptSkipReason({ ...base, cookie: 'x=1; pumplo_lead_dismissed=1' })).toBe('dismissed_recently'));
+  it('submit cookie outranks dismiss cookie', () =>
+    expect(leadPromptSkipReason({ ...base, cookie: 'pumplo_lead_dismissed=1; pumplo_lead=1' })).toBe('already_submitted'));
+  it('cookie domain only on pumplo.com hosts', () => {
+    expect(leadCookieDomain('app.pumplo.com')).toBe('; Domain=pumplo.com');
+    expect(leadCookieDomain('pumplo.com')).toBe('; Domain=pumplo.com');
+    expect(leadCookieDomain('localhost')).toBe('');
+    expect(leadCookieDomain('evilpumplo.com')).toBe('');
+  });
+});
