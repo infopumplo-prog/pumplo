@@ -65,6 +65,9 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /plán|plan/i.test(b.textContent || ""))?.click());
   await wait(6000);
   if (!hits.slice(before).some((u) => u.includes("en=click_store"))) fail("click_store not sent");
+  const fbAfter = hits.slice(before).filter((u) => /facebook\.com\/tr/.test(u));
+  if (!fbAfter.some((u) => u.includes("ev=ClickStore"))) fail("Pixel ClickStore not sent");
+  if (fbAfter.some((u) => u.includes("ev=Lead"))) fail("store click still sent as Pixel Lead");
   await ctx.close();
   console.log("SCAN_ANALYTICS_E2E_OK");
 } catch (e) { console.error("FAIL:", e.message); process.exitCode = 1; }
