@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CONSENT_TEXT_VERSION, LEAD_RATE_LIMIT_PER_HOUR, consentTextFor, isBot, isValidEmail, normalizeEmail, toLang } from "./lead.ts";
+import { type CodeLookup, flyerDestination, isAction, isSourceType, resolveTarget, scanDetail, skipReason } from "./request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,19 +50,20 @@ const redirect = (location: string) =>
     headers: { Location: location, "Cache-Control": "no-store" },
   });
 
-/** Logs one flyer scan, skipping a repeat from the same IP (see DEDUP_WINDOW_MIN). */
+/** Logs one flyer scan, skipping a repeat from the same IP (see DEDUP_WINDOW_MIN).
+ *  Returns the scan id (new or the deduplicated one) so the website can pair a lead with it. */
 const logFlyerScan = async (
   code: string,
   ipHash: string | null,
   uaHash: string | null,
   plat: string,
-): Promise<void> => {
+): Promise<string | null> => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
   const { data: qr } = await supabase.from("qr_codes").select("gym_id").eq("code", code).maybeSingle();
-  if (!qr) return; // Unknown flyer code — forward the reader, log nothing.
+  if (!qr) return null; // Unknown flyer code — forward the reader, log nothing.
 
   if (ipHash) {
     const since = new Date(Date.now() - DEDUP_WINDOW_MIN * 60_000).toISOString();
@@ -70,14 +72,16 @@ const logFlyerScan = async (
       .select("id")
       .eq("event_type", "scan").eq("code", code).eq("ip_hash", ipHash)
       .gte("created_at", since)
+      .order("created_at", { ascending: false })
       .limit(1);
-    if (dup && dup.length > 0) return;
+    if (dup && dup.length > 0) return dup[0].id;
   }
 
-  await supabase.from("qr_events").insert({
+  const { data } = await supabase.from("qr_events").insert({
     event_type: "scan", source_type: "flyer", code, gym_id: qr.gym_id,
     machine_id: null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
-  });
+  }).select("id").single();
+  return data?.id ?? null;
 };
 
 Deno.serve(async (req) => {
@@ -89,28 +93,26 @@ Deno.serve(async (req) => {
   if (req.method === "GET") {
     const url = new URL(req.url);
     const code = url.searchParams.get("code") ?? "";
-    const dest = new URL(WEB_URL);
-    dest.searchParams.set("utm_source", "qr");
-    dest.searchParams.set("utm_medium", "flyer");
-    if (code) dest.searchParams.set("utm_campaign", code);
+    let scanId: string | null = null;
 
     if (code && code.length <= 64) {
       try {
         const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
         const ua = req.headers.get("user-agent") ?? "";
-        await Promise.race([
+        scanId = await Promise.race([
           logFlyerScan(
             code,
             ip ? await sha256(`pumplo-qr|${ip}`) : null,
             ua ? await sha256(`pumplo-qr|${ua}`) : null,
             platformFromUa(ua),
           ),
-          new Promise((resolve) => setTimeout(resolve, LOG_TIMEOUT_MS)),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), LOG_TIMEOUT_MS)),
         ]);
       } catch { /* tracking never costs us a flyer reader */ }
     }
 
-    return redirect(dest.toString());
+    // The website's e-mail prompt pairs its lead with the scan (qr_scan, an opaque id).
+    return redirect(flyerDestination(WEB_URL, code, scanId));
   }
 
   try {
@@ -121,23 +123,17 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { action, sourceType, code, scanId, platform } = body;
-    if (!["scan", "store_click", "lead_prompt_shown", "lead_prompt_dismissed", "lead"].includes(action)) return json({ error: "bad action" }, 400);
-    if (!["station", "flyer"].includes(sourceType)) return json({ error: "bad sourceType" }, 400);
+    if (!isAction(action)) return json({ error: "bad action" }, 400);
+    if (!isSourceType(sourceType)) return json({ error: "bad sourceType" }, 400);
+    const reason = action === "lead_prompt_skipped" ? skipReason(body.reason) : null;
+    if (action === "lead_prompt_skipped" && !reason) return json({ error: "bad reason" }, 400);
     if (typeof code !== "string" || !code || code.length > 64) return json({ error: "bad code" }, 400);
     const plat = ["ios", "android"].includes(platform) ? platform : "other";
 
     // Resolve the gym (and machine for stations) from the scanned code.
-    let gymId: string | null = null;
-    let machineId: string | null = null;
-    if (sourceType === "flyer") {
-      const { data } = await supabase.from("qr_codes").select("gym_id").eq("code", code).maybeSingle();
-      if (!data) return json({ error: "unknown code" }, 404);
-      gymId = data.gym_id;
-    } else {
-      const { data } = await supabase.from("gym_machines").select("id, gym_id").eq("short_code", code).maybeSingle();
-      if (data) { gymId = data.gym_id; machineId = data.id; }
-      // Unknown station codes are still logged (sticker of a deleted machine).
-    }
+    const target = await resolveTarget(supabase as unknown as CodeLookup, sourceType, code);
+    if (!target) return json({ error: "unknown code" }, 404);
+    const { gymId, machineId } = target;
 
     const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
     const ua = req.headers.get("user-agent") ?? "";
@@ -145,13 +141,17 @@ Deno.serve(async (req) => {
     const uaHash = ua ? await sha256(`pumplo-qr|${ua}`) : null;
 
     if (action === "scan") {
+      // Scans from inside the Pumplo app are marked (detail 'native') and dedup only
+      // among themselves, so an app scan never hides behind a web scan on gym Wi-Fi.
+      const detail = scanDetail(body.native);
       if (ipHash) {
         const since = new Date(Date.now() - DEDUP_WINDOW_MIN * 60_000).toISOString();
-        const { data: dup } = await supabase
+        const dupQuery = supabase
           .from("qr_events")
           .select("id")
           .eq("event_type", "scan").eq("code", code).eq("ip_hash", ipHash)
-          .gte("created_at", since)
+          .gte("created_at", since);
+        const { data: dup } = await (detail ? dupQuery.eq("detail", detail) : dupQuery.is("detail", null))
           .order("created_at", { ascending: false })
           .limit(1);
         if (dup && dup.length > 0) {
@@ -160,16 +160,23 @@ Deno.serve(async (req) => {
       }
       const { data, error } = await supabase
         .from("qr_events")
-        .insert({ event_type: "scan", source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, ip_hash: ipHash, ua_hash: uaHash })
+        .insert({ event_type: "scan", source_type: sourceType, code, gym_id: gymId, machine_id: machineId, platform: plat, ip_hash: ipHash, ua_hash: uaHash, detail })
         .select("id").single();
       if (error) return json({ error: error.message }, 500);
       return json({ scanId: data.id, appStoreUrl: APP_STORE_URL, playStoreUrl: playUrl(data.id) });
     }
 
-    if (action === "lead_prompt_shown" || action === "lead_prompt_dismissed") {
+    if (action === "lead_prompt_shown" || action === "lead_prompt_dismissed" || action === "lead_prompt_skipped") {
+      const validScanId = typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null;
+      // A page refresh within the scan dedup window reuses the scan id: one skip per scan.
+      if (action === "lead_prompt_skipped" && validScanId) {
+        const { data: seen } = await supabase.from("qr_events").select("id")
+          .eq("event_type", action).eq("scan_id", validScanId).limit(1);
+        if (seen && seen.length > 0) return json({ ok: true });
+      }
       await supabase.from("qr_events").insert({
         event_type: action, source_type: sourceType, code, gym_id: gymId, machine_id: machineId,
-        scan_id: typeof scanId === "string" && UUID_RE.test(scanId) ? scanId : null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+        scan_id: validScanId, platform: plat, ip_hash: ipHash, ua_hash: uaHash, detail: reason,
       });
       return json({ ok: true });
     }

@@ -4,7 +4,12 @@ export const LEAD_PROMPT_DELAY_MS = 800; // right away, after the page layout se
 export const LEAD_DISMISS_DAYS = 7;
 export const LEAD_THANKS_MS = 3_000;
 export const LEAD_STORAGE_KEY = 'pumplo_lead_prompt';
+// Cookies live on .pumplo.com, so app.pumplo.com/s/ and the website (flyer prompt) share them.
 const LEAD_COOKIE = 'pumplo_lead=1';
+const LEAD_DISMISSED_COOKIE = 'pumplo_lead_dismissed=1';
+const hasCookie = (cookie: string, c: string) => cookie.split(';').some((x) => x.trim() === c);
+export const leadCookieDomain = (hostname: string): string =>
+  hostname === 'pumplo.com' || hostname.endsWith('.pumplo.com') ? '; Domain=pumplo.com' : '';
 
 type Stored = { state: 'dismissed' | 'submitted'; at: number };
 const parse = (raw: string | null): Stored | null => {
@@ -16,12 +21,28 @@ const parse = (raw: string | null): Stored | null => {
   return null;
 };
 
-export const shouldAutoShowLeadPrompt = (raw: string | null, cookie: string, now: number): boolean => {
-  if (cookie.split(';').some((c) => c.trim() === LEAD_COOKIE)) return false;
+// Why the prompt stayed hidden on this device — logged as lead_prompt_skipped.reason.
+export type LeadSkipReason = 'native_app' | 'logged_in' | 'already_submitted' | 'dismissed_recently';
+
+const storedBlock = (raw: string | null, cookie: string, now: number): 'already_submitted' | 'dismissed_recently' | null => {
+  if (hasCookie(cookie, LEAD_COOKIE)) return 'already_submitted';
   const stored = parse(raw);
-  if (!stored) return true;
-  if (stored.state === 'submitted') return false;
-  return now - stored.at > LEAD_DISMISS_DAYS * 86_400_000;
+  if (stored?.state === 'submitted') return 'already_submitted';
+  if (hasCookie(cookie, LEAD_DISMISSED_COOKIE)) return 'dismissed_recently'; // expires after LEAD_DISMISS_DAYS
+  if (!stored) return null;
+  if (stored.state === 'submitted') return 'already_submitted';
+  return now - stored.at > LEAD_DISMISS_DAYS * 86_400_000 ? null : 'dismissed_recently';
+};
+
+export const shouldAutoShowLeadPrompt = (raw: string | null, cookie: string, now: number): boolean =>
+  storedBlock(raw, cookie, now) === null;
+
+// null = show the prompt. Priority: native app, then this device's stored choice, then login.
+export const leadPromptSkipReason = ({ native, raw, cookie, now, loggedIn }: {
+  native: boolean; raw: string | null; cookie: string; now: number; loggedIn: boolean;
+}): LeadSkipReason | null => {
+  if (native) return 'native_app';
+  return storedBlock(raw, cookie, now) ?? (loggedIn ? 'logged_in' : null);
 };
 
 export const leadPromptRecord = (state: Stored['state'], now: number): string => JSON.stringify({ state, at: now });
@@ -37,9 +58,12 @@ export const readLeadPromptState = (): string | null => {
 
 export const writeLeadPromptState = (state: Stored['state']): void => {
   try { window.localStorage.setItem(LEAD_STORAGE_KEY, leadPromptRecord(state, Date.now())); } catch { /* private mode */ }
-  if (state === 'submitted') {
-    try { document.cookie = `${LEAD_COOKIE}; Max-Age=34560000; Path=/; SameSite=Lax`; } catch { /* blocked */ }
-  }
+  try {
+    const domain = leadCookieDomain(window.location.hostname);
+    document.cookie = state === 'submitted'
+      ? `${LEAD_COOKIE}; Max-Age=34560000; Path=/; SameSite=Lax${domain}`
+      : `${LEAD_DISMISSED_COOKIE}; Max-Age=${LEAD_DISMISS_DAYS * 86_400}; Path=/; SameSite=Lax${domain}`;
+  } catch { /* blocked */ }
 };
 
 // Card top in layout-viewport px: aligned with the exercise title, but kept inside the
