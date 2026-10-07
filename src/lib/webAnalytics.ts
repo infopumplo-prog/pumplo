@@ -127,4 +127,9 @@ export const trackPixel = (name: string, params: Record<string, unknown> = {}) =
   if (pixelLoaded && window.fbq) window.fbq('track', name, params);
 };
 
+/** Meta Pixel custom event (not a Meta standard event), e.g. ClickStore. */
+export const trackPixelCustom = (name: string, params: Record<string, unknown> = {}) => {
+  if (pixelLoaded && window.fbq) window.fbq('trackCustom', name, params);
+};
+
 export const openCookieSettings = () => window.dispatchEvent(new Event(COOKIE_SETTINGS_EVENT));

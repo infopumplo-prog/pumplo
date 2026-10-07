@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { openAppOrStore, APP_STORE_URL } from '@/lib/appRedirect';
 import { logStoreClick } from '@/lib/qrTracking';
-import { trackEvent, trackPixel } from '@/lib/webAnalytics';
+import { trackEvent, trackPixelCustom } from '@/lib/webAnalytics';
 
 export const StationCTA = () => {
   const { t } = useTranslation();
@@ -13,7 +13,7 @@ export const StationCTA = () => {
     // Funnel analytics: the tap is logged before any redirect fires.
     if (code) logStoreClick('station', code);
     trackEvent('click_store', { source: 'qr_station', code });
-    trackPixel('Lead', { content_name: 'qr_station_store' });
+    trackPixelCustom('ClickStore', { source: 'qr_station', code });
     // Mobile: open the app (or fall back to its store). Desktop: there is no
     // app, so send straight to the App Store listing.
     if (!openAppOrStore('station')) {
