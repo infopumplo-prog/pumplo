@@ -33,7 +33,7 @@ const StationPage = () => {
     if (code) logQrScan('station', code);
   }, [code]);
 
-  // GA4 / Meta Pixel only with a stored consent (returning visitors).
+  // GA4 / Meta Pixel / TikTok Pixel only with a stored consent (returning visitors).
   useEffect(() => { initWebAnalytics(); }, []);
 
   // A lead sent before the cookie choice is reported once consent exists.

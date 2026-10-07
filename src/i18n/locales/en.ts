@@ -1389,7 +1389,7 @@ const en = {
   'station.cookie_cat_analytics': 'Analytics',
   'station.cookie_cat_analytics_desc': 'Google Analytics: anonymous traffic statistics.',
   'station.cookie_cat_marketing': 'Marketing',
-  'station.cookie_cat_marketing_desc': 'Meta (Facebook, Instagram) and Google Ads: campaign measurement and relevant ads.',
+  'station.cookie_cat_marketing_desc': 'Meta (Facebook, Instagram), TikTok (TikTok Technology Ltd.) and Google Ads: campaign measurement and relevant ads.',
   'station.cta_btn': 'Create your free training plan',
   'station.exercise_label': 'Exercise {{n}}',
   'station.not_found': 'Station not found',

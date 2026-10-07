@@ -98,7 +98,7 @@ const Privacy = () => {
           <p className="text-muted-foreground">
             Veřejné stránky strojů (app.pumplo.com/s/…), na které vedou QR kódy v posilovnách, používají
             analytické cookies (Google Analytics, Google Ireland Ltd.) a marketingové cookies (Meta Pixel,
-            Meta Platforms Ireland Ltd.; Google Ads) pouze s tvým souhlasem, který udělíš nebo odmítneš po
+            Meta Platforms Ireland Ltd.; TikTok Pixel, TikTok Technology Ltd.; Google Ads) pouze s tvým souhlasem, který udělíš nebo odmítneš po
             kategoriích v cookie liště. Souhlas můžeš kdykoli změnit vymazáním dat stránky v prohlížeči.
             Analytická data uchováváme nejvýše 14 měsíců.
           </p>
