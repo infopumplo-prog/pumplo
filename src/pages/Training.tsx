@@ -16,6 +16,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { trackSelectGym } from '@/lib/appAnalytics';
 import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
@@ -1158,7 +1159,8 @@ const Training = () => {
   }, [plan, profile?.selected_gym_id, generatedExercises, savePausedWorkout]);
 
   const handleGymSelect = async (gymId: string) => {
-    await updateProfile({ selected_gym_id: gymId });
+    const saved = await updateProfile({ selected_gym_id: gymId });
+    if (saved.success) trackSelectGym(gymId);
     handleGenerateDayExercises(gymId, true);
   };
 

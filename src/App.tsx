@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { loadOnboardingDraft, clearOnboardingDraft } from "@/lib/onboardingDraft";
 import { persistOnboarding } from "@/lib/persistOnboarding";
+import { trackTutorialComplete } from "@/lib/appAnalytics";
 import { routeAfterRegistration, savePlanChoice } from "@/lib/onboardingFlow";
 import Auth from "@/pages/Auth";
 import Privacy from "@/pages/Privacy";
@@ -66,6 +67,8 @@ import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
 import { flushWorkoutSaveQueue } from "@/lib/workoutSaveQueue";
 import WebGate from "@/components/WebGate";
+import { AppConsentGate } from "@/components/AppConsentScreen";
+import { initAppAnalytics, trackDeepLink, trackScreen } from "@/lib/appAnalytics";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
 const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
@@ -78,7 +81,10 @@ const PlanDeepLinkNavigator = () => {
     if (!Capacitor.isNativePlatform()) return;
     const handle = (url: string) => {
       const m = url.match(/\/(plan|cvik)\/([^/?#]+)/);
-      if (m) navigate(`/${m[1]}/${m[2]}`);
+      if (m) {
+        trackDeepLink(`/${m[1]}/${m[2]}`);
+        navigate(`/${m[1]}/${m[2]}`);
+      }
     };
     const listener = CapApp.addListener('appUrlOpen', ({ url }) => handle(url));
     // Studený start: appUrlOpen se vyvolá dřív, než je posluchač zaregistrovaný →
@@ -86,6 +92,13 @@ const PlanDeepLinkNavigator = () => {
     CapApp.getLaunchUrl().then((r) => { if (r?.url) handle(r.url); }).catch(() => {});
     return () => { listener.then(h => h.remove()); };
   }, [navigate]);
+  return null;
+};
+
+// screen_view pro měření v appce (bez souhlasu nic neodejde).
+const ScreenViewTracker = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { trackScreen(pathname); }, [pathname]);
   return null;
 };
 
@@ -132,6 +145,7 @@ const PendingOnboardingFinisher = () => {
         const saved = await persistOnboarding(user.id, draft, t('onboarding.own_plan_name'));
         if (!saved.ok) return; // koncept zůstává, další spuštění to zkusí znovu
         clearOnboardingDraft();
+        trackTutorialComplete();
         const choice = draft.planChoice ?? 'pumplo';
         savePlanChoice(choice);
         await queryClient.invalidateQueries();
@@ -303,10 +317,12 @@ const AppRoutes = () => {
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+    <ScreenViewTracker />
     <PendingSharedPlanResume />
     <PendingOnboardingFinisher />
     <SaveQueueFlusher />
     <GymDataRefresher />
+    <AppConsentGate />
   <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -373,6 +389,8 @@ const App = () => {
     setUpdateBannerCallback(() => {
       setShowUpdateBanner(true);
     });
+
+    initAppAnalytics();
 
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: true });

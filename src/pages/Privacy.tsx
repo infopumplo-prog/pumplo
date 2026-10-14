@@ -25,7 +25,7 @@ const Privacy = () => {
         className="max-w-2xl mx-auto px-5 py-8 space-y-8 text-sm leading-relaxed"
       >
         <div>
-          <p className="text-muted-foreground">Poslední aktualizace: 2. května 2026</p>
+          <p className="text-muted-foreground">Poslední aktualizace: 5. října 2026</p>
         </div>
 
         <section className="space-y-3">
@@ -92,8 +92,14 @@ const Privacy = () => {
         <section id="cookies" className="space-y-3 scroll-mt-20">
           <h2 className="text-base font-bold">7. Cookies a sledování</h2>
           <p className="text-muted-foreground">
-            Mobilní aplikace nepoužívá marketingové cookies ani sledovací nástroje třetích stran.
-            Technické cookies jsou nezbytné pro fungování přihlášení a relace.
+            Mobilní aplikace (iOS, Android) používá analytické nástroje <strong className="text-foreground">pouze s tvým souhlasem</strong>,
+            o který tě požádá po vyplnění úvodního dotazníku. Souhlas uděluješ zvlášť pro analytická
+            (Firebase Analytics, Google Ireland Ltd.: které obrazovky a funkce se používají) a marketingová data
+            (Meta SDK, Meta Platforms Ireland Ltd., a Google: které reklamy přivedly nové uživatele). Bez souhlasu
+            se nic neodesílá. Na iPhonu se před marketingovým měřením navíc zeptá systém (povolení „Sledování“).
+            Do těchto nástrojů nikdy neposíláme jméno, e-mail, váhu, výšku, věk ani zdravotní údaje.
+            Volbu můžeš kdykoli změnit v Nastavení → Soukromí a měření. Technické údaje nezbytné pro přihlášení
+            a fungování aplikace se ukládají vždy.
           </p>
           <p className="text-muted-foreground">
             Veřejné stránky strojů (app.pumplo.com/s/…), na které vedou QR kódy v posilovnách, používají

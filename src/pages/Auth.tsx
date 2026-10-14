@@ -52,6 +52,7 @@ import {
   type Motivation,
   type PlanChoice,
 } from '@/lib/onboardingFlow';
+import { trackSignUp, trackTutorialComplete } from '@/lib/appAnalytics';
 
 type AuthMode = 'login' | 'register';
 
@@ -256,6 +257,7 @@ const Auth = () => {
       // 1. Register user - returns userId directly
       const result = await register(regEmail, regPassword, firstName, lastName);
       let userId = result.userId;
+      if (result.success && userId) trackSignUp('email');
 
       if (!result.success || !userId) {
         // A failed signUp does not prove the account was not created: a slow
@@ -298,6 +300,7 @@ const Auth = () => {
 
       // 8. The answers are safely on the profile — the draft has done its job.
       clearOnboardingDraft();
+      trackTutorialComplete();
 
       savePlanChoice(planChoice);
 
