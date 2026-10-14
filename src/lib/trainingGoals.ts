@@ -228,7 +228,9 @@ export interface PlanInputsSnapshot {
   duration_minutes: number;
   equipment_preference: string | null;
   injuries: string[];
-  gym_id: string;
+  gym_id: string | null;
+  /** Vlastní vybavení, když plán nevznikl pro posilovnu (feedback 13. 10.) */
+  custom_equipment?: string[] | null;
   equipment_available_snapshot: string[]; // machine_ids at time of generation
   training_days: string[];
   generated_at: string;

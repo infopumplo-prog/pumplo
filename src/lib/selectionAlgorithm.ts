@@ -4,6 +4,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UserLevel } from './trainingGoals';
 import { CARDIO_ROLE_IDS } from './bmiUtils';
+import { isExerciseDoable } from './customEquipment';
 
 // ============ TYPES ============
 
@@ -13,6 +14,7 @@ export interface Exercise {
   primary_role: string | null;
   difficulty: number | null;
   machine_id: string | null;
+  secondary_machine_id?: string | null;
   equipment_type: string | null;
   allowed_phase: string | null;
   primary_muscles: string[];
@@ -47,7 +49,13 @@ export interface ExerciseCandidate {
 }
 
 export interface SelectionContext {
-  gymId: string;
+  gymId: string | null;
+  /**
+   * Režim „bez posilovny" (feedback 13. 10.): machineIdsAvailable je vlastní
+   * vybavení — cvik musí mít k dispozici hlavní i vedlejší stroj, a to i ve
+   * fallbacku na vlastní váhu (hrazda není u každého doma).
+   */
+  customEquipmentMode?: boolean;
   userLevel: UserLevel;
   injuries: string[];
   equipmentPreference: string | null;
@@ -374,6 +382,71 @@ export const fetchExerciseHistory = async (
 };
 
 /**
+ * Tvrdé filtry kandidátů (použito dnes, vybavení, zranění, unilaterální v main).
+ * Vytaženo jako čistá funkce kvůli testům režimu vlastního vybavení (feedback 13. 10.).
+ */
+export const passesCandidateFilter = (
+  ex: Exercise,
+  context: SelectionContext,
+  options: SelectionOptions,
+): boolean => {
+  // Already used today filter
+  if (context.usedExerciseIdsToday.includes(ex.id)) {
+    return false;
+  }
+
+  // Vlastní vybavení: tvrdý filtr ve všech úrovních fallbacku
+  if (context.customEquipmentMode && !isExerciseDoable(ex, context.machineIdsAvailable)) {
+    return false;
+  }
+
+  // Strict equipment filter - machine_id must be available at gym
+  if (options.strictEquipment) {
+    if (ex.machine_id && !context.machineIdsAvailable.has(ex.machine_id)) {
+      return false;
+    }
+    
+    // Check bench config requirements
+    if (ex.required_bench_config && ex.machine_id) {
+      const benchConfigs = context.machineIdToBenchConfigs.get(ex.machine_id);
+      if (!benchConfigs || !benchConfigs.includes(ex.required_bench_config)) {
+        // Gym doesn't have the required bench configuration for this exercise
+        return false;
+      }
+    }
+    
+    // Check equipment type availability (unless bodyweight)
+    const exType = ex.equipment_type || 'bodyweight';
+    if (exType !== 'bodyweight') {
+      // Equipment preference filter (unless expandEquipmentTypes)
+      if (!options.expandEquipmentTypes && context.equipmentPreference) {
+        if (context.equipmentPreference === 'bodyweight') {
+          if (exType !== 'bodyweight') return false;
+        }
+        if (context.equipmentPreference === 'machines') {
+          if (exType !== 'machine') return false;
+        }
+        if (context.equipmentPreference === 'free_weights') {
+          if (exType !== 'free_weight') return false;
+        }
+      }
+    }
+  }
+
+  // Strict injuries filter
+  if (options.strictInjuries && isContraindicated(ex, context.injuries)) {
+    return false;
+  }
+
+  // Exclude unilateral exercises from main slots
+  if (context.slotCategory === 'main' && ex.is_unilateral) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
  * Get exercise candidates for a role with given options
  */
 export const getCandidates = async (
@@ -417,57 +490,7 @@ export const getCandidates = async (
   }
 
   // Filter exercises
-  const filtered = exercises.filter(ex => {
-    // Already used today filter
-    if (context.usedExerciseIdsToday.includes(ex.id)) {
-      return false;
-    }
-
-    // Strict equipment filter - machine_id must be available at gym
-    if (options.strictEquipment) {
-      if (ex.machine_id && !context.machineIdsAvailable.has(ex.machine_id)) {
-        return false;
-      }
-      
-      // Check bench config requirements
-      if (ex.required_bench_config && ex.machine_id) {
-        const benchConfigs = context.machineIdToBenchConfigs.get(ex.machine_id);
-        if (!benchConfigs || !benchConfigs.includes(ex.required_bench_config)) {
-          // Gym doesn't have the required bench configuration for this exercise
-          return false;
-        }
-      }
-      
-      // Check equipment type availability (unless bodyweight)
-      const exType = ex.equipment_type || 'bodyweight';
-      if (exType !== 'bodyweight') {
-        // Equipment preference filter (unless expandEquipmentTypes)
-        if (!options.expandEquipmentTypes && context.equipmentPreference) {
-          if (context.equipmentPreference === 'bodyweight') {
-            if (exType !== 'bodyweight') return false;
-          }
-          if (context.equipmentPreference === 'machines') {
-            if (exType !== 'machine') return false;
-          }
-          if (context.equipmentPreference === 'free_weights') {
-            if (exType !== 'free_weight') return false;
-          }
-        }
-      }
-    }
-
-    // Strict injuries filter
-    if (options.strictInjuries && isContraindicated(ex, context.injuries)) {
-      return false;
-    }
-
-    // Exclude unilateral exercises from main slots
-    if (context.slotCategory === 'main' && ex.is_unilateral) {
-      return false;
-    }
-
-    return true;
-  });
+  const filtered = (exercises as Exercise[]).filter(ex => passesCandidateFilter(ex, context, options));
 
   // Score candidates
   const candidates = filtered.map(ex => 

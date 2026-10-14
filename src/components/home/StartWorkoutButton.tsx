@@ -10,13 +10,16 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface StartWorkoutButtonProps {
   selectedGymId: string | null;
+  /** Vlastní vybavení z profilu (feedback 13. 10.) */
+  customEquipment?: string[] | null;
   className?: string;
 }
 
-export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutButtonProps) => {
+export const StartWorkoutButton = ({ selectedGymId, customEquipment, className }: StartWorkoutButtonProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -48,6 +51,24 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
     }
   };
 
+  // „Nejsem v žádné z těchto posiloven" (feedback 13. 10.): uložit vybavení, posilovnu zrušit
+  const handleNoGymSelected = async (equipment: string[]) => {
+    unlockAudio();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ selected_gym_id: null, custom_equipment: equipment })
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('[StartWorkoutButton] custom equipment not saved', error);
+      toast.error(t('nogym.save_error'));
+      return;
+    }
+    setShowGymSelector(false);
+    navigate(`/training?start=true&nogym=${encodeURIComponent(equipment.join(','))}`);
+  };
+
   return (
     <>
       {showGymSelector && createPortal(
@@ -55,6 +76,8 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
           onSelect={handleGymSelected}
           onCancel={() => setShowGymSelector(false)}
           selectedGymId={selectedGymId}
+          onSelectNoGym={handleNoGymSelected}
+          customEquipment={customEquipment}
         />,
         document.body
       )}
