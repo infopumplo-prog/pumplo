@@ -3,12 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchLastCompletedDays, getNextCycleDay, moveDayInOrder, renumberDays, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
 
 export interface CustomPlanDay {
   id: string;
   plan_id: string;
   day_number: number;
   name: string | null;
+  // Anglický název dne u plánů z katalogu (trenér); po přejmenování se maže.
+  name_en?: string | null;
   exercises: CustomPlanExercise[];
 }
 
@@ -62,7 +65,20 @@ export interface CustomPlanSummary {
   created_at: string;
   published_at: string | null;
   day_count: number;
+  // Kruh dnů (feedback 13. 10.): další den k odcvičení, jen když má plán 2+ hratelné dny.
+  next_day: { id: string; index: number; name: string | null; name_en: string | null; day_number: number } | null;
 }
+
+type SummaryDayRow = { id: string; day_number: number; name: string | null; name_en: string | null; custom_plan_exercises: { count: number }[] | null };
+
+/** Další den kruhu pro souhrn plánu (Home). Null u jednodenních plánů. */
+export const summarizeNextDay = (days: SummaryDayRow[], last: LastCompletedDay | null | undefined): CustomPlanSummary['next_day'] => {
+  const cycle = sortCycleDays(days.map(d => ({ ...d, exerciseCount: d.custom_plan_exercises?.[0]?.count ?? 0 })));
+  if (cycle.filter(d => d.exerciseCount > 0).length < 2) return null;
+  const next = getNextCycleDay(cycle, last?.dayId);
+  if (!next) return null;
+  return { id: next.id, index: cycle.indexOf(next), name: next.name, name_en: next.name_en, day_number: next.day_number };
+};
 
 export function useCustomPlans() {
   const { user } = useAuth();
@@ -79,19 +95,24 @@ export function useCustomPlans() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('custom_plans')
-      .select('id, name, created_at, published_at, custom_plan_days(id)')
+      .select('id, name, created_at, published_at, custom_plan_days(id, day_number, name, name_en, custom_plan_exercises(count))')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
+      const lastByPlan = await fetchLastCompletedDays(user.id, data.map(p => p.id));
       setPlans(
-        data.map((p) => ({
-          id: p.id,
-          name: p.name,
-          created_at: p.created_at,
-          published_at: p.published_at ?? null,
-          day_count: (p.custom_plan_days as { id: string }[] | null)?.length || 0,
-        }))
+        data.map((p) => {
+          const days = (p.custom_plan_days as unknown as SummaryDayRow[] | null) ?? [];
+          return {
+            id: p.id,
+            name: p.name,
+            created_at: p.created_at,
+            published_at: p.published_at ?? null,
+            day_count: days.length,
+            next_day: summarizeNextDay(days, lastByPlan[p.id]),
+          };
+        })
       );
     }
     setIsLoading(false);
@@ -226,26 +247,57 @@ export function useCustomPlanDetail(planId: string | null) {
     fetchPlan();
   }, [fetchPlan]);
 
-  const addDay = async (name?: string) => {
-    if (!planId) return;
-    const nextNumber = (plan?.days.length || 0) + 1;
-    await supabase.from('custom_plan_days').insert({
+  // Vrací id nového dne, aby ho editor hned vybral. Číslo = max + 1 (po smazání
+  // dne dřív vznikaly duplicity day_number) — feedback 13. 10.
+  const addDay = async (name?: string): Promise<string | null> => {
+    if (!planId) return null;
+    const days = planRef.current?.days ?? [];
+    const nextNumber = days.reduce((m, d) => Math.max(m, d.day_number), 0) + 1;
+    const { data, error } = await supabase.from('custom_plan_days').insert({
       plan_id: planId,
       day_number: nextNumber,
-      name: name || `Den ${nextNumber}`,
-    });
+      name: name || i18n.t('custom_plan.day_prefix', { n: days.length + 1 }),
+    }).select('id').single();
+    if (error) toast.error(i18n.t('custom_plan.save_failed'));
     await fetchPlan();
+    return data?.id ?? null;
+  };
+
+  const persistDayNumbers = async (changes: { id: string; day_number: number }[]) => {
+    const results = await Promise.all(
+      changes.map(c => supabase.from('custom_plan_days').update({ day_number: c.day_number }).eq('id', c.id)),
+    );
+    return results.every(r => !r.error);
   };
 
   const removeDay = async (dayId: string) => {
-    await supabase.from('custom_plan_days').delete().eq('id', dayId);
+    const snapshot = planRef.current;
+    const remaining = sortCycleDays((snapshot?.days ?? []).filter(d => d.id !== dayId));
+    setPlan(prev => prev ? { ...prev, days: remaining.map((d, i) => ({ ...d, day_number: i + 1 })) } : prev);
+    const { error } = await supabase.from('custom_plan_days').delete().eq('id', dayId);
+    if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); return; }
+    // Přečíslovat bez děr, ať písmena A/B/C sedí s pořadím.
+    await persistDayNumbers(renumberDays(remaining));
     await fetchPlan();
+  };
+
+  // Posun dne v kruhu doleva/doprava (pořadí = day_number).
+  const moveDay = async (dayId: string, direction: -1 | 1) => {
+    const snapshot = planRef.current;
+    if (!snapshot) return;
+    const ordered = moveDayInOrder(sortCycleDays(snapshot.days), dayId, direction);
+    const changes = renumberDays(ordered);
+    if (changes.length === 0) return;
+    setPlan(prev => prev ? { ...prev, days: ordered.map((d, i) => ({ ...d, day_number: i + 1 })) } : prev);
+    const ok = await persistDayNumbers(changes);
+    if (!ok) { toast.error(i18n.t('custom_plan.save_failed')); await fetchPlan(); }
   };
 
   const renameDay = async (dayId: string, name: string) => {
     const snapshot = planRef.current;
-    setPlan(prev => prev ? { ...prev, days: prev.days.map(d => d.id === dayId ? { ...d, name } : d) } : prev);
-    const { error } = await supabase.from('custom_plan_days').update({ name }).eq('id', dayId);
+    // name_en se maže — jinak by anglická appka dál ukazovala původní název z katalogu.
+    setPlan(prev => prev ? { ...prev, days: prev.days.map(d => d.id === dayId ? { ...d, name, name_en: null } : d) } : prev);
+    const { error } = await supabase.from('custom_plan_days').update({ name, name_en: null }).eq('id', dayId);
     if (error) { setPlan(snapshot); toast.error(i18n.t('custom_plan.save_failed')); }
   };
 
@@ -411,6 +463,7 @@ export function useCustomPlanDetail(planId: string | null) {
     addDay,
     removeDay,
     renameDay,
+    moveDay,
     addExercise,
     addExercisesBatch,
     updateExercise,

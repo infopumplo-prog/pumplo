@@ -31,6 +31,9 @@ import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import PublishPlanDialog from '@/components/PublishPlanDialog';
+import CustomPlanDayChips, { useDayLabel } from '@/components/workout/CustomPlanDayChips';
+import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchMyTrainerId } from '@/lib/publicWorkouts';
 import { SET_TYPE_META, SELECTABLE_SET_TYPES, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import {
@@ -597,7 +600,7 @@ const CustomPlanDetail = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const {
-    plan, isLoading, addDay, removeDay, renameDay,
+    plan, isLoading, addDay, removeDay, renameDay, moveDay,
     addExercise, addExercisesBatch, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
     sharePlan, unsharePlan, fetchPlan,
   } = useCustomPlanDetail(id || null);
@@ -623,8 +626,12 @@ const CustomPlanDetail = () => {
 
   const [editingPlanName, setEditingPlanName] = useState(false);
   const [planNameValue, setPlanNameValue] = useState('');
-  const [editingDayId, setEditingDayId] = useState<string | null>(null);
-  const [editingDayName, setEditingDayName] = useState('');
+  // Kruh dnů (feedback 13. 10.): vybraný čip = den, který se edituje i spustí.
+  const { user } = useAuth();
+  const dayLabel = useDayLabel();
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [lastCompleted, setLastCompleted] = useState<LastCompletedDay | null>(null);
+  const [addingDay, setAddingDay] = useState(false);
   const [exerciseDrawerOpen, setExerciseDrawerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState('100dvh');
@@ -676,10 +683,10 @@ const CustomPlanDetail = () => {
         setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
         setLocationGymLat(gymData.latitude);
         setLocationGymLng(gymData.longitude);
-        setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
+        setPendingWorkoutPath(workoutPath(gymId));
         setShowLocationGate(true);
       } else {
-        navigate(`/custom-workout/${id}?gym=${gymId}`);
+        navigate(workoutPath(gymId));
       }
     } finally {
       setIsCheckingEquipment(false);
@@ -699,10 +706,10 @@ const CustomPlanDetail = () => {
       setLocationGymName(gymData.name || t('custom_plan.gym_fallback'));
       setLocationGymLat(gymData.latitude);
       setLocationGymLng(gymData.longitude);
-      setPendingWorkoutPath(`/custom-workout/${id}?gym=${gymId}`);
+      setPendingWorkoutPath(workoutPath(gymId));
       setShowLocationGate(true);
     } else {
-      navigate(`/custom-workout/${id}?gym=${gymId}`);
+      navigate(workoutPath(gymId));
     }
   };
 
@@ -1060,13 +1067,6 @@ const CustomPlanDetail = () => {
     setIsSharing(false);
   };
 
-  const handleDayNameSave = async (dayId: string) => {
-    if (editingDayName.trim()) {
-      await renameDay(dayId, editingDayName.trim());
-    }
-    setEditingDayId(null);
-  };
-
   const handleDragEnd = (dayId: string) => (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -1111,13 +1111,55 @@ const CustomPlanDetail = () => {
     if (!plan || isLoading) return;
     if (plan.days.length === 0 && !autoDayCreatedRef.current) {
       autoDayCreatedRef.current = true;
-      addDay(t('custom_plan.day_prefix', { n: 1 }));
+      addDay();
     }
   }, [plan, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if plan has any exercises to enable start button
   const hasExercises = plan?.days.some(d => d.exercises.length > 0) ?? false;
   const isSingleDay = (plan?.days.length ?? 0) <= 1;
+
+  // Poslední odcvičený den tohoto plánu → „Další“ v kruhu.
+  useEffect(() => {
+    if (!user || !id) return;
+    let cancelled = false;
+    fetchLastCompletedDays(user.id, [id]).then(map => { if (!cancelled) setLastCompleted(map[id] ?? null); });
+    return () => { cancelled = true; };
+  }, [user, id]);
+
+  const cycleDays = useMemo(
+    () => sortCycleDays((plan?.days ?? []).map(d => ({ ...d, exerciseCount: d.exercises.length }))),
+    [plan],
+  );
+  const nextDay = useMemo(() => getNextCycleDay(cycleDays, lastCompleted?.dayId), [cycleDays, lastCompleted]);
+
+  // Výchozí výběr = další den kruhu; po smazání vybraného dne také.
+  useEffect(() => {
+    if (cycleDays.length === 0) return;
+    if (selectedDayId && cycleDays.some(d => d.id === selectedDayId)) return;
+    setSelectedDayId(nextDay?.id ?? cycleDays[0].id);
+  }, [cycleDays, nextDay, selectedDayId]);
+
+  const selectedDay = cycleDays.find(d => d.id === selectedDayId) ?? null;
+  // Spouští se vybraný den; prázdný vybraný den by nešel odcvičit → další v kruhu.
+  const startDay = isSingleDay ? null : (selectedDay && selectedDay.exerciseCount > 0 ? selectedDay : nextDay);
+  const startDayIndex = startDay ? cycleDays.indexOf(startDay) : -1;
+  const startDayText = startDay
+    ? (() => {
+        const label = dayLabel(startDay, startDayIndex);
+        const letter = cycleLetter(startDayIndex);
+        return label === t('custom_plan.day_letter_name', { letter }) ? label : `${letter} · ${label}`;
+      })()
+    : null;
+  const workoutPath = (gymId: string) =>
+    `/custom-workout/${id}?gym=${gymId}${startDay ? `&day=${startDay.id}` : ''}`;
+
+  const handleAddDay = async () => {
+    setAddingDay(true);
+    const newId = await addDay();
+    setAddingDay(false);
+    if (newId) setSelectedDayId(newId);
+  };
 
   if (isLoading) {
     return (
@@ -1216,45 +1258,28 @@ const CustomPlanDetail = () => {
           />
         </div>
 
-        {/* Days */}
+        {/* Days — víc dnů = čipy kruhu A/B/C, vidět je jen vybraný den (feedback 13. 10.) */}
         <div className="px-6 space-y-4">
-          {plan.days.map((day) => (
+          {!isSingleDay && (
+            <CustomPlanDayChips
+              days={cycleDays}
+              activeDayId={selectedDayId}
+              nextDayId={nextDay?.id ?? null}
+              onSelect={setSelectedDayId}
+              onAdd={handleAddDay}
+              onRename={renameDay}
+              onMove={moveDay}
+              onDelete={removeDay}
+              adding={addingDay}
+            />
+          )}
+          {plan.days.filter(day => isSingleDay || day.id === selectedDayId).map((day) => (
             <motion.div
               key={day.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-card border border-border rounded-2xl overflow-hidden"
             >
-              {/* Day Header — hidden for single-day routines so it reads as a flat Hevy list */}
-              {!isSingleDay && (
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
-                  {editingDayId === day.id ? (
-                    <input
-                      type="text"
-                      value={editingDayName}
-                      onChange={(e) => setEditingDayName(e.target.value)}
-                      onBlur={() => handleDayNameSave(day.id)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleDayNameSave(day.id)}
-                      autoFocus
-                      className="bg-transparent text-sm font-semibold outline-none border-b border-primary"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || t('custom_plan.day_prefix', { n: day.day_number })); }}
-                      className="text-sm font-semibold hover:text-primary transition-colors"
-                    >
-                      {day.name || t('custom_plan.day_prefix', { n: day.day_number })}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => removeDay(day.id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
               {/* Exercises with drag & drop */}
               <div className="px-4 py-2">
                 {day.exercises.length === 0 ? (
@@ -1308,14 +1333,18 @@ const CustomPlanDetail = () => {
             </motion.div>
           ))}
 
-          <Button
-            onClick={() => addDay()}
-            variant="outline"
-            className="w-full gap-2 rounded-2xl h-12 border-dashed border-2"
-          >
-            <Plus className="w-5 h-5" />
-            {t('custom_plan.add_day')}
-          </Button>
+          {/* U víc dnů je „+ Přidat den“ jako poslední čip v kruhu. */}
+          {isSingleDay && (
+            <Button
+              onClick={handleAddDay}
+              disabled={addingDay}
+              variant="outline"
+              className="w-full gap-2 rounded-2xl h-12 border-dashed border-2"
+            >
+              <Plus className="w-5 h-5" />
+              {t('custom_plan.add_day')}
+            </Button>
+          )}
         </div>
 
 
@@ -1452,7 +1481,7 @@ const CustomPlanDetail = () => {
               className="w-full h-16 rounded-2xl gap-3 text-lg font-bold bg-action hover:bg-action/90 text-white shadow-lg shadow-action/25"
             >
               <Play className="w-5 h-5" />
-              {t('custom_plan.start_workout')}
+              <span className="truncate">{startDayText ? t('custom_plan.start_day', { day: startDayText }) : t('custom_plan.start_workout')}</span>
             </Button>
           )}
         </div>
