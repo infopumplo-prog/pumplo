@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { homeTourOrder, readPlanChoice, type HomeTourStep } from '@/lib/onboardingFlow';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { BicepsFlexed, Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
+import { BicepsFlexed, Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star, Play } from 'lucide-react';
 import PumploLogo from '@/components/PumploLogo';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -75,6 +75,8 @@ const Home = () => {
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
   const { sessions: recentSessions } = useWorkoutHistory();
   const [historyExpanded, setHistoryExpanded] = useState(true);
+  // Hlavní tlačítko Začít trénink — karta dalšího tréninku na něj „klikne“ (feedback 13. 10.).
+  const startButtonRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
@@ -238,7 +240,8 @@ const Home = () => {
                   <button
                     key={lang}
                     onClick={() => changeLanguage(lang)}
-                    className={`text-xl transition-all ${i18n.language === lang ? 'opacity-100 scale-110' : 'opacity-35 hover:opacity-60'}`}
+                    aria-label={lang === 'cs' ? 'Čeština' : 'English'}
+                    className={`text-xl w-11 h-11 flex items-center justify-center rounded-xl transition-all active:scale-95 active:bg-muted ${i18n.language === lang ? 'opacity-100' : 'opacity-35 hover:opacity-60'}`}
                   >
                     {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
                   </button>
@@ -296,18 +299,18 @@ const Home = () => {
                 onClick={() => setActiveTab('pumplo')}
                 data-coach="home-tab-pumplo"
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
                   activeTab === 'pumplo'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
-                <Zap className="w-3.5 h-3.5" />
+                <Zap className="w-4 h-4" />
                 {t('home.pumplo_workout')}
                 {activeTab === 'pumplo' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('pumplo'); }}
-                    className="ml-1"
+                    className="ml-0.5 -my-2 p-2 rounded-full active:bg-muted"
                   >
                     <Star className={cn(
                       "w-3.5 h-3.5 transition-colors",
@@ -322,18 +325,18 @@ const Home = () => {
                 onClick={() => setActiveTab('custom')}
                 data-coach="home-tab-custom"
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
                   activeTab === 'custom'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
-                <Dumbbell className="w-3.5 h-3.5" />
+                <Dumbbell className="w-4 h-4" />
                 {t('home.custom_workout')}
                 {activeTab === 'custom' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('custom'); }}
-                    className="ml-1"
+                    className="ml-0.5 -my-2 p-2 rounded-full active:bg-muted"
                   >
                     <Star className={cn(
                       "w-3.5 h-3.5 transition-colors",
@@ -398,7 +401,7 @@ const Home = () => {
                               <p className="text-white/70 text-sm">{t(`onboarding.goal_${plan.goalId}_label`)}</p>
                             </div>
                           </div>
-                          <button onClick={() => navigate('/profile/plan')} className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                          <button onClick={() => navigate('/profile/plan')} aria-label={t('profile.my_plan')} className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-white hover:bg-white/30 active:bg-white/40 active:scale-95 transition-all">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
@@ -494,8 +497,16 @@ const Home = () => {
                             );
                           }
 
+                          // Karta dalšího tréninku vypadala klikací, ale nic nedělala → spustí trénink
+                          // přes hlavní tlačítko (výběr posilovny zůstává v něm). Feedback 13. 10.
+                          const canStart = !wasCompletedToday && !pausedWorkout;
                           return (
-                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[hsl(var(--hero-card-inner))]">
+                            <div
+                              role={canStart ? 'button' : undefined}
+                              tabIndex={canStart ? 0 : undefined}
+                              onClick={canStart ? () => startButtonRef.current?.querySelector('button')?.click() : undefined}
+                              className={cn('flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[hsl(var(--hero-card-inner))]', canStart && 'cursor-pointer active:scale-[0.98] active:brightness-95 transition-transform')}
+                            >
                               <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-primary text-white">
                                 {nextDay.dayLetter}
                               </div>
@@ -507,6 +518,11 @@ const Home = () => {
                                   {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}
                                 </p>
                               </div>
+                              {canStart && (
+                                <span className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+                                </span>
+                              )}
                             </div>
                           );
                         })()}
@@ -516,11 +532,11 @@ const Home = () => {
                       {recentSessions.length > 0 && (
                         <div className="mx-3 mb-3">
                           <div className="flex items-center gap-3 mb-2 px-1">
-                            <button onClick={() => setHistoryExpanded(v => !v)} className="flex items-center gap-1.5 text-white font-semibold text-sm">
+                            <button onClick={() => setHistoryExpanded(v => !v)} className="min-h-[44px] flex items-center gap-1.5 text-white font-semibold text-sm active:opacity-70">
                               {t('home.last_workout')}
                               <ChevronDown className={cn('w-4 h-4 transition-transform', historyExpanded && 'rotate-180')} />
                             </button>
-                            <Link to="/profile/history?tab=sessions" className="text-white/80 text-xs font-medium flex items-center gap-0.5">
+                            <Link to="/profile/history?tab=sessions" className="min-h-[44px] px-2 -mr-2 text-white/80 text-xs font-medium flex items-center gap-0.5 active:opacity-70">
                               {t('home.see_all')} <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
@@ -564,7 +580,7 @@ const Home = () => {
 
                   {/* Start Training Button */}
                   {plan && !wasCompletedToday && !pausedWorkout && (
-                    <motion.div variants={itemVariants}>
+                    <motion.div variants={itemVariants} ref={startButtonRef}>
                       <StartWorkoutButton
                         selectedGymId={profile?.selected_gym_id || null}
                         className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"

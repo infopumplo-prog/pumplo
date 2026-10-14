@@ -1,3 +1,4 @@
+import FocusImageTile from '@/components/FocusImageTile';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Globe, EyeOff, ImagePlus } from 'lucide-react';
@@ -183,11 +184,17 @@ const PublishPlanDialog = ({ open, onOpenChange, plan, exerciseCount, onChanged 
 
           <div className="space-y-2">
             <p className="text-sm font-semibold">{t('public_workouts.focus_label')}</p>
-            <div className="flex flex-wrap gap-2">
+            {/* Hlavní partie jako dlaždice s fotkou (feedback 13. 10.) */}
+            <div className="grid grid-cols-3 gap-2">
               {WORKOUT_FOCUSES.map((f) => (
-                <button key={f} type="button" onClick={() => pickPrimary(f)} className={chip(focus === f)}>
-                  {t(`public_workouts.focus_${f}`)}
-                </button>
+                <FocusImageTile
+                  key={f}
+                  focusKey={f}
+                  label={t(`public_workouts.focus_${f}`)}
+                  selected={focus === f}
+                  onClick={() => pickPrimary(f)}
+                  className="h-20"
+                />
               ))}
             </div>
           </div>

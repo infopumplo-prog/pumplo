@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FocusImageTile from '@/components/FocusImageTile';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { BadgeCheck, Calendar, Dumbbell, Download, Heart, Search } from 'lucide-react';
@@ -14,7 +15,6 @@ import {
   WORKOUT_GOALS,
   coverFor,
   fetchPublicWorkouts,
-  focusImage,
   localizedText,
   searchToFocus,
   setWorkoutLiked,
@@ -103,8 +103,8 @@ const PublicWorkouts = () => {
 
   const pill = (active: boolean) =>
     cn(
-      'shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors',
-      active ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
+      'shrink-0 min-h-[44px] px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95',
+      active ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground active:bg-muted-foreground/20',
     );
 
   return (
@@ -134,22 +134,15 @@ const PublicWorkouts = () => {
           <h2 className="px-6 text-base font-bold mb-3">{t('public_workouts.by_focus')}</h2>
           <div className="flex gap-3 overflow-x-auto no-scrollbar px-6 pb-1">
             {WORKOUT_FOCUSES.map((f) => (
-              <button
+              <FocusImageTile
                 key={f}
+                focusKey={f}
+                label={t(`public_workouts.focus_${f}`)}
+                selected={focus === f}
+                dimmed={!!focus && focus !== f}
                 onClick={() => setFocus(focus === f ? null : f)}
-                aria-pressed={focus === f}
-                className={cn(
-                  'relative shrink-0 w-28 h-36 rounded-2xl overflow-hidden text-left transition-all active:scale-95',
-                  focus && focus !== f ? 'opacity-40' : 'opacity-100',
-                  focus === f && 'ring-2 ring-offset-2 ring-primary ring-offset-background',
-                )}
-              >
-                <img src={focusImage(f)} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
-                <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <span className="absolute left-3 right-3 bottom-2.5 text-sm font-bold text-white leading-tight">
-                  {t(`public_workouts.focus_${f}`)}
-                </span>
-              </button>
+                className="shrink-0 w-28 h-36"
+              />
             ))}
           </div>
         </section>
@@ -212,7 +205,7 @@ const PublicWorkouts = () => {
                   transition={{ delay: Math.min(index, 8) * 0.04 }}
                   onClick={() => openWorkout(w)}
                   onKeyDown={(e) => { if (e.key === 'Enter') openWorkout(w); }}
-                  className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden cursor-pointer transition-transform active:scale-[0.98]"
+                  className="w-full text-left bg-card border border-border rounded-2xl overflow-hidden cursor-pointer transition-transform active:scale-[0.97] active:brightness-95"
                 >
                   {/* Obálka od trenéra (nebo obrázek partie) + kdo trénink vytvořil */}
                   <div className="relative h-44 bg-muted">
@@ -222,7 +215,7 @@ const PublicWorkouts = () => {
                       onClick={(e) => toggleLike(e, w)}
                       aria-pressed={w.liked_by_me}
                       aria-label={t(w.liked_by_me ? 'public_workouts.unlike' : 'public_workouts.like')}
-                      className="absolute top-3 right-3 h-9 px-3 rounded-full bg-black/45 backdrop-blur flex items-center gap-1.5"
+                      className="absolute top-2 right-2 h-11 min-w-[44px] px-3.5 rounded-full bg-black/45 backdrop-blur flex items-center justify-center gap-1.5 active:scale-90 active:bg-black/65 transition-transform"
                     >
                       <Heart className={cn('w-4 h-4 transition-colors', w.liked_by_me ? 'fill-rose-500 text-rose-500' : 'text-white')} />
                       <span className="text-xs font-semibold text-white tabular-nums">{w.like_count}</span>

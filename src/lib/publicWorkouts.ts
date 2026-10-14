@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { FOCUS_IMAGES } from '@/lib/focusImages';
 
 // Veřejné tréninky (sekce Tréninky): vlastní plán, který trenér zveřejnil do katalogu.
 // is_public/share_token = jen odkaz; published_at = navíc vidět v katalogu.
@@ -154,8 +155,9 @@ export const unpublishPlan = async (planId: string) => {
 
 // --- Obrázky -----------------------------------------------------------------
 // Dlaždice partií = snímky z videí cviků Pumplo (přibalené v appce, public/img/workouts/).
+// Mapa fotek je v src/lib/focusImages.ts (feedback 13. 10.).
 export const focusImage = (focus: WorkoutFocus | null | undefined): string =>
-  `/img/workouts/focus-${focus ?? 'full_body'}.jpg`;
+  FOCUS_IMAGES[focus ?? 'full_body'] ?? (FOCUS_IMAGES.full_body as string);
 
 /** Obálka tréninku: nahraná trenérem, jinak obrázek partie. */
 export const coverFor = (w: { cover_url?: string | null; focus?: WorkoutFocus | string | null }): string =>

@@ -37,10 +37,10 @@ const BottomNav = () => {
                   to={item.path}
                   data-coach={item.coach}
                   aria-label={item.label}
-                  className="flex flex-col items-center justify-center flex-1 h-full relative"
+                  className="flex flex-col items-center justify-center flex-1 h-full relative group [-webkit-tap-highlight-color:transparent]"
                 >
                   <span
-                    className={`-mt-7 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-background transition-transform active:scale-95 ${
+                    className={`-mt-7 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-background transition-transform group-active:scale-90 ${
                       isActive ? 'bg-primary text-primary-foreground' : 'bg-primary/90 text-primary-foreground'
                     }`}
                   >
@@ -53,12 +53,14 @@ const BottomNav = () => {
               );
             }
 
+            // Větší odezva na dotyk (feedback 13. 10.): zmáčknutí zmenší položku a podbarví ji.
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 data-coach={item.coach}
-                className="flex flex-col items-center justify-center flex-1 h-full relative group py-2"
+                aria-label={item.label}
+                className="flex flex-col items-center justify-center flex-1 h-full min-w-[44px] relative group py-1.5 transition-transform active:scale-95 [-webkit-tap-highlight-color:transparent]"
               >
                 {isActive && (
                   <motion.div
@@ -67,10 +69,11 @@ const BottomNav = () => {
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
+                <span className="absolute inset-1.5 rounded-xl bg-primary/0 group-active:bg-primary/15 transition-colors" />
                 <div className="relative flex flex-col items-center justify-center z-10">
                   <div className="relative">
                     <Icon
-                      className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
+                      className={`w-6 h-6 relative z-10 transition-colors duration-200 ${
                         isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
                       }`}
                     />
@@ -79,7 +82,7 @@ const BottomNav = () => {
                     )}
                   </div>
                   <span 
-                    className={`text-xs mt-1 font-medium relative z-10 transition-colors duration-200 ${
+                    className={`text-xs mt-0.5 font-semibold relative z-10 transition-colors duration-200 ${
                       isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
                     }`}
                   >

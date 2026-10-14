@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronRight, Info, HelpCircle, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Check, Info, HelpCircle, MessageSquarePlus, SkipForward, RefreshCw, List, X, Dumbbell, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { playBeep, playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, isAudioMuted, setAudioMuted } from '@/lib/workoutAudio';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { RestTimer } from './RestTimer';
@@ -429,7 +429,7 @@ export const ExercisePlayer = ({
           <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
             <div className="flex items-center gap-1 px-4 pt-4 pb-2">
               {(exerciseIndex > 0 || currentSet > 0) && (
-                <button onClick={handleGoBack} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={handleGoBack} aria-label={t('workout.ctrl_back')} className="-ml-1 w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
@@ -450,27 +450,28 @@ export const ExercisePlayer = ({
                   {...swapPress.handlers}
                   data-coach="player-swap"
                   onClick={() => { if (!swapPress.wasLongPress()) onSwapExercise(); }}
-                  className={`p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white ${isSwapping ? 'opacity-50' : ''}`}
+                  aria-label={t('workout.ctrl_swap')}
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform ${isSwapping ? 'opacity-50' : ''}`}
                   style={{ pointerEvents: 'auto', touchAction: 'none' }}
                 >
                   <RefreshCw className={`w-5 h-5 ${isSwapping ? 'animate-spin' : ''}`} />
                 </button>
               )}
               {onSkipExercise && (
-                <button onClick={onSkipExercise} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={onSkipExercise} aria-label={t('workout.ctrl_skip')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                   <SkipForward className="w-5 h-5" />
                 </button>
               )}
               {onSwitchToList && (
-                <button onClick={onSwitchToList} data-coach="player-list" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={onSwitchToList} data-coach="player-list" aria-label={t('workout.ctrl_list')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                   <List className="w-5 h-5" />
                 </button>
               )}
-              <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+              <button onClick={handleToggleMute} aria-label={t('workout.ctrl_mute')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
               {onClose && (
-                <button onClick={onClose} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={onClose} aria-label={t('workout.ctrl_close')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -495,7 +496,8 @@ export const ExercisePlayer = ({
             <button
               onClick={tour.openTour}
               data-coach="help-btn"
-              className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              aria-label={t('workout.ctrl_help')}
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur-sm text-white/80 hover:text-white active:scale-90 active:bg-black/60 transition-all"
               style={{ pointerEvents: 'auto' }}
             >
               <HelpCircle className="w-5 h-5" />
@@ -503,7 +505,8 @@ export const ExercisePlayer = ({
             <button
               onClick={() => setShowInfoDrawer(!showInfoDrawer)}
               data-coach="player-info"
-              className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+              aria-label={t('workout.ctrl_info')}
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur-sm text-white/80 hover:text-white active:scale-90 active:bg-black/60 transition-all"
               style={{ pointerEvents: 'auto' }}
             >
               <Info className="w-5 h-5" />
@@ -542,18 +545,19 @@ export const ExercisePlayer = ({
                   </p>
                   {cardioPaused && <p className="text-white/50 text-xs mt-1">{t('workout.paused')}</p>}
                 </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleCardioPause}
-                    className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform"
-                  >
-                    {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
+                {/* Popisky pod tlačítky, ať je jasné, co dělají (feedback 13. 10.) */}
+                <div className="flex items-start gap-6">
+                  <button onClick={handleCardioPause} className="flex flex-col items-center gap-1.5 group">
+                    <span className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 group-active:scale-90 group-active:brightness-90 transition-transform">
+                      {cardioPaused ? <Play className="w-7 h-7 text-white ml-1" /> : <Pause className="w-7 h-7 text-white" />}
+                    </span>
+                    <span className="text-xs font-semibold text-white">{cardioPaused ? t('workout.ctrl_resume') : t('workout.pause')}</span>
                   </button>
-                  <button
-                    onClick={handleCardioComplete}
-                    className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform"
-                  >
-                    <SkipForward className="w-5 h-5 text-white" />
+                  <button onClick={handleCardioComplete} className="flex flex-col items-center gap-1.5 group">
+                    <span className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-active:scale-90 group-active:bg-white/35 transition-transform">
+                      <SkipForward className="w-6 h-6 text-white" />
+                    </span>
+                    <span className="text-xs font-semibold text-white">{t('workout.ctrl_finish_cardio')}</span>
                   </button>
                 </div>
               </div>
@@ -626,9 +630,13 @@ export const ExercisePlayer = ({
                     <button
                       data-coach="player-complete"
                       onClick={handleCompleteSet}
-                      className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform shrink-0"
+                      className="flex flex-col items-center gap-1 shrink-0 group"
                     >
-                      <ChevronRight className="w-8 h-8 text-white" />
+                      <span className="w-[72px] h-[72px] rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 group-active:scale-90 group-active:brightness-90 transition-transform">
+                        <Check className="w-9 h-9 text-white" strokeWidth={3} />
+                      </span>
+                      {/* Popisek: dřív jen šipka a lidi nevěděli, že tím ukončí sérii (feedback 13. 10.) */}
+                      <span className="text-xs font-semibold text-white">{t('workout.ctrl_set_done')}</span>
                     </button>
                   )}
                 </div>
