@@ -250,15 +250,18 @@ const Settings = () => {
   const handleExportData = async () => {
     if (!user) return;
     try {
-      const [{ data: profile }, { data: sessions }] = await Promise.all([
+      const [{ data: profile }, { data: sessions }, { data: checkins }] = await Promise.all([
         supabase.from('user_profiles').select('*').eq('user_id', user.id).single(),
         supabase.from('workout_sessions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
+        // Týdenní check-iny patří do exportu (GDPR přenositelnost, 13. 10.)
+        supabase.from('weekly_checkins').select('*').eq('user_id', user.id).order('week_start', { ascending: false }),
       ]);
       const exportData = {
         exported_at: new Date().toISOString(),
         user: { id: user.id, email: user.email },
         profile,
         workout_sessions: sessions ?? [],
+        weekly_checkins: checkins ?? [],
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);

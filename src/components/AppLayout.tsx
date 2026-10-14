@@ -4,6 +4,7 @@ import OfflineIndicator from './OfflineIndicator';
 import { FeedbackButton } from './feedback/FeedbackButton';
 import { useWatchMenu } from '@/hooks/useWatchMenu';
 import { useAccentSync } from '@/hooks/useAccentSync';
+import WeeklyCheckinHost from './checkin/WeeklyCheckinHost';
 
 const AppLayout = () => {
   // Nabídka pro hodinky žije tady, ne v přehrávači — příkaz „spusť trénink"
@@ -18,6 +19,8 @@ const AppLayout = () => {
         <Outlet />
       </main>
       <FeedbackButton />
+      {/* Týdenní check-in (feedback 13. 10.) */}
+      <WeeklyCheckinHost />
       <BottomNav />
     </div>
   );
