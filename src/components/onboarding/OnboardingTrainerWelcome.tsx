@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import davidPhoto from '@/assets/david-benisek.png';
@@ -27,7 +27,7 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
           />
         </div>
         <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-md">
-          <span className="text-xs font-bold text-primary-foreground">✓</span>
+          <Check className="w-4 h-4 text-primary-foreground" strokeWidth={3} aria-hidden="true" />
         </div>
       </div>
 

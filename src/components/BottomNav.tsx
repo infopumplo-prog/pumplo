@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, MapPin, BarChart3, User } from 'lucide-react';
+import { Home, MapPin, BarChart3, User, Dumbbell } from 'lucide-react';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useTranslation } from 'react-i18next';
 
@@ -10,8 +10,10 @@ const BottomNav = () => {
   const { t } = useTranslation();
 
   const navItems = [
-    { path: '/', label: t('nav.home'), icon: Home, coach: 'nav-home' },
+    // Domů uprostřed (David 8. 10.), vedle nová sekce Tréninky.
     { path: '/map', label: t('nav.map'), icon: MapPin, coach: 'nav-map' },
+    { path: '/workouts', label: t('nav.workouts'), icon: Dumbbell, coach: 'nav-workouts' },
+    { path: '/', label: t('nav.home'), icon: Home, coach: 'nav-home' },
     { path: '/statistics', label: t('nav.statistics'), icon: BarChart3, coach: 'nav-stats' },
     { path: '/profile', label: t('nav.profile'), icon: User, coach: 'nav-profile' },
   ];
@@ -26,7 +28,31 @@ const BottomNav = () => {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
+            // Domů = zvýrazněné kulaté tlačítko uprostřed lišty (David 8. 10.).
+            if (item.path === '/') {
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  data-coach={item.coach}
+                  aria-label={item.label}
+                  className="flex flex-col items-center justify-center flex-1 h-full relative"
+                >
+                  <span
+                    className={`-mt-7 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-background transition-transform active:scale-95 ${
+                      isActive ? 'bg-primary text-primary-foreground' : 'bg-primary/90 text-primary-foreground'
+                    }`}
+                  >
+                    <Icon className="w-6 h-6" strokeWidth={2.4} />
+                  </span>
+                  <span className={`text-xs mt-0.5 font-semibold ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {item.label}
+                  </span>
+                </NavLink>
+              );
+            }
+
             return (
               <NavLink
                 key={item.path}

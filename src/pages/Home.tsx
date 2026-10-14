@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { homeTourOrder, readPlanChoice, type HomeTourStep } from '@/lib/onboardingFlow';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
@@ -13,8 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
-import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import { BicepsFlexed, Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
+import PumploLogo from '@/components/PumploLogo';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -95,16 +96,20 @@ const Home = () => {
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
 
   // First-run guided tour (also replayable via the ? button).
-  const tour = useCoachTour('home', 2, isOnboardingComplete);
-  const tourSteps = [
-    { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
-    { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t('tour.home.tab_pumplo_body') },
-    { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t('tour.home.tab_custom_body') },
-    { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
-    { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
-    { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
-    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
-  ];
+  // Verze 3: krok o sekci Tréninky + pořadí podle volby plánu z dotazníku (David 8. 10.).
+  const tour = useCoachTour('home', 3, isOnboardingComplete);
+  const planChoice = readPlanChoice();
+  const homeSteps: Record<HomeTourStep, { target: string; title: string; body: string }> = {
+    today: { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
+    tab_pumplo: { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t(planChoice === 'pumplo' || !planChoice ? 'tour.home.tab_pumplo_body' : 'tour.home.tab_pumplo_body_backup') },
+    tab_custom: { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t(planChoice === 'own' ? 'tour.home.tab_custom_body_own' : planChoice === 'trainer' ? 'tour.home.tab_custom_body_trainer' : 'tour.home.tab_custom_body') },
+    nav_workouts: { target: '[data-coach="nav-workouts"]', title: t('tour.home.nav_workouts_title'), body: t(planChoice === 'trainer' ? 'tour.home.nav_workouts_body_trainer' : 'tour.home.nav_workouts_body') },
+    nav_map: { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
+    nav_stats: { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
+    nav_profile: { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
+    help: { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  };
+  const tourSteps = homeTourOrder(planChoice).map((k) => homeSteps[k]);
 
   // Refetch plan and stats when navigating back to Home
   useEffect(() => {
@@ -227,7 +232,7 @@ const Home = () => {
           duration: 0.4
         }}>
             <div className="flex items-center justify-center relative w-full">
-              <img src={pumploWordmark} alt="Pumplo" className="h-8 object-contain" />
+              <PumploLogo className="h-8" />
               <div className="absolute right-0 flex gap-1">
                 {(['cs', 'en'] as const).map((lang) => (
                   <button
@@ -270,7 +275,8 @@ const Home = () => {
             <p className="text-muted-foreground text-sm">{t('home.hello')}</p>
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold text-foreground">
-                {profile?.first_name || t('home.athlete')} 💪
+                {profile?.first_name || t('home.athlete')}
+                <BicepsFlexed className="inline-block w-7 h-7 ml-2 -mt-1 text-primary" aria-hidden="true" />
               </h1>
               <CoachHelpButton onClick={tour.openTour} />
             </div>
@@ -379,7 +385,7 @@ const Home = () => {
           <>
                   {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants} data-coach="home-today">
-                    <div className="rounded-3xl bg-[#5BC8F5] dark:bg-[#101B30] overflow-hidden">
+                    <div className="rounded-3xl bg-[hsl(var(--hero-card))] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
                         <div className="flex items-center justify-between mb-1">
@@ -399,7 +405,7 @@ const Home = () => {
                       </div>
 
                       {/* Progress section */}
-                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] dark:bg-[#16233C] px-4 py-3">
+                      <div className="mx-3 mb-3 rounded-2xl bg-[hsl(var(--hero-card-inner))] px-4 py-3">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white/80 text-xs font-medium">{t('home.total_progress')}</span>
                           <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
@@ -489,8 +495,8 @@ const Home = () => {
                           }
 
                           return (
-                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[#16233C]">
-                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] dark:bg-white/10 text-white dark:text-primary">
+                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[hsl(var(--hero-card-inner))]">
+                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-primary text-white">
                                 {nextDay.dayLetter}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -536,7 +542,7 @@ const Home = () => {
                             const letter = last.day_letter.replace('_EXT', '');
                             const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
                             const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
-                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed className="dark:bg-[hsl(var(--hero-card-inner))] dark:border-white/10" />;
                           })()}
                         </div>
                       )}
@@ -595,7 +601,7 @@ const Home = () => {
           </DrawerContent>
         </Drawer>
       </div>
-      <CoachTour screenId="home" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="home" version={3} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
       {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
       <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen} />
     </PageTransition>;

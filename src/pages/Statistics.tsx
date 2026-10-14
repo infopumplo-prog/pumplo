@@ -6,7 +6,7 @@ import { cs, enUS } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Check, Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { useStatistics } from '@/hooks/useStatistics';
@@ -86,7 +86,7 @@ const Statistics = () => {
   const { stats, isLoading } = useStatistics();
 
   const METRICS: { key: MetricKey; label: string; unit: string; color: string }[] = [
-    { key: 'weight', label: t('stats.volume'), unit: 'kg', color: '#4CC9FF' },
+    { key: 'weight', label: t('stats.volume'), unit: 'kg', color: 'hsl(var(--primary))' },
     { key: 'duration', label: t('stats.time'), unit: 'min', color: '#34D399' },
     { key: 'sets', label: t('stats.series_count'), unit: '', color: '#FBBF24' },
   ];
@@ -321,7 +321,7 @@ const Statistics = () => {
                             : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        {day.trained ? '✓' : day.missed ? '✗' : ''}
+                        {day.trained ? <Check className="w-4 h-4" strokeWidth={3} aria-hidden="true" /> : day.missed ? <X className="w-4 h-4" strokeWidth={3} aria-hidden="true" /> : null}
                       </div>
                     </div>
                   ))}

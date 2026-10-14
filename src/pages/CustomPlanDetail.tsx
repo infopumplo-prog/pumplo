@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, X, Info, GripVertical, Play, SlidersHorizontal, Check, Copy, ChevronDown, ChevronRight, Share2, Link, AlertTriangle, ArrowRightLeft, Dumbbell, MoreVertical, Clock, HelpCircle, RefreshCw, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useCustomPlanDetail, CustomPlanExercise } from '@/hooks/useCustomPlans';
@@ -30,6 +30,8 @@ import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
+import PublishPlanDialog from '@/components/PublishPlanDialog';
+import { fetchMyTrainerId } from '@/lib/publicWorkouts';
 import { SET_TYPE_META, SELECTABLE_SET_TYPES, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
 import {
   DndContext,
@@ -578,8 +580,13 @@ const CustomPlanDetail = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
-  // First-run hints for the workout editor.
-  const tour = useCoachTour('editor', 1, true);
+  // First-run hints for the workout editor (hook až po načtení plánu — níž).
+  // Prázdný plán (např. „Postavím si vlastní“ z dotazníku): tipy na série by mířily do prázdna,
+  // proto vlastní průvodce „začni přidáním cviku“ (David 8. 10.).
+  const emptyTourSteps = [
+    { target: '[data-coach="editor-add"]', title: t('tour.editor_empty.add_title'), body: t('tour.editor_empty.add_body') },
+    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  ];
   const tourSteps = [
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.table_title'), body: t('tour.editor.table_body') },
     { target: '[data-coach="editor-sets"]', title: t('tour.editor.swipe_title'), body: t('tour.editor.swipe_body') },
@@ -592,9 +599,22 @@ const CustomPlanDetail = () => {
   const {
     plan, isLoading, addDay, removeDay, renameDay,
     addExercise, addExercisesBatch, updateExercise, removeExercise, renamePlan, reorderExercises, duplicateExercise,
-    sharePlan, unsharePlan,
+    sharePlan, unsharePlan, fetchPlan,
   } = useCustomPlanDetail(id || null);
+  const exerciseTotal = plan ? plan.days.reduce((sum, d) => sum + d.exercises.length, 0) : 0;
+  const planReady = !!plan && !isLoading;
+  const tour = useCoachTour('editor', 1, planReady && exerciseTotal > 0);
+  const emptyTour = useCoachTour('editor_empty', 1, planReady && exerciseTotal === 0);
+  const activeTour = exerciseTotal === 0 ? emptyTour : tour;
   const [isSharing, setIsSharing] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  // Zveřejnit do Tréninků smí jen trenér pod posilovnou; zveřejněný plán jde vždy stáhnout.
+  const [isTrainer, setIsTrainer] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyTrainerId().then((id) => { if (!cancelled) setIsTrainer(!!id); });
+    return () => { cancelled = true; };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1158,7 +1178,7 @@ const CustomPlanDetail = () => {
                 {plan.name}
               </button>
             )}
-            <CoachHelpButton onClick={tour.openTour} className="shrink-0" />
+            <CoachHelpButton onClick={activeTour.openTour} className="shrink-0" />
             <button
               onClick={handleShare}
               disabled={isSharing}
@@ -1167,7 +1187,33 @@ const CustomPlanDetail = () => {
             >
               {plan.is_public ? <Link className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
             </button>
+            {(isTrainer || plan.published_at) && (
+            <button
+              onClick={() => setPublishOpen(true)}
+              className={`p-2 rounded-xl transition-colors shrink-0 ${plan.published_at ? 'text-primary bg-primary/10' : 'hover:bg-muted text-muted-foreground'}`}
+              title={t(plan.published_at ? 'public_workouts.published_badge' : 'public_workouts.publish_btn')}
+              aria-label={t(plan.published_at ? 'public_workouts.published_badge' : 'public_workouts.publish_btn')}
+            >
+              <Globe className="w-5 h-5" />
+            </button>
+            )}
           </div>
+          {plan.published_at && (
+            <button
+              onClick={() => setPublishOpen(true)}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 rounded-full px-3 py-1"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {t('public_workouts.published_badge')}
+            </button>
+          )}
+          <PublishPlanDialog
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            plan={plan}
+            exerciseCount={plan.days.reduce((sum, d) => sum + d.exercises.length, 0)}
+            onChanged={fetchPlan}
+          />
         </div>
 
         {/* Days */}
@@ -1252,6 +1298,7 @@ const CustomPlanDetail = () => {
 
                 <button
                   onClick={() => { setActiveDayId(day.id); setPickerOpen(true); }}
+                  data-coach="editor-add"
                   className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 text-sm text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -1342,6 +1389,7 @@ const CustomPlanDetail = () => {
       </div>
 
       <CoachTour screenId="editor" steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="editor_empty" steps={emptyTourSteps} open={emptyTour.open} onClose={emptyTour.closeTour} />
     </PageTransition>
 
       {/* Equipment incompatibility banner */}

@@ -17,6 +17,11 @@ import AppLayout from "@/components/AppLayout";
 import UpdateBanner from "@/components/UpdateBanner";
 import { setUpdateBannerCallback, updateSW } from "@/main";
 import { forceAppRefresh } from "@/lib/appVersion";
+import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { loadOnboardingDraft, clearOnboardingDraft } from "@/lib/onboardingDraft";
+import { persistOnboarding } from "@/lib/persistOnboarding";
+import { routeAfterRegistration, savePlanChoice } from "@/lib/onboardingFlow";
 import Auth from "@/pages/Auth";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -53,6 +58,7 @@ import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
 import SharedPlan from "@/pages/SharedPlan";
+import PublicWorkouts from "@/pages/PublicWorkouts";
 import SharedExercisePage from "@/pages/SharedExercise";
 import MyExercisesPage from "@/pages/MyExercises";
 import ResetPassword from "@/pages/ResetPassword";
@@ -97,6 +103,46 @@ const PendingSharedPlanResume = () => {
       navigate(`/plan/${pending}`);
     }
   }, [user, location.pathname, navigate]);
+  return null;
+};
+
+// Registrace přes Apple/Google: přihlášení odvede z Auth dřív, než se uloží dotazník.
+// Odpovědi čekají v konceptu (onboardingDraft) — tady je po přihlášení dopíšeme do profilu.
+// Jen když profil ještě není dokončený, ať koncept nikdy nepřepíše cizí hotový účet.
+const PendingOnboardingFinisher = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { user, isRegistering } = useAuth();
+  const running = useRef(false);
+  useEffect(() => {
+    // E-mailová registrace si dotazník ukládá sama (isRegistering) — nezdvojovat.
+    if (!user || isRegistering || running.current) return;
+    const draft = loadOnboardingDraft();
+    if (!draft) return;
+    running.current = true;
+    (async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (profile?.onboarding_completed) { clearOnboardingDraft(); return; }
+        const saved = await persistOnboarding(user.id, draft, t('onboarding.own_plan_name'));
+        if (!saved.ok) return; // koncept zůstává, další spuštění to zkusí znovu
+        clearOnboardingDraft();
+        const choice = draft.planChoice ?? 'pumplo';
+        savePlanChoice(choice);
+        await queryClient.invalidateQueries();
+        navigate(routeAfterRegistration(choice, saved.ownPlanId), { replace: true });
+      } catch (err) {
+        console.error('Pending onboarding not saved:', err);
+      } finally {
+        running.current = false;
+      }
+    })();
+  }, [user, isRegistering, navigate, queryClient, t]);
   return null;
 };
 
@@ -258,6 +304,7 @@ const AppRoutes = () => {
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
     <PendingSharedPlanResume />
+    <PendingOnboardingFinisher />
     <SaveQueueFlusher />
     <GymDataRefresher />
   <WebGate>
@@ -272,7 +319,7 @@ const AppRoutes = () => {
     <Route path="/go/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       }>
         <FlyerLanding />
@@ -281,7 +328,7 @@ const AppRoutes = () => {
     <Route path="/s/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       }>
         <StationPage />
@@ -301,6 +348,7 @@ const AppRoutes = () => {
       <Route path="/messages" element={<Messages />} />
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
       <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
+      <Route path="/workouts" element={<PublicWorkouts />} />
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
       <Route path="/become-trainer" element={<BecomeTrainer />} />
       <Route path="/trainer-profile" element={<TrainerProfile />} />

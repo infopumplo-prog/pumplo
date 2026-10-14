@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HevyImportSection } from '@/components/settings/HevyImportSection';
+import AccentPicker from '@/components/AccentPicker';
+import type { AccentColor } from '@/lib/accentColors';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone } from 'lucide-react';
@@ -43,7 +45,12 @@ const Settings = () => {
   } = usePushNotifications();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
-  const { preference, setPreference, theme, amoled, setAmoled } = useTheme();
+  const { preference, setPreference, theme, amoled, setAmoled, accent, setAccent } = useTheme();
+  // Barva appky: hned lokálně + do profilu, ať platí i na jiném telefonu.
+  const changeAccent = (next: AccentColor) => {
+    setAccent(next);
+    if (user) void supabase.from('user_profiles').update({ accent_color: next }).eq('user_id', user.id);
+  };
 
   // First-visit hints.
   const tour = useCoachTour('settings', 1, true);
@@ -667,6 +674,10 @@ const Settings = () => {
                   </span>
                 </button>
               )}
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">{t('accent.title')}</p>
+                <AccentPicker value={accent} onChange={changeAccent} />
+              </div>
             </div>
           </motion.div>
 

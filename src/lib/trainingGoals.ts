@@ -72,7 +72,6 @@ export const MVP_GOALS = [
   {
     id: 'muscle_gain' as TrainingGoalId,
     label: 'Nabrat svaly',
-    emoji: '💪',
     description: 'Hypertrofie - více objemu',
     detail: {
       summary: 'Trénink zaměřený na maximální růst svalové hmoty.',
@@ -89,7 +88,6 @@ export const MVP_GOALS = [
   {
     id: 'fat_loss' as TrainingGoalId,
     label: 'Zhubnout',
-    emoji: '🔥',
     description: 'Spalování tuků + udržení svalů',
     detail: {
       summary: 'Silový trénink doplněný o kondičku pro maximální spalování.',
@@ -106,7 +104,6 @@ export const MVP_GOALS = [
   {
     id: 'strength' as TrainingGoalId,
     label: 'Získat sílu',
-    emoji: '🏋️',
     description: 'Nižší opakování, vyšší váhy',
     detail: {
       summary: 'Trénink zaměřený na maximální sílu v klíčových cvicích.',
@@ -123,7 +120,6 @@ export const MVP_GOALS = [
   {
     id: 'general_fitness' as TrainingGoalId,
     label: 'Celková kondice',
-    emoji: '✨',
     description: 'Vyvážený trénink celého těla',
     detail: {
       summary: 'Univerzální trénink kombinující sílu, svaly i kondici.',

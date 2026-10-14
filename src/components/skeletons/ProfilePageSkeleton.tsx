@@ -2,9 +2,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const ProfilePageSkeleton = () => {
   return (
-    <div className="min-h-screen bg-background safe-top">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="gradient-hero px-6 pt-8 pb-6">
+      <div className="gradient-hero px-6 safe-top-hero pb-6">
         <Skeleton className="h-8 w-32" />
       </div>
 

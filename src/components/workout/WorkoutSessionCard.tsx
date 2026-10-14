@@ -40,9 +40,11 @@ interface WorkoutSessionCardProps {
   variant?: 'compact' | 'full';
   titleOverride?: string;
   hideStatsWhenCollapsed?: boolean;
+  /** Extra classes for the card surface (e.g. accent-tinted background inside the home hero card). */
+  className?: string;
 }
 
-export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, hideStatsWhenCollapsed = false }: WorkoutSessionCardProps) => {
+export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, hideStatsWhenCollapsed = false, className }: WorkoutSessionCardProps) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
@@ -144,7 +146,8 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
     <Card
       className={cn(
         "overflow-hidden transition-all cursor-pointer",
-        isExpanded && "ring-1 ring-primary/20"
+        isExpanded && "ring-1 ring-primary/20",
+        className
       )}
       onClick={() => setIsExpanded(!isExpanded)}
     >
@@ -155,12 +158,12 @@ export const WorkoutSessionCard = ({ session, variant = 'full', titleOverride, h
             <div className={cn(
               "rounded-xl flex items-center justify-center",
               variant === 'compact' ? "w-10 h-10" : "w-12 h-12",
-              isExtension ? "bg-amber-500/10" : "bg-primary/10"
+              isExtension ? "bg-amber-500/10" : "bg-primary"
             )}>
               <span className={cn(
                 "font-bold",
                 variant === 'compact' ? "text-base" : "text-lg",
-                isExtension ? "text-amber-600" : "text-primary"
+                isExtension ? "text-amber-600" : "text-white"
               )}>
                 {displayLetter}
               </span>

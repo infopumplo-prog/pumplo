@@ -3,11 +3,13 @@ import BottomNav from './BottomNav';
 import OfflineIndicator from './OfflineIndicator';
 import { FeedbackButton } from './feedback/FeedbackButton';
 import { useWatchMenu } from '@/hooks/useWatchMenu';
+import { useAccentSync } from '@/hooks/useAccentSync';
 
 const AppLayout = () => {
   // Nabídka pro hodinky žije tady, ne v přehrávači — příkaz „spusť trénink"
   // dorazí ve chvíli, kdy žádný přehrávač neběží.
   useWatchMenu();
+  useAccentSync();
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" style={{ overscrollBehavior: 'none' }}>

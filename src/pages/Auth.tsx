@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
@@ -10,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import pumploWordmark from '@/assets/pumplo-wordmark.png';
-import { TrainingGoalId, UserLevel, SplitType, resolveSplit } from '@/lib/trainingGoals';
-import { ONBOARDING_TOTAL_STEPS, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
+import PumploLogo from '@/components/PumploLogo';
+import { TrainingGoalId, UserLevel, SplitType } from '@/lib/trainingGoals';
+import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -23,11 +23,35 @@ import {
   OnboardingEquipmentStep,
   OnboardingTrainerTip,
   OnboardingTrainerWelcome,
-  OnboardingOutcomeStep,
+  OnboardingTrainerReaction,
+  OnboardingNameStep,
+  OnboardingChoiceStep,
+  OnboardingPlanChoice,
+  OnboardingProofStep,
 } from '@/components/onboarding';
+import { fetchSocialProof, floorPlus, type SocialProof } from '@/lib/socialProof';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { saveOnboardingDraft, loadOnboardingDraft, clearOnboardingDraft } from '@/lib/onboardingDraft';
+import { persistOnboarding } from '@/lib/persistOnboarding';
+import { EXPECTATION_ICONS, MOTIVATION_ICONS } from '@/components/icons/appIcons';
+import {
+  EXPECTATIONS,
+  LAST_QUESTION_INDEX,
+  MOTIVATIONS,
+  ONBOARDING_STEPS,
+  PROOF_STEPS,
+  REGISTER_STEP_INDEX,
+  chapterPosition,
+  reactionFor,
+  routeAfterRegistration,
+  savePlanChoice,
+  suggestedPlanChoice,
+  type Expectation,
+  type Motivation,
+  type PlanChoice,
+} from '@/lib/onboardingFlow';
 
 type AuthMode = 'login' | 'register';
 
@@ -57,6 +81,7 @@ const Auth = () => {
   
   // Onboarding state (steps 0-6)
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [primaryGoal, setPrimaryGoal] = useState<TrainingGoalId | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
@@ -76,7 +101,31 @@ const Auth = () => {
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
-  
+  // Onboarding 2.0 (8. 10. 2026)
+  const [motivations, setMotivations] = useState<Motivation[]>([]);
+  const [motivationText, setMotivationText] = useState('');
+  const [expectations, setExpectations] = useState<Expectation[]>([]);
+  const [expectationText, setExpectationText] = useState('');
+  const [planChoice, setPlanChoice] = useState<PlanChoice>('pumplo');
+  const [planChoiceTouched, setPlanChoiceTouched] = useState(false);
+  const [editFirstName, setEditFirstName] = useState(false);
+  // Social proof (skutečná čísla) pro grafiky mezi kroky — načte se jednou, bez nich se ukáže verze bez čísel.
+  const [socialProof, setSocialProof] = useState<SocialProof | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchSocialProof().then((p) => { if (!cancelled) setSocialProof(p); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  const stepId = ONBOARDING_STEPS[onboardingStep] ?? 'register';
+
+  // Každý krok dotazníku začíná nahoře — dřív zůstával scroll z předchozího kroku (feedback 13. 10.).
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  }, [onboardingStep, showOutcomeStep, showTrainerTip, showTrainerWelcome]);
+  // Barva appky (fáze 2): volí se v dotazníku, platí hned, při registraci se uloží do profilu.
+  const { accent } = useTheme();
+
   const { login, register, loginWithProvider, resetPassword, setIsRegistering } = useAuth();
   const { t } = useTranslation();
 
@@ -103,19 +152,27 @@ const Auth = () => {
     setInjuries(draft.injuries);
     setEquipmentPreference(draft.equipmentPreference);
     setSplitOverride(draft.splitOverride ?? null);
+    setMotivations((draft.motivations ?? []).filter((m): m is Motivation => (MOTIVATIONS as readonly string[]).includes(m)));
+    setMotivationText(draft.motivationText ?? '');
+    setExpectations((draft.expectations ?? []).filter((e): e is Expectation => (EXPECTATIONS as readonly string[]).includes(e)));
+    setExpectationText(draft.expectationText ?? '');
+    if (draft.planChoice) { setPlanChoice(draft.planChoice); setPlanChoiceTouched(true); }
     // A gym from a fresh QR scan wins over the one stored in the draft.
     setSelectedGymId(prev => prev ?? draft.selectedGymId);
 
     setMode('register');
     setShowTrainerWelcome(false);
     setShowOutcomeStep(false);
-    setOnboardingStep(ONBOARDING_TOTAL_STEPS);
+    setOnboardingStep(REGISTER_STEP_INDEX);
   }, []);
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setError('');
     setIsSubmitting(true);
     try {
+      // Registrace přes Apple/Google: odpovědi na disk dřív, než nás přihlášení
+      // z Auth odvede — dopíše je PendingOnboardingFinisher v App.tsx.
+      if (mode === 'register') saveOnboardingDraft(currentDraft());
       const result = await loginWithProvider(provider);
       if (!result.success) {
         setError(result.error || t('auth.login_failed'));
@@ -129,15 +186,22 @@ const Auth = () => {
 
   // Check if current onboarding step is valid
   const isStepValid = (): boolean => {
-    switch (onboardingStep) {
-      case 0: return primaryGoal !== null;
-      case 1: return userLevel !== null;
-      case 2: return trainingDays.length > 0;
-      case 3: return preferredTime !== null;
-      case 4: return gender !== null && age !== '' && height !== '' && weight !== '';
-      case 5: return injuries.length > 0;
-      case 6: return equipmentPreference !== null;
-      case 7: return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6;
+    switch (stepId) {
+      case 'name': return firstName.trim().length >= 2;
+      case 'goal': return primaryGoal !== null;
+      case 'motivation': return motivations.length > 0;
+      case 'level': return userLevel !== null;
+      case 'days': return trainingDays.length > 0;
+      case 'time': return preferredTime !== null;
+      case 'demographics': return gender !== null && age !== '' && height !== '' && weight !== '';
+      case 'injuries': return injuries.length > 0;
+      case 'equipment': return equipmentPreference !== null;
+      case 'expectations': return expectations.length > 0;
+      case 'proof_goal':
+      case 'proof_level':
+      case 'proof_plan':
+        return true;
+      case 'register': return firstName.trim() !== '' && lastName.trim() !== '' && regEmail.trim() !== '' && regPassword.length >= 6;
       default: return false;
     }
   };
@@ -167,6 +231,16 @@ const Auth = () => {
     }
   };
 
+  // Všechny odpovědi dotazníku jako koncept — stejný tvar pro e-mail i Apple/Google.
+  const currentDraft = () => ({
+    firstName, lastName, regEmail,
+    primaryGoal, userLevel, trainingDays, preferredTime, trainingDuration,
+    gender, age, height, weight, injuries, equipmentPreference, selectedGymId,
+    splitOverride,
+    motivations, motivationText, expectations, expectationText, planChoice,
+    accentColor: accent,
+  });
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -176,12 +250,8 @@ const Auth = () => {
     try {
       // 0. The answers go to disk BEFORE the account exists. Everything below
       // can fail; none of it may cost the person their seven steps.
-      saveOnboardingDraft({
-        firstName, lastName, regEmail,
-        primaryGoal, userLevel, trainingDays, preferredTime, trainingDuration,
-        gender, age, height, weight, injuries, equipmentPreference, selectedGymId,
-        splitOverride,
-      });
+      const draft = currentDraft();
+      saveOnboardingDraft(draft);
 
       // 1. Register user - returns userId directly
       const result = await register(regEmail, regPassword, firstName, lastName);
@@ -213,54 +283,9 @@ const Auth = () => {
       // 2. Wait a moment for trigger to create profile
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // 3. Save onboarding data to profile (retry logic for race condition)
-      const trainingSplit = trainingDays.length > 0 && userLevel
-        ? resolveSplit(trainingDays.length, userLevel, splitOverride)
-        : splitOverride;
-      
-      let profileUpdateSuccess = false;
-      let retries = 3;
-
-      while (!profileUpdateSuccess && retries > 0) {
-        // .select() matters: an update that matches no row reports no error, so
-        // without it a write that touched nothing looks like a success.
-        const { data: updatedRows, error: profileError } = await supabase
-          .from('user_profiles')
-          .update({
-            primary_goal: primaryGoal,
-            user_level: userLevel,
-            training_days: trainingDays,
-            preferred_time: preferredTime,
-            training_duration_minutes: trainingDuration,
-            gender,
-            age: age ? parseInt(age) : null,
-            height_cm: height ? parseInt(height) : null,
-            weight_kg: weight ? parseFloat(weight) : null,
-            injuries,
-            equipment_preference: equipmentPreference,
-            selected_gym_id: selectedGymId,
-            training_split: trainingSplit,
-            split_override: splitOverride,
-            onboarding_completed: true,
-            current_step: ONBOARDING_TOTAL_STEPS,
-            first_name: firstName,
-            last_name: lastName,
-          })
-          .eq('user_id', userId)
-          .select('user_id');
-
-        if (profileError || !updatedRows?.length) {
-          console.error('Profile update error (retry ' + (4 - retries) + '):', profileError ?? 'no row matched');
-          retries--;
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        } else {
-          profileUpdateSuccess = true;
-        }
-      }
-
-      if (!profileUpdateSuccess) {
+      // 3.–7. Profile, plan, Onboarding 2.0 answers, own plan (shared with Apple/Google sign-up).
+      const saved = await persistOnboarding(userId, draft, t('onboarding.own_plan_name'));
+      if (!saved.ok) {
         // The account exists but the answers never landed. Say so and keep the
         // draft: the next attempt resumes from the filled-in form rather than
         // from an empty questionnaire nobody wants to redo.
@@ -271,58 +296,14 @@ const Auth = () => {
         return;
       }
 
-      // 4. Create workout plan
-      if (primaryGoal) {
-        // Deactivate any existing plans
-        await supabase
-          .from('user_workout_plans')
-          .update({ is_active: false })
-          .eq('user_id', userId);
-
-        // Create new plan with training_days snapshot
-        await supabase
-          .from('user_workout_plans')
-          .insert({
-            user_id: userId,
-            goal_id: primaryGoal,
-            is_active: true,
-            started_at: new Date().toISOString(),
-            current_week: 1,
-            gym_id: null, // Will be set when user selects gym
-            training_days: trainingDays,
-            // Lets the plan card show correct day letters before a gym exists
-            split_type: trainingSplit
-          });
-      }
-
-      // 5. Verify profile was updated before navigating
-      let verified = false;
-      let verifyAttempts = 5;
-
-      while (!verified && verifyAttempts > 0) {
-        const { data: verifyProfile } = await supabase
-          .from('user_profiles')
-          .select('onboarding_completed')
-          .eq('user_id', userId)
-          .single();
-        
-        if (verifyProfile?.onboarding_completed === true) {
-          verified = true;
-        } else {
-          verifyAttempts--;
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
-
-      // 6. Force a small delay for React Query cache invalidation
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 7. The answers are safely on the profile — the draft has done its job.
+      // 8. The answers are safely on the profile — the draft has done its job.
       clearOnboardingDraft();
 
-      // 8. All done - release the registration lock and navigate home
+      savePlanChoice(planChoice);
+
+      // 9. All done - release the registration lock and go where the person chose
       setIsRegistering(false);
-      navigate('/');
+      navigate(routeAfterRegistration(planChoice, saved.ownPlanId));
     } catch (err) {
       console.error('Registration error:', err);
       setError(t('auth.something_wrong'));
@@ -337,15 +318,19 @@ const Auth = () => {
   const hasRealInjuries = injuries.length > 0 && !injuries.includes('none');
 
   const handleNextStep = () => {
-    if (isStepValid() && onboardingStep < ONBOARDING_TOTAL_STEPS) {
-      if (onboardingStep === 5 && hasRealInjuries && !showTrainerTip) {
+    if (isStepValid() && onboardingStep < REGISTER_STEP_INDEX) {
+      if (stepId === 'injuries' && hasRealInjuries && !showTrainerTip) {
         setShowTrainerTip(true);
         return;
       }
       setShowTrainerTip(false);
-      if (onboardingStep === 6) {
+      if (onboardingStep === LAST_QUESTION_INDEX) {
         // Gym is picked right before the first workout (or via a gym QR code),
         // not in the questionnaire — the plan preview doesn't need it.
+        // Volba plánu: předvybrat podle očekávání, dokud ji člověk sám nezměnil.
+        if (!planChoiceTouched) setPlanChoice(suggestedPlanChoice(expectations));
+        // Plán od trenéra nejde zvolit, když katalog je prázdný (např. obnovený koncept).
+        if (planChoice === 'trainer' && !(socialProof?.trainerWorkouts)) setPlanChoice('pumplo');
         setShowOutcomeStep(true);
         return;
       }
@@ -356,16 +341,16 @@ const Auth = () => {
   const handlePrevStep = () => {
     if (showOutcomeStep) {
       setShowOutcomeStep(false);
-      setOnboardingStep(6);
+      setOnboardingStep(LAST_QUESTION_INDEX);
       return;
     }
     if (showTrainerTip) {
       setShowTrainerTip(false);
       return;
     }
-    if (onboardingStep === 7) {
+    if (onboardingStep === REGISTER_STEP_INDEX) {
       setShowOutcomeStep(true);
-      setOnboardingStep(6);
+      setOnboardingStep(LAST_QUESTION_INDEX);
       return;
     }
     if (onboardingStep === 0) {
@@ -386,7 +371,15 @@ const Auth = () => {
     setShowTrainerWelcome(newMode === 'register');
   };
 
-  const progress = ((onboardingStep + 1) / (ONBOARDING_TOTAL_STEPS + 1)) * 100;
+  const position = chapterPosition(onboardingStep);
+  const progress = showOutcomeStep ? 95 : position.progress;
+
+  // Reakce trenéra na odpověď z PŘEDCHOZÍHO kroku — nahoře na dalším kroku.
+  const reactionAnswers = { firstName, goal: primaryGoal, motivations, level: userLevel, trainingDays, expectations };
+  const prevStepId = showOutcomeStep ? ONBOARDING_STEPS[LAST_QUESTION_INDEX] : ONBOARDING_STEPS[onboardingStep - 1];
+  // Kroky s trenérem (proof) už trenéra ukazují samy — bublina nad nimi byla navíc (feedback 13. 10.).
+  const onProofStep = !showOutcomeStep && PROOF_STEPS.includes(stepId);
+  const reaction = !showTrainerTip && !onProofStep && prevStepId ? reactionFor(prevStepId, reactionAnswers) : null;
 
   const renderOnboardingStep = () => {
     if (showTrainerTip) {
@@ -396,23 +389,66 @@ const Auth = () => {
       }} />;
     }
 
-    switch (onboardingStep) {
-      case 0:
+    switch (stepId) {
+      case 'proof_goal':
+      case 'proof_level':
+      case 'proof_plan':
+        return (
+          <OnboardingProofStep
+            variant={stepId === 'proof_goal' ? 'goal' : stepId === 'proof_level' ? 'level' : 'plan'}
+            goal={primaryGoal}
+            level={userLevel}
+            trainingDays={trainingDays}
+            durationMinutes={trainingDuration}
+            proof={socialProof}
+          />
+        );
+      case 'name':
+        return <OnboardingNameStep value={firstName} onChange={setFirstName} onSubmit={handleNextStep} />;
+      case 'motivation':
+        return (
+          <OnboardingChoiceStep
+            title={t('onboarding.motivation_title')}
+            subtitle={t('onboarding.multi_hint')}
+            options={MOTIVATIONS.map((m) => ({ id: m, icon: MOTIVATION_ICONS[m], label: t(`onboarding.motivation_${m}`) }))}
+            value={motivations}
+            onChange={(next) => setMotivations(next as Motivation[])}
+            freeText={motivationText}
+            onFreeTextChange={setMotivationText}
+            freeTextLabel={t('onboarding.motivation_free_label')}
+            freeTextPlaceholder={t('onboarding.motivation_free_placeholder')}
+          />
+        );
+      case 'expectations':
+        return (
+          <OnboardingChoiceStep
+            title={t('onboarding.expectations_title')}
+            subtitle={t('onboarding.multi_hint')}
+            options={EXPECTATIONS.map((e) => ({ id: e, icon: EXPECTATION_ICONS[e], label: t(`onboarding.expectation_${e}`) }))}
+            value={expectations}
+            onChange={(next) => setExpectations(next as Expectation[])}
+            freeText={expectationText}
+            onFreeTextChange={setExpectationText}
+            freeTextLabel={t('onboarding.expectations_free_label')}
+            freeTextPlaceholder={t('onboarding.expectations_free_placeholder')}
+          />
+        );
+      case 'goal':
         return <OnboardingGoalStep value={primaryGoal} onChange={(goal) => {
           setPrimaryGoal(goal);
           if (userLevel === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(goal));
         }} onNext={() => setOnboardingStep(prev => prev + 1)} />;
-      case 1:
+      case 'level':
         return <OnboardingLevelStep value={userLevel} onChange={(level) => {
           setUserLevel(level);
           if (level === 'beginner') setTrainingDuration(getBeginnerDefaultDuration(primaryGoal));
         }} />;
-      case 2:
+      case 'days':
         // Volba splitu je schválně vypnutá (8. 8.) — čeká na konzultaci metodiky
         // s trenérem. Infrastruktura (split_override, generátor) zůstává, UI se
         // zapne vrácením props splitOverride/onSplitOverrideChange.
         return <OnboardingDaysStep value={trainingDays} onChange={setTrainingDays} />;
-      case 3:
+      case 'time':
         return (
           <OnboardingTimeStep
             preferredTime={preferredTime}
@@ -423,7 +459,7 @@ const Auth = () => {
             goalId={primaryGoal}
           />
         );
-      case 4:
+      case 'demographics':
         return (
           <OnboardingDemographicsStep
             gender={gender}
@@ -436,11 +472,11 @@ const Auth = () => {
             onWeightChange={setWeight}
           />
         );
-      case 5:
+      case 'injuries':
         return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} />;
-      case 6:
+      case 'equipment':
         return <OnboardingEquipmentStep value={equipmentPreference} onChange={setEquipmentPreference} />;
-      case 7:
+      case 'register':
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -450,6 +486,15 @@ const Auth = () => {
               </p>
             </div>
             <form onSubmit={handleRegister} className="space-y-4">
+              {/* Křestní jméno už zadal na začátku dotazníku — znovu se neptáme (David 8. 10.). */}
+              {firstName.trim().length >= 2 && !editFirstName ? (
+                <p className="text-sm text-center text-muted-foreground">
+                  {t('auth.registering_as', { name: firstName.trim() })}{' '}
+                  <button type="button" onClick={() => setEditFirstName(true)} className="text-primary font-semibold hover:underline">
+                    {t('auth.change_name')}
+                  </button>
+                </p>
+              ) : (
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -461,6 +506,7 @@ const Auth = () => {
                   required
                 />
               </div>
+              )}
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -519,7 +565,7 @@ const Auth = () => {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full mt-4 bg-green-500 hover:bg-green-600"
+                className="w-full mt-4"
                 disabled={isSubmitting || !isStepValid()}
               >
                 {isSubmitting ? (
@@ -588,9 +634,14 @@ const Auth = () => {
     }
   };
 
+  // Kroky dotazníku: bez loga a volby jazyka — jen zabíraly místo (feedback 8. 10.).
+  // Logo + jazyk zůstávají na úvodní obrazovce s trenérem a na přihlášení.
+  const compactHeader = mode === 'register' && !showTrainerWelcome;
+
   return (
     <div className="h-full bg-background flex flex-col safe-bottom relative">
       {/* Language toggle */}
+      {!compactHeader && (
       <div className="absolute right-4 z-10 flex gap-1" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
         {(['cs', 'en'] as const).map((lang) => (
           <button
@@ -606,7 +657,11 @@ const Auth = () => {
           </button>
         ))}
       </div>
+      )}
       {/* Header with gradient */}
+      {compactHeader ? (
+        <div className="flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }} />
+      ) : (
       <div className="flex-shrink-0 gradient-hero pb-8 px-6" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}>
         <motion.div 
           className="flex flex-col items-center"
@@ -620,21 +675,23 @@ const Auth = () => {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <img src={pumploWordmark} alt="Pumplo" className="h-10 object-contain" />
+            <PumploLogo className="h-10" />
           </motion.div>
           <p className="text-muted-foreground mt-2 text-sm">{t('auth.tagline')}</p>
         </motion.div>
       </div>
+      )}
 
       {/* Content */}
       <motion.div 
-        className="flex-1 min-h-0 px-6 pt-6 overflow-y-auto"
+        ref={contentRef}
+        className={`flex-1 min-h-0 px-6 pt-6 overflow-y-auto ${compactHeader ? 'flex flex-col' : ''}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <div className="max-w-md mx-auto w-full">
+        <div className={`max-w-md mx-auto w-full ${compactHeader ? 'flex-1 flex flex-col' : ''}`}>
           {mode === 'login' ? (
             <>
               {/* Tab Switcher */}
@@ -800,6 +857,9 @@ const Auth = () => {
                 </>
               ) : showOutcomeStep ? (
                 <>
+                  {/* Vycentrovat svisle — méně prázdné plochy pod obsahem (feedback 8. 10.) */}
+                  <div className="flex-1 flex flex-col justify-center">
+                  {reaction && <OnboardingTrainerReaction text={t(reaction.key, reaction.params)} />}
                   <AnimatePresence mode="wait">
                     <motion.div
                       key="outcome"
@@ -808,11 +868,15 @@ const Auth = () => {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <OnboardingOutcomeStep
-                        goal={primaryGoal!}
-                        level={userLevel!}
+                      <OnboardingPlanChoice
+                        value={planChoice}
+                        onChange={(c) => { setPlanChoice(c); setPlanChoiceTouched(true); }}
+                        level={userLevel ?? 'beginner'}
                         trainingDays={trainingDays}
-                       splitOverride={splitOverride} />
+                        splitOverride={splitOverride}
+                        trainerWorkouts={socialProof?.trainerWorkouts ?? 0}
+                        exercisesLabel={socialProof && socialProof.exercisesWithVideo > 0 ? floorPlus(socialProof.exercisesWithVideo) : null}
+                      />
                     </motion.div>
                   </AnimatePresence>
                   <div className="flex gap-3 mt-6 pb-4">
@@ -821,12 +885,13 @@ const Auth = () => {
                       {t('auth.back')}
                     </Button>
                     <Button
-                      onClick={() => { setShowOutcomeStep(false); setOnboardingStep(7); }}
-                      className="flex-1 bg-green-500 hover:bg-green-600"
+                      onClick={() => { setShowOutcomeStep(false); setOnboardingStep(REGISTER_STEP_INDEX); }}
+                      className="flex-1"
                     >
                       {t('auth.create_account')}
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
+                  </div>
                   </div>
                   <p className="text-center text-muted-foreground text-sm pb-8">
                     {t('auth.have_account')}{' '}
@@ -840,12 +905,19 @@ const Auth = () => {
                   {/* Progress bar for onboarding */}
                   <div className="mb-6">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">{t('auth.step')} {onboardingStep + 1} {t('auth.of')} {ONBOARDING_TOTAL_STEPS + 1}</span>
+                      {/* Kapitoly místo „Krok 7 z 11“ (Onboarding 2.0) */}
+                      <span className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">{t(`onboarding.chapter_${position.chapter}`)}</span>
+                        {' · '}{position.chapterIndex + 1}/{position.chapterCount}
+                      </span>
                       <span className="font-medium text-primary">{Math.round(progress)}%</span>
                     </div>
                     <Progress value={progress} className="h-2" />
                   </div>
 
+                  {/* Krok + tlačítka vycentrované mezi ukazatelem postupu a odkazem na přihlášení */}
+                  <div className="flex-1 flex flex-col justify-center">
+                  {reaction && <OnboardingTrainerReaction key={prevStepId} text={t(reaction.key, reaction.params)} />}
                   {/* Onboarding Steps */}
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -860,7 +932,7 @@ const Auth = () => {
                   </AnimatePresence>
 
                   {/* Navigation buttons (not for registration step) */}
-                  {onboardingStep < 7 && (
+                  {onboardingStep < REGISTER_STEP_INDEX && (
                     <div className="flex gap-3 mt-8 pb-8">
                       <Button
                         variant="outline"
@@ -882,7 +954,7 @@ const Auth = () => {
                   )}
 
                   {/* Back to step navigation for registration step */}
-                  {onboardingStep === 7 && (
+                  {onboardingStep === REGISTER_STEP_INDEX && (
                     <div className="mt-4 pb-8">
                       <Button
                         variant="ghost"
@@ -894,6 +966,8 @@ const Auth = () => {
                       </Button>
                     </div>
                   )}
+
+                  </div>
 
                   <p className="text-center text-muted-foreground text-sm pb-8">
                     {t('auth.have_account')}{' '}

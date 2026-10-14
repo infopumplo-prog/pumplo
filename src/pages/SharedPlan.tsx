@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Dumbbell, Calendar, CheckCircle, LogIn, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { openAppOrStore } from '@/lib/appRedirect';
 import { Capacitor } from '@capacitor/core';
+import { adaptPlanToGym, coverFor, localizedText } from '@/lib/publicWorkouts';
 
 interface SharedPlanExercise {
   exercise_id: string;
   exercise_name: string;
+  exercise_name_en: string | null;
   owner_id?: string | null;
   sets: number;
   reps: number;
@@ -29,6 +31,7 @@ interface SharedPlanDay {
   id: string;
   day_number: number;
   name: string | null;
+  name_en: string | null;
   exercises: SharedPlanExercise[];
 }
 
@@ -36,6 +39,14 @@ interface SharedPlanData {
   id: string;
   name: string;
   user_id: string;
+  name_en: string | null;
+  description: string | null;
+  description_en: string | null;
+  focus: string | null;
+  cover_url: string | null;
+  goal: string | null;
+  level: string | null;
+  published_at: string | null;
   days: SharedPlanDay[];
 }
 
@@ -72,7 +83,10 @@ const SharedPlan = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const catalogState = (location.state ?? null) as { fromCatalog?: boolean; authorName?: string | null } | null;
+  const fromCatalog = !!catalogState?.fromCatalog;
 
   const [plan, setPlan] = useState<SharedPlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +104,7 @@ const SharedPlan = () => {
 
       const { data: planData } = await supabase
         .from('custom_plans')
-        .select('id, name, user_id')
+        .select('id, name, name_en, user_id, description, description_en, goal, level, focus, cover_url, published_at')
         .eq('share_token', token)
         .eq('is_public', true)
         .single();
@@ -99,7 +113,7 @@ const SharedPlan = () => {
 
       const { data: daysData } = await supabase
         .from('custom_plan_days')
-        .select('id, day_number, name')
+        .select('id, day_number, name, name_en')
         .eq('plan_id', planData.id)
         .order('day_number');
 
@@ -107,7 +121,7 @@ const SharedPlan = () => {
       const { data: exercisesData } = dayIds.length
         ? await supabase
             .from('custom_plan_exercises')
-            .select('day_id, exercise_id, sets, reps, reps_per_set, weight_kg, weight_per_set, rest_seconds, rest_per_set, exercises(name, unit_type, owner_id)')
+            .select('day_id, exercise_id, sets, reps, reps_per_set, weight_kg, weight_per_set, rest_seconds, rest_per_set, exercises(name, name_en, unit_type, owner_id)')
             .in('day_id', dayIds)
             .order('order_index')
         : { data: [] };
@@ -116,11 +130,13 @@ const SharedPlan = () => {
         id: d.id,
         day_number: d.day_number,
         name: d.name,
+        name_en: d.name_en ?? null,
         exercises: (exercisesData || [])
           .filter((e: any) => e.day_id === d.id)
           .map((e: any) => ({
             exercise_id: e.exercise_id,
             exercise_name: e.exercises?.name || 'Exercise',
+            exercise_name_en: e.exercises?.name_en ?? null,
             owner_id: e.exercises?.owner_id ?? null,
             sets: e.sets,
             reps: e.reps,
@@ -146,7 +162,8 @@ const SharedPlan = () => {
 
     const { data: newPlan, error: planError } = await supabase
       .from('custom_plans')
-      .insert({ user_id: user.id, name: plan.name })
+      // source_plan_id = počítadlo uložení v katalogu veřejných tréninků.
+      .insert({ user_id: user.id, name: localizedText(plan.name, plan.name_en, i18n.language) ?? plan.name, name_en: plan.name_en, description: plan.description, description_en: plan.description_en, source_plan_id: plan.id })
       .select('id')
       .single();
 
@@ -159,7 +176,7 @@ const SharedPlan = () => {
     for (const day of plan.days) {
       const { data: newDay } = await supabase
         .from('custom_plan_days')
-        .insert({ plan_id: newPlan.id, day_number: day.day_number, name: day.name })
+        .insert({ plan_id: newPlan.id, day_number: day.day_number, name: localizedText(day.name, day.name_en, i18n.language), name_en: day.name_en })
         .select('id')
         .single();
 
@@ -188,11 +205,23 @@ const SharedPlan = () => {
       await supabase.rpc('save_shared_exercise', { p_id: exId });
     }
 
+    // Přizpůsobit posilovně: cviky, na které nemá stroj, rovnou vyměnit za nejbližší náhradu.
+    let adapted = 0;
+    const { data: me } = await supabase.from('user_profiles').select('selected_gym_id').eq('user_id', user.id).maybeSingle();
+    if (me?.selected_gym_id) {
+      try { adapted = await adaptPlanToGym(newPlan.id, me.selected_gym_id); } catch { /* kopie zůstane bez úprav, kontrola vybavení ji chytí před startem */ }
+    }
+
     pendingStore.clear();
     if (token) savedTokens.add(token);
     setSaved(true);
     setIsSaving(false);
-    toast({ title: t('shared_plan.saved_title'), description: t('shared_plan.saved_desc', { name: plan.name }) });
+    toast({
+      title: t('shared_plan.saved_title'),
+      description: adapted > 0
+        ? t('public_workouts.adapted_to_gym', { count: adapted })
+        : t('shared_plan.saved_desc', { name: localizedText(plan.name, plan.name_en, i18n.language) }),
+    });
   }, [user, plan, toast, t]);
 
   // Už uložený trénink (stejný odkaz podruhé) → rovnou stav „uloženo", žádná duplicita.
@@ -203,10 +232,13 @@ const SharedPlan = () => {
   useEffect(() => {
     if (!user || !plan || saved || isSaving) return;
     const pending = pendingStore.get();
-    if (pending === token || Capacitor.isNativePlatform()) {
+    // Z katalogu si člověk trénink jen prohlíží — v appce neukládat automaticky.
+    // Vlastní trénink se neukládá vůbec (byla by z něj duplicita).
+    if (plan.user_id === user.id) return;
+    if (pending === token || (Capacitor.isNativePlatform() && !fromCatalog)) {
       handleSave();
     }
-  }, [user, plan, saved, isSaving, token, handleSave]);
+  }, [user, plan, saved, isSaving, token, handleSave, fromCatalog]);
 
   // Safari Smart App Banner: „Otevřít" v Pumplo s předáním odkazu (bez skoku do App Storu).
   useEffect(() => {
@@ -264,7 +296,7 @@ const SharedPlan = () => {
 
   return (
     // Web: html/body mají overflow-hidden (appka roluje ve vlastním kontejneru) → stránka roluje sama.
-    <div className="h-[100dvh] overflow-y-auto bg-background safe-top pb-nav">
+    <div className={cn("h-[100dvh] overflow-y-auto bg-background pb-nav", !plan.published_at && "safe-top")}>
       {/* Open in app banner — shown in browsers only */}
       {isMobile && (
         <div className="bg-primary/10 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
@@ -273,20 +305,20 @@ const SharedPlan = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">Pumplo</p>
-            <p className="text-xs text-muted-foreground">Tréninkový plán</p>
+            <p className="text-xs text-muted-foreground">{t('shared_plan.banner_subtitle')}</p>
           </div>
           <button
             onClick={handleOpenInApp}
             className="shrink-0 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold"
           >
-            Otevřít
+            {t('shared_plan.banner_open')}
           </button>
         </div>
       )}
       {isMobile && (
         <div className="px-4 py-2 flex items-center gap-2 text-xs text-muted-foreground border-b border-border">
           <Download className="w-3.5 h-3.5 shrink-0" />
-          <span>Nemáš Pumplo?</span>
+          <span>{t('shared_plan.no_app')}</span>
           {isIOS && (
             <a
               href="https://apps.apple.com/app/pumplo/id6768619318"
@@ -308,23 +340,55 @@ const SharedPlan = () => {
         </div>
       )}
 
+      {/* Obálka tréninku od trenéra */}
+      {plan.published_at && (
+        <div className="relative -mb-6" style={{ height: 'calc(14rem + env(safe-area-inset-top, 0px))' }}>
+          <img src={coverFor({ cover_url: plan.cover_url, focus: plan.focus })} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <span className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-background" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-6 pt-8 pb-4">
         <div className="flex items-center gap-3 mb-6">
           {/* Zpět jen v appce — v prohlížeči vedlo na domovskou stránku za bránou (David 21. 9.) */}
-          {Capacitor.isNativePlatform() && (
+          {(Capacitor.isNativePlatform() || fromCatalog) && (
             <button
-              onClick={() => navigate('/')}
+              onClick={() => (fromCatalog ? navigate(-1) : navigate('/'))}
               className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          <span className="text-sm text-muted-foreground">{t('shared_plan.header_label')}</span>
+          <span className="text-sm text-muted-foreground">
+            {t(plan.published_at ? 'public_workouts.header_label' : 'shared_plan.header_label')}
+          </span>
         </div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl font-bold mb-3">{plan.name}</h1>
+          <h1 className="text-3xl font-bold mb-1">{localizedText(plan.name, plan.name_en, i18n.language)}</h1>
+          {catalogState?.authorName && (
+            <p className="text-sm text-muted-foreground mb-2">
+              {t('public_workouts.by_author', { name: catalogState.authorName })}
+            </p>
+          )}
+          {plan.description && (
+            <p className="text-sm text-foreground/80 mb-3 whitespace-pre-line">{localizedText(plan.description, plan.description_en, i18n.language)}</p>
+          )}
+          {(plan.goal || plan.level) && (
+            <div className="flex gap-2 mb-3 flex-wrap">
+              {plan.goal && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                  {t(`public_workouts.goal_${plan.goal}`)}
+                </span>
+              )}
+              {plan.level && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-foreground">
+                  {t(`public_workouts.level_${plan.level}`)}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4" />
@@ -349,7 +413,7 @@ const SharedPlan = () => {
             className="bg-card border border-border rounded-2xl overflow-hidden"
           >
             <div className="px-4 py-3 bg-muted/50 border-b border-border">
-              <span className="text-sm font-semibold">{day.name || t('shared_plan.day_prefix', { n: day.day_number })}</span>
+              <span className="text-sm font-semibold">{localizedText(day.name, day.name_en, i18n.language) || t('shared_plan.day_prefix', { n: day.day_number })}</span>
             </div>
             <div className="px-4 py-2 divide-y divide-border/50">
               {day.exercises.length === 0 ? (
@@ -371,7 +435,7 @@ const SharedPlan = () => {
                         className="w-full flex items-center justify-between text-left"
                       >
                         <span className="text-sm font-medium flex items-center gap-1.5">
-                          {ex.exercise_name}
+                          {localizedText(ex.exercise_name, ex.exercise_name_en, i18n.language)}
                           {ex.owner_id && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-600">{t('exercise_picker.custom_badge')}</span>
                           )}
@@ -443,20 +507,33 @@ const SharedPlan = () => {
 
       {/* CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-6 pt-4 safe-bottom">
-        {user ? (
+        {user && plan.user_id === user.id ? (
+          <Button
+            onClick={() => navigate(`/custom-plan/${plan.id}`)}
+            variant="outline"
+            className="w-full h-12 text-base font-semibold rounded-xl"
+          >
+            {t('public_workouts.edit_own')}
+          </Button>
+        ) : user ? (
           saved ? (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-3">
               <CheckCircle className="w-4 h-4 text-primary" />
               {t('shared_plan.saved_to_plans')}
             </div>
           ) : (
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full h-12 text-base font-semibold rounded-xl"
-            >
-              {isSaving ? t('shared_plan.saving') : t('shared_plan.save_btn')}
-            </Button>
+            <div className="space-y-2">
+              {plan.published_at && (
+                <p className="text-center text-xs text-muted-foreground">{t('public_workouts.adapts_note')}</p>
+              )}
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full h-12 text-base font-semibold rounded-xl"
+              >
+                {isSaving ? t('shared_plan.saving') : t('shared_plan.save_btn')}
+              </Button>
+            </div>
           )
         ) : (
           <div className="space-y-3">

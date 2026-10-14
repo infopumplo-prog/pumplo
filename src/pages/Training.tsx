@@ -2127,7 +2127,7 @@ const Training = () => {
                           {t('training.workout_skipped')}
                         </p>
                       ) : day.isShiftedDay && day.isFuture ? (
-                        <p className="text-sm text-blue-500/70">
+                        <p className="text-sm text-primary/70">
                           {t('training.bonus_from_first_week')}
                         </p>
                       ) : day.isFuture ? (

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useReliableVideoPlayback } from '@/hooks/useReliableVideoPlayback';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Flame, SkipForward, ChevronRight, ArrowLeft, X, Dumbbell, Pause, Play, Info, Volume2, VolumeX, HelpCircle } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -191,17 +192,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
     return () => { cancelled = true; };
   }, [currentIndex]);
 
-  // Play/pause video with timer
-  useEffect(() => {
-    if (videoRef.current && signedVideoUrl) {
-      videoRef.current.muted = true;
-      if (isPaused) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(() => {});
-      }
-    }
-  }, [isPaused, signedVideoUrl]);
+  const playVideo = useReliableVideoPlayback(videoRef, signedVideoUrl, isPaused);
 
   const handleSkipExercise = useCallback(() => {
     if (currentIndex < exercises.length - 1) {
@@ -254,6 +245,8 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
+              onLoadedData={playVideo}
+              onCanPlay={playVideo}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-900">
@@ -282,7 +275,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
                 </div>
               </div>
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
-                🔥 {currentIndex + 1}/{totalExercises}
+                <Flame className="inline-block w-3.5 h-3.5 -mt-0.5 mr-1 text-orange-400" aria-hidden="true" />{currentIndex + 1}/{totalExercises}
               </span>
               <button onClick={tour.openTour} data-coach="help-btn" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
                 <HelpCircle className="w-5 h-5" />
@@ -351,7 +344,13 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
 
               {/* Pause/Play button */}
               <button
-                onClick={() => setIsPaused(!isPaused)}
+                onClick={() => {
+                  // Přímo v gestu — iOS jinak play() mimo dotyk odmítne.
+                  const next = !isPaused;
+                  setIsPaused(next);
+                  const v = videoRef.current;
+                  if (v) { v.muted = true; if (next) v.pause(); else v.play().catch(() => {}); }
+                }}
                 className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0 ${isPaused ? 'bg-orange-400 shadow-orange-400/40' : 'bg-white/20 backdrop-blur-sm'}`}
               >
                 {isPaused ? <Play className="w-7 h-7 text-white ml-0.5" /> : <Pause className="w-7 h-7 text-white" />}

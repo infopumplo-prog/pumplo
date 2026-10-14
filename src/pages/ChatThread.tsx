@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Dumbbell, X } from 'lucide-react';
+import { ArrowLeft, Megaphone, Send, Dumbbell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDirectMessages, DirectMessage } from '@/hooks/useDirectMessages';
@@ -241,7 +241,7 @@ const ChatThread = () => {
           {announcement && (
             <div className="mb-4 rounded-xl border border-border bg-muted/50 p-3">
               <p className="text-xs font-semibold text-muted-foreground mb-1">
-                📢 {announcement.title}
+                <Megaphone className="inline-block w-3.5 h-3.5 -mt-0.5 mr-1" aria-hidden="true" />{announcement.title}
               </p>
               <p className="text-sm whitespace-pre-wrap">{announcement.body}</p>
             </div>

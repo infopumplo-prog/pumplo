@@ -50,13 +50,13 @@
 
     /* Custom gradients */
     --gradient-primary: linear-gradient(135deg, hsl(195 100% 59%), hsl(200 100% 45%));
-    --gradient-hero: linear-gradient(180deg, hsl(195 100% 59% / 0.1), transparent);
+    --gradient-hero: linear-gradient(180deg, hsl(var(--primary) / 0.1), transparent);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 20% 98%));
 
     /* Shadows */
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.05);
-    --shadow-md: 0 4px 12px hsl(195 100% 59% / 0.15);
-    --shadow-lg: 0 8px 24px hsl(195 100% 59% / 0.2);
+    --shadow-md: 0 4px 12px hsl(var(--primary) / 0.15);
+    --shadow-lg: 0 8px 24px hsl(var(--primary) / 0.2);
     --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.06);
 
     /* Navigation */
@@ -129,7 +129,7 @@
     /* David 24. 9.: chce přesně stejnou modrou jako písmenko dne v pilulce
        "další trénink" (to je barva --primary) — žádný přechod dvou odstínů. */
     --gradient-primary: linear-gradient(135deg, hsl(205 65% 42%), hsl(205 65% 42%));
-    --gradient-hero: linear-gradient(180deg, hsl(205 65% 42% / 0.14), transparent);
+    --gradient-hero: linear-gradient(180deg, hsl(var(--primary) / 0.14), transparent);
     --gradient-card: linear-gradient(145deg, hsl(220 20% 13%), hsl(220 20% 10%));
 
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
@@ -146,6 +146,104 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* Barva appky (fáze 2 Onboarding 2.0, 8. 10. 2026). Výchozí modrá = :root/.dark výše.
+     Hodnoty musí odpovídat src/lib/accentColors.ts. */
+  [data-accent="pink"] {
+    --secondary: 330 30% 95%;
+    --secondary-foreground: 330 70% 35%;
+    --primary: 330 81% 60%;
+    --ring: 330 81% 60%;
+    --accent: 330 81% 50%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 81% 60%), hsl(330 81% 50%));
+  }
+  .dark[data-accent="pink"] {
+    --secondary-foreground: 330 55% 72%;
+    --primary: 330 62% 48%;
+    --ring: 330 62% 48%;
+    --accent: 330 62% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 62% 48%), hsl(330 62% 48%));
+  }
+  [data-accent="purple"] {
+    --secondary: 262 30% 95%;
+    --secondary-foreground: 262 60% 35%;
+    --primary: 262 83% 66%;
+    --ring: 262 83% 66%;
+    --accent: 262 70% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 66%), hsl(262 70% 55%));
+  }
+  .dark[data-accent="purple"] {
+    --secondary-foreground: 262 55% 72%;
+    --primary: 262 52% 52%;
+    --ring: 262 52% 52%;
+    --accent: 262 52% 52%;
+    --gradient-primary: linear-gradient(135deg, hsl(262 52% 52%), hsl(262 52% 52%));
+  }
+  [data-accent="green"] {
+    --secondary: 152 30% 95%;
+    --secondary-foreground: 152 60% 35%;
+    --primary: 152 62% 42%;
+    --ring: 152 62% 42%;
+    --accent: 152 62% 34%;
+    --gradient-primary: linear-gradient(135deg, hsl(152 62% 42%), hsl(152 62% 34%));
+  }
+  .dark[data-accent="green"] {
+    --secondary-foreground: 152 55% 72%;
+    --primary: 152 52% 36%;
+    --ring: 152 52% 36%;
+    --accent: 152 52% 36%;
+    --gradient-primary: linear-gradient(135deg, hsl(152 52% 36%), hsl(152 52% 36%));
+  }
+  [data-accent="orange"] {
+    --secondary: 25 30% 95%;
+    --secondary-foreground: 25 85% 35%;
+    --primary: 25 95% 53%;
+    --ring: 25 95% 53%;
+    --accent: 20 90% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(20 90% 45%));
+  }
+  .dark[data-accent="orange"] {
+    --secondary-foreground: 25 55% 72%;
+    --primary: 25 78% 46%;
+    --ring: 25 78% 46%;
+    --accent: 25 78% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(25 78% 46%), hsl(25 78% 46%));
+  }
+  [data-accent="red"] {
+    --secondary: 0 30% 95%;
+    --secondary-foreground: 0 70% 35%;
+    --primary: 0 78% 58%;
+    --ring: 0 78% 58%;
+    --accent: 0 72% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 78% 58%), hsl(0 72% 48%));
+  }
+  .dark[data-accent="red"] {
+    --secondary-foreground: 0 55% 72%;
+    --primary: 0 62% 48%;
+    --ring: 0 62% 48%;
+    --accent: 0 62% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 62% 48%), hsl(0 62% 48%));
+  }
+
+  /* Hlavní karta plánu na Domů (Blok N + progress) ve zvolené barvě.
+     Světlý režim = barva appky, tmavý = tmavý odstín téže barvy (modrá = původní navy). */
+  :root {
+    --hero-card: 197 88% 66%;
+    --hero-card-inner: 196 67% 54%;
+  }
+  .dark {
+    --hero-card: 219 50% 13%;
+    --hero-card-inner: 219 46% 16%;
+  }
+  [data-accent]:not([data-accent="blue"]) {
+    --hero-card: var(--primary);
+    --hero-card-inner: var(--accent);
+  }
+  .dark[data-accent="pink"] { --hero-card: 330 42% 14%; --hero-card-inner: 330 38% 19%; }
+  .dark[data-accent="purple"] { --hero-card: 262 40% 15%; --hero-card-inner: 262 36% 20%; }
+  .dark[data-accent="green"] { --hero-card: 152 42% 11%; --hero-card-inner: 152 36% 15%; }
+  .dark[data-accent="orange"] { --hero-card: 25 48% 12%; --hero-card-inner: 25 42% 17%; }
+  .dark[data-accent="red"] { --hero-card: 0 45% 13%; --hero-card-inner: 0 40% 18%; }
 }
 
 @layer base {
@@ -251,6 +349,10 @@
 
   .safe-top {
     padding-top: env(safe-area-inset-top, 0);
+  }
+  /* Modré záhlaví až pod stavovou lištu (hodiny, wifi, baterie) — místo safe-top na obalu stránky. */
+  .safe-top-hero {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
   }
 }
 

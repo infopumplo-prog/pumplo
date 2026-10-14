@@ -9,3 +9,8 @@ export { default as OnboardingTrainerTip } from './OnboardingTrainerTip';
 export { default as OnboardingTrainerWelcome } from './OnboardingTrainerWelcome';
 export { default as OnboardingOutcomeStep } from './OnboardingOutcomeStep';
 export { default as OnboardingGymStep } from './OnboardingGymStep';
+export { default as OnboardingTrainerReaction } from './OnboardingTrainerReaction';
+export { default as OnboardingNameStep } from './OnboardingNameStep';
+export { default as OnboardingChoiceStep } from './OnboardingChoiceStep';
+export { default as OnboardingPlanChoice } from './OnboardingPlanChoice';
+export { default as OnboardingProofStep } from './OnboardingProofStep';

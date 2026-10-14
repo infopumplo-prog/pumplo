@@ -45,6 +45,14 @@ export interface CustomPlan {
   created_at: string;
   share_token: string;
   is_public: boolean;
+  // Veřejné tréninky: null = není v katalogu.
+  published_at: string | null;
+  description: string | null;
+  goal: string | null;
+  level: string | null;
+  focus: string | null;
+  secondary_focuses: string[] | null;
+  cover_url: string | null;
   days: CustomPlanDay[];
 }
 
@@ -52,6 +60,7 @@ export interface CustomPlanSummary {
   id: string;
   name: string;
   created_at: string;
+  published_at: string | null;
   day_count: number;
 }
 
@@ -70,7 +79,7 @@ export function useCustomPlans() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('custom_plans')
-      .select('id, name, created_at, custom_plan_days(id)')
+      .select('id, name, created_at, published_at, custom_plan_days(id)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -80,6 +89,7 @@ export function useCustomPlans() {
           id: p.id,
           name: p.name,
           created_at: p.created_at,
+          published_at: p.published_at ?? null,
           day_count: (p.custom_plan_days as { id: string }[] | null)?.length || 0,
         }))
       );

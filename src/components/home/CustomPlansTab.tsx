@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Plus, Calendar, ChevronRight, Trash2, Dumbbell, Play } from 'lucide-react';
+import { Plus, Calendar, ChevronRight, Trash2, Dumbbell, Play, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCustomPlans } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout, PausedCustomWorkoutState } from '@/hooks/usePausedCustomWorkout';
@@ -158,10 +158,13 @@ const CustomPlansTab = () => {
                   <Dumbbell className="w-5 h-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="font-semibold text-sm truncate">{plan.name}</h4>
+                  <h4 className="font-semibold text-sm truncate flex items-center gap-1.5">
+                    <span className="truncate">{plan.name}</span>
+                    {plan.published_at && <Globe className="w-3.5 h-3.5 text-primary shrink-0" aria-label={t('public_workouts.published_badge')} />}
+                  </h4>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {plan.day_count} {plan.day_count === 1 ? 'den' : plan.day_count < 5 ? 'dny' : 'dní'}
+                    {plan.day_count} {plan.day_count === 1 ? t('messages.day_singular') : plan.day_count < 5 ? t('messages.day_2_4') : t('messages.day_plural')}
                   </p>
                 </div>
               </div>

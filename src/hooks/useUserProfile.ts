@@ -21,6 +21,7 @@ export interface UserProfile {
   training_split: string | null;
   equipment_preference: string | null;
   motivations: string[] | null;
+  accent_color: string | null;
   onboarding_completed: boolean;
   current_step: number;
   gym_license_count: number;

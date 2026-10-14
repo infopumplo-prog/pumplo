@@ -24,6 +24,7 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Mail,
   Save
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -249,7 +250,7 @@ export default function UserFeedbackList() {
                         <Badge variant="secondary" className="text-xs">{item.current_route}</Badge>
                       )}
                       {item.can_contact && (
-                        <Badge variant="secondary" className="text-xs">📧 {item.contact_email}</Badge>
+                        <Badge variant="secondary" className="text-xs gap-1"><Mail className="w-3 h-3" aria-hidden="true" />{item.contact_email}</Badge>
                       )}
                     </div>
 
