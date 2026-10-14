@@ -1,11 +1,13 @@
+import { lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import OfflineIndicator from './OfflineIndicator';
 import { FeedbackButton } from './feedback/FeedbackButton';
 import { useWatchMenu } from '@/hooks/useWatchMenu';
 import { useAccentSync } from '@/hooks/useAccentSync';
-import WeeklyCheckinHost from './checkin/WeeklyCheckinHost';
 import { useGuest } from '@/contexts/GuestContext';
+// Check-in se načítá líně — hlavní bundle je u limitu PWA precache (14. 10.).
+const WeeklyCheckinHost = lazy(() => import('./checkin/WeeklyCheckinHost'));
 
 const AppLayout = () => {
   // Nabídka pro hodinky žije tady, ne v přehrávači — příkaz „spusť trénink"
@@ -23,7 +25,7 @@ const AppLayout = () => {
       {/* Feedback i check-in se ukládají k účtu — host je nevidí. */}
       {!isGuest && <FeedbackButton />}
       {/* Týdenní check-in (feedback 13. 10.) */}
-      {!isGuest && <WeeklyCheckinHost />}
+      {!isGuest && <Suspense fallback={null}><WeeklyCheckinHost /></Suspense>}
       <BottomNav />
     </div>
   );

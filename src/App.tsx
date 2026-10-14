@@ -60,9 +60,7 @@ import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
-import Trainers from "@/pages/Trainers";
 import SharedPlan from "@/pages/SharedPlan";
-import PublicWorkouts from "@/pages/PublicWorkouts";
 import SharedExercisePage from "@/pages/SharedExercise";
 import MyExercisesPage from "@/pages/MyExercises";
 import ResetPassword from "@/pages/ResetPassword";
@@ -74,6 +72,12 @@ import { AppConsentGate } from "@/components/AppConsentScreen";
 import { initAppAnalytics, trackDeepLink, trackScreen } from "@/lib/appAnalytics";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
+// Hlavní bundle je těsně pod limitem PWA precache (3 MB) — nové stránky načítat až při otevření (14. 10.).
+const Trainers = lazy(() => import('./pages/Trainers'));
+const PublicWorkouts = lazy(() => import('./pages/PublicWorkouts'));
+const PageFallback = () => (
+  <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+);
 const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
 
 // Handles deep links: com.pumplo.app://plan/{token} (custom scheme) and
@@ -374,11 +378,11 @@ const AppRoutes = () => {
       <Route path="/messages" element={<Messages />} />
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
       <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
-      <Route path="/workouts" element={<PublicWorkouts />} />
+      <Route path="/workouts" element={<Suspense fallback={<PageFallback />}><PublicWorkouts /></Suspense>} />
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
       <Route path="/become-trainer" element={<BecomeTrainer />} />
       <Route path="/trainer-profile" element={<TrainerProfile />} />
-      <Route path="/trainers" element={<Trainers />} />
+      <Route path="/trainers" element={<Suspense fallback={<PageFallback />}><Trainers /></Suspense>} />
     </Route>
     
     {/* Admin & Business routes removed — use pumplo-admin.vercel.app */}
