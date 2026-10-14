@@ -22,10 +22,13 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
   const { profile } = useUserProfile();
   const [startingChat, setStartingChat] = useState(false);
 
+  // Stránka všech trenérů (feedback 13. 10.): konverzace patří posilovně trenéra, ne té vybrané.
+  const chatGymId = trainer?.gym_id ?? profile?.selected_gym_id ?? null;
+
   const handleStartChat = async () => {
-    if (!trainer || !profile?.selected_gym_id) return;
+    if (!trainer || !chatGymId) return;
     setStartingChat(true);
-    const conversationId = await getOrCreateConversation(trainer.id, profile.selected_gym_id);
+    const conversationId = await getOrCreateConversation(trainer.id, chatGymId);
     setStartingChat(false);
     if (conversationId) {
       onOpenChange(false);

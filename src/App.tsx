@@ -58,6 +58,7 @@ import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
 import BecomeTrainer from "@/pages/BecomeTrainer";
 import TrainerProfile from "@/pages/TrainerProfile";
+import Trainers from "@/pages/Trainers";
 import SharedPlan from "@/pages/SharedPlan";
 import PublicWorkouts from "@/pages/PublicWorkouts";
 import SharedExercisePage from "@/pages/SharedExercise";
@@ -149,7 +150,7 @@ const PendingOnboardingFinisher = () => {
         const choice = draft.planChoice ?? 'pumplo';
         savePlanChoice(choice);
         await queryClient.invalidateQueries();
-        navigate(routeAfterRegistration(choice, saved.ownPlanId), { replace: true });
+        navigate(routeAfterRegistration(choice, saved.ownPlanId, draft.injuries), { replace: true });
       } catch (err) {
         console.error('Pending onboarding not saved:', err);
       } finally {
@@ -368,6 +369,7 @@ const AppRoutes = () => {
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
       <Route path="/become-trainer" element={<BecomeTrainer />} />
       <Route path="/trainer-profile" element={<TrainerProfile />} />
+      <Route path="/trainers" element={<Trainers />} />
     </Route>
     
     {/* Admin & Business routes removed — use pumplo-admin.vercel.app */}

@@ -550,7 +550,7 @@ const cs = {
   'onboarding.trainer_tip_highlight': 'konzultaci s trenérem',
   'onboarding.trainer_tip_1': 'Trenér posoudí tvé omezení a navrhne úpravy cviků',
   'onboarding.trainer_tip_2': 'Pomůže ti s technikou, abys předešel dalším zraněním',
-  'onboarding.trainer_tip_3': 'Trenéry najdeš v detailu své posilovny v sekci Trenéři',
+  'onboarding.trainer_tip_3': 'Všechny trenéry najdeš v Profilu v sekci Trenéři',
   'onboarding.trainer_tip_continue': 'Rozumím, pokračovat',
   // Onboarding 2.0 (8. 10. 2026) — kapitoly, nové otázky, reakce trenéra, volba plánu
   'onboarding.chapter_you': 'O tobě',
@@ -2767,6 +2767,26 @@ const cs = {
   'public_workouts.adapted_to_gym_few': 'Upraveno pro tvou posilovnu: {{count}} cviky vyměněny za dostupné stroje.',
   'public_workouts.adapted_to_gym_many': 'Upraveno pro tvou posilovnu: {{count}} cviků vyměněno za dostupné stroje.',
   'public_workouts.adapted_to_gym_other': 'Upraveno pro tvou posilovnu: {{count}} cviků vyměněno za dostupné stroje.',
+  // Stránka všech trenérů + popis zranění (feedback 13. 10.)
+  'trainers.title': 'Trenéři',
+  'trainers.subtitle': 'Trenéři z tvé posilovny, z týmu Pumplo i z dalších posiloven',
+  'trainers.back': 'Zpět',
+  'trainers.my_gym': 'tvoje posilovna',
+  'trainers.call': 'Zavolat',
+  'trainers.email': 'E-mail',
+  'trainers.profile': 'Profil',
+  'trainers.empty': 'Zatím tu nejsou žádní trenéři.',
+  'trainers.load_failed': 'Trenéry se nepodařilo načíst. Zkus to prosím znovu.',
+  'trainers.injury_intro_title': 'Máš zranění — doporučujeme začít s trenérem',
+  'trainers.injury_intro_body': 'Trenér posoudí tvé omezení, upraví cviky a pohlídá techniku. Tvůj plán v Pumplu už zranění zohledňuje.',
+  'trainers.injury_intro_skip': 'Teď ne, pokračovat do appky',
+  'trainers.intro_dismiss': 'Zavřít',
+  'profile.trainers': 'Trenéři',
+  'onboarding.injury_note_label': 'Popiš zranění (nepovinné)',
+  'onboarding.injury_note_placeholder': 'Např. po operaci kolena, bolí mě při dřepu…',
+  'onboarding.injury_note_hint': 'Zdravotní údaj — použijeme ho jen k úpravě plánu. Smazat ho můžeš kdykoli v profilu.',
+  'privacy.injury_note_title': 'Volný popis zranění',
+  'privacy.injury_note_body': 'Nepovinný popis zranění, který můžete napsat v dotazníku, je údaj o zdravotním stavu (zvláštní kategorie osobních údajů dle čl. 9 GDPR). Zpracováváme ho pouze na základě vašeho výslovného souhlasu, který udělíte jeho vyplněním (čl. 9 odst. 2 písm. a) GDPR), a výhradně k přizpůsobení vašeho tréninkového plánu. Text můžete kdykoli upravit nebo smazat v Profilu → Upravit dotazník; smazáním textu nebo volbou „Nemám žádné zranění“ se údaj odstraní a souhlas tím odvoláváte.',
 };
 
 export default cs;
