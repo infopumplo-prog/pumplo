@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
+import { useGuest } from '@/contexts/GuestContext';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
@@ -101,7 +102,9 @@ const Map = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<GymFilters>(DEFAULT_FILTERS);
 
-  const isOnboardingComplete = profile?.onboarding_completed ?? false;
+  // Host (bez účtu) vidí mapu bez zámku dotazníku; výběr posilovny chce účet (feedback 13. 10.).
+  const { isGuest, requireAccount } = useGuest();
+  const isOnboardingComplete = (profile?.onboarding_completed ?? false) || isGuest;
 
   // Calculate distance for a specific gym
   const getGymDistance = useCallback((gym: PublicGym) => {
@@ -308,6 +311,7 @@ const Map = () => {
 
   const selectGym = async (gym: PublicGym | null) => {
     if (!gym) return;
+    if (isGuest) { setDetailGym(null); setQuickPreviewGym(null); requireAccount('/map'); return; }
     setIsSelectingGym(true);
     try {
       const saved = await updateProfile({ selected_gym_id: gym.id });

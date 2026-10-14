@@ -53,6 +53,7 @@ import {
   type PlanChoice,
 } from '@/lib/onboardingFlow';
 import { trackSignUp, trackTutorialComplete } from '@/lib/appAnalytics';
+import { GUEST_HOME, enterGuestMode, peekGuestReturnPath } from '@/lib/guestMode';
 
 type AuthMode = 'login' | 'register';
 
@@ -60,10 +61,13 @@ const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const gymIdFromQR = searchParams.get('gymId');
+  // Z registračního sheetu hosta: ?mode=login = rovnou přihlášení, ?start=questionnaire = rovnou dotazník.
+  const loginFirst = searchParams.get('mode') === 'login';
+  const skipWelcome = searchParams.get('start') === 'questionnaire';
   // Registration first: almost everyone who opens this screen has just
   // installed the app and has no account yet. Landing them on a login form was
   // asking for a password they never set.
-  const [mode, setMode] = useState<AuthMode>('register');
+  const [mode, setMode] = useState<AuthMode>(loginFirst ? 'login' : 'register');
   const { toast } = useToast();
   
   // Login form state
@@ -98,7 +102,7 @@ const Auth = () => {
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   // Matches the 'register' default above: the trainer welcome is the first thing
   // a new install sees, not a screen you have to switch modes to reach.
-  const [showTrainerWelcome, setShowTrainerWelcome] = useState(true);
+  const [showTrainerWelcome, setShowTrainerWelcome] = useState(!loginFirst && !skipWelcome);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
@@ -211,6 +215,8 @@ const Auth = () => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+    // Přihlášení z režimu hosta: zpět na obrazovku hosta zavede GuestProvider, ne '/'.
+    const guestReturn = peekGuestReturnPath();
 
     try {
       const result = await login(email, password);
@@ -223,7 +229,7 @@ const Auth = () => {
             await supabase.from('user_profiles').update({ selected_gym_id: gymIdFromQR }).eq('user_id', user.id);
           }
         }
-        navigate('/');
+        if (!guestReturn) navigate('/');
       }
     } catch {
       setError(t('auth.something_wrong'));
@@ -850,7 +856,10 @@ const Auth = () => {
             <>
               {showTrainerWelcome ? (
                 <>
-                  <OnboardingTrainerWelcome onStart={() => setShowTrainerWelcome(false)} />
+                  <OnboardingTrainerWelcome
+                    onStart={() => setShowTrainerWelcome(false)}
+                    onTryAsGuest={() => { enterGuestMode(); navigate(GUEST_HOME, { replace: true }); }}
+                  />
                   <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
                     {t('auth.have_account')}{' '}
                     <button onClick={toggleMode} className="text-primary font-semibold hover:underline">

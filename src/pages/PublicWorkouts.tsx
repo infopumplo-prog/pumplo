@@ -8,6 +8,8 @@ import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/Coa
 import { readPlanChoice } from '@/lib/onboardingFlow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useGuest } from '@/contexts/GuestContext';
+import GuestBanner from '@/components/guest/GuestBanner';
 import { cn } from '@/lib/utils';
 import {
   WORKOUT_FOCUSES,
@@ -34,6 +36,7 @@ const PublicWorkouts = () => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const { user } = useAuth();
+  const { requireAccount } = useGuest();
   const { profile } = useUserProfile();
   const myGymId = profile?.selected_gym_id ?? null;
   const [scope, setScope] = useState<Scope>('all');
@@ -88,7 +91,8 @@ const PublicWorkouts = () => {
 
   const toggleLike = async (e: React.MouseEvent, w: PublicWorkout) => {
     e.stopPropagation();
-    if (!user) return;
+    // Lajk patří k účtu — host dostane registraci (feedback 13. 10.).
+    if (!user) { requireAccount('/workouts'); return; }
     setWorkouts((prev) => prev.map((x) => (x.id === w.id ? toggleLikeLocal(x) : x)));
     try {
       await setWorkoutLiked(w.id, user.id, !w.liked_by_me);
@@ -116,6 +120,7 @@ const PublicWorkouts = () => {
             <CoachHelpButton onClick={tour.openTour} />
           </div>
           <p className="text-sm text-muted-foreground">{t('public_workouts.subtitle')}</p>
+          <GuestBanner />
 
           <div className="mt-5 relative">
             <Search className="w-5 h-5 text-primary absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />

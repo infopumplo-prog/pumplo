@@ -2775,6 +2775,19 @@ const en = {
   'public_workouts.adapts_note': 'Exercises adapt to your gym’s machines when you save.',
   'public_workouts.adapted_to_gym_one': 'Adapted to your gym: {{count}} exercise swapped for an available machine.',
   'public_workouts.adapted_to_gym_other': 'Adapted to your gym: {{count}} exercises swapped for available machines.',
+  // Guest mode — try without signing up (feedback 13. 10.)
+  'guest.try_without_signup': 'Try without signing up',
+  'guest.try_hint': 'Browse workouts from our trainers. Create an account when you want to train.',
+  'guest.banner_text': 'Browsing without an account',
+  'guest.banner_cta': 'Sign up',
+  'guest.sheet_title': 'You need an account to train',
+  'guest.sheet_desc': 'It takes 20 seconds. You can fill in the questionnaire later.',
+  'guest.continue_email': 'Continue with email',
+  'guest.create_account': 'Create account',
+  'guest.creating': 'Creating account…',
+  'guest.questionnaire_link': 'I want a tailored plan — fill in the questionnaire',
+  'guest.have_account': 'I already have an account — sign in',
+  'guest.register_failed': 'Sign-up failed. Please try again.',
 };
 
 export default en;

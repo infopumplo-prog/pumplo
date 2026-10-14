@@ -10,6 +10,8 @@ import { App as CapApp } from "@capacitor/app";
 import { StatusBar } from "@capacitor/status-bar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { GuestProvider, useGuest } from "@/contexts/GuestContext";
+import { GUEST_HOME, isGuestPath } from "@/lib/guestMode";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -194,14 +196,21 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children, allowGuest = false }: { children: React.ReactNode; allowGuest?: boolean }) => {
   const { user, isLoading } = useAuth();
+  const { isGuest } = useGuest();
+  const { pathname } = useLocation();
   
   if (isLoading) {
     return <LoadingSpinner />;
   }
   
   if (!user) {
+    // Host („Vyzkoušet bez registrace“, feedback 13. 10.): katalog a mapa bez účtu,
+    // ostatní obrazovky ho vrátí na katalog (registraci nabízí sheet, ne přesměrování).
+    if (allowGuest && isGuest) {
+      return isGuestPath(pathname) ? <>{children}</> : <Navigate to={GUEST_HOME} replace />;
+    }
     return <Navigate to="/auth" replace />;
   }
   
@@ -352,7 +361,7 @@ const AppRoutes = () => {
     } />
     {/* Moje cviky = plná stránka bez spodní lišty a feedbacku (jen auth guard) */}
     <Route path="/profile/exercises" element={<ProtectedRoute><MyExercisesPage /></ProtectedRoute>} />
-    <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute allowGuest><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
       <Route path="/statistics" element={<Statistics />} />
@@ -419,7 +428,9 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <AppRoutes />
+              <GuestProvider>
+                <AppRoutes />
+              </GuestProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
