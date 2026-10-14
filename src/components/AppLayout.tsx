@@ -5,12 +5,14 @@ import { FeedbackButton } from './feedback/FeedbackButton';
 import { useWatchMenu } from '@/hooks/useWatchMenu';
 import { useAccentSync } from '@/hooks/useAccentSync';
 import WeeklyCheckinHost from './checkin/WeeklyCheckinHost';
+import { useGuest } from '@/contexts/GuestContext';
 
 const AppLayout = () => {
   // Nabídka pro hodinky žije tady, ne v přehrávači — příkaz „spusť trénink"
   // dorazí ve chvíli, kdy žádný přehrávač neběží.
   useWatchMenu();
   useAccentSync();
+  const { isGuest } = useGuest();
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" style={{ overscrollBehavior: 'none' }}>
@@ -18,9 +20,10 @@ const AppLayout = () => {
       <main className="flex-1 overflow-y-auto pb-nav" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <Outlet />
       </main>
-      <FeedbackButton />
+      {/* Feedback i check-in se ukládají k účtu — host je nevidí. */}
+      {!isGuest && <FeedbackButton />}
       {/* Týdenní check-in (feedback 13. 10.) */}
-      <WeeklyCheckinHost />
+      {!isGuest && <WeeklyCheckinHost />}
       <BottomNav />
     </div>
   );

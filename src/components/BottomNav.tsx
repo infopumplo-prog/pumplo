@@ -3,11 +3,21 @@ import { motion } from 'framer-motion';
 import { Home, MapPin, BarChart3, User, Dumbbell } from 'lucide-react';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useTranslation } from 'react-i18next';
+import { useGuest } from '@/contexts/GuestContext';
+import { guestNavAction } from '@/lib/guestMode';
 
 const BottomNav = () => {
   const location = useLocation();
   const { unreadCount } = useUnreadMessageCount();
   const { t } = useTranslation();
+  const { isGuest, requireAccount } = useGuest();
+
+  // Host: Tréninky a Mapa fungují, ostatní sekce otevřou registraci (feedback 13. 10.).
+  const guardGuest = (path: string) => (e: React.MouseEvent) => {
+    if (!isGuest || guestNavAction(path) === 'navigate') return;
+    e.preventDefault();
+    requireAccount(path);
+  };
 
   const navItems = [
     // Domů uprostřed (David 8. 10.), vedle nová sekce Tréninky.
@@ -35,6 +45,7 @@ const BottomNav = () => {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  onClick={guardGuest(item.path)}
                   data-coach={item.coach}
                   aria-label={item.label}
                   className="flex flex-col items-center justify-center flex-1 h-full relative group [-webkit-tap-highlight-color:transparent]"
@@ -58,6 +69,7 @@ const BottomNav = () => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={guardGuest(item.path)}
                 data-coach={item.coach}
                 aria-label={item.label}
                 className="flex flex-col items-center justify-center flex-1 h-full min-w-[44px] relative group py-1.5 transition-transform active:scale-95 [-webkit-tap-highlight-color:transparent]"

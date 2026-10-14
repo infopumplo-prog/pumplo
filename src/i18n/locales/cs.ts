@@ -2927,6 +2927,19 @@ const cs = {
   'admin.checkins_avg_training': 'tréninky',
   'admin.checkins_hardest': 'Nejtěžší',
   'admin.checkins_app': 'Appka',
+  // Režim hosta — vyzkoušet bez registrace (feedback 13. 10.)
+  'guest.try_without_signup': 'Vyzkoušet bez registrace',
+  'guest.try_hint': 'Prohlédni si tréninky od trenérů. Účet si založíš, až budeš chtít cvičit.',
+  'guest.banner_text': 'Prohlížíš bez účtu',
+  'guest.banner_cta': 'Založit účet',
+  'guest.sheet_title': 'Pro trénink potřebuješ účet',
+  'guest.sheet_desc': 'Zabere to 20 vteřin. Dotazník můžeš vyplnit později.',
+  'guest.continue_email': 'Pokračovat e-mailem',
+  'guest.create_account': 'Vytvořit účet',
+  'guest.creating': 'Vytvářím účet…',
+  'guest.questionnaire_link': 'Chci plán na míru — vyplnit dotazník',
+  'guest.have_account': 'Už mám účet — přihlásit se',
+  'guest.register_failed': 'Registrace se nepovedla. Zkus to znovu.',
 };
 
 export default cs;

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { openAppOrStore } from '@/lib/appRedirect';
+import { useGuest } from '@/contexts/GuestContext';
 import { Capacitor } from '@capacitor/core';
 import { adaptPlanToGym, coverFor, localizedText } from '@/lib/publicWorkouts';
 
@@ -82,6 +83,7 @@ const SharedPlan = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isGuest, requireAccount } = useGuest();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -257,8 +259,8 @@ const SharedPlan = () => {
   const handleLoginAndSave = () => {
     // Rozdělané uložení si pamatujeme vždy — přežije přihlášení i registraci.
     pendingStore.set(token!);
-    // V nativní appce: přihlásit a vrátit se sem (auto-uložení nahoře).
-    if (Capacitor.isNativePlatform()) { navigate(`/auth?redirect=/plan/${token}`); return; }
+    // Host / nativní appka: rychlá registrace v sheetu, pak zpět sem (auto-uložení nahoře) — feedback 13. 10.
+    if (isGuest || Capacitor.isNativePlatform()) { requireAccount(`/plan/${token}`); return; }
     // Mobilní web: zkusit otevřít appku (universal/app link), jinak obchod.
     if (openAppOrStore(`plan/${token}`)) return;
     // Desktop: web přihlášení.

@@ -6,9 +6,11 @@ import davidPhoto from '@/assets/david-benisek.png';
 
 interface OnboardingTrainerWelcomeProps {
   onStart: () => void;
+  /** „Vyzkoušet bez registrace“ — prohlížení bez účtu (feedback 13. 10.). */
+  onTryAsGuest?: () => void;
 }
 
-const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) => {
+const OnboardingTrainerWelcome = ({ onStart, onTryAsGuest }: OnboardingTrainerWelcomeProps) => {
   const { t } = useTranslation();
 
   return (
@@ -51,6 +53,19 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
         {t('onboarding.trainer_welcome_start')}
         <ChevronRight className="w-5 h-5" />
       </Button>
+
+      {onTryAsGuest && (
+        <>
+          <Button
+            variant="outline"
+            onClick={onTryAsGuest}
+            className="w-full h-12 text-base font-semibold rounded-xl mt-3"
+          >
+            {t('guest.try_without_signup')}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2 px-2">{t('guest.try_hint')}</p>
+        </>
+      )}
     </motion.div>
   );
 };
