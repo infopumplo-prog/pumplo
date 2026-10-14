@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 const Privacy = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,8 +123,14 @@ const Privacy = () => {
           </p>
         </section>
 
+        {/* ČEKÁ NA SCHVÁLENÍ DAVIDA — týdenní check-in (feedback 13. 10.), text v i18n privacy.checkin_* */}
+        <section id="checkin" className="space-y-3 scroll-mt-20">
+          <h2 className="text-base font-bold">{t('privacy.checkin_title')}</h2>
+          <p className="text-muted-foreground">{t('privacy.checkin_body')}</p>
+        </section>
+
         <section className="space-y-3">
-          <h2 className="text-base font-bold">9. Kontakt</h2>
+          <h2 className="text-base font-bold">10. Kontakt</h2>
           <p className="text-muted-foreground">
             Pro uplatnění práv nebo dotazy ohledně zpracování osobních údajů nás kontaktujte na{' '}
             <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>.

@@ -1360,6 +1360,40 @@ export type Database = {
           },
         ]
       }
+      // Týdenní check-in (feedback 13. 10.) — migrace 20261014_weekly_checkins.sql
+      weekly_checkins: {
+        Row: {
+          id: string
+          user_id: string
+          week_start: string
+          mood: number
+          training: number
+          hardest: string | null
+          app_feedback: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          week_start: string
+          mood: number
+          training: number
+          hardest?: string | null
+          app_feedback?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          week_start?: string
+          mood?: number
+          training?: number
+          hardest?: string | null
+          app_feedback?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_gyms: {

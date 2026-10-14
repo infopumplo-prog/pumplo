@@ -18,7 +18,7 @@ interface SetHistory {
   estimated1RM: number;
 }
 
-interface PersonalRecord {
+export interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
   exerciseNameEn?: string | null;
