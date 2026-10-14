@@ -929,6 +929,7 @@ export type Database = {
           current_day_index: number | null
           current_step: number | null
           current_streak: number | null
+          custom_equipment: string[] | null
           equipment_preference: string | null
           first_name: string | null
           gender: string | null
@@ -970,6 +971,7 @@ export type Database = {
           current_day_index?: number | null
           current_step?: number | null
           current_streak?: number | null
+          custom_equipment?: string[] | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
@@ -1011,6 +1013,7 @@ export type Database = {
           current_day_index?: number | null
           current_step?: number | null
           current_streak?: number | null
+          custom_equipment?: string[] | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null

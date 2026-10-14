@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
+import { sanitizeCustomEquipment, usesCustomEquipment } from '@/lib/customEquipment';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
@@ -304,7 +305,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     const shouldRegenerate = Boolean(primaryGoal) && (!activePlan || planInputsChanged);
 
     if (shouldRegenerate && primaryGoal) {
-      const selectedGymId = profile?.selected_gym_id;
+      const selectedGymId = profile?.selected_gym_id ?? null;
+      // Bez posilovny generujeme z vlastního vybavení (feedback 13. 10.)
+      const ownEquipment = usesCustomEquipment(profile) ? sanitizeCustomEquipment(profile?.custom_equipment) : [];
 
       // Deaktivovat stávající plán — stavíme nový
       if (activePlan?.id) {
@@ -314,7 +317,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           .eq('id', activePlan.id);
       }
 
-      if (selectedGymId && userLevel) {
+      if ((selectedGymId || ownEquipment.length > 0) && userLevel) {
         const planId = await generateWorkoutPlan(
           selectedGymId,
           primaryGoal,
@@ -323,6 +326,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           equipmentPreference,
           trainingDuration,
           trainingDays, // předat dny → generátor odvodí správný split (dřív chybělo)
+          undefined,
+          undefined,
+          selectedGymId ? null : ownEquipment,
         );
 
         if (planId) {

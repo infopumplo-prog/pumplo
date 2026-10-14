@@ -29,6 +29,8 @@ export interface UserProfile {
   gym_license_count: number;
   user_level: 'beginner' | 'intermediate' | 'advanced' | null;
   selected_gym_id: string | null;
+  /** Vlastní vybavení bez posilovny (feedback 13. 10.), viz lib/customEquipment */
+  custom_equipment?: string[] | null;
   current_day_index: number;
   // Streak fields
   current_streak: number;

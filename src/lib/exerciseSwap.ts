@@ -64,15 +64,21 @@ export async function fetchGymBoundAlternatives(opts: {
   excludeIds: string[];
   gymId: string;
   baseExerciseId?: string | null;
+  /** Hotová množina strojů (režim vlastního vybavení, feedback 13. 10.) — pak se gym_machines nečtou. */
+  machineIds?: Set<string>;
 }): Promise<SwapCandidate[]> {
   const { primaryRole, isCardio, excludeIds, gymId, baseExerciseId } = opts;
   if (!isCardio && !primaryRole) return [];
 
-  const { data: gymMachines } = await supabase
-    .from('gym_machines')
-    .select('machine_id')
-    .eq('gym_id', gymId);
-  const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
+  let machineIds = opts.machineIds;
+  if (!machineIds) {
+    const { data: gymMachines } = await supabase
+      .from('gym_machines')
+      .select('machine_id')
+      .eq('gym_id', gymId);
+    machineIds = new Set((gymMachines || []).map(m => m.machine_id));
+  }
+  const available = machineIds;
 
   // Svaly základního cviku — pro pojistku partie (horní/dolní tělo). Nezablokuje
   // nic u kardia; když je neznáme, filtr se neuplatní.
@@ -85,7 +91,7 @@ export async function fetchGymBoundAlternatives(opts: {
 
   let query = supabase
     .from('exercises')
-    .select('id, name, name_en, primary_role, machine_id, category, video_path, primary_muscles')
+    .select('id, name, name_en, primary_role, machine_id, secondary_machine_id, category, video_path, primary_muscles')
     .eq('allowed_phase', 'main')
     .is('owner_id', null); // custom cviky NIKDY do Pumplo tréninku ani jako alternativa (i kdyby admin doplnil role)
   query = isCardio ? query.eq('category', 'cardio') : query.eq('primary_role', primaryRole!);
@@ -95,7 +101,10 @@ export async function fetchGymBoundAlternatives(opts: {
 
   return candidates.filter(c => {
     if (excludeIds.includes(c.id)) return false;
-    if (c.machine_id && !machineIds.has(c.machine_id)) return false;
+    if (c.machine_id && !available.has(c.machine_id)) return false;
+    // Vlastní vybavení: i vedlejší stroj (osa k half racku) musí být k dispozici
+    const secondary = (c as { secondary_machine_id?: string | null }).secondary_machine_id;
+    if (opts.machineIds && secondary && !available.has(secondary)) return false;
     // Pojistka: nikdy nenabídnout čistě dolní cvik k čistě hornímu a naopak.
     if (baseRegions.size && regionConflict(baseRegions, regionsOf((c as { primary_muscles: string[] | null }).primary_muscles))) return false;
     return true;

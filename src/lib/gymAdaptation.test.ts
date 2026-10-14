@@ -22,6 +22,7 @@ const META: Record<string, ExerciseMeta> = {
   bench:   { id: 'bench',   name: 'Bench press',              machine_id: 'm-bench', category: 'strength', primary_role: 'horizontal_push', primary_muscles: ['chest'] },
   pushup:  { id: 'pushup',  name: 'Klik',                      machine_id: null,      category: 'strength', primary_role: 'horizontal_push', primary_muscles: ['chest'] },
   bridge:  { id: 'bridge',  name: 'Hip thrust s osou',         machine_id: 'm-bar',   category: 'strength', primary_role: 'hinge', primary_muscles: ['glutes', 'hamstrings'] },
+  squat:   { id: 'squat',   name: 'Dřep s osou v racku',       machine_id: 'm-rack', secondary_machine_id: 'm-bar', category: 'strength', primary_role: 'hinge', primary_muscles: ['glutes'] },
   rdl:     { id: 'rdl',     name: 'Rumunský mrtvý tah',        machine_id: 'm-bar',   category: 'strength', primary_role: 'hinge', primary_muscles: ['hamstrings', 'back'] },
 };
 
@@ -100,5 +101,26 @@ describe('přizpůsobení posilovně', () => {
     );
     expect(best?.id).toBe('a');
     expect(pickBestAlternative([], ['glutes'], () => [])).toBeNull();
+  });
+});
+
+// Režim vlastního vybavení (feedback 13. 10.): cvik potřebuje i vedlejší stroj
+describe('přizpůsobení vlastnímu vybavení', () => {
+  it('bez vyžadování vedlejšího stroje (posilovny) zůstane cvik beze změny', async () => {
+    const r = await adaptExercisesToGym([ex('squat', 'Dřep s osou v racku')], 'gym', deps(['m-rack']));
+    expect(r.exercises.map(e => e.exerciseId)).toEqual(['squat']);
+  });
+
+  it('s requireSecondaryMachine se cvik bez osy nahradí nebo vynechá', async () => {
+    const swapped = await adaptExercisesToGym([ex('squat', 'Dřep s osou v racku')], 'custom', deps(['m-rack'], { squat: ['pushup'] }), { requireSecondaryMachine: true });
+    expect(swapped.exercises.map(e => e.exerciseId)).toEqual(['pushup']);
+    const dropped = await adaptExercisesToGym([ex('squat', 'Dřep s osou v racku')], 'custom', deps(['m-rack']), { requireSecondaryMachine: true });
+    expect(dropped.exercises).toEqual([]);
+    expect(dropped.unresolved).toEqual(['Dřep s osou v racku']);
+  });
+
+  it('s osou i rackem cvik zůstane', async () => {
+    const r = await adaptExercisesToGym([ex('squat', 'Dřep s osou v racku')], 'custom', deps(['m-rack', 'm-bar']), { requireSecondaryMachine: true });
+    expect(r.exercises.map(e => e.exerciseId)).toEqual(['squat']);
   });
 });

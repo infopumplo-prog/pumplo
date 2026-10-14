@@ -583,6 +583,7 @@ const Home = () => {
                     <motion.div variants={itemVariants} ref={startButtonRef}>
                       <StartWorkoutButton
                         selectedGymId={profile?.selected_gym_id || null}
+                        customEquipment={profile?.custom_equipment ?? null}
                         className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
                       />
                     </motion.div>

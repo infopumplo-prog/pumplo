@@ -62,7 +62,7 @@ export const useWorkoutHistory = () => {
       id: sessionId,
       user_id: user.id,
       plan_id: data.planId,
-      gym_id: data.gymId,
+      gym_id: data.gymId || null, // bez posilovny (feedback 13. 10.) prázdné → null
       day_letter: data.dayLetter,
       goal_id: data.goalId,
       started_at: data.startedAt.toISOString(),

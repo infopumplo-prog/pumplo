@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Check, X, Building2 } from 'lucide-react';
+import { MapPin, Check, X, Building2, Home, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublishedGyms } from '@/hooks/usePublishedGyms';
@@ -9,6 +9,8 @@ import { getTodayOpeningStatus } from '@/lib/gymUtils';
 import { cn } from '@/lib/utils';
 import { OpeningHours } from '@/hooks/useGym';
 import { getCachedFileUrl } from '@/lib/videoCache';
+import { CustomEquipmentPicker } from '@/components/workout/CustomEquipmentPicker';
+import { sanitizeCustomEquipment } from '@/lib/customEquipment';
 
 /** Logo posilovny: z telefonu (cache), jinak ze sítě; když se nenačte, ikona místo rozbitého obrázku. */
 const GymLogo = ({ url, name }: { url: string; name: string }) => {
@@ -28,12 +30,22 @@ interface GymSelectorProps {
   onSelect: (gymId: string) => void;
   onCancel: () => void;
   selectedGymId?: string | null;
+  /**
+   * „Nejsem v žádné z těchto posiloven" (feedback 13. 10.) — bez tohoto propu se
+   * volba nezobrazí (např. vlastní plány, které se přizpůsobují konkrétní posilovně).
+   */
+  onSelectNoGym?: (equipment: string[]) => void | Promise<void>;
+  /** Uložené vlastní vybavení z profilu (předvyplní picker). */
+  customEquipment?: string[] | null;
 }
 
-export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorProps) => {
+export const GymSelector = ({ onSelect, onCancel, selectedGymId, onSelectNoGym, customEquipment }: GymSelectorProps) => {
   const { t } = useTranslation();
   const { gyms, isLoading } = usePublishedGyms();
   const [selected, setSelected] = useState<string | null>(selectedGymId || null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [isSavingEquipment, setIsSavingEquipment] = useState(false);
+  const hasCustomEquipment = !selectedGymId && sanitizeCustomEquipment(customEquipment).length > 0;
 
   // Sort order: Premium (featured) > open > closed, then alphabetical
   const sortedGyms = [...gyms].sort((a, b) => {
@@ -74,6 +86,10 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
 
       {/* Gym List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-32">
+        {/* Co tu dělat (feedback 13. 10.: „uživatelé ani neví, co mají dělat") */}
+        <p className="text-sm text-foreground/80 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2.5">
+          {t('nogym.explainer')}
+        </p>
         {isLoading ? (
           <>
             <Skeleton className="h-20 w-full rounded-xl" />
@@ -164,7 +180,42 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId }: GymSelectorPr
             );
           })
         )}
+        {onSelectNoGym && (
+          <button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className={cn(
+              "w-full p-4 rounded-xl border-2 border-dashed transition-all text-left flex items-center gap-3",
+              hasCustomEquipment ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+            )}
+          >
+            <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Home className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold">{hasCustomEquipment ? t('nogym.start_here') : t('nogym.not_in_list')}</h3>
+              <p className="text-xs text-muted-foreground">{t('nogym.not_in_list_desc')}</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          </button>
+        )}
       </div>
+
+      {showPicker && onSelectNoGym && (
+        <CustomEquipmentPicker
+          initial={customEquipment}
+          isSaving={isSavingEquipment}
+          onCancel={() => setShowPicker(false)}
+          onSave={async (equipment) => {
+            setIsSavingEquipment(true);
+            try {
+              await onSelectNoGym(equipment);
+            } finally {
+              setIsSavingEquipment(false);
+            }
+          }}
+        />
+      )}
 
       {/* Confirm Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border safe-bottom">
