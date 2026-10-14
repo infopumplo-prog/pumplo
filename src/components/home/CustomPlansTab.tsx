@@ -2,15 +2,24 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Plus, Calendar, ChevronRight, Trash2, Dumbbell, Play, Globe } from 'lucide-react';
+import { Plus, Calendar, ChevronRight, Trash2, Dumbbell, Play, Globe, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCustomPlans } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout, PausedCustomWorkoutState } from '@/hooks/usePausedCustomWorkout';
-import { cn } from '@/lib/utils';
+import { cycleLetter } from '@/lib/customPlanCycle';
+import { customDayName } from '@/components/workout/CustomPlanDayChips';
+import type { CustomPlanSummary } from '@/hooks/useCustomPlans';
 
 const CustomPlansTab = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // „Další: B · Pull“ — den kruhu po naposledy odcvičeném (feedback 13. 10.).
+  const nextDayText = (next: NonNullable<CustomPlanSummary['next_day']>) => {
+    const letter = cycleLetter(next.index);
+    const name = customDayName(next, i18n.language);
+    return name ? `${letter} · ${name}` : t('custom_plan.day_letter_name', { letter });
+  };
   const { plans, isLoading, createPlan, deletePlan } = useCustomPlans();
   const { pausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const [showNewPlan, setShowNewPlan] = useState(false);
@@ -166,6 +175,12 @@ const CustomPlansTab = () => {
                     <Calendar className="w-3 h-3" />
                     {plan.day_count} {plan.day_count === 1 ? t('messages.day_singular') : plan.day_count < 5 ? t('messages.day_2_4') : t('messages.day_plural')}
                   </p>
+                  {plan.next_day && (
+                    <p className="text-xs font-semibold text-primary flex items-center gap-1 mt-0.5 min-w-0">
+                      <Repeat className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{t('custom_plan.next_day', { day: nextDayText(plan.next_day) })}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
