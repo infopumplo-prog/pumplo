@@ -30,6 +30,8 @@ export interface OnboardingDraft {
   height: string;
   weight: string;
   injuries: string[];
+  /** Nepovinný popis zranění (feedback 13. 10.) — zdravotní údaj, jen lokálně do uložení profilu. */
+  injuryNote?: string;
   equipmentPreference: string | null;
   selectedGymId: string | null;
   splitOverride?: SplitType | null;

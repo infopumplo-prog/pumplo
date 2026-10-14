@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 const Privacy = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,6 +51,11 @@ const Privacy = () => {
             <li>• <strong className="text-foreground">Tréninkové záznamy:</strong> provedené cviky, váhy, časy, série</li>
             <li>• <strong className="text-foreground">Technické údaje:</strong> typ zařízení, verze aplikace (pro diagnostiku chyb)</li>
           </ul>
+          {/* ČEKÁ NA SCHVÁLENÍ DAVIDA — volný popis zranění, zdravotní údaj (feedback 13. 10.) */}
+          <div className="space-y-1">
+            <h3 className="font-semibold">{t('privacy.injury_note_title')}</h3>
+            <p className="text-muted-foreground">{t('privacy.injury_note_body')}</p>
+          </div>
         </section>
 
         <section className="space-y-3">

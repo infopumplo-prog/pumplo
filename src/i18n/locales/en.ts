@@ -576,7 +576,7 @@ const en = {
   'onboarding.trainer_tip_highlight': 'consulting a trainer',
   'onboarding.trainer_tip_1': 'The trainer will assess your limitations and suggest exercise modifications',
   'onboarding.trainer_tip_2': 'They will help you with technique to prevent further injuries',
-  'onboarding.trainer_tip_3': 'Find trainers in your gym details in the Trainers section',
+  'onboarding.trainer_tip_3': 'Find all trainers in your Profile under Trainers',
   'onboarding.trainer_tip_continue': 'Got it, continue',
   // Onboarding 2.0 (8 Oct 2026) — chapters, new questions, trainer reactions, plan choice
   'onboarding.chapter_you': 'About you',
@@ -2818,6 +2818,26 @@ const en = {
   'public_workouts.adapts_note': 'Exercises adapt to your gym’s machines when you save.',
   'public_workouts.adapted_to_gym_one': 'Adapted to your gym: {{count}} exercise swapped for an available machine.',
   'public_workouts.adapted_to_gym_other': 'Adapted to your gym: {{count}} exercises swapped for available machines.',
+  // All-trainers page + injury note (feedback 13. 10.)
+  'trainers.title': 'Trainers',
+  'trainers.subtitle': 'Trainers from your gym, the Pumplo team and other gyms',
+  'trainers.back': 'Back',
+  'trainers.my_gym': 'your gym',
+  'trainers.call': 'Call',
+  'trainers.email': 'Email',
+  'trainers.profile': 'Profile',
+  'trainers.empty': 'No trainers here yet.',
+  'trainers.load_failed': 'Could not load trainers. Please try again.',
+  'trainers.injury_intro_title': 'You have an injury — we recommend starting with a trainer',
+  'trainers.injury_intro_body': 'A trainer will assess your limitation, adjust exercises and watch your technique. Your Pumplo plan already takes the injury into account.',
+  'trainers.injury_intro_skip': 'Not now, continue to the app',
+  'trainers.intro_dismiss': 'Close',
+  'profile.trainers': 'Trainers',
+  'onboarding.injury_note_label': 'Describe your injury (optional)',
+  'onboarding.injury_note_placeholder': 'E.g. after knee surgery, hurts when squatting…',
+  'onboarding.injury_note_hint': 'Health data — used only to tailor your plan. You can delete it anytime in your profile.',
+  'privacy.injury_note_title': 'Free-text injury description',
+  'privacy.injury_note_body': 'The optional injury description you can write in the questionnaire is health data (a special category of personal data under Art. 9 GDPR). We process it only on the basis of your explicit consent, given by filling it in (Art. 9(2)(a) GDPR), and solely to tailor your training plan. You can edit or delete the text at any time in Profile → Edit questionnaire; deleting the text or choosing “I have no injury” removes it and withdraws your consent.',
 };
 
 export default en;

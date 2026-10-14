@@ -1,14 +1,21 @@
 import { INJURIES_LIST } from '@/lib/onboardingTypes';
 import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Textarea } from '@/components/ui/textarea';
+import { FREE_TEXT_MAX, clampFreeText } from '@/lib/onboardingFlow';
+import { hasRealInjuries } from '@/lib/trainersDirectory';
 
 interface OnboardingInjuriesStepProps {
   value: string[];
   onChange: (injuries: string[]) => void;
+  /** Nepovinný popis zranění (feedback 13. 10.) — bez handleru se pole neukáže. */
+  note?: string;
+  onNoteChange?: (note: string) => void;
 }
 
-const OnboardingInjuriesStep = ({ value, onChange }: OnboardingInjuriesStepProps) => {
+const OnboardingInjuriesStep = ({ value, onChange, note = '', onNoteChange }: OnboardingInjuriesStepProps) => {
   const { t } = useTranslation();
+  const showNote = !!onNoteChange && hasRealInjuries(value);
 
   const handleInjuryToggle = (injuryId: string) => {
     if (injuryId === 'none') {
@@ -59,6 +66,25 @@ const OnboardingInjuriesStep = ({ value, onChange }: OnboardingInjuriesStepProps
           </button>
         ))}
       </div>
+      {/* Volný popis zranění (feedback 13. 10.) — zdravotní údaj, jen dobrovolně */}
+      {showNote && (
+        <div className="space-y-1.5">
+          <label htmlFor="injury-note" className="text-sm font-medium">{t('onboarding.injury_note_label')}</label>
+          <Textarea
+            id="injury-note"
+            value={note}
+            onChange={(e) => onNoteChange?.(clampFreeText(e.target.value))}
+            maxLength={FREE_TEXT_MAX}
+            rows={3}
+            placeholder={t('onboarding.injury_note_placeholder')}
+            className="rounded-xl"
+          />
+          <div className="flex justify-between gap-3 text-[11px] text-muted-foreground">
+            <span>{t('onboarding.injury_note_hint')}</span>
+            <span className="shrink-0">{note.length}/{FREE_TEXT_MAX}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency, resolveSplit, SplitType, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
+import { hasRealInjuries as hasRealInjuriesIn } from '@/lib/trainersDirectory';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -53,6 +54,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  // Nepovinný popis zranění (feedback 13. 10.) — mazatelný smazáním textu nebo volbou „bez zranění“.
+  const [injuryNote, setInjuryNote] = useState('');
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [hasJustCompleted, setHasJustCompleted] = useState(false);
@@ -85,6 +88,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setHeight(profile.height_cm?.toString() || '');
       setWeight(profile.weight_kg?.toString() || '');
       setInjuries(profile.injuries || []);
+      setInjuryNote(profile.injury_note || '');
       setEquipmentPreference(profile.equipment_preference);
     }
   }, [profile, open, hasJustCompleted, isEditMode]);
@@ -122,6 +126,14 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     return true;
   };
 
+  // Popis zranění zvlášť a neblokujícně (bez migrace 20261014_injury_note by shodil celé uložení).
+  const saveInjuryNote = async () => {
+    const next = hasRealInjuriesIn(injuries) ? injuryNote.trim() || null : null;
+    if (next === (profile?.injury_note ?? null)) return;
+    const res = await updateProfile({ injury_note: next });
+    if (!res.success) console.error('Injury note not saved:', res.error);
+  };
+
   const handleClose = async (isOpen: boolean) => {
     // Během generování plánu nejde drawer zavřít (reload/zavření by nechalo rozdělaný stav)
     if (isCompleting) return;
@@ -151,6 +163,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         current_step: currentStep,
         onboarding_completed: allValid,
       });
+      if (saveResult.success) await saveInjuryNote();
 
       await refetch();
 
@@ -254,6 +267,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       });
       return;
     }
+    await saveInjuryNote();
 
     // 2. Check if there's an active workout plan
     const { data: userData } = await supabase.auth.getUser();
@@ -428,7 +442,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           />
         );
       case 5:
-        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} />;
+        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} note={injuryNote} onNoteChange={setInjuryNote} />;
       case 6:
         return <OnboardingEquipmentStep value={equipmentPreference} onChange={setEquipmentPreference} />;
       default:

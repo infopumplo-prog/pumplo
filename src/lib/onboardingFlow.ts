@@ -3,6 +3,7 @@
 // Čistá logika bez Reactu — pořadí a pravidla jdou otestovat bez UI.
 
 import type { TrainingGoalId, UserLevel } from '@/lib/trainingGoals';
+import { TRAINERS_INJURY_INTRO_ROUTE, shouldRouteToTrainers } from '@/lib/trainersDirectory';
 
 export type OnboardingStepId =
   | 'name'
@@ -86,7 +87,7 @@ export const EXPECTATIONS = ['custom_plan', 'guidance', 'progress', 'consistency
 export type Motivation = (typeof MOTIVATIONS)[number];
 export type Expectation = (typeof EXPECTATIONS)[number];
 
-/** Volné odpovědi: krátké, ať dotazník zůstane rychlý. Zranění volný text nemají (David 8. 10.). */
+/** Volné odpovědi: krátké, ať dotazník zůstane rychlý. Zranění mají nepovinný popis od feedbacku 13. 10. (injury_note). */
 export const FREE_TEXT_MAX = 300;
 export const clampFreeText = (s: string): string => s.slice(0, FREE_TEXT_MAX);
 
@@ -94,8 +95,14 @@ export const clampFreeText = (s: string): string => s.slice(0, FREE_TEXT_MAX);
 export type PlanChoice = 'pumplo' | 'trainer' | 'own';
 export const PLAN_CHOICES: PlanChoice[] = ['pumplo', 'trainer', 'own'];
 
-/** Kam po registraci. Vlastní plán potřebuje id nově založeného plánu. */
-export const routeAfterRegistration = (choice: PlanChoice, ownPlanId?: string | null): string => {
+/** Kam po registraci. Vlastní plán potřebuje id nově založeného plánu.
+ *  Se skutečným zraněním rovnou na stránku trenérů (feedback 13. 10.). */
+export const routeAfterRegistration = (
+  choice: PlanChoice,
+  ownPlanId?: string | null,
+  injuries?: string[] | null,
+): string => {
+  if (shouldRouteToTrainers(injuries)) return TRAINERS_INJURY_INTRO_ROUTE;
   if (choice === 'trainer') return '/workouts';
   if (choice === 'own' && ownPlanId) return `/custom-plan/${ownPlanId}`;
   return '/';

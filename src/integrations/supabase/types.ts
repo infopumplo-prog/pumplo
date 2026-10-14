@@ -936,6 +936,7 @@ export type Database = {
           height_cm: number | null
           id: string
           injuries: string[] | null
+          injury_note: string | null
           last_name: string | null
           max_streak: number | null
           accent_color: string | null
@@ -976,6 +977,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           injuries?: string[] | null
+          injury_note?: string | null
           last_name?: string | null
           max_streak?: number | null
           accent_color?: string | null
@@ -1016,6 +1018,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           injuries?: string[] | null
+          injury_note?: string | null
           last_name?: string | null
           max_streak?: number | null
           accent_color?: string | null

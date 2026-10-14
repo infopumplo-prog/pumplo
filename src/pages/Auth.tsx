@@ -93,6 +93,8 @@ const Auth = () => {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  // Nepovinný popis zranění (feedback 13. 10.)
+  const [injuryNote, setInjuryNote] = useState('');
   // Ruční volba splitu (Daniel, 7. 8.): null = automatika podle frekvence.
   const [splitOverride, setSplitOverride] = useState<SplitType | null>(null);
   const [showTrainerTip, setShowTrainerTip] = useState(false);
@@ -151,6 +153,7 @@ const Auth = () => {
     setHeight(draft.height);
     setWeight(draft.weight);
     setInjuries(draft.injuries);
+    setInjuryNote(draft.injuryNote ?? '');
     setEquipmentPreference(draft.equipmentPreference);
     setSplitOverride(draft.splitOverride ?? null);
     setMotivations((draft.motivations ?? []).filter((m): m is Motivation => (MOTIVATIONS as readonly string[]).includes(m)));
@@ -236,7 +239,7 @@ const Auth = () => {
   const currentDraft = () => ({
     firstName, lastName, regEmail,
     primaryGoal, userLevel, trainingDays, preferredTime, trainingDuration,
-    gender, age, height, weight, injuries, equipmentPreference, selectedGymId,
+    gender, age, height, weight, injuries, injuryNote, equipmentPreference, selectedGymId,
     splitOverride,
     motivations, motivationText, expectations, expectationText, planChoice,
     accentColor: accent,
@@ -306,7 +309,7 @@ const Auth = () => {
 
       // 9. All done - release the registration lock and go where the person chose
       setIsRegistering(false);
-      navigate(routeAfterRegistration(planChoice, saved.ownPlanId));
+      navigate(routeAfterRegistration(planChoice, saved.ownPlanId, injuries));
     } catch (err) {
       console.error('Registration error:', err);
       setError(t('auth.something_wrong'));
@@ -476,7 +479,7 @@ const Auth = () => {
           />
         );
       case 'injuries':
-        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} />;
+        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} note={injuryNote} onNoteChange={setInjuryNote} />;
       case 'equipment':
         return <OnboardingEquipmentStep value={equipmentPreference} onChange={setEquipmentPreference} />;
       case 'register':

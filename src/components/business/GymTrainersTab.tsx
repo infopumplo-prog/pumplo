@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 
 export interface Trainer {
   id: string;
+  /** Posilovna trenéra — pro chat ze stránky všech trenérů (feedback 13. 10.). */
+  gym_id?: string;
   name: string;
   photo: string;
   bio: string;

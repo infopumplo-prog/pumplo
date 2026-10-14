@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveSplit } from '@/lib/trainingGoals';
 import { ONBOARDING_TOTAL_STEPS } from '@/lib/onboardingTypes';
 import type { OnboardingDraft } from '@/lib/onboardingDraft';
+import { hasRealInjuries } from '@/lib/trainersDirectory';
+import { clampFreeText } from '@/lib/onboardingFlow';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -33,6 +35,8 @@ export async function persistOnboarding(
   const motivations = d.motivations ?? [];
   const expectations = d.expectations ?? [];
   const planChoice = d.planChoice ?? 'pumplo';
+  // Popis zranění jen u skutečného zranění, jinak nic neukládat (feedback 13. 10., GDPR).
+  const injuryNote = hasRealInjuries(d.injuries) ? clampFreeText(d.injuryNote?.trim() ?? '') || null : null;
 
   // 1. Profile (retry: the signup trigger may not have created the row yet).
   let profileUpdated = false;
@@ -74,6 +78,13 @@ export async function persistOnboarding(
     }
   }
   if (!profileUpdated) return { ok: false };
+
+  // 1b. Popis zranění zvlášť a neblokujícně: bez migrace 20261014_injury_note by
+  // neznámý sloupec shodil celý zápis profilu a s ním registraci.
+  if (injuryNote) {
+    const { error } = await supabase.from('user_profiles').update({ injury_note: injuryNote }).eq('user_id', userId);
+    if (error) console.error('Injury note not saved:', error);
+  }
 
   // 2. Workout plan.
   if (d.primaryGoal) {
