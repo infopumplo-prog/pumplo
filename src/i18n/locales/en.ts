@@ -2590,6 +2590,7 @@ const en = {
   'onboarding.goal_general_fitness_detail_bullet_3': 'Rest 60–120 s between sets',
   'onboarding.goal_general_fitness_detail_bullet_4': 'Suitable as a foundation for any further goal',
   'onboarding.goal_general_fitness_detail_whoIsItFor': 'For those who want to be overall fit without narrow specialisation.',
+  'onboarding.trainer_welcome_short': "Answer a few questions and we'll build a plan made just for you.",
   'onboarding.trainer_welcome_quote1': "In 12 years I've trained dozens of clients from scratch to their first competitions. And I know the biggest problem isn't motivation —",
   'onboarding.trainer_welcome_emphasis': "it's a plan that doesn't fit.",
   'onboarding.trainer_welcome_quote2': "Answer a few questions. We'll build yours exactly to your needs.",

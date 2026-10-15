@@ -36,13 +36,10 @@ const OnboardingTrainerWelcome = ({ onStart, onTryAsGuest }: OnboardingTrainerWe
       <h3 className="text-xl font-bold">David Beníšek</h3>
       <p className="text-sm text-primary font-medium mt-0.5 mb-6">{t('onboarding.trainer_welcome_role')}</p>
 
-      <div className="bg-muted/60 rounded-2xl p-5 text-left mb-8 border border-border/40 w-full">
-        <p className="text-sm leading-relaxed text-foreground/90">
-          "{t('onboarding.trainer_welcome_quote1')}{' '}
-          <span className="font-semibold text-foreground">{t('onboarding.trainer_welcome_emphasis')}</span>
-        </p>
-        <p className="text-sm leading-relaxed text-foreground/90 mt-3">
-          {t('onboarding.trainer_welcome_quote2')}"
+      {/* Jen jedna věta — dřív byl úvod moc dlouhý (David 15. 10.) */}
+      <div className="bg-muted/60 rounded-2xl p-5 text-center mb-8 border border-border/40 w-full">
+        <p className="text-base leading-relaxed text-foreground">
+          "{t('onboarding.trainer_welcome_short')}"
         </p>
       </div>
 

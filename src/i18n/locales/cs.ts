@@ -2578,6 +2578,7 @@ const cs = {
   'onboarding.goal_general_fitness_detail_bullet_3': 'Odpočinek 60–120 s mezi sériemi',
   'onboarding.goal_general_fitness_detail_bullet_4': 'Vhodný jako základ pro jakýkoliv další cíl',
   'onboarding.goal_general_fitness_detail_whoIsItFor': 'Pro ty, kteří chtějí být celkově fit bez úzké specializace.',
+  'onboarding.trainer_welcome_short': "Zodpověz mi pár otázek a sestavíme ti plán přesně na míru.",
   'onboarding.trainer_welcome_quote1': 'Za 12 let jsem natrénoval desítky klientů od nuly až po první závody. A vím, že největší problém není motivace —',
   'onboarding.trainer_welcome_emphasis': 'je to plán, který nesedí.',
   'onboarding.trainer_welcome_quote2': 'Zodpověz mi pár otázek. Sestavíme ti ho přesně na míru.',
