@@ -218,3 +218,46 @@ export function sanitizeWeightInput(raw: string): string {
   if (!rest.length) return intPart;
   return `${intPart},${rest.join('').slice(0, 1)}`;
 }
+
+export interface CheckinTrendRow {
+  week_start: string;
+  mood: number | null;
+  training: number | null;
+  weight_kg: number | string | null;
+}
+
+export interface CheckinTrend {
+  points: { week: string; weight: number | null; mood: number | null; training: number | null }[];
+  firstWeight: number | null;
+  lastWeight: number | null;
+  weightDelta: number | null;
+  avgMood: number | null;
+  avgTraining: number | null;
+}
+
+/** Statistiky z check-inů (David 15. 10.): váha v čase + průměrná nálada a tréninky. */
+export function buildCheckinTrend(rows: CheckinTrendRow[]): CheckinTrend {
+  const points = [...rows]
+    .sort((a, b) => a.week_start.localeCompare(b.week_start))
+    .map(r => ({
+      week: r.week_start,
+      weight: r.weight_kg == null || r.weight_kg === '' ? null : Number(r.weight_kg),
+      mood: r.mood ?? null,
+      training: r.training ?? null,
+    }));
+  const weights = points.map(p => p.weight).filter((w): w is number => w != null && Number.isFinite(w));
+  const avg = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x != null);
+    return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
+  };
+  const firstWeight = weights.length ? weights[0] : null;
+  const lastWeight = weights.length ? weights[weights.length - 1] : null;
+  return {
+    points,
+    firstWeight,
+    lastWeight,
+    weightDelta: weights.length >= 2 ? Math.round((lastWeight! - firstWeight!) * 10) / 10 : null,
+    avgMood: avg(points.map(p => p.mood)),
+    avgTraining: avg(points.map(p => p.training)),
+  };
+}

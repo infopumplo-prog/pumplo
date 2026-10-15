@@ -14,6 +14,8 @@ import { MuscleBodySvg } from '@/components/workout/MuscleBodySvg';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { cn } from '@/lib/utils';
+import CheckinTrendsCard from '@/components/statistics/CheckinTrendsCard';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 type MetricKey = 'weight' | 'duration' | 'sets';
 type Period = 'today' | 'week' | 'month' | '3m' | 'all';
@@ -84,6 +86,7 @@ const Statistics = () => {
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
   const { stats, isLoading } = useStatistics();
+  const { profile } = useUserProfile();
 
   const METRICS: { key: MetricKey; label: string; unit: string; color: string }[] = [
     { key: 'weight', label: t('stats.volume'), unit: 'kg', color: 'hsl(var(--primary))' },
@@ -395,6 +398,11 @@ const Statistics = () => {
                 )}
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Týdenní check-in: váha v čase, nálada, tréninky (David 15. 10.) */}
+          <motion.div variants={itemVariants}>
+            <CheckinTrendsCard goal={profile?.primary_goal ?? null} />
           </motion.div>
 
           {/* Muscle distribution — body figure + top groups, for the period */}
