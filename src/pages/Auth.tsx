@@ -63,7 +63,8 @@ const Auth = () => {
   const gymIdFromQR = searchParams.get('gymId');
   // Z registračního sheetu hosta: ?mode=login = rovnou přihlášení, ?start=questionnaire = rovnou dotazník.
   const loginFirst = searchParams.get('mode') === 'login';
-  const skipWelcome = searchParams.get('start') === 'questionnaire';
+  // Host z „Vyplnit dotazník“: úvod trenéra ukázat (David 15. 10.), jen bez tlačítka „Vyzkoušet bez registrace“.
+  const fromGuest = searchParams.get('start') === 'questionnaire';
   // Registration first: almost everyone who opens this screen has just
   // installed the app and has no account yet. Landing them on a login form was
   // asking for a password they never set.
@@ -104,7 +105,7 @@ const Auth = () => {
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   // Matches the 'register' default above: the trainer welcome is the first thing
   // a new install sees, not a screen you have to switch modes to reach.
-  const [showTrainerWelcome, setShowTrainerWelcome] = useState(!loginFirst && !skipWelcome);
+  const [showTrainerWelcome, setShowTrainerWelcome] = useState(!loginFirst);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
@@ -861,7 +862,7 @@ const Auth = () => {
                 <>
                   <OnboardingTrainerWelcome
                     onStart={() => setShowTrainerWelcome(false)}
-                    onTryAsGuest={() => { enterGuestMode(); navigate(GUEST_HOME, { replace: true }); }}
+                    onTryAsGuest={fromGuest ? undefined : () => { enterGuestMode(); navigate(GUEST_HOME, { replace: true }); }}
                   />
                   <p className="text-center text-muted-foreground text-sm mt-8 pb-8">
                     {t('auth.have_account')}{' '}
