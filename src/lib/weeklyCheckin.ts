@@ -261,3 +261,6 @@ export function buildCheckinTrend(rows: CheckinTrendRow[]): CheckinTrend {
     avgTraining: avg(points.map(p => p.training)),
   };
 }
+
+/** Odkaz feedbacku z check-inu (user_feedback.responses) — admin podle něj pozná zdroj. */
+export const CHECKIN_FEEDBACK_SOURCE = 'weekly_checkin';

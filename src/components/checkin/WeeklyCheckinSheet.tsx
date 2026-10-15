@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Dumbbell, Flame, Scale, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
+import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatistics } from '@/hooks/useStatistics';
 import { cn } from '@/lib/utils';
-import { CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, sanitizeWeightInput, weekRange, weightChange } from '@/lib/weeklyCheckin';
+import { CHECKIN_FEEDBACK_SOURCE, CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, sanitizeWeightInput, weekRange, weightChange } from '@/lib/weeklyCheckin';
 
 // Týdenní check-in (feedback 13. 10.): souhrn týdne + 2 hodnocení 1–5 + 2 volné texty.
 
@@ -186,6 +187,27 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
       app_feedback: clampText(appFeedback),
       weight_kg: weightKg,
     }, { onConflict: 'user_id,week_start' });
+    // Zpětná vazba na appku jde i do běžného feedbacku (user_feedback) — v adminu má stav
+    // Nový / Řeší se jako ostatní (David 15. 10.). Jeden záznam na týden, opakované odeslání ho přepíše.
+    const feedbackText = clampText(appFeedback);
+    if (!error && feedbackText) {
+      const responses = {
+        source: CHECKIN_FEEDBACK_SOURCE, week_start: weekStart, mood, training,
+        hardest: clampText(hardest), weight_kg: weightKg,
+      };
+      (async () => {
+        const { data: existing } = await supabase.from('user_feedback').select('id')
+          .eq('user_id', user.id).eq('responses->>source', CHECKIN_FEEDBACK_SOURCE)
+          .eq('responses->>week_start', weekStart).limit(1).maybeSingle();
+        const res = existing?.id
+          ? await supabase.from('user_feedback').update({ message: feedbackText, responses } as never).eq('id', existing.id)
+          : await supabase.from('user_feedback').insert({
+              user_id: user.id, feedback_type: 'other', message: feedbackText, responses,
+              platform: Capacitor.getPlatform(), current_route: '/weekly-checkin',
+            } as never);
+        if (res.error) console.error('[weeklyCheckin] feedback mirror failed', res.error);
+      })();
+    }
     // Aktuální váha i do profilu (plán a statistiky počítají s profilem); neblokuje check-in.
     if (!error && weightKg != null) {
       supabase.from('user_profiles').update({ weight_kg: weightKg }).eq('user_id', user.id)
