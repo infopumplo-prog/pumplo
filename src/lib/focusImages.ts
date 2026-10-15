@@ -17,8 +17,8 @@
 //   focus-triceps.jpg     (zatím chybí → použije se focus-arms.jpg)
 //   focus-calves.jpg      lýtka
 //
-// Sada 15. 10. 2026: jednotný styl (světlá posilovna, denní světlo z oken, šedý beton),
-// vygenerováno v Higgsfieldu (Nano Banana), originály ve vaultu pumplo/assets/focus-2026-10-15-svetle.
+// Sada 15. 10. 2026: cviky z appky (goblet dřep, hip thrust, leg press, tlak s jednoručkami, stahování, tlak nad hlavu, bicepsový zdvih na kladce, zdvih kolen ve visu, běžecký pás, výpony na lýtka), vycentrované, světlá posilovna,
+// vygenerováno v Higgsfieldu (Nano Banana), originály ve vaultu pumplo/assets/focus-2026-10-15-cviky.
 //
 // Hodnota null = fotka zatím není, dlaždice ukáže ikonu na barvě appky.
 // Když soubor chybí nebo se nenačte, dlaždice taky spadne na ikonu (onError).
