@@ -10,7 +10,6 @@ import { readPlanChoice } from '@/lib/onboardingFlow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useGuest } from '@/contexts/GuestContext';
-import GuestBanner from '@/components/guest/GuestBanner';
 import { cn } from '@/lib/utils';
 import {
   WORKOUT_FOCUSES,
@@ -120,7 +119,6 @@ const PublicWorkouts = () => {
             <CoachHelpButton onClick={tour.openTour} />
           </div>
           <p className="text-sm text-muted-foreground">{t('public_workouts.subtitle')}</p>
-          <GuestBanner />
 
           <div className="mt-5 relative">
             <Search className="w-5 h-5 text-primary absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
