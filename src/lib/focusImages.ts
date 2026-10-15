@@ -17,8 +17,8 @@
 //   focus-triceps.jpg     (zatím chybí → použije se focus-arms.jpg)
 //   focus-calves.jpg      lýtka
 //
-// Sada 15. 10. 2026: jednotný styl (tmavá posilovna, boční světlo, neutrální barvy),
-// vygenerováno v Higgsfieldu (Nano Banana), originály ve vaultu pumplo/assets/focus-2026-10-15.
+// Sada 15. 10. 2026: jednotný styl (světlá posilovna, denní světlo z oken, šedý beton),
+// vygenerováno v Higgsfieldu (Nano Banana), originály ve vaultu pumplo/assets/focus-2026-10-15-svetle.
 //
 // Hodnota null = fotka zatím není, dlaždice ukáže ikonu na barvě appky.
 // Když soubor chybí nebo se nenačte, dlaždice taky spadne na ikonu (onError).
