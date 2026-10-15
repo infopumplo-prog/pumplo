@@ -95,7 +95,7 @@
        "udělej všechno kromě loga tmavší modrou") — proto tu jen v tmavém
        režimu tlumenější, tmavší modrá. Logo je statický obrázek, tuhle
        proměnnou vůbec nepoužívá, takže zůstane beze změny. */
-    --primary: 205 65% 42%;
+    --primary: 199 95% 48%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 20% 18%;
@@ -104,7 +104,7 @@
     --muted: 220 15% 20%;
     --muted-foreground: 215 15% 65%;
 
-    --accent: 205 65% 42%;
+    --accent: 199 95% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
@@ -118,7 +118,7 @@
 
     --border: 220 15% 20%;
     --input: 220 15% 20%;
-    --ring: 205 65% 42%;
+    --ring: 199 95% 48%;
 
     /* Na tmavém podkladu by původní navy splynula s pozadím — o dva odstíny výš. */
     --action: 220 38% 32%;
@@ -128,7 +128,7 @@
        výraznější a plochy tlumenější, jinak karty splynou s pozadím. */
     /* David 24. 9.: chce přesně stejnou modrou jako písmenko dne v pilulce
        "další trénink" (to je barva --primary) — žádný přechod dvou odstínů. */
-    --gradient-primary: linear-gradient(135deg, hsl(205 65% 42%), hsl(205 65% 42%));
+    --gradient-primary: linear-gradient(135deg, hsl(199 95% 48%), hsl(199 95% 42%));
     --gradient-hero: linear-gradient(180deg, hsl(var(--primary) / 0.14), transparent);
     --gradient-card: linear-gradient(145deg, hsl(220 20% 13%), hsl(220 20% 10%));
 
@@ -152,77 +152,77 @@
   [data-accent="pink"] {
     --secondary: 330 30% 95%;
     --secondary-foreground: 330 70% 35%;
-    --primary: 330 81% 60%;
-    --ring: 330 81% 60%;
-    --accent: 330 81% 50%;
-    --gradient-primary: linear-gradient(135deg, hsl(330 81% 60%), hsl(330 81% 50%));
+    --primary: 330 90% 56%;
+    --ring: 330 90% 56%;
+    --accent: 330 90% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 90% 56%), hsl(330 90% 46%));
   }
   .dark[data-accent="pink"] {
     --secondary-foreground: 330 55% 72%;
-    --primary: 330 62% 48%;
-    --ring: 330 62% 48%;
-    --accent: 330 62% 48%;
-    --gradient-primary: linear-gradient(135deg, hsl(330 62% 48%), hsl(330 62% 48%));
+    --primary: 330 88% 55%;
+    --ring: 330 88% 55%;
+    --accent: 330 88% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 88% 55%), hsl(330 88% 48%));
   }
   [data-accent="purple"] {
     --secondary: 262 30% 95%;
     --secondary-foreground: 262 60% 35%;
-    --primary: 262 83% 66%;
-    --ring: 262 83% 66%;
-    --accent: 262 70% 55%;
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 66%), hsl(262 70% 55%));
+    --primary: 265 90% 63%;
+    --ring: 265 90% 63%;
+    --accent: 265 80% 52%;
+    --gradient-primary: linear-gradient(135deg, hsl(265 90% 63%), hsl(265 80% 52%));
   }
   .dark[data-accent="purple"] {
     --secondary-foreground: 262 55% 72%;
-    --primary: 262 52% 52%;
-    --ring: 262 52% 52%;
-    --accent: 262 52% 52%;
-    --gradient-primary: linear-gradient(135deg, hsl(262 52% 52%), hsl(262 52% 52%));
+    --primary: 265 85% 62%;
+    --ring: 265 85% 62%;
+    --accent: 265 80% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(265 85% 62%), hsl(265 80% 55%));
   }
   [data-accent="green"] {
     --secondary: 152 30% 95%;
     --secondary-foreground: 152 60% 35%;
-    --primary: 152 62% 42%;
-    --ring: 152 62% 42%;
-    --accent: 152 62% 34%;
-    --gradient-primary: linear-gradient(135deg, hsl(152 62% 42%), hsl(152 62% 34%));
+    --primary: 150 80% 40%;
+    --ring: 150 80% 40%;
+    --accent: 150 80% 32%;
+    --gradient-primary: linear-gradient(135deg, hsl(150 80% 40%), hsl(150 80% 32%));
   }
   .dark[data-accent="green"] {
     --secondary-foreground: 152 55% 72%;
-    --primary: 152 52% 36%;
-    --ring: 152 52% 36%;
-    --accent: 152 52% 36%;
-    --gradient-primary: linear-gradient(135deg, hsl(152 52% 36%), hsl(152 52% 36%));
+    --primary: 150 75% 40%;
+    --ring: 150 75% 40%;
+    --accent: 150 75% 34%;
+    --gradient-primary: linear-gradient(135deg, hsl(150 75% 40%), hsl(150 75% 34%));
   }
   [data-accent="orange"] {
     --secondary: 25 30% 95%;
     --secondary-foreground: 25 85% 35%;
-    --primary: 25 95% 53%;
-    --ring: 25 95% 53%;
-    --accent: 20 90% 45%;
-    --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(20 90% 45%));
+    --primary: 22 100% 52%;
+    --ring: 22 100% 52%;
+    --accent: 18 100% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(22 100% 52%), hsl(18 100% 45%));
   }
   .dark[data-accent="orange"] {
     --secondary-foreground: 25 55% 72%;
-    --primary: 25 78% 46%;
-    --ring: 25 78% 46%;
-    --accent: 25 78% 46%;
-    --gradient-primary: linear-gradient(135deg, hsl(25 78% 46%), hsl(25 78% 46%));
+    --primary: 22 100% 52%;
+    --ring: 22 100% 52%;
+    --accent: 18 100% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(22 100% 52%), hsl(18 100% 46%));
   }
   [data-accent="red"] {
     --secondary: 0 30% 95%;
     --secondary-foreground: 0 70% 35%;
-    --primary: 0 78% 58%;
-    --ring: 0 78% 58%;
-    --accent: 0 72% 48%;
-    --gradient-primary: linear-gradient(135deg, hsl(0 78% 58%), hsl(0 72% 48%));
+    --primary: 0 88% 56%;
+    --ring: 0 88% 56%;
+    --accent: 0 85% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 88% 56%), hsl(0 85% 46%));
   }
   .dark[data-accent="red"] {
     --secondary-foreground: 0 55% 72%;
-    --primary: 0 62% 48%;
-    --ring: 0 62% 48%;
-    --accent: 0 62% 48%;
-    --gradient-primary: linear-gradient(135deg, hsl(0 62% 48%), hsl(0 62% 48%));
+    --primary: 0 88% 56%;
+    --ring: 0 88% 56%;
+    --accent: 0 85% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 88% 56%), hsl(0 85% 48%));
   }
 
   /* Hlavní karta plánu na Domů (Blok N + progress) ve zvolené barvě.

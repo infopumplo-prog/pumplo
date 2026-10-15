@@ -8,12 +8,12 @@ export const DEFAULT_ACCENT: AccentColor = 'blue';
 
 /** Náhled barvy ve výběru (světlý režim). */
 export const ACCENT_SWATCH: Record<AccentColor, { light: string; dark: string }> = {
-  blue: { light: '195 100% 59%', dark: '205 65% 42%' },
-  pink: { light: '330 81% 60%', dark: '330 62% 48%' },
-  purple: { light: '262 83% 66%', dark: '262 52% 52%' },
-  green: { light: '152 62% 42%', dark: '152 52% 36%' },
-  orange: { light: '25 95% 53%', dark: '25 78% 46%' },
-  red: { light: '0 78% 58%', dark: '0 62% 48%' },
+  blue: { light: '195 100% 59%', dark: '199 95% 48%' },
+  pink: { light: '330 90% 56%', dark: '330 88% 55%' },
+  purple: { light: '265 90% 63%', dark: '265 85% 62%' },
+  green: { light: '150 80% 40%', dark: '150 75% 40%' },
+  orange: { light: '22 100% 52%', dark: '22 100% 52%' },
+  red: { light: '0 88% 56%', dark: '0 88% 56%' },
 };
 
 export const isAccentColor = (v: unknown): v is AccentColor =>
