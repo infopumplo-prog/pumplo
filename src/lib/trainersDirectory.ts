@@ -61,3 +61,15 @@ export const instagramUrl = (value: string): string => {
   if (/^https?:\/\//i.test(v)) return v;
   return `https://instagram.com/${v.replace(/^@/, '')}`;
 };
+
+/** Jeden trenér může mít víc účtů (Pumplo: Apple + e-mail) → v seznamu jen jednou.
+ *  Klíč = posilovna + jméno; přednost má záznam s fotkou (David 15. 10.: „Beníšek je tam dvakrát“). */
+export const dedupeTrainers = <T extends DirectoryTrainerRow & { photo?: string | null }>(rows: T[]): T[] => {
+  const byKey = new Map<string, T>();
+  for (const r of rows) {
+    const key = `${r.gym_id}|${r.name.trim().toLocaleLowerCase('cs')}`;
+    const prev = byKey.get(key);
+    if (!prev || (!prev.photo && r.photo)) byKey.set(key, r);
+  }
+  return rows.filter(r => byKey.get(`${r.gym_id}|${r.name.trim().toLocaleLowerCase('cs')}`) === r);
+};

@@ -75,3 +75,16 @@ describe('trainer directory', () => {
     expect(instagramUrl('https://instagram.com/x?y=1')).toBe('https://instagram.com/x?y=1');
   });
 });
+
+import { dedupeTrainers } from './trainersDirectory';
+describe('dedupeTrainers', () => {
+  const base = { status: 'approved', is_active: true, sort_order: 0 };
+  it('stejné jméno ve stejné posilovně jen jednou, přednost má záznam s fotkou', () => {
+    const rows = [
+      { ...base, id: 'a', gym_id: 'g', name: 'David Beníšek', photo: '' },
+      { ...base, id: 'b', gym_id: 'g', name: 'david beníšek ', photo: 'x.png' },
+      { ...base, id: 'c', gym_id: 'h', name: 'David Beníšek', photo: '' },
+    ];
+    expect(dedupeTrainers(rows).map(r => r.id)).toEqual(['b', 'c']);
+  });
+});

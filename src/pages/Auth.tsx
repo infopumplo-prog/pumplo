@@ -946,8 +946,8 @@ const Auth = () => {
                     </motion.div>
                   </AnimatePresence>
 
-                  {/* Navigation buttons (not for registration step) */}
-                  {onboardingStep < REGISTER_STEP_INDEX && (
+                  {/* Navigation buttons (not for registration step; tip trenéra má vlastní „Rozumím, pokračovat“ — David 15. 10.) */}
+                  {onboardingStep < REGISTER_STEP_INDEX && !showTrainerTip && (
                     <div className="flex gap-3 mt-8 pb-8">
                       <Button
                         variant="outline"

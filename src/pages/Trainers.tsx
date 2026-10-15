@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight, HeartPulse, Instagram, Mail, Phone, X } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
+import davidPhoto from '@/assets/david-benisek.png';
 import TrainerDetailDrawer from '@/components/business/TrainerDetailDrawer';
 import type { Trainer } from '@/components/business/GymTrainersTab';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,7 @@ import {
   filterVisibleTrainers,
   instagramUrl,
   sortTrainers,
+  dedupeTrainers,
 } from '@/lib/trainersDirectory';
 
 interface DirectoryTrainer extends Trainer {
@@ -66,7 +68,7 @@ const Trainers = () => {
         is_active: r.is_active,
         sort_order: r.sort_order,
         name: r.name,
-        photo: r.photo_url || '',
+        photo: r.photo_url || (r.gym_id === PUMPLO_GYM_ID && /beníšek/i.test(r.name) ? davidPhoto : ''),
         bio: r.bio || '',
         bio_en: r.bio_en || null,
         specializations: r.specializations || [],
@@ -92,7 +94,7 @@ const Trainers = () => {
   }, []);
 
   const trainers = useMemo(
-    () => sortTrainers(filterVisibleTrainers(rows, isAdmin), profile?.selected_gym_id, gymNames),
+    () => sortTrainers(dedupeTrainers(filterVisibleTrainers(rows, isAdmin)), profile?.selected_gym_id, gymNames),
     [rows, isAdmin, profile?.selected_gym_id, gymNames],
   );
 
