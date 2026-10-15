@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Dumbbell, Flame, Scale, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { CheckCircle2, Dumbbell, Flame, Scale, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatistics } from '@/hooks/useStatistics';
 import { cn } from '@/lib/utils';
-import { CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, weekRange, weightChange } from '@/lib/weeklyCheckin';
+import { CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, sanitizeWeightInput, weekRange, weightChange } from '@/lib/weeklyCheckin';
 
 // Týdenní check-in (feedback 13. 10.): souhrn týdne + 2 hodnocení 1–5 + 2 volné texty.
 
@@ -202,19 +202,38 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
   };
 
   return (
-    <Drawer open={open} onOpenChange={(next) => { if (!next && !done) onLater(); }}>
-      <DrawerContent className="px-5 pb-6 max-h-[92dvh]">
-        <div className="mx-auto w-full max-w-md pt-2 overflow-y-auto">
+    // Celá obrazovka místo vysouvacího panelu: vaul Drawer se v iOS s otevřenou
+    // klávesnicí rozjel pod stavovou lištu (David 15. 10.). Obsah se tu jen posouvá.
+    open ? createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkin-title"
+      className="fixed inset-0 z-[150] bg-background overflow-y-auto overscroll-contain"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+    >
+        {!done && (
+          <button
+            type="button"
+            onClick={onLater}
+            aria-label={t('checkin.close')}
+            className="absolute right-3 w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:scale-95 active:bg-muted"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+        <div className="w-full px-5 pt-14">
           {done ? (
             <div className="py-10 text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
-              <DrawerTitle className="text-xl font-bold">{t('checkin.thanks_title')}</DrawerTitle>
+              <h2 id="checkin-title" className="text-xl font-bold">{t('checkin.thanks_title')}</h2>
               <p className="text-sm text-muted-foreground">{t('checkin.thanks_body')}</p>
             </div>
           ) : (
             <div className="space-y-5">
               <div>
-                <DrawerTitle className="text-xl font-bold">{t('checkin.title')}</DrawerTitle>
+                <h2 id="checkin-title" className="text-xl font-bold">{t('checkin.title')}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{t('checkin.subtitle')}</p>
               </div>
 
@@ -245,7 +264,9 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                       id="checkin-weight"
                       inputMode="decimal"
                       value={weightInput}
-                      onChange={(e) => setWeightInput(e.target.value)}
+                      pattern="[0-9]*[.,]?[0-9]?"
+                      maxLength={5}
+                      onChange={(e) => setWeightInput(sanitizeWeightInput(e.target.value))}
                       placeholder={t('onboarding.example_value', { value: '75,5' })}
                       className="h-12 pr-10 text-lg font-semibold"
                     />
@@ -308,8 +329,8 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
             </div>
           )}
         </div>
-      </DrawerContent>
-    </Drawer>
+    </div>,
+    document.body) : null
   );
 };
 

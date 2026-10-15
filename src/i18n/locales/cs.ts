@@ -2900,6 +2900,7 @@ const cs = {
   'checkin.q_training': 'Jak šly tréninky?',
   'checkin.scale_low': 'Špatně',
   'checkin.scale_high': 'Skvěle',
+  'checkin.close': 'Zavřít',
   'checkin.q_weight': 'Aktuální váha',
   'checkin.weight_previous': 'Minule: {{value}} kg',
   'checkin.weight_same': 'Beze změny',

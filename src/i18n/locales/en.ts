@@ -2904,6 +2904,7 @@ const en = {
   'checkin.q_training': 'How did your workouts go?',
   'checkin.scale_low': 'Badly',
   'checkin.scale_high': 'Great',
+  'checkin.close': 'Close',
   'checkin.q_weight': 'Current weight',
   'checkin.weight_previous': 'Last time: {{value}} kg',
   'checkin.weight_same': 'No change',

@@ -32,3 +32,15 @@ describe('weightChange', () => {
     expect(weightChange(80, 80, 'fat_loss')).toEqual({ delta: 0, trend: 'neutral' });
   });
 });
+
+import { sanitizeWeightInput } from './weeklyCheckin';
+describe('sanitizeWeightInput', () => {
+  it('jen číslice a jedna čárka', () => {
+    expect(sanitizeWeightInput('8a2.45')).toBe('82,4');
+    expect(sanitizeWeightInput('82,,5')).toBe('82,5');
+    expect(sanitizeWeightInput('1234')).toBe('123');
+    expect(sanitizeWeightInput('-75 kg')).toBe('75');
+    expect(sanitizeWeightInput('075')).toBe('75');
+    expect(sanitizeWeightInput('')).toBe('');
+  });
+});

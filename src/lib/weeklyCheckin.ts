@@ -209,3 +209,12 @@ export function weightChange(
     : 'neutral';
   return { delta, trend };
 }
+
+/** Do pole váhy jen číslice a jedna desetinná čárka, max. 3 + 1 číslice (David 15. 10.). */
+export function sanitizeWeightInput(raw: string): string {
+  const cleaned = raw.replace(/\./g, ',').replace(/[^0-9,]/g, '');
+  const [whole = '', ...rest] = cleaned.split(',');
+  const intPart = whole.replace(/^0+(?=\d)/, '').slice(0, 3);
+  if (!rest.length) return intPart;
+  return `${intPart},${rest.join('').slice(0, 1)}`;
+}
