@@ -55,7 +55,9 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        maximumFileSizeToCacheInBytes: 3000000,
+        // Hlavní bundle po veřejných trénincích a onboardingu 2.0 ~3 MB; 3,5 MB rezerva (15. 10. 2026).
+        // Týká se jen webové PWA precache — nativní appky mají soubory přibalené.
+        maximumFileSizeToCacheInBytes: 3500000,
       },
     }),
   ].filter(Boolean),

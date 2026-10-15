@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Dumbbell, Flame, Trophy } from 'lucide-react';
+import { CheckCircle2, Dumbbell, Flame, Scale, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatistics } from '@/hooks/useStatistics';
 import { cn } from '@/lib/utils';
-import { CHECKIN_TEXT_MAX, clampText, recordsInWeek, weekRange } from '@/lib/weeklyCheckin';
+import { CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, weekRange, weightChange } from '@/lib/weeklyCheckin';
 
 // Týdenní check-in (feedback 13. 10.): souhrn týdne + 2 hodnocení 1–5 + 2 volné texty.
 
@@ -140,11 +141,38 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
   const [appFeedback, setAppFeedback] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  // Váha (David 15. 10.): předvyplní se poslední známá, ukáže se změna proti minulému check-inu.
+  const [weightInput, setWeightInput] = useState('');
+  const [previousWeight, setPreviousWeight] = useState<number | null>(null);
+  const [goal, setGoal] = useState<string | null>(null);
 
   // Nový týden = čistý formulář
   useEffect(() => {
-    setMood(0); setTraining(0); setHardest(''); setAppFeedback(''); setDone(false);
+    setMood(0); setTraining(0); setHardest(''); setAppFeedback(''); setDone(false); setWeightInput('');
   }, [weekStart]);
+
+  useEffect(() => {
+    if (!open || !user) return;
+    let cancelled = false;
+    (async () => {
+      const [{ data: last }, { data: profile }] = await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from('weekly_checkins').select('weight_kg, week_start')
+          .eq('user_id', user.id).lt('week_start', weekStart).not('weight_kg', 'is', null)
+          .order('week_start', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('user_profiles').select('weight_kg, primary_goal').eq('user_id', user.id).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      const prev = (last?.weight_kg ?? profile?.weight_kg ?? null) as number | null;
+      setPreviousWeight(prev != null ? Number(prev) : null);
+      setGoal((profile?.primary_goal as string | null) ?? null);
+      setWeightInput(w => w || (prev != null ? String(prev).replace('.', ',') : ''));
+    })().catch(err => console.error('[weeklyCheckin] weight load failed', err));
+    return () => { cancelled = true; };
+  }, [open, user, weekStart]);
+
+  const weightKg = parseWeightKg(weightInput);
+  const change = weightChange(previousWeight, weightKg, goal);
 
   const submit = async () => {
     if (!user || !mood || !training) return;
@@ -156,7 +184,13 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
       training,
       hardest: clampText(hardest),
       app_feedback: clampText(appFeedback),
+      weight_kg: weightKg,
     }, { onConflict: 'user_id,week_start' });
+    // Aktuální váha i do profilu (plán a statistiky počítají s profilem); neblokuje check-in.
+    if (!error && weightKg != null) {
+      supabase.from('user_profiles').update({ weight_kg: weightKg }).eq('user_id', user.id)
+        .then(({ error: e }) => { if (e) console.error('[weeklyCheckin] profile weight not saved', e); });
+    }
     setSaving(false);
     if (error) {
       console.error('[weeklyCheckin] save failed', error);
@@ -197,6 +231,47 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                 <div className="flex justify-between text-[11px] text-muted-foreground px-1">
                   <span>{t('checkin.scale_low')}</span><span>{t('checkin.scale_high')}</span>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="checkin-weight" className="text-sm font-semibold flex items-center gap-1.5">
+                  <Scale className="w-4 h-4 text-primary" />
+                  {t('checkin.q_weight')} <span className="font-normal text-muted-foreground">({t('checkin.optional')})</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-32">
+                    <Input
+                      id="checkin-weight"
+                      inputMode="decimal"
+                      value={weightInput}
+                      onChange={(e) => setWeightInput(e.target.value)}
+                      placeholder={t('onboarding.example_value', { value: '75,5' })}
+                      className="h-12 pr-10 text-lg font-semibold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kg</span>
+                  </div>
+                  {change && change.delta !== 0 ? (
+                    <span className={cn(
+                      'inline-flex items-center gap-1 text-sm font-semibold rounded-full px-3 py-1.5',
+                      change.trend === 'good' && 'bg-green-500/15 text-green-600 dark:text-green-400',
+                      change.trend === 'bad' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+                      change.trend === 'neutral' && 'bg-muted text-foreground',
+                    )}>
+                      {change.delta < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+                      {change.delta > 0 ? '+' : '−'}{Math.abs(change.delta).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} kg
+                    </span>
+                  ) : change ? (
+                    <span className="text-sm text-muted-foreground">{t('checkin.weight_same')}</span>
+                  ) : null}
+                </div>
+                {previousWeight != null && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('checkin.weight_previous', { value: previousWeight.toLocaleString('cs-CZ', { maximumFractionDigits: 1 }) })}
+                  </p>
+                )}
+                {weightInput.trim() && weightKg == null && (
+                  <p className="text-xs text-destructive">{t('checkin.weight_invalid')}</p>
+                )}
               </div>
 
               <div className="space-y-2">

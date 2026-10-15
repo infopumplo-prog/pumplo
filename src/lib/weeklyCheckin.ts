@@ -179,3 +179,33 @@ export function aggregateCheckinsByWeek(rows: CheckinRow[]): CheckinWeekAggregat
         .map((r) => ({ id: r.id, hardest: r.hardest, appFeedback: r.app_feedback, createdAt: r.created_at })),
     }));
 }
+
+// Váha v check-inu (David 15. 10.: „chybí mi tam změna ve váze“).
+export const WEIGHT_MIN_KG = 25;
+export const WEIGHT_MAX_KG = 400;
+
+/** „82,4“ / „82.4“ → 82.4; mimo rozsah nebo nesmysl → null. */
+export function parseWeightKg(input: string): number | null {
+  const v = Number(input.trim().replace(',', '.'));
+  if (!input.trim() || !Number.isFinite(v) || v < WEIGHT_MIN_KG || v > WEIGHT_MAX_KG) return null;
+  return Math.round(v * 10) / 10;
+}
+
+export type WeightTrend = 'good' | 'bad' | 'neutral';
+
+/** Změna proti minulé váze a jestli jde správným směrem podle cíle. */
+export function weightChange(
+  previous: number | null | undefined,
+  current: number | null | undefined,
+  goal: string | null | undefined,
+): { delta: number; trend: WeightTrend } | null {
+  if (previous == null || current == null) return null;
+  const delta = Math.round((current - previous) * 10) / 10;
+  if (delta === 0) return { delta: 0, trend: 'neutral' };
+  const wantsDown = goal === 'fat_loss';
+  const wantsUp = goal === 'muscle_gain';
+  const trend: WeightTrend = wantsDown ? (delta < 0 ? 'good' : 'bad')
+    : wantsUp ? (delta > 0 ? 'good' : 'bad')
+    : 'neutral';
+  return { delta, trend };
+}
