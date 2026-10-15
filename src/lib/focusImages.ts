@@ -15,7 +15,10 @@
 //   focus-cardio.jpg      kardio
 //   focus-biceps.jpg      (zatím chybí → použije se focus-arms.jpg)
 //   focus-triceps.jpg     (zatím chybí → použije se focus-arms.jpg)
-//   focus-calves.jpg      (zatím chybí → ikona)
+//   focus-calves.jpg      lýtka
+//
+// Sada 15. 10. 2026: jednotný styl (tmavá posilovna, boční světlo, neutrální barvy),
+// vygenerováno v Higgsfieldu (Nano Banana), originály ve vaultu pumplo/assets/focus-2026-10-15.
 //
 // Hodnota null = fotka zatím není, dlaždice ukáže ikonu na barvě appky.
 // Když soubor chybí nebo se nenačte, dlaždice taky spadne na ikonu (onError).
@@ -36,7 +39,7 @@ export const FOCUS_IMAGES: Record<string, string | null> = {
   // Svalové skupiny výběru cviků (ExercisePicker)
   biceps: `${BASE}/focus-arms.jpg`,
   triceps: `${BASE}/focus-arms.jpg`,
-  calves: null,
+  calves: `${BASE}/focus-calves.jpg`,
 };
 
 /** Fotka partie, nebo null (→ fallback ikona). */
