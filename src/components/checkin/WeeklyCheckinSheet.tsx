@@ -239,7 +239,8 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                   {t('checkin.q_weight')} <span className="font-normal text-muted-foreground">({t('checkin.optional')})</span>
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="relative w-32">
+                  {/* Pole přes celou šířku, změna vpravo (David 15. 10.: „ať tam není tolik prázdného místa“) */}
+                  <div className="relative flex-1 min-w-0">
                     <Input
                       id="checkin-weight"
                       inputMode="decimal"
@@ -252,7 +253,7 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                   </div>
                   {change && change.delta !== 0 ? (
                     <span className={cn(
-                      'inline-flex items-center gap-1 text-sm font-semibold rounded-full px-3 py-1.5',
+                      'shrink-0 inline-flex items-center gap-1 text-sm font-semibold rounded-full px-3 py-1.5',
                       change.trend === 'good' && 'bg-green-500/15 text-green-600 dark:text-green-400',
                       change.trend === 'bad' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
                       change.trend === 'neutral' && 'bg-muted text-foreground',
@@ -261,7 +262,7 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                       {change.delta > 0 ? '+' : '−'}{Math.abs(change.delta).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} kg
                     </span>
                   ) : change ? (
-                    <span className="text-sm text-muted-foreground">{t('checkin.weight_same')}</span>
+                    <span className="shrink-0 text-sm text-muted-foreground">{t('checkin.weight_same')}</span>
                   ) : null}
                 </div>
                 {previousWeight != null && (
