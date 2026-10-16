@@ -38,6 +38,14 @@ export const resolveTarget = async (
   return data ? { gymId: data.gym_id as string, machineId: data.id as string } : { gymId: null, machineId: null };
 };
 
+// Flyers whose QR skips the website and opens the phone's own store: iPhone → App Store,
+// Android → Google Play. Any other device (or any other flyer) still lands on pumplo.com.
+export const DIRECT_STORE_FLYERS: ReadonlySet<string> = new Set(["ftk-olomouc"]);
+
+/** Store a flyer scan goes straight to, or null when it should land on the website. */
+export const flyerStoreTarget = (code: string, platform: string): "ios" | "android" | null =>
+  DIRECT_STORE_FLYERS.has(code) && (platform === "ios" || platform === "android") ? platform : null;
+
 /** Where a flyer QR forwards (pumplo.com): UTM tags + the scan id for the website's e-mail prompt. */
 export const flyerDestination = (webUrl: string, code: string, scanId: string | null): string => {
   const dest = new URL(webUrl);
