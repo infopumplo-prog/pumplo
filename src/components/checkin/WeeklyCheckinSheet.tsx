@@ -245,9 +245,10 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
             <X className="w-5 h-5" />
           </button>
         )}
-        <div className="w-full px-5 pt-14">
+        <div className={done ? 'w-full px-5 min-h-full flex items-center justify-center' : 'w-full px-5 pt-14'}>
           {done ? (
-            <div className="py-10 text-center space-y-3">
+            // Poděkování uprostřed obrazovky (David 17. 10.).
+            <div className="text-center space-y-3 -mt-12">
               <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
               <h2 id="checkin-title" className="text-xl font-bold">{t('checkin.thanks_title')}</h2>
               <p className="text-sm text-muted-foreground">{t('checkin.thanks_body')}</p>
