@@ -1822,7 +1822,8 @@ const Training = () => {
   if (isAdaptingToGym) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1830,7 +1831,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.adapting_gym_title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1847,7 +1848,8 @@ const Training = () => {
   if (planLoading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1855,7 +1857,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1874,7 +1876,8 @@ const Training = () => {
   if (generatorError) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1882,7 +1885,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
