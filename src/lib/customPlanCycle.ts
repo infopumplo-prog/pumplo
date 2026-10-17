@@ -149,6 +149,38 @@ export const fetchLastCompletedDays = async (
   return result;
 };
 
+/** Poslední dokončená session daného vlastního plánu (Home karta, David 17. 10.). */
+export interface CustomPlanSessionRow {
+  id: string;
+  day_letter: string;
+  goal_id: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  total_sets: number | null;
+  total_reps: number | null;
+  total_weight_kg: number | null;
+  gym_id: string | null;
+  custom_plan_day_id: string | null;
+}
+
+export const fetchLastCustomPlanSession = async (userId: string, planId: string): Promise<CustomPlanSessionRow | null> => {
+  try {
+    const { data, error } = await untyped()
+      .from('workout_sessions')
+      .select('id, day_letter, goal_id, started_at, completed_at, duration_seconds, total_sets, total_reps, total_weight_kg, gym_id, custom_plan_day_id')
+      .eq('user_id', userId)
+      .eq('custom_plan_id', planId)
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(1);
+    if (error || !data?.length) return null;
+    return data[0] as CustomPlanSessionRow;
+  } catch {
+    return null;
+  }
+};
+
 /** Zapíše k uložené session, který den kterého plánu to byl (best-effort). */
 export const tagSessionWithCycleDay = async (sessionId: string, planId: string, dayId: string): Promise<void> => {
   try {

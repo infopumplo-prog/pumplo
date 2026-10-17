@@ -67,6 +67,9 @@ export interface CustomPlanSummary {
   day_count: number;
   // Kruh dnů (feedback 13. 10.): další den k odcvičení, jen když má plán 2+ hratelné dny.
   next_day: { id: string; index: number; name: string | null; name_en: string | null; day_number: number } | null;
+  // Home karta naposledy používaného plánu (David 17. 10.): kdy naposledy odcvičen + dny kruhu.
+  last_completed_at: string | null;
+  cycle_days: { id: string; day_number: number; name: string | null; name_en: string | null; exerciseCount: number }[];
 }
 
 type SummaryDayRow = { id: string; day_number: number; name: string | null; name_en: string | null; custom_plan_exercises: { count: number }[] | null };
@@ -111,6 +114,8 @@ export function useCustomPlans() {
             published_at: p.published_at ?? null,
             day_count: days.length,
             next_day: summarizeNextDay(days, lastByPlan[p.id]),
+            last_completed_at: lastByPlan[p.id]?.completedAt ?? null,
+            cycle_days: sortCycleDays(days.map(d => ({ id: d.id, day_number: d.day_number, name: d.name, name_en: d.name_en, exerciseCount: d.custom_plan_exercises?.[0]?.count ?? 0 }))),
           };
         })
       );

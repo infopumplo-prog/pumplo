@@ -886,6 +886,13 @@ const cs = {
   'custom_plan.cycle_hint': 'Dny se střídají A → B → … a po posledním se začíná znovu od A.',
   'custom_plan.next_badge': 'Další',
   'custom_plan.next_day': 'Další: {{day}}',
+  // Home karta naposledy používaného vlastního plánu (David 17. 10.)
+  'custom_plan.hero_days_cycle': '{{count}} {{days}} v kruhu',
+  'custom_plan.hero_add_exercises': 'Přidej do plánu cviky',
+  'custom_plan.hero_start_day': 'Spustit {{day}}',
+  'custom_plan.other_plans': 'Další plány',
+  'custom_plan.open_plan': 'Otevřít plán',
+  'custom_plan.delete_plan': 'Smazat plán',
   'custom_plan.start_day': 'Začít: {{day}}',
   'custom_plan.day_menu': 'Možnosti dne',
   'custom_plan.day_rename': 'Přejmenovat',

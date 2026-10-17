@@ -294,6 +294,8 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={{ left: 0.5, right: 0 }}
       style={{ touchAction: 'pan-y' }}
+      /* Swipe řádku série maže sérii — nesmí zároveň přepnout den (David 17. 10.). */
+      data-no-swipe={onRemove ? '' : undefined}
       onDragEnd={(_, info) => { if (onRemove && (info.offset.x < -60 || info.velocity.x < -400)) onRemove(); }}
       className="flex items-center gap-2 py-1"
     >
@@ -417,7 +419,7 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
     >
       {/* Header: thumbnail + name + ⋮ menu */}
       <div className="flex items-center gap-2">
-        <button {...attributes} {...listeners} className="p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0">
+        <button {...attributes} {...listeners} data-drag-handle className="p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground touch-none shrink-0">
           <GripVertical className="w-4 h-4" />
         </button>
         <button onClick={() => onShowDetail(exercise.exercise_id)} className="shrink-0">
@@ -1154,6 +1156,30 @@ const CustomPlanDetail = () => {
   const workoutPath = (gymId: string) =>
     `/custom-workout/${id}?gym=${gymId}${startDay ? `&day=${startDay.id}` : ''}`;
 
+  // Swipe mezi dny kruhu (David 17. 10.): stejně jako swipe záložek na Home —
+  // prst doleva = další den, doprava = předchozí; ne v inputech, čipech ani při tažení cviku.
+  const daySwipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onDaySwipeStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (isSingleDay || target.closest('[data-no-swipe], .overflow-x-auto, input, textarea, [data-drag-handle]')) { daySwipeStart.current = null; return; }
+    const t0 = e.touches[0];
+    daySwipeStart.current = { x: t0.clientX, y: t0.clientY };
+  };
+  const onDaySwipeEnd = (e: React.TouchEvent) => {
+    const start = daySwipeStart.current;
+    daySwipeStart.current = null;
+    if (!start) return;
+    const t1 = e.changedTouches[0];
+    const dx = t1.clientX - start.x;
+    const dy = t1.clientY - start.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = cycleDays.findIndex(d => d.id === selectedDayId);
+    const nextIdx = idx + (dx < 0 ? 1 : -1);
+    if (idx < 0 || nextIdx < 0 || nextIdx >= cycleDays.length) return;
+    // Čip nového dne se odroluje do záběru v CustomPlanDayChips (efekt na activeDayId).
+    setSelectedDayId(cycleDays[nextIdx].id);
+  };
+
   const handleAddDay = async () => {
     setAddingDay(true);
     const newId = await addDay();
@@ -1259,7 +1285,7 @@ const CustomPlanDetail = () => {
         </div>
 
         {/* Days — víc dnů = čipy kruhu A/B/C, vidět je jen vybraný den (feedback 13. 10.) */}
-        <div className="px-6 space-y-4">
+        <div className="px-6 space-y-4" onTouchStart={onDaySwipeStart} onTouchEnd={onDaySwipeEnd}>
           {!isSingleDay && (
             <CustomPlanDayChips
               days={cycleDays}

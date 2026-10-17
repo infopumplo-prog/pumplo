@@ -881,6 +881,13 @@ const en = {
   'custom_plan.cycle_hint': 'Days rotate A → B → … and start over at A after the last one.',
   'custom_plan.next_badge': 'Next',
   'custom_plan.next_day': 'Next: {{day}}',
+  // Home card of the most recently used custom plan (David 17. 10.)
+  'custom_plan.hero_days_cycle': '{{count}} {{days}} in a cycle',
+  'custom_plan.hero_add_exercises': 'Add exercises to the plan',
+  'custom_plan.hero_start_day': 'Start {{day}}',
+  'custom_plan.other_plans': 'Other plans',
+  'custom_plan.open_plan': 'Open plan',
+  'custom_plan.delete_plan': 'Delete plan',
   'custom_plan.start_day': 'Start: {{day}}',
   'custom_plan.day_menu': 'Day options',
   'custom_plan.day_rename': 'Rename',
