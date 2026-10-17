@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Capacitor } from '@capacitor/core';
@@ -71,12 +72,14 @@ export const CustomEquipmentPicker = ({ initial, onSave, onCancel, isSaving }: C
     }
   };
 
-  return (
+  // Portál do <body>: uvnitř stránky (PageTransition s transformací) by fixed vrstva zůstala
+  // pod spodní lištou a tlačítkem feedbacku (David 17. 10.).
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[210] bg-background flex flex-col"
+      className="fixed inset-0 z-[300] bg-background flex flex-col"
     >
       <div className="flex items-start gap-2 px-4 pb-4 border-b border-border" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
         <Button variant="ghost" size="icon" onClick={onCancel} aria-label={t('nogym.back_to_gyms')} className="shrink-0 -ml-2">
@@ -150,6 +153,7 @@ export const CustomEquipmentPicker = ({ initial, onSave, onCancel, isSaving }: C
           {areas.length > 0 ? t('nogym.save_count', { count: areas.length }) : t('nogym.save_pick')}
         </Button>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 };
