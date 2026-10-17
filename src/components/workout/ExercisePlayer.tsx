@@ -418,6 +418,7 @@ export const ExercisePlayer = ({
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
               onLoadedData={playVideo}
+              data-keep-playing={!showRestTimer ? 'true' : 'false'}
               onCanPlay={playVideo}
               onError={() => setVideoError(true)}
             />

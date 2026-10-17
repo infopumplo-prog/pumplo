@@ -382,3 +382,12 @@ textarea,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* iOS: systémové tlačítko play přes video (při zablokovaném autoplay) — nestiskne se,
+   protože videa mají pointer-events:none; spouští je dotyk kamkoli (videoKeepPlaying.ts). */
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls {
+  display: none !important;
+  -webkit-appearance: none;
+}

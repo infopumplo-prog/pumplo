@@ -246,6 +246,7 @@ export const WarmupPlayer = ({ exercises, onComplete, onSkipAll, onPause, onEnd,
               style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
               onLoadedData={playVideo}
+              data-keep-playing={!isPaused ? 'true' : 'false'}
               onCanPlay={playVideo}
             />
           ) : (

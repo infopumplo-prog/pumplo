@@ -23,6 +23,9 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { loadOnboardingDraft, clearOnboardingDraft } from "@/lib/onboardingDraft";
 import { persistOnboarding } from "@/lib/persistOnboarding";
+import { installVideoKeepPlaying } from "@/lib/videoKeepPlaying";
+
+installVideoKeepPlaying();
 import { trackTutorialComplete } from "@/lib/appAnalytics";
 import { routeAfterRegistration, savePlanChoice } from "@/lib/onboardingFlow";
 import Auth from "@/pages/Auth";

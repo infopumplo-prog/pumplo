@@ -198,6 +198,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
               onLoadedData={playVideo}
+              data-keep-playing={!isPaused ? 'true' : 'false'}
               onCanPlay={playVideo}
             />
           ) : (
