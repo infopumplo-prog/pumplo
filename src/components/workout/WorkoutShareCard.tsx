@@ -237,7 +237,7 @@ const FUNFACT_TIERS: { min: number; key: keyof typeof FUNFACT_ICONS }[] = [
 ];
 const funFactTier = (kg: number) => FUNFACT_TIERS.find(tier => kg >= tier.min) ?? null;
 
-const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, factKey }: TProps & { totalKg: number; liftedLabel: string; factText: string; factKey: keyof typeof FUNFACT_ICONS }) => {
+const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, factKey, isEn }: TProps & { totalKg: number; liftedLabel: string; factText: string; factKey: keyof typeof FUNFACT_ICONS }) => {
   const FactIcon = FUNFACT_ICONS[factKey];
   return (
   <>
@@ -247,7 +247,7 @@ const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, e
       <Draggable transform={transform}>
         <div className="rounded-2xl px-6 py-6 mb-3 text-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '4px' }}>{liftedLabel}</p>
-          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString('cs')} kg</p>
+          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString(isEn ? 'en-US' : 'cs')} kg</p>
           <p style={{ color: 'hsl(var(--primary))', fontSize: '15px', fontWeight: 600, marginTop: '8px' }}>{factText}</p>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
             <FactIcon size={72} strokeWidth={1.6} color="#ffffff" aria-hidden="true" />
@@ -485,7 +485,7 @@ export const WorkoutShareCard = ({
   }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
-  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || `Den ${dayLetter.replace('_EXT', '+')}`);
+  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || t('workout.day_label', { letter: dayLetter.replace('_EXT', '+') }));
   const today = new Date();
   const dateStr = format(today, 'd. MMMM yyyy', { locale: isEn ? enUS : cs });
 
@@ -543,7 +543,7 @@ export const WorkoutShareCard = ({
 
   const stats: Stat[] = [
     { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
-    { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString('cs')}`, unit: 'kg' },
+    { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString(isEn ? 'en-US' : 'cs')}`, unit: 'kg' },
     { icon: Dumbbell, color: '#fbbf24', value: `${totalSets}`, unit: t('workout_share.sets_unit') },
     { icon: Flame, color: '#fb923c', value: `${kcal}`, unit: 'kcal' },
   ];

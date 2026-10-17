@@ -169,7 +169,7 @@ const TrainerDetailDrawer = ({ trainer, open, onOpenChange }: TrainerDetailDrawe
                         >
                           <span className="text-sm">{(isEn && item.name_en) ? item.name_en : item.name}</span>
                           <span className="text-sm font-medium whitespace-nowrap">
-                            {item.price.toLocaleString('cs-CZ')} Kč
+                            {item.price.toLocaleString(isEn ? 'en-GB' : 'cs-CZ')} Kč
                           </span>
                         </div>
                       ))}

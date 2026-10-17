@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { tr } from '@/lib/uiLocale';
 
 export interface Conversation {
   id: string;
@@ -132,7 +133,7 @@ export const useConversations = () => {
       created_at: c.created_at,
       trainerName: c.trainer_id
         ? trainerMap[c.trainer_id]?.name
-        : gymData?.name || 'Posilovna',
+        : gymData?.name || tr('messages.gym_fallback'),
       trainerPhotoUrl: c.trainer_id
         ? trainerMap[c.trainer_id]?.photo_url ?? undefined
         : gymData?.logo_url ?? undefined,

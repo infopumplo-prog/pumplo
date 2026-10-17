@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { updateWatchAuth } from '@/lib/watchWorkout';
 import { createRegistrationLock } from '@/lib/registrationLock';
 import { signUpErrorMessage } from '@/lib/authErrors';
+import { tr } from '@/lib/uiLocale';
 import { trackSignUp } from '@/lib/appAnalytics';
 import { newOAuthSignupMethod } from '@/lib/appAnalyticsCore';
 
@@ -173,7 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        return { success: false, error: 'Neplatné přihlašovací údaje' };
+        return { success: false, error: tr('auth_errors.invalid_credentials') };
       }
       return { success: false, error: error.message };
     }
@@ -205,9 +206,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       ({ data, error } = await Promise.race([signUpPromise, timeout]));
     } catch (e) {
       if (e instanceof Error && e.message === 'signup_timeout') {
-        return { success: false, error: 'Registrace vypršela — zkontroluj připojení k internetu a zkus to znovu.' };
+        return { success: false, error: tr('auth_errors.signup_timeout') };
       }
-      return { success: false, error: e instanceof Error ? e.message : 'Registrace selhala' };
+      return { success: false, error: e instanceof Error ? e.message : tr('auth_errors.signup_failed') };
     }
 
     if (error) {
@@ -237,7 +238,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (data?.url) await Browser.open({ url: data.url });
           return { success: true };
         } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : 'Google přihlášení selhalo';
+          const message = err instanceof Error ? err.message : tr('auth_errors.google_failed');
           return { success: false, error: message };
         }
       } else {
@@ -255,7 +256,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (data?.url) await Browser.open({ url: data.url });
           return { success: true };
         } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : 'Google přihlášení selhalo';
+          const message = err instanceof Error ? err.message : tr('auth_errors.google_failed');
           return { success: false, error: message };
         }
       }
@@ -296,7 +297,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch { /* jméno navíc nesmí shodit login */ }
         return { success: true };
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Apple přihlášení selhalo';
+        const message = err instanceof Error ? err.message : tr('auth_errors.apple_failed');
         return { success: false, error: message };
       }
     }

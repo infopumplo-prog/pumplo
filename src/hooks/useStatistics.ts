@@ -86,6 +86,10 @@ const DAY_NAMES: Record<string, string> = {
   monday: 'Pondělí', tuesday: 'Úterý', wednesday: 'Středa',
   thursday: 'Čtvrtek', friday: 'Pátek', saturday: 'Sobota', sunday: 'Neděle',
 };
+const DAY_NAMES_EN: Record<string, string> = {
+  monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+};
 const DAY_SHORTS: Record<string, string> = {
   monday: 'Po', tuesday: 'Út', wednesday: 'St',
   thursday: 'Čt', friday: 'Pá', saturday: 'So', sunday: 'Ne',
@@ -190,7 +194,7 @@ export const useStatistics = () => {
         });
 
         weeklyVolume.push({
-          weekLabel: i === 0 ? 'Teď' : i === 1 ? 'Minulý' : `${i}t`,
+          weekLabel: i === 0 ? i18n.t('stats.week_now') : i === 1 ? i18n.t('stats.week_last') : i18n.t('stats.weeks_ago_short', { n: i }),
           totalWeight: Math.round(weekSessions.reduce((a, s) => a + (Number(s.total_weight_kg) || 0), 0)),
           totalDuration: Math.round(weekSessions.reduce((a, s) => a + ((s.duration_seconds || 0) / 60), 0)),
           workoutCount: weekSessions.length,
@@ -223,7 +227,7 @@ export const useStatistics = () => {
       sortedSets.forEach(set => {
         if (!set.exercise_id || !set.weight_kg || set.weight_kg <= 0) return;
         const exInfo = exerciseMap.get(set.exercise_id);
-        const name = exInfo?.name || set.exercise_name || 'Neznámý';
+        const name = exInfo?.name || set.exercise_name || i18n.t('custom_plan.exercise_unknown');
         const name_en = exInfo?.name_en || null;
         const date = (set.workout_sessions as { started_at: string } | null)?.started_at || set.created_at;
         const reps = set.reps || 1;
@@ -328,7 +332,7 @@ export const useStatistics = () => {
         const isPast = i < todayIndex;
         const isToday = i === todayIndex;
         return {
-          day: DAY_NAMES[day],
+          day: (i18n.language === 'en' ? DAY_NAMES_EN : DAY_NAMES)[day],
           short: (i18n.language === 'en' ? DAY_SHORTS_EN : DAY_SHORTS)[day],
           trained: wasTrained,
           planned: isPlanned,
@@ -340,7 +344,7 @@ export const useStatistics = () => {
       const exerciseSetsMap = new Map<string, { name: string; nameEn: string | null; sets: number }>();
       allSets.forEach(set => {
         const exInfo = exerciseMap.get(set.exercise_id || '');
-        const name = exInfo?.name || set.exercise_name || 'Neznámý';
+        const name = exInfo?.name || set.exercise_name || i18n.t('custom_plan.exercise_unknown');
         const nameEn = exInfo?.name_en || null;
         const key = set.exercise_id || set.exercise_name;
         const existing = exerciseSetsMap.get(key);
@@ -377,7 +381,7 @@ export const useStatistics = () => {
         const exInfo = exerciseMap.get(set.exercise_id || '');
         return {
           exerciseId: set.exercise_id || null,
-          name: exInfo?.name || set.exercise_name || 'Neznámý',
+          name: exInfo?.name || set.exercise_name || i18n.t('custom_plan.exercise_unknown'),
           nameEn: exInfo?.name_en || null,
           muscles: exInfo?.muscles || [],
           secondaryMuscles: exInfo?.secondaryMuscles || [],

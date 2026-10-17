@@ -286,11 +286,11 @@ const Settings = () => {
       
       if (error) {
         console.error('Delete account error:', error);
-        throw new Error(error.message || 'Nepodařilo se smazat účet');
+        throw new Error(error.message || t('toast.delete_failed'));
       }
       
       if (!data?.success) {
-        throw new Error(data?.error || 'Nepodařilo se smazat účet');
+        throw new Error(data?.error || t('toast.delete_failed'));
       }
 
       toast({ title: t('toast.account_deleted'), description: t('toast.account_removed') });

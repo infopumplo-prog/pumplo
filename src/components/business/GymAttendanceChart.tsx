@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useGymAttendanceData } from '@/hooks/useGymAttendanceData';
 
@@ -13,7 +14,7 @@ const POPULAR_TIMES: Record<string, number[]> = {
   sunday:    [0,0,0,0,0,0,0,10,20,35,45,50,45,35,25,25,30,30,20,10,5,0,0,0],
 };
 
-const DAY_LABELS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+const DAY_LABEL_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(d => `business.day_short_${d}`);
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 interface GymAttendanceChartProps {
@@ -21,6 +22,8 @@ interface GymAttendanceChartProps {
 }
 
 const GymAttendanceChart = ({ gymId }: GymAttendanceChartProps) => {
+  const { t } = useTranslation();
+  const DAY_LABELS = DAY_LABEL_KEYS.map(k => t(k));
   const now = new Date();
   const currentDayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0=Monday
   const currentHour = now.getHours();

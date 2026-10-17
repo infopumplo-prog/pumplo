@@ -50,6 +50,7 @@ import {
   getCardioDurationMinutes,
 } from '@/lib/bmiUtils';
 import { sanitizeCustomEquipment } from '@/lib/customEquipment';
+import { tr } from '@/lib/uiLocale';
 import { fetchCustomEquipmentMachineIds } from '@/lib/customEquipmentData';
 
 export const useWorkoutGenerator = () => {
@@ -427,7 +428,7 @@ export const useWorkoutGenerator = () => {
 
     if (error) {
       console.error('[WorkoutGenerator] Atomic save failed:', error);
-      throw new Error('Nepodařilo se uložit tréninkový plán: ' + error.message);
+      throw new Error(tr('generator.save_failed', { message: error.message }));
     }
 
     return data as string;
@@ -458,7 +459,7 @@ export const useWorkoutGenerator = () => {
     customEquipment?: string[] | null
   ): Promise<string | null> => {
     if (!user) {
-      setError('Uživatel není přihlášen');
+      setError(tr('generator.not_logged_in'));
       return null;
     }
 
@@ -502,7 +503,7 @@ export const useWorkoutGenerator = () => {
         ({ machineIds, equipmentTypes, machineIdToBenchConfigs } = await fetchGymEquipment(gymId));
       } else {
         const resolved = await fetchCustomEquipmentMachineIds(equipmentGroups);
-        if (!resolved) throw new Error('Nepodařilo se načíst seznam vybavení');
+        if (!resolved) throw new Error(tr('generator.equipment_load_failed'));
         machineIds = resolved;
         equipmentTypes = new Set<string>(['machine', 'cable', 'bodyweight', 'free_weights']);
         machineIdToBenchConfigs = new Map();
@@ -531,7 +532,7 @@ export const useWorkoutGenerator = () => {
       // Fetch day templates by split type and goal
       const templates = await fetchDayTemplates(splitType, goalId);
       if (templates.length === 0) {
-        throw new Error(`Nenalezeny šablony pro split: ${splitType}`);
+        throw new Error(tr('generator.templates_not_found', { split: splitType }));
       }
       console.log(`[WorkoutGenerator v2.0] Found ${templates.length} day templates for split: ${splitType}`);
 
@@ -753,7 +754,7 @@ export const useWorkoutGenerator = () => {
 
     } catch (err) {
       console.error('[WorkoutGenerator v2.0] Error generating workout plan:', err);
-      setError(err instanceof Error ? err.message : 'Neznámá chyba');
+      setError(err instanceof Error ? err.message : tr('generator.unknown_error'));
       return null;
     } finally {
       setIsGenerating(false);

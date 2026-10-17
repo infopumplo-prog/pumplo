@@ -11,6 +11,7 @@ import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { tr } from '@/lib/uiLocale';
 
 interface StartWorkoutButtonProps {
   selectedGymId: string | null;
@@ -42,7 +43,7 @@ export const StartWorkoutButton = ({ selectedGymId, customEquipment, className }
       .single();
 
     if (gymData?.latitude != null && gymData?.longitude != null) {
-      setGymName(gymData.name || 'Posilovna');
+      setGymName(gymData.name || tr('training.gym_fallback'));
       setGymLat(gymData.latitude);
       setGymLng(gymData.longitude);
       setShowLocationGate(true);

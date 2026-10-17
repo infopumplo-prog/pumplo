@@ -17,6 +17,7 @@ import { getCurrentDayLetter, getNextDayLetter, getAllDayLetters } from '@/lib/w
 import { checkPlanEquipmentValidity } from '@/lib/planValidation';
 import { FETCH_TIMEOUT_MS, SHARED_SCOPE, readCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
 import { prefetchVideos } from '@/lib/videoCache';
+import { tr } from '@/lib/uiLocale';
 
 // Role categories for split type detection
 const LOWER_BODY_ROLES = ['squat', 'hinge', 'lunge', 'step', 'jump'];
@@ -169,7 +170,7 @@ export const useWorkoutPlan = () => {
 
       let currentDayIndex = profileData?.current_day_index || 0;
       const userLevel = (profileData?.user_level || 'beginner') as UserLevel;
-      const goalName = (planData.training_goals as { name: string } | null)?.name || 'Trénink';
+      const goalName = (planData.training_goals as { name: string } | null)?.name || tr('training.workout_fallback');
 
       // 3. Get exercises for this plan with machine info
       const { data: exercisesData, error: exError } = await withNetworkTimeout(
@@ -320,7 +321,7 @@ export const useWorkoutPlan = () => {
             .update({ needs_regeneration: true })
             .eq('id', planData.id);
           
-          setEquipmentWarning(`Některé cviky v plánu již nejsou dostupné v posilovně. Doporučujeme regenerovat plán.`);
+          setEquipmentWarning(tr('common_errors.equipment_changed'));
         }
       }
 
@@ -350,7 +351,7 @@ export const useWorkoutPlan = () => {
         const dayExercises = exercises.filter(e => e.dayLetter === letter);
         return {
           dayLetter: letter,
-          dayName: dayNameMap[letter] || `Den ${letter}`,
+          dayName: dayNameMap[letter] || tr('workout.day_label', { letter }),
           slots: dayExercises.map(e => ({
             id: e.id,
             slotOrder: e.slotOrder,
@@ -405,7 +406,7 @@ export const useWorkoutPlan = () => {
       if (fallback) {
         setPlan(fallback);
       } else {
-        setError('Nepodařilo se načíst tréninkový plán');
+        setError(tr('common_errors.plan_load_failed'));
       }
     } finally {
       setIsLoading(false);

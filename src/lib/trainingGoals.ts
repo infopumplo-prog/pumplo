@@ -25,11 +25,15 @@ export type TrainingGoalId = typeof TRAINING_GOAL_IDS[number];
 export type SplitType = 'full_body' | 'upper_lower' | 'ppl';
 
 // Split info for UI display
-export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; days: string[] }> = {
-  full_body: { label: 'Full Body A/B', labelCz: 'Full Body', days: ['A', 'B'] },
-  upper_lower: { label: 'Upper/Lower A/B', labelCz: 'Horní / Dolní tělo', days: ['A', 'B'] },
-  ppl: { label: 'Push/Pull/Legs A/B/C', labelCz: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
+export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; labelEn: string; days: string[] }> = {
+  full_body: { label: 'Full Body A/B', labelCz: 'Full Body', labelEn: 'Full Body', days: ['A', 'B'] },
+  upper_lower: { label: 'Upper/Lower A/B', labelCz: 'Horní / Dolní tělo', labelEn: 'Upper / Lower', days: ['A', 'B'] },
+  ppl: { label: 'Push/Pull/Legs A/B/C', labelCz: 'Push / Pull / Legs', labelEn: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
 };
+
+/** Short split name in the UI language (without the A/B day suffix). */
+export const getSplitLabel = (split: SplitType, isEn: boolean): string =>
+  isEn ? SPLIT_INFO[split].labelEn : SPLIT_INFO[split].labelCz;
 
 /**
  * Určí split na základě počtu tréninkových dnů a úrovně uživatele

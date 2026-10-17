@@ -4,6 +4,7 @@ import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
 import { prefetchFiles } from '@/lib/videoCache';
 import { OpeningHours } from './useGym';
 import { GymPricing } from '@/contexts/GymContext';
+import { tr } from '@/lib/uiLocale';
 
 // Public gym type without owner_id for security
 export interface PublicGym {
@@ -41,7 +42,7 @@ export const usePublishedGyms = () => {
       const { data, source } = await fetchWithCache<Record<string, unknown>[]>(SHARED_SCOPE, 'publishedGyms', () =>
         supabase.from('public_gyms').select('*'),
       );
-      if (!data) throw new Error(source === 'none' ? 'Seznam posiloven není dostupný (offline bez cache)' : 'no data');
+      if (!data) throw new Error(source === 'none' ? tr('common_errors.gyms_offline') : 'no data');
 
       const normalized = (data as unknown as Array<Record<string, unknown>>).map(gym => ({
         ...gym,

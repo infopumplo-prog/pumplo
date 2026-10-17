@@ -309,7 +309,7 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                       change.trend === 'neutral' && 'bg-muted text-foreground',
                     )}>
                       {change.delta < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
-                      {change.delta > 0 ? '+' : '−'}{Math.abs(change.delta).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} kg
+                      {change.delta > 0 ? '+' : '−'}{Math.abs(change.delta).toLocaleString(i18n.language === 'en' ? 'en-US' : 'cs-CZ', { maximumFractionDigits: 1 })} kg
                     </span>
                   ) : change ? (
                     <span className="shrink-0 text-sm text-muted-foreground">{t('checkin.weight_same')}</span>
@@ -317,7 +317,7 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
                 </div>
                 {previousWeight != null && (
                   <p className="text-xs text-muted-foreground">
-                    {t('checkin.weight_previous', { value: previousWeight.toLocaleString('cs-CZ', { maximumFractionDigits: 1 }) })}
+                    {t('checkin.weight_previous', { value: previousWeight.toLocaleString(i18n.language === 'en' ? 'en-US' : 'cs-CZ', { maximumFractionDigits: 1 }) })}
                   </p>
                 )}
                 {weightInput.trim() && weightKg == null && (

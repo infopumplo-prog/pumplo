@@ -1136,7 +1136,7 @@ export const WorkoutSession = ({
         onAbandon={handleFinishWorkout}
         abandonDescription={t('workout.abandon_desc')}
         onShareLink={async () => {
-          const name = `${t('training.workout_letter', { letter: dayLetter })} · ${new Date().toLocaleDateString('cs-CZ')}`;
+          const name = `${t('training.workout_letter', { letter: dayLetter })} · ${new Date().toLocaleDateString(i18n.language === 'en' ? 'en-GB' : 'cs-CZ')}`;
           try {
             const r = await shareWorkoutAsLink({
               sessionKey: `summary-${dayLetter}-${new Date().toISOString().slice(0, 10)}`, name,

@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import WorkoutMessageCard from '@/components/messages/WorkoutMessageCard';
 import PageTransition from '@/components/PageTransition';
 import { useTranslation } from 'react-i18next';
+import { uiLocaleTag } from '@/lib/uiLocale';
 
 interface TrainerInfo {
   name: string;
@@ -22,7 +23,7 @@ interface TrainerInfo {
 
 function formatMessageTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(uiLocaleTag(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDateSeparator(dateStr: string, today: string, yesterday: string): string {
@@ -33,7 +34,7 @@ function formatDateSeparator(dateStr: string, today: string, yesterday: string):
 
   if (diffDays === 0) return today;
   if (diffDays === 1) return yesterday;
-  return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString(uiLocaleTag(), { day: 'numeric', month: 'long' });
 }
 
 function shouldShowTimestamp(current: DirectMessage, previous: DirectMessage | null): boolean {
@@ -288,7 +289,7 @@ const ChatThread = () => {
                     >
                       {msg.message_type === 'workout_share' && msg.metadata?.share_token ? (
                         <WorkoutMessageCard
-                          planName={msg.metadata.plan_name || 'Trénink'}
+                          planName={msg.metadata.plan_name || t('training.workout_fallback')}
                           shareToken={msg.metadata.share_token}
                           dayCount={msg.metadata.day_count}
                           exerciseCount={msg.metadata.exercise_count}

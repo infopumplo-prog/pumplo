@@ -523,7 +523,7 @@ const Home = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm text-[#1F2937] dark:text-white">
-                                  {dayTypeName || `Den ${nextDay.dayLetter}`}
+                                  {dayTypeName || t('workout.day_label', { letter: nextDay.dayLetter })}
                                 </p>
                                 <p className="text-xs text-[#6B7280] dark:text-white/60">
                                   {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}

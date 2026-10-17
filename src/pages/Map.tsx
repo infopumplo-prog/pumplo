@@ -410,7 +410,7 @@ const Map = () => {
               onClick={() => setFiltersOpen(true)}
               data-coach="map-filter"
               className="relative w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
-              aria-label="Filtrovat posilovny"
+              aria-label={t('map.aria_filter_gyms')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeFilterCount > 0 ? 'hsl(var(--primary))' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
@@ -440,7 +440,7 @@ const Map = () => {
             data-coach="map-locate"
             className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-            aria-label="Vycentrovat na mou polohu"
+            aria-label={t('map.aria_center_location')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "hsl(var(--primary))" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/>

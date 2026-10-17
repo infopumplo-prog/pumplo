@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { WorkoutExercise } from '@/lib/trainingGoals';
-import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { getTrainingRoleName } from '@/lib/trainingRoles';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
@@ -280,7 +280,7 @@ export const WorkoutPreview = ({
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <p className={`font-medium text-sm truncate ${!ex.exerciseName ? 'text-muted-foreground italic' : ''}`}>
-                    {((isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName) || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId}
+                    {((isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : ex.exerciseName) || getTrainingRoleName(ex.roleId, isEn) || ex.roleId}
                   </p>
                   {ex.slotCategory && SLOT_CATEGORY_LABELS[ex.slotCategory] && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${SLOT_CATEGORY_LABELS[ex.slotCategory].color}`}>

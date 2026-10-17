@@ -7,6 +7,8 @@
 // klientskou kontrolou délky. Přesně tahle situace 2. 8. 2026 vypadala jako
 // „rozbitá registrace": server heslo tiše odmítl a appka chybu schovala.
 
+import { tr } from '@/lib/uiLocale';
+
 interface SignUpErrorLike {
   code?: string;
   message: string;
@@ -14,19 +16,19 @@ interface SignUpErrorLike {
 
 export const signUpErrorMessage = (error: SignUpErrorLike): string => {
   if (error.code === 'weak_password' || error.message.includes('known to be weak')) {
-    return 'Toto heslo je příliš běžné a objevilo se v databázích uniklých hesel. Zvol prosím jiné — pomůže delší heslo nebo přidání číslic a znaků.';
+    return tr('auth_errors.weak_password');
   }
   if (error.code === 'user_already_exists' || error.message.includes('User already registered')) {
-    return 'Uživatel s tímto emailem již existuje';
+    return tr('auth_errors.user_exists');
   }
   if (error.message.includes('Password should be at least')) {
-    return 'Heslo musí mít alespoň 6 znaků';
+    return tr('auth_errors.password_too_short');
   }
   if (error.code === 'validation_failed' && error.message.toLowerCase().includes('email')) {
-    return 'Zadej prosím platnou emailovou adresu';
+    return tr('auth_errors.invalid_email');
   }
   if (error.code === 'over_request_rate_limit' || error.message.includes('rate limit')) {
-    return 'Příliš mnoho pokusů — počkej prosím chvíli a zkus to znovu.';
+    return tr('auth_errors.rate_limit');
   }
   return error.message;
 };

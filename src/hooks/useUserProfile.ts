@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FETCH_TIMEOUT_MS, readCache, resolveWithCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
 import { useAuth } from '@/contexts/AuthContext';
+import { tr } from '@/lib/uiLocale';
 
 export interface UserProfile {
   id: string;
@@ -118,7 +119,7 @@ export const useUserProfile = () => {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
-    if (!user) return { success: false, error: 'Nejsi přihlášen.' };
+    if (!user) return { success: false, error: tr('common_errors.not_logged_in_short') };
 
     const { error } = await supabase
       .from('user_profiles')

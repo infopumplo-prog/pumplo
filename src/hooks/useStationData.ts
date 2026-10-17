@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { tr } from '@/lib/uiLocale';
 
 interface StationExercise {
   id: string;
@@ -53,7 +54,7 @@ export const useStationData = (shortCode: string | undefined) => {
         .single();
 
       if (gmError || !gymMachine) {
-        setError('Cvičiště nenalezeno');
+        setError(tr('station.not_found_error'));
         setIsLoading(false);
         return;
       }
@@ -73,7 +74,7 @@ export const useStationData = (shortCode: string | undefined) => {
       const machine = gymMachine.machines as { name: string; name_en: string | null; description: string | null } | null;
 
       setData({
-        machineName: machine?.name || 'Cvičiště',
+        machineName: machine?.name || tr('station.fallback_name'),
         machineName_en: (machine as any)?.name_en || null,
         machineDescription: machine?.description || null,
         gymName: gym?.name || '',
