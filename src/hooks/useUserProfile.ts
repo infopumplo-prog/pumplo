@@ -19,8 +19,6 @@ export interface UserProfile {
   preferred_time: string | null;
   training_duration_minutes: number | null;
   injuries: string[] | null;
-  /** Nepovinný popis zranění (feedback 13. 10.), migrace 20261014_injury_note. */
-  injury_note?: string | null;
   training_split: string | null;
   equipment_preference: string | null;
   motivations: string[] | null;

@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TrainingGoalId, UserLevel, getSplitFromFrequency, resolveSplit, SplitType, getSplitLabel, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import { hasRealInjuries as hasRealInjuriesIn } from '@/lib/trainersDirectory';
+import { loadInjuryNote, saveInjuryNote as saveInjuryNoteToDb } from '@/lib/injuryNote';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -89,7 +90,6 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       setHeight(profile.height_cm?.toString() || '');
       setWeight(profile.weight_kg?.toString() || '');
       setInjuries(profile.injuries || []);
-      setInjuryNote(profile.injury_note || '');
       setEquipmentPreference(profile.equipment_preference);
     }
   }, [profile, open, hasJustCompleted, isEditMode]);
@@ -127,12 +127,25 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     return true;
   };
 
-  // Popis zranění zvlášť a neblokujícně (bez migrace 20261014_injury_note by shodil celé uložení).
+  // Popis zranění žije mimo profil (tabulka user_injury_notes, majitel posilovny ho
+  // nevidí — 17. 10.); načte se při otevření dotazníku, ukládá se zvlášť a neblokujícně.
+  const [savedInjuryNote, setSavedInjuryNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !profile?.user_id) return;
+    let cancelled = false;
+    loadInjuryNote(profile.user_id).then((note) => {
+      if (cancelled) return;
+      setSavedInjuryNote(note);
+      setInjuryNote(note ?? '');
+    });
+    return () => { cancelled = true; };
+  }, [open, profile?.user_id]);
+
   const saveInjuryNote = async () => {
+    if (!profile?.user_id) return;
     const next = hasRealInjuriesIn(injuries) ? injuryNote.trim() || null : null;
-    if (next === (profile?.injury_note ?? null)) return;
-    const res = await updateProfile({ injury_note: next });
-    if (!res.success) console.error('Injury note not saved:', res.error);
+    if (next === savedInjuryNote) return;
+    if (await saveInjuryNoteToDb(profile.user_id, next)) setSavedInjuryNote(next);
   };
 
   const handleClose = async (isOpen: boolean) => {

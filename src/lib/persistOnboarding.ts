@@ -12,6 +12,7 @@ import { ONBOARDING_TOTAL_STEPS } from '@/lib/onboardingTypes';
 import type { OnboardingDraft } from '@/lib/onboardingDraft';
 import { hasRealInjuries } from '@/lib/trainersDirectory';
 import { clampFreeText } from '@/lib/onboardingFlow';
+import { saveInjuryNote } from '@/lib/injuryNote';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -79,12 +80,9 @@ export async function persistOnboarding(
   }
   if (!profileUpdated) return { ok: false };
 
-  // 1b. Popis zranění zvlášť a neblokujícně: bez migrace 20261014_injury_note by
-  // neznámý sloupec shodil celý zápis profilu a s ním registraci.
-  if (injuryNote) {
-    const { error } = await supabase.from('user_profiles').update({ injury_note: injuryNote }).eq('user_id', userId);
-    if (error) console.error('Injury note not saved:', error);
-  }
+  // 1b. Popis zranění zvlášť a neblokujícně, ve vlastní tabulce mimo dosah majitele
+  // posilovny (GDPR čl. 9, 17. 10.). Chyba zápisu registraci neshodí.
+  if (injuryNote) await saveInjuryNote(userId, injuryNote);
 
   // 2. Workout plan.
   if (d.primaryGoal) {

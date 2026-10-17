@@ -2913,7 +2913,7 @@ const cs = {
   'onboarding.injury_note_placeholder': 'Např. po operaci kolena, bolí mě při dřepu…',
   'onboarding.injury_note_hint': 'Zdravotní údaj — použijeme ho jen k úpravě plánu. Smazat ho můžeš kdykoli v profilu.',
   'privacy.injury_note_title': 'Volný popis zranění',
-  'privacy.injury_note_body': 'Nepovinný popis zranění, který můžete napsat v dotazníku, je údaj o zdravotním stavu (zvláštní kategorie osobních údajů dle čl. 9 GDPR). Zpracováváme ho pouze na základě vašeho výslovného souhlasu, který udělíte jeho vyplněním (čl. 9 odst. 2 písm. a) GDPR), a výhradně k přizpůsobení vašeho tréninkového plánu. Text můžete kdykoli upravit nebo smazat v Profilu → Upravit dotazník; smazáním textu nebo volbou „Nemám žádné zranění“ se údaj odstraní a souhlas tím odvoláváte.',
+  'privacy.injury_note_body': 'Nepovinný popis zranění, který můžete napsat v dotazníku, je údaj o zdravotním stavu (zvláštní kategorie osobních údajů dle čl. 9 GDPR). Zpracováváme ho pouze na základě vašeho výslovného souhlasu, který udělíte jeho vyplněním (čl. 9 odst. 2 písm. a) GDPR), a výhradně k přizpůsobení vašeho tréninkového plánu. Vidíte ho jen vy a tým Pumpla, posilovně ani jejím trenérům se nepředává. Text můžete kdykoli upravit nebo smazat v Profilu → Upravit dotazník; smazáním textu nebo volbou „Nemám žádné zranění“ se údaj odstraní a souhlas tím odvoláváte. Je součástí exportu dat v Nastavení a se smazáním účtu se smaže.',
   // Týdenní check-in (feedback 13. 10.)
   'stats.checkin_title': 'Týdenní check-in',
   'stats.checkin_empty': 'Tady uvidíš vývoj váhy, nálady a tréninků z týdenních check-inů.',
@@ -2963,9 +2963,9 @@ const cs = {
   'checkin.notification_title': 'Týdenní check-in',
   'checkin.notification_body': 'Jak ti uběhl týden? Mrkni na svůj souhrn a dej nám vědět.',
   'checkin.admin_open': 'Týdenní check-in (test)',
-  // ČEKÁ NA SCHVÁLENÍ DAVIDA (GDPR text check-inu, 13. 10.)
+  // GDPR text check-inu — schválil David 17. 10. 2026
   'privacy.checkin_title': '9. Týdenní check-in',
-  'privacy.checkin_body': 'Jednou týdně (v neděli večer) ti appka nabídne krátký check-in: jak se cítíš a jak šly tréninky (hodnocení 1–5) a volitelně tvou aktuální váhu (ukážeme ti její změnu proti minulému týdnu a uložíme ji i do profilu), co bylo nejtěžší a co bys na appce zlepšil (každé max. 300 znaků). Odpovědi používáme ke zlepšování tvých tréninků a aplikace Pumplo (oprávněný zájem, čl. 6 odst. 1 písm. f) GDPR). Vidí je jen tým Pumpla, posilovně se nepředávají. Check-in je dobrovolný — můžeš ho kdykoli přeskočit. Odpovědi uchováváme po dobu trvání účtu a se smazáním účtu se smažou; jsou i součástí exportu dat v Nastavení.',
+  'privacy.checkin_body': 'Jednou týdně (v neděli večer) vám aplikace nabídne krátký check-in: jak se cítíte a jak šly tréninky (hodnocení 1–5), volitelně vaši aktuální váhu (ukážeme vám její změnu proti minulému týdnu a uložíme ji i do profilu), co bylo nejtěžší a co byste na aplikaci zlepšili (každé max. 300 znaků). Odpovědi používáme ke zlepšování vašich tréninků a aplikace Pumplo (oprávněný zájem, čl. 6 odst. 1 písm. f) GDPR). Vidí je jen tým Pumpla, posilovně se nepředávají. Check-in je dobrovolný — můžete ho kdykoli přeskočit. Odpovědi uchováváme po dobu trvání účtu a se smazáním účtu se smažou; jsou i součástí exportu dat v Nastavení.',
   'admin.checkins_title': 'Týdenní check-iny',
   'admin.checkins_empty': 'Zatím žádný check-in.',
   'admin.checkins_count_one': '{{count}} odpověď',

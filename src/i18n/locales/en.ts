@@ -2918,7 +2918,7 @@ const en = {
   'onboarding.injury_note_placeholder': 'E.g. after knee surgery, hurts when squatting…',
   'onboarding.injury_note_hint': 'Health data — used only to tailor your plan. You can delete it anytime in your profile.',
   'privacy.injury_note_title': 'Free-text injury description',
-  'privacy.injury_note_body': 'The optional injury description you can write in the questionnaire is health data (a special category of personal data under Art. 9 GDPR). We process it only on the basis of your explicit consent, given by filling it in (Art. 9(2)(a) GDPR), and solely to tailor your training plan. You can edit or delete the text at any time in Profile → Edit questionnaire; deleting the text or choosing “I have no injury” removes it and withdraws your consent.',
+  'privacy.injury_note_body': 'The optional injury description you can write in the questionnaire is health data (a special category of personal data under Art. 9 GDPR). We process it only on the basis of your explicit consent, given by filling it in (Art. 9(2)(a) GDPR), and solely to tailor your training plan. Only you and the Pumplo team can see it; it is not shared with your gym or its trainers. You can edit or delete the text at any time in Profile → Edit questionnaire; deleting the text or choosing “I have no injury” removes it and withdraws your consent. It is included in the data export in Settings and is deleted together with your account.',
   // Weekly check-in (feedback 13. 10.)
   'stats.checkin_title': 'Weekly check-in',
   'stats.checkin_empty': 'Your weight, mood and workout trends from weekly check-ins will show here.',
@@ -2962,7 +2962,7 @@ const en = {
   'checkin.notification_title': 'Weekly check-in',
   'checkin.notification_body': 'How was your week? See your summary and let us know.',
   'checkin.admin_open': 'Weekly check-in (test)',
-  // ČEKÁ NA SCHVÁLENÍ DAVIDA (GDPR text check-inu, 13. 10.)
+  // GDPR check-in text — approved by David 17. 10. 2026
   'privacy.checkin_title': '9. Weekly check-in',
   'privacy.checkin_body': 'Once a week (Sunday evening) the app offers a short check-in: how you feel and how your workouts went (rating 1–5) and, optionally, your current weight (we show its change since last week and also save it to your profile), what was hardest and what you would improve in the app (max. 300 characters each). We use the answers to improve your training and the Pumplo app (legitimate interest, Art. 6(1)(f) GDPR). Only the Pumplo team sees them; they are not shared with your gym. The check-in is voluntary — you can skip it at any time. We keep the answers for as long as your account exists and they are deleted together with it; they are also included in the data export in Settings.',
   'admin.checkins_title': 'Weekly check-ins',

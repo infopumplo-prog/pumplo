@@ -51,7 +51,7 @@ const Privacy = () => {
             <li>• <strong className="text-foreground">Tréninkové záznamy:</strong> provedené cviky, váhy, časy, série</li>
             <li>• <strong className="text-foreground">Technické údaje:</strong> typ zařízení, verze aplikace (pro diagnostiku chyb)</li>
           </ul>
-          {/* ČEKÁ NA SCHVÁLENÍ DAVIDA — volný popis zranění, zdravotní údaj (feedback 13. 10.) */}
+          {/* Volný popis zranění, zdravotní údaj — schválil David 17. 10. 2026 */}
           <div className="space-y-1">
             <h3 className="font-semibold">{t('privacy.injury_note_title')}</h3>
             <p className="text-muted-foreground">{t('privacy.injury_note_body')}</p>
@@ -128,7 +128,7 @@ const Privacy = () => {
           </p>
         </section>
 
-        {/* ČEKÁ NA SCHVÁLENÍ DAVIDA — týdenní check-in (feedback 13. 10.), text v i18n privacy.checkin_* */}
+        {/* Týdenní check-in — schválil David 17. 10. 2026, text v i18n privacy.checkin_* */}
         <section id="checkin" className="space-y-3 scroll-mt-20">
           <h2 className="text-base font-bold">{t('privacy.checkin_title')}</h2>
           <p className="text-muted-foreground">{t('privacy.checkin_body')}</p>
