@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Home as HomeIcon, ChevronRight, X as CloseIcon } from 'lucide-react';
+import { Lock, X as CloseIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -22,7 +22,6 @@ import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
-import { CustomEquipmentPicker } from '@/components/workout/CustomEquipmentPicker';
 import { ALL_EQUIPMENT, sanitizeCustomEquipment, usesCustomEquipment } from '@/lib/customEquipment';
 
 // Calculate distance between two points using Haversine formula
@@ -336,30 +335,13 @@ const Map = () => {
     }
   };
 
-  // „Nejsem v žádné z těchto posiloven" (feedback 13. 10.)
-  const [showEquipmentPicker, setShowEquipmentPicker] = useState(false);
-  const [isSavingEquipment, setIsSavingEquipment] = useState(false);
+  // Volba „Nejsem v žádné z těchto posiloven“ z mapy pryč (David 17. 10.) — zůstává
+  // ve výběru posilovny před tréninkem; tady jen nápověda, co na mapě dělat.
   const [hintDismissed, setHintDismissed] = useState(false);
   const customEquipmentActive = usesCustomEquipment(profile);
   const customEquipmentLabel = sanitizeCustomEquipment(profile?.custom_equipment)
     .map(id => (id === ALL_EQUIPMENT ? t('nogym.all') : t(`nogym.eq_${id}`)))
     .join(', ');
-
-  const saveCustomEquipment = async (equipment: string[]) => {
-    setIsSavingEquipment(true);
-    try {
-      const saved = await updateProfile({ selected_gym_id: null, custom_equipment: equipment });
-      if (!saved.success) {
-        toast({ title: t('nogym.save_error'), description: saved.error, variant: 'destructive' });
-        return;
-      }
-      toast({ title: t('nogym.saved'), description: t('nogym.saved_desc') });
-      setShowEquipmentPicker(false);
-      navigate('/');
-    } finally {
-      setIsSavingEquipment(false);
-    }
-  };
 
   const handleSelectGymForTraining = async () => {
     if (!detailGym || !detailGymIsOpen) return;
@@ -470,10 +452,10 @@ const Map = () => {
           </button>
         </div>
 
-        {/* Co tu dělat + „Nejsem v žádné z těchto posiloven" (feedback 13. 10.) */}
+        {/* Co tu dělat (feedback 13. 10.) */}
         {!quickPreviewGym && !hintDismissed && (
           <div className="fixed left-4 right-4 z-40" style={{ bottom: 'calc(var(--bottom-nav-offset) + 8px)' }}>
-            <div className="bg-background/95 backdrop-blur rounded-2xl shadow-lg border border-border p-3 space-y-2">
+            <div className="bg-background/95 backdrop-blur rounded-2xl shadow-lg border border-border p-3">
               <div className="flex items-start gap-2">
                 <p className="flex-1 text-sm text-foreground/90">
                   {customEquipmentActive
@@ -488,27 +470,8 @@ const Map = () => {
                   <CloseIcon className="w-4 h-4" />
                 </button>
               </div>
-              <button
-                onClick={() => setShowEquipmentPicker(true)}
-                className="w-full flex items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
-              >
-                <HomeIcon className="w-5 h-5 text-primary shrink-0" />
-                <span className="flex-1 text-sm font-semibold">
-                  {customEquipmentActive ? t('nogym.edit_equipment') : t('nogym.not_in_list')}
-                </span>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </button>
             </div>
           </div>
-        )}
-
-        {showEquipmentPicker && (
-          <CustomEquipmentPicker
-            initial={profile?.custom_equipment ?? null}
-            isSaving={isSavingEquipment}
-            onCancel={() => setShowEquipmentPicker(false)}
-            onSave={saveCustomEquipment}
-          />
         )}
 
         {/* Quick Preview Card - positioned above bottom nav */}
