@@ -32,7 +32,7 @@ import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction } from '@/lib/watchWorkout';
 import { useWatchBridge } from '@/hooks/useWatchBridge';
-import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
+import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
 import { customDayName } from '@/components/workout/CustomPlanDayChips';
 
 interface ExerciseWithVideo {
@@ -435,15 +435,27 @@ const CustomWorkoutPlayer = () => {
     setPlayerState('select_day');
   };
 
+  // Vlastní trénink bez posilovny (David 17. 10.): žádné fitko, žádná kontrola strojů.
+  const handleSkipGym = () => {
+    try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
+    setShareCache(null);
+    setSelectedGymId(null);
+    setGymName('');
+    setGymInstagram(null);
+    setPlayerState('select_day');
+  };
+
   // Gym passed from the plan page → run the selection handler once on mount
   // (fetches gym name/IG and moves on) without showing the selector again.
   useEffect(() => {
-    if (gymParam) handleGymSelected(gymParam);
+    if (gymParam === NO_GYM_PARAM) handleSkipGym();
+    else if (gymParam) handleGymSelected(gymParam);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check exercise equipment compatibility with selected gym
   const checkEquipmentCompatibility = useCallback(async (dayExercises: ExerciseWithVideo[]) => {
-    if (!selectedGymId) return;
+    // Bez posilovny (David 17. 10.) není s čím porovnávat — rovnou cvičit.
+    if (!selectedGymId) { setPlayerState('exercise'); return; }
 
     // Get gym machines
     const { data: gymMachines } = await supabase
@@ -1272,6 +1284,7 @@ const CustomWorkoutPlayer = () => {
         onSelect={handleGymSelected}
         onCancel={() => navigate(-1)}
         selectedGymId={profile?.selected_gym_id}
+        onSkipGym={handleSkipGym}
       />
     );
   }

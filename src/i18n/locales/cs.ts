@@ -468,6 +468,7 @@ const cs = {
   'nogym.saved': 'Vybavení uloženo',
   'nogym.saved_desc': 'Plán skládáme jen z cviků, které zvládneš s tím, co máš.',
   'nogym.save_error': 'Vybavení se nepodařilo uložit',
+  'nogym.skip_gym_desc': 'Vlastní trénink jede i bez posilovny — cviky si vybíráš sám.',
   'nogym.start_here': 'Trénovat s vlastním vybavením',
   'nogym.adapted': 'Upraveno pro tvé vybavení: vyměněno {{count}}',
   'nogym.adapt_unresolved': 'Bez tvého vybavení nejde: {{names}} — dnes vynecháno',

@@ -37,9 +37,14 @@ interface GymSelectorProps {
   onSelectNoGym?: (equipment: string[]) => void | Promise<void>;
   /** Uložené vlastní vybavení z profilu (předvyplní picker). */
   customEquipment?: string[] | null;
+  /**
+   * Vlastní trénink bez posilovny (David 17. 10.): cviky si člověk volí sám,
+   * takže stačí pokračovat bez výběru fitka i bez výběru strojů.
+   */
+  onSkipGym?: () => void;
 }
 
-export const GymSelector = ({ onSelect, onCancel, selectedGymId, onSelectNoGym, customEquipment }: GymSelectorProps) => {
+export const GymSelector = ({ onSelect, onCancel, selectedGymId, onSelectNoGym, customEquipment, onSkipGym }: GymSelectorProps) => {
   const { t } = useTranslation();
   const { gyms, isLoading } = usePublishedGyms();
   const [selected, setSelected] = useState<string | null>(selectedGymId || null);
@@ -195,6 +200,22 @@ export const GymSelector = ({ onSelect, onCancel, selectedGymId, onSelectNoGym, 
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold">{hasCustomEquipment ? t('nogym.start_here') : t('nogym.not_in_list')}</h3>
               <p className="text-xs text-muted-foreground">{t('nogym.not_in_list_desc')}</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          </button>
+        )}
+        {onSkipGym && (
+          <button
+            type="button"
+            onClick={onSkipGym}
+            className="w-full p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all text-left flex items-center gap-3"
+          >
+            <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Home className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold">{t('nogym.not_in_list')}</h3>
+              <p className="text-xs text-muted-foreground">{t('nogym.skip_gym_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </button>

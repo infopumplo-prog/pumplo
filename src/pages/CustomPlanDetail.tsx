@@ -32,7 +32,7 @@ import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import PublishPlanDialog from '@/components/PublishPlanDialog';
 import CustomPlanDayChips, { useDayLabel } from '@/components/workout/CustomPlanDayChips';
-import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
+import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchMyTrainerId } from '@/lib/publicWorkouts';
 import { SET_TYPE_META, SELECTABLE_SET_TYPES, SetType, setBadgeLabel, setBadgeColor, getSetType } from '@/lib/setTypes';
@@ -1555,6 +1555,13 @@ const CustomPlanDetail = () => {
           onSelect={handleGymSelected}
           onCancel={() => setShowGymSelector(false)}
           selectedGymId={selectedWorkoutGymId || profile?.selected_gym_id}
+          onSkipGym={() => {
+            // Bez posilovny (David 17. 10.): bez kontroly strojů i polohy rovnou do tréninku.
+            setShowGymSelector(false);
+            setIncompatibleExercises([]);
+            setSelectedWorkoutGymId(null);
+            navigate(workoutPath(NO_GYM_PARAM));
+          }}
         />,
         document.body
       )}

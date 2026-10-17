@@ -197,3 +197,6 @@ export const tagSessionWithCycleDay = async (sessionId: string, planId: string, 
 /** „Den 1“ / „Day 2“ = automatický název, ne vlastní (v kruhu se ukáže „Den A“). */
 export const isGenericDayName = (name: string | null | undefined): boolean =>
   !name?.trim() || /^(den|day)\s*(\d+|[a-z])$/i.test(name.trim());
+
+/** Hodnota `?gym=` pro vlastní trénink bez posilovny (David 17. 10.). */
+export const NO_GYM_PARAM = 'none';

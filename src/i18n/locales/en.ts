@@ -466,6 +466,7 @@ const en = {
   'nogym.saved': 'Equipment saved',
   'nogym.saved_desc': 'Your plan uses only exercises you can do with what you have.',
   'nogym.save_error': 'Could not save your equipment',
+  'nogym.skip_gym_desc': 'Your own workout works without a gym — you pick the exercises.',
   'nogym.start_here': 'Train with my own equipment',
   'nogym.adapted': 'Adapted to your equipment: {{count}} swapped',
   'nogym.adapt_unresolved': 'Not possible with your equipment: {{names}} — skipped today',
