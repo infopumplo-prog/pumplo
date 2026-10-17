@@ -7,7 +7,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight, HeartPulse, Instagram, Mail, Phone, X } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
-import davidPhoto from '@/assets/david-benisek.png';
 import TrainerDetailDrawer from '@/components/business/TrainerDetailDrawer';
 import type { Trainer } from '@/components/business/GymTrainersTab';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,7 +65,8 @@ const Trainers = () => {
         is_active: r.is_active,
         sort_order: r.sort_order,
         name: r.name,
-        photo: r.photo_url || (r.gym_id === PUMPLO_GYM_ID && /beníšek/i.test(r.name) ? davidPhoto : ''),
+        // Fotka Beníška je od 17. 10. v databázi — náhradní obrázek z appky už netřeba.
+        photo: r.photo_url || '',
         bio: r.bio || '',
         bio_en: r.bio_en || null,
         specializations: r.specializations || [],
