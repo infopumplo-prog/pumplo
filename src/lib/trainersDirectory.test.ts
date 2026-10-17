@@ -40,15 +40,14 @@ describe('shouldRouteToTrainers', () => {
 });
 
 describe('trainer directory', () => {
-  it('hides unapproved, inactive and demo trainers for non-admins', () => {
+  it('hides unapproved, inactive and demo trainers for everyone, admins included', () => {
     const rows = [
       row('a', 'g1'),
       row('b', 'g1', { status: 'pending' }),
       row('c', 'g1', { is_active: false }),
       row('d', DEMO_GYM_ID),
     ];
-    expect(filterVisibleTrainers(rows, false).map((r) => r.id)).toEqual(['a']);
-    expect(filterVisibleTrainers(rows, true).map((r) => r.id)).toEqual(['a', 'd']);
+    expect(filterVisibleTrainers(rows).map((r) => r.id)).toEqual(['a']);
   });
 
   it('orders own gym first, then Pumplo, then others, demo last', () => {

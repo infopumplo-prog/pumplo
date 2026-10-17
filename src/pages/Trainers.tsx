@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Stránka se všemi trenéry (feedback 13. 10.): schválení a aktivní trenéři ze všech posiloven
-// včetně Pumplo týmu; demo posilovnu vidí jen admin. Moje posilovna → Pumplo → ostatní.
+// včetně Pumplo týmu; demo posilovna se nezobrazuje (17. 10.). Moje posilovna → Pumplo → ostatní.
 // Po registraci se zraněním sem appka přesměruje s úvodním bannerem (?intro=injury).
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -12,7 +12,6 @@ import TrainerDetailDrawer from '@/components/business/TrainerDetailDrawer';
 import type { Trainer } from '@/components/business/GymTrainersTab';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useUserRole } from '@/hooks/useUserRole';
 import {
   PUMPLO_GYM_ID,
   filterVisibleTrainers,
@@ -36,7 +35,6 @@ const Trainers = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useUserProfile();
-  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const [rows, setRows] = useState<DirectoryTrainer[]>([]);
   const [gymNames, setGymNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -94,8 +92,8 @@ const Trainers = () => {
   }, []);
 
   const trainers = useMemo(
-    () => sortTrainers(dedupeTrainers(filterVisibleTrainers(rows, isAdmin)), profile?.selected_gym_id, gymNames),
-    [rows, isAdmin, profile?.selected_gym_id, gymNames],
+    () => sortTrainers(dedupeTrainers(filterVisibleTrainers(rows)), profile?.selected_gym_id, gymNames),
+    [rows, profile?.selected_gym_id, gymNames],
   );
 
   const dismissIntro = () => {
@@ -149,21 +147,21 @@ const Trainers = () => {
             </div>
           )}
 
-          {(isLoading || roleLoading) && (
+          {isLoading && (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {!isLoading && !roleLoading && failed && (
+          {!isLoading && failed && (
             <p className="text-sm text-muted-foreground text-center py-8">{t('trainers.load_failed')}</p>
           )}
 
-          {!isLoading && !roleLoading && !failed && trainers.length === 0 && (
+          {!isLoading && !failed && trainers.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">{t('trainers.empty')}</p>
           )}
 
-          {!isLoading && !roleLoading && trainers.map((trainer) => {
+          {!isLoading && trainers.map((trainer) => {
             const specs = isEn && trainer.specializations_en?.length ? trainer.specializations_en : trainer.specializations;
             const bio = (isEn && trainer.bio_en) ? trainer.bio_en : trainer.bio;
             const isMyGym = !!profile?.selected_gym_id && trainer.gym_id === profile.selected_gym_id;

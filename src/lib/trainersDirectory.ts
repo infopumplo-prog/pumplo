@@ -1,5 +1,5 @@
 // Stránka se všemi trenéry (feedback 13. 10.): čistá logika bez Reactu — řazení,
-// filtr demo posilovny a rozhodnutí, kam po registraci se zraněním.
+// skrytí demo posilovny a rozhodnutí, kam po registraci se zraněním.
 
 export const PUMPLO_GYM_ID = 'f0f0f0f0-0000-4000-8000-000000000001';
 export const DEMO_GYM_ID = 'deadbeef-0000-4000-8000-000000000001';
@@ -25,13 +25,11 @@ export interface DirectoryTrainerRow {
   sort_order: number | null;
 }
 
-/** Jen schválení a aktivní; demo posilovnu vidí jen admin. */
-export const filterVisibleTrainers = <T extends DirectoryTrainerRow>(rows: T[], isAdmin: boolean): T[] =>
-  rows.filter(
-    (r) => r.status === 'approved' && r.is_active === true && (isAdmin || r.gym_id !== DEMO_GYM_ID),
-  );
+/** Jen schválení a aktivní; demo posilovna se neukazuje nikomu, ani adminovi (David 17. 10.). */
+export const filterVisibleTrainers = <T extends DirectoryTrainerRow>(rows: T[]): T[] =>
+  rows.filter((r) => r.status === 'approved' && r.is_active === true && r.gym_id !== DEMO_GYM_ID);
 
-/** Pořadí skupin: moje posilovna → Pumplo → ostatní (→ demo pro admina). */
+/** Pořadí skupin: moje posilovna → Pumplo → ostatní. */
 const groupRank = (gymId: string, selectedGymId: string | null | undefined): number => {
   if (selectedGymId && gymId === selectedGymId) return 0;
   if (gymId === PUMPLO_GYM_ID) return 1;
