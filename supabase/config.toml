@@ -59,3 +59,16 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Sekce Report (admin) — volá cron s hlavičkou x-sync-secret, ne JWT
+[functions.seo-gsc-sync]
+verify_jwt = false
+
+[functions.web-ga4-sync]
+verify_jwt = false
+
+[functions.aso-rank-sync]
+verify_jwt = false
+
+[functions.mrr-snapshot]
+verify_jwt = false
