@@ -85,6 +85,26 @@ const Home = () => {
     pausedCustomWorkout ? 'custom' : favoriteTab
   );
 
+  // Swipe mezi záložkami: vodorovný tah aspoň 60 px, výrazně víc do strany než nahoru/dolů.
+  // Tah začatý ve vodorovně scrollovaném prvku (karusel) záložku nepřepíná.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onTabSwipeStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-swipe], .overflow-x-auto, input, textarea')) { swipeStart.current = null; return; }
+    const t0 = e.touches[0];
+    swipeStart.current = { x: t0.clientX, y: t0.clientY };
+  };
+  const onTabSwipeEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start) return;
+    const t1 = e.changedTouches[0];
+    const dx = t1.clientX - start.x;
+    const dy = t1.clientY - start.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    setActiveTab(dx < 0 ? 'custom' : 'pumplo');
+  };
+
   const toggleFavorite = (tab: 'pumplo' | 'custom') => {
     setFavoriteTab(tab);
     localStorage.setItem('pumplo_favorite_tab', tab);
@@ -335,8 +355,15 @@ const Home = () => {
           </div>
         )}
 
-        {/* Content */}
-        <motion.div className="px-6 py-6 space-y-6" variants={containerVariants} initial="hidden" animate="visible">
+        {/* Content — swipe vlevo/vpravo přepíná Pumplo trénink ↔ Vlastní trénink (David 17. 10.) */}
+        <motion.div
+          className="px-6 py-6 space-y-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          onTouchStart={onTabSwipeStart}
+          onTouchEnd={onTabSwipeEnd}
+        >
           {/* Custom Plans Tab */}
           {isOnboardingComplete && activeTab === 'custom' && (
             <motion.div variants={itemVariants}>
