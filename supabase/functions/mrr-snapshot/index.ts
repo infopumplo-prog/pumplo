@@ -14,7 +14,7 @@
 //     hodnota podle ceníku subscription_plans, NEZAHRNUJE se do mrr_czk, dokud
 //     se platba neprokáže.
 //   free_gyms — is_grandfathered (custom deal bez Stripe, např. pilot Eurogym).
-import { guard, json, logRun, pragueDay, serviceClient } from "../_shared/report.ts";
+import { addDays, guard, json, logRun, pragueDay, serviceClient } from "../_shared/report.ts";
 
 const DEMO_GYM_ID = "deadbeef-0000-4000-8000-000000000001";
 
@@ -52,6 +52,89 @@ async function stripeList(key: string, status: string): Promise<Any[]> {
   return out;
 }
 
+
+// Konec dne (23:59:59) v Praze jako unix sekundy — pro zpětný výpočet.
+const pragueDayEnd = (day: string) => {
+  const noonUtc = Date.parse(`${day}T12:00:00Z`);
+  const offsetMin = (Date.parse(new Date(noonUtc).toLocaleString("sv-SE", { timeZone: "Europe/Prague" }).replace(" ", "T") + "Z") - noonUtc) / 60000;
+  return Math.floor((Date.parse(`${day}T23:59:59Z`) - offsetMin * 60000) / 1000);
+};
+
+/**
+ * Zpětné doplnění report_mrr_daily (body {"backfill_days": N}).
+ * Přibližné: cena = dnešní položky předplatného, slevy podle start/end kupónu,
+ * předplatné se počítá od start_date do ended_at a mimo trial. Ruční a zdarma podle
+ * gym_subscriptions.created_at. Existující dny NEPŘEPISUJE (jen doplní chybějící).
+ */
+async function backfill(key: string, days: number) {
+  const db = serviceClient();
+  const today = pragueDay();
+  const [{ data: subs, error: e1 }, { data: plans, error: e2 }] = await Promise.all([
+    db.from("gym_subscriptions").select("gym_id, plan_id, status, billing_period, stripe_subscription_id, is_grandfathered, created_at"),
+    db.from("subscription_plans").select("id, price_monthly, price_annual"),
+  ]);
+  if (e1 || e2) throw new Error((e1 ?? e2)!.message);
+  const planById = new Map((plans ?? []).map((p) => [p.id, p]));
+  const bySubId = new Map((subs ?? []).filter((s) => s.stripe_subscription_id).map((s) => [s.stripe_subscription_id, s]));
+  const all = (await stripeList(key, "all")).filter((s) => (s.currency ?? "").toLowerCase() === "czk");
+  const rows: Any[] = [];
+  for (let i = days; i >= 1; i--) {
+    const day = addDays(today, -i);
+    const t = pragueDayEnd(day);
+    const byPlan: Record<string, { gyms: number; mrr_czk: number }> = {};
+    const paying = new Set<string>();
+    let mrr = 0;
+    for (const s of all) {
+      const local = bySubId.get(s.id);
+      const gymId = local?.gym_id ?? s.metadata?.gym_id ?? s.id;
+      if (gymId === DEMO_GYM_ID) continue;
+      if ((s.start_date ?? 0) > t) continue;
+      if (s.ended_at && s.ended_at <= t) continue;
+      if (s.trial_end && s.trial_end > t && (s.trial_start ?? 0) <= t) continue;
+      let gross = 0;
+      for (const it of s.items?.data ?? []) {
+        const pr = it.price ?? {};
+        if (!pr.recurring) continue;
+        gross += (pr.unit_amount ?? 0) / 100 * (it.quantity ?? 1) * monthlyFactor(pr.recurring.interval, pr.recurring.interval_count);
+      }
+      const ds: Any[] = (s.discounts ?? []).filter((d: Any) => d && typeof d === "object" && d.coupon);
+      if (!ds.length && s.discount?.coupon) ds.push(s.discount);
+      const first = s.items?.data?.[0]?.price?.recurring;
+      let net = gross;
+      for (const d of ds) {
+        const c = d.coupon;
+        if (c.duration === "once") continue;
+        if ((d.start ?? 0) > t || (d.end && d.end <= t)) continue;
+        if (c.percent_off) net *= 1 - c.percent_off / 100;
+        else if (c.amount_off && first) net -= c.amount_off / 100 * monthlyFactor(first.interval, first.interval_count);
+      }
+      net = Math.max(0, Math.round(net * 100) / 100);
+      const plan = local?.plan_id ?? s.metadata?.plan_id ?? "(neznámý)";
+      const b = byPlan[plan] ??= { gyms: 0, mrr_czk: 0 };
+      b.gyms += 1; b.mrr_czk = Math.round((b.mrr_czk + net) * 100) / 100;
+      mrr += net;
+      if (net > 0) paying.add(gymId);
+    }
+    const tIso = new Date(t * 1000).toISOString();
+    const local = (subs ?? []).filter((x) => x.gym_id !== DEMO_GYM_ID && !x.stripe_subscription_id && x.status === "active" && x.created_at <= tIso);
+    const manual = local.filter((x) => !x.is_grandfathered);
+    rows.push({
+      day, mrr_czk: Math.round(mrr * 100) / 100, active_paying_gyms: paying.size, by_plan: byPlan,
+      manual_gyms: manual.length,
+      manual_list_mrr_czk: Math.round(manual.reduce((a, x) => {
+        const p = planById.get(x.plan_id);
+        return a + (x.billing_period === "annual" ? (p?.price_annual ?? 0) / 12 : (p?.price_monthly ?? 0));
+      }, 0) * 100) / 100,
+      free_gyms: local.filter((x) => x.is_grandfathered).length,
+      details: { backfill: true, note: "zpětný výpočet ze Stripe (start/konec předplatného, dnešní ceny)" },
+      updated_at: new Date().toISOString(),
+    });
+  }
+  const { error } = await db.from("report_mrr_daily").upsert(rows, { onConflict: "day", ignoreDuplicates: true });
+  if (error) throw new Error(`report_mrr_daily backfill: ${error.message}`);
+  return { days: rows.length, first: rows[0], last: rows[rows.length - 1] };
+}
+
 Deno.serve(async (req) => {
   const denied = guard(req);
   if (denied) return denied;
@@ -62,6 +145,15 @@ Deno.serve(async (req) => {
   if (!key) {
     await logRun(db, "mrr", started, "not_configured", "Chybí secret STRIPE_SECRET_KEY.");
     return json({ status: "not_configured" });
+  }
+  const body = await req.json().catch(() => ({}));
+  const backfillDays = Math.min(parseInt(body?.backfill_days, 10) || 0, 400);
+  if (backfillDays > 0) {
+    try {
+      return json({ status: "ok", backfill: await backfill(key, backfillDays) });
+    } catch (e) {
+      return json({ status: "error", message: String(e) }, 500);
+    }
   }
 
   try {
