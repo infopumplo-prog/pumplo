@@ -50,6 +50,7 @@ const Settings = () => {
   const { t, i18n } = useTranslation();
   const { preference, setPreference, theme, amoled, setAmoled, accent, setAccent } = useTheme();
   // Barva appky: hned lokálně + do profilu, ať platí i na jiném telefonu.
+  const [accentOpen, setAccentOpen] = useState(false);
   const changeAccent = (next: AccentColor) => {
     setAccent(next);
     if (user) void supabase.from('user_profiles').update({ accent_color: next }).eq('user_id', user.id);
@@ -526,11 +527,30 @@ const Settings = () => {
                 </button>
               )}
 
-              <div className="px-4 py-3.5">
-                <RowTitle icon={Palette} label={t('accent.title')} hint={t('settings.accent_hint')} />
-                <div className="mt-3">
-                  <AccentPicker value={accent} onChange={changeAccent} />
-                </div>
+              {/* Výběr barvy se rozbalí na klepnutí — rozbalený zabíral moc místa (David 17. 10.). */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setAccentOpen(o => !o)}
+                  aria-expanded={accentOpen}
+                  className="w-full min-h-[56px] flex items-center gap-3 px-4 py-3 text-left active:bg-muted/60 transition-colors"
+                >
+                  <RowIcon icon={Palette} />
+                  <span className="flex-1 min-w-0 text-[15px] font-medium">
+                    {t('accent.title')}
+                    <span className="block text-xs text-muted-foreground font-normal">{t('settings.accent_hint')}</span>
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
+                    <span className="w-4 h-4 rounded-full" style={{ background: 'hsl(var(--primary))' }} />
+                    {t(`accent.${accent}`)}
+                  </span>
+                  <ChevronRight className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform ${accentOpen ? 'rotate-90' : ''}`} />
+                </button>
+                {accentOpen && (
+                  <div className="px-4 pb-3.5">
+                    <AccentPicker value={accent} onChange={changeAccent} />
+                  </div>
+                )}
               </div>
 
               <div className="px-4 py-3.5">
