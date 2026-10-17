@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import OfflineIndicator from './OfflineIndicator';
-import { FeedbackButton } from './feedback/FeedbackButton';
 import { useWatchMenu } from '@/hooks/useWatchMenu';
 import { useAccentSync } from '@/hooks/useAccentSync';
 import { useGuest } from '@/contexts/GuestContext';
@@ -22,9 +21,8 @@ const AppLayout = () => {
       <main className="flex-1 overflow-y-auto pb-nav" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <Outlet />
       </main>
-      {/* Feedback i check-in se ukládají k účtu — host je nevidí. */}
-      {!isGuest && <FeedbackButton />}
-      {/* Týdenní check-in (feedback 13. 10.) */}
+      {/* Plovoucí tlačítko feedbacku pryč (David 17. 10.) — zpětná vazba je v Profilu.
+          Týdenní check-in (feedback 13. 10.) se ukládá k účtu — host ho nevidí. */}
       {!isGuest && <Suspense fallback={null}><WeeklyCheckinHost /></Suspense>}
       <BottomNav />
     </div>
