@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Dumbbell, Flame, Scale, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -142,15 +142,18 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
   const [appFeedback, setAppFeedback] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Váha (David 15. 10.): předvyplní se poslední známá, ukáže se změna proti minulému check-inu.
   const [weightInput, setWeightInput] = useState('');
   const [previousWeight, setPreviousWeight] = useState<number | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
 
-  // Nový týden = čistý formulář
+  // Nový týden i každé nové otevření = čistý formulář. Dřív zůstalo `done` z minulého
+  // odeslání a appka se při dalším otevření zasekla na poděkování (David 17. 10.).
   useEffect(() => {
+    if (!open) return;
     setMood(0); setTraining(0); setHardest(''); setAppFeedback(''); setDone(false); setWeightInput('');
-  }, [weekStart]);
+  }, [weekStart, open]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -220,8 +223,10 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
       return;
     }
     setDone(true);
-    setTimeout(() => onSubmitted(weekStart), 1200);
+    closeTimer.current = setTimeout(() => onSubmitted(weekStart), 1200);
   };
+
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   return (
     // Celá obrazovka místo vysouvacího panelu: vaul Drawer se v iOS s otevřenou
@@ -234,17 +239,16 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
       className="fixed inset-0 z-[150] bg-background overflow-y-auto overscroll-contain"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
     >
-        {!done && (
-          <button
-            type="button"
-            onClick={onLater}
-            aria-label={t('checkin.close')}
-            className="absolute right-3 w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:scale-95 active:bg-muted"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        {/* Křížek i na poděkování — kdyby se samo nezavřelo, nesmí to uvěznit. */}
+        <button
+          type="button"
+          onClick={done ? () => onSubmitted(weekStart) : onLater}
+          aria-label={t('checkin.close')}
+          className="absolute right-3 w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground active:scale-95 active:bg-muted"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className={done ? 'w-full px-5 min-h-full flex items-center justify-center' : 'w-full px-5 pt-14'}>
           {done ? (
             // Poděkování uprostřed obrazovky (David 17. 10.).
