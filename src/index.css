@@ -244,6 +244,24 @@
   .dark[data-accent="green"] { --hero-card: 152 42% 11%; --hero-card-inner: 152 36% 15%; }
   .dark[data-accent="orange"] { --hero-card: 25 48% 12%; --hero-card-inner: 25 42% 17%; }
   .dark[data-accent="red"] { --hero-card: 0 45% 13%; --hero-card-inner: 0 40% 18%; }
+
+  /* Pozadí sdílecí karty po tréninku ve zvolené barvě (David 17. 10.).
+     Výchozí = původní navy (#1a1a2e → #16213e → #0f3460); karta je vždy tmavá. */
+  :root {
+    --share-bg-from: 240 28% 14%;
+    --share-bg-mid: 221 48% 17%;
+    --share-bg-to: 216 73% 22%;
+  }
+  [data-accent="pink"] { --share-bg-from: 300 28% 10%; --share-bg-mid: 325 45% 16%; --share-bg-to: 330 65% 26%; }
+  [data-accent="purple"] { --share-bg-from: 250 28% 11%; --share-bg-mid: 262 42% 17%; --share-bg-to: 265 60% 28%; }
+  [data-accent="green"] { --share-bg-from: 170 30% 8%; --share-bg-mid: 155 42% 12%; --share-bg-to: 150 60% 19%; }
+  [data-accent="orange"] { --share-bg-from: 15 28% 9%; --share-bg-mid: 22 45% 14%; --share-bg-to: 22 70% 24%; }
+  [data-accent="red"] { --share-bg-from: 350 28% 9%; --share-bg-mid: 0 45% 14%; --share-bg-to: 0 65% 24%; }
+
+  /* Hlavní akční tlačítka („Začít…“) ve zvolené barvě; modrá = původní navy. */
+  [data-accent]:not([data-accent="blue"]) {
+    --action: var(--primary);
+  }
 }
 
 @layer base {

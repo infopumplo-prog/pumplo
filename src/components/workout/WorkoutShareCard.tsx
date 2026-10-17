@@ -37,7 +37,7 @@ interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
 // 1. Dark Blur
 const T_DarkBlur = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform, exercisesLabel, repsLabel }: TProps) => (
   <>
-    <BG photo={photo} gradient="linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" />
+    <BG photo={photo} gradient="linear-gradient(135deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-mid)) 50%, hsl(var(--share-bg-to)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
@@ -206,7 +206,7 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
 // 6. Muscle map — front + back body figures with highlighted groups
 const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform, exercisesLabel, repsLabel, muscles, musclesTitle }: TProps & { muscles: Record<string, number>; musclesTitle: string }) => (
   <>
-    <BG photo={photo} gradient="linear-gradient(135deg, #0B1222 0%, #16213e 100%)" />
+    <BG photo={photo} gradient="linear-gradient(135deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-mid)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
@@ -241,7 +241,7 @@ const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, e
   const FactIcon = FUNFACT_ICONS[factKey];
   return (
   <>
-    <BG photo={photo} gradient="linear-gradient(160deg, #0B1222 0%, #0f3460 100%)" />
+    <BG photo={photo} gradient="linear-gradient(160deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-to)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
@@ -298,11 +298,14 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
     <div className="flex items-start justify-between">
       <div>
         <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700 }}>{title}</p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <MapPin className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
-          {gymIg && <span style={{ color: 'hsl(var(--primary))', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
-        </div>
+        {/* Vlastní trénink bez posilovny (17. 10.): bez prázdného špendlíku. */}
+        {gym && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <MapPin className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
+            {gymIg && <span style={{ color: 'hsl(var(--primary))', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
+          </div>
+        )}
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '4px' }}>{date} &middot; {exCount} {exercisesLabel} &middot; {reps} {repsLabel}</p>
       </div>
       <span style={{ color: 'hsl(var(--primary))', fontSize: '18px', fontWeight: 800 }}>Pumplo</span>
