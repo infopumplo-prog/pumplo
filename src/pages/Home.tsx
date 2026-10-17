@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { homeTourOrder, readPlanChoice, type HomeTourStep } from '@/lib/onboardingFlow';
 import { useTranslation } from 'react-i18next';
-import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,7 +14,6 @@ import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
 import { BicepsFlexed, Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star, Play } from 'lucide-react';
-import PumploLogo from '@/components/PumploLogo';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
@@ -223,7 +221,7 @@ const Home = () => {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 px-6 pt-8 pb-4">
+        <div className="relative z-10 px-6 pt-4 pb-2">
           <motion.div className="flex flex-col items-center" initial={{
           opacity: 0,
           y: -10
@@ -233,22 +231,8 @@ const Home = () => {
         }} transition={{
           duration: 0.4
         }}>
-            <div className="flex items-center justify-center relative w-full">
-              <PumploLogo className="h-8" />
-              <div className="absolute right-0 flex gap-1">
-                {(['cs', 'en'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => changeLanguage(lang)}
-                    aria-label={lang === 'cs' ? 'Čeština' : 'English'}
-                    className={`text-xl w-11 h-11 flex items-center justify-center rounded-xl transition-all active:scale-95 active:bg-muted ${i18n.language === lang ? 'opacity-100' : 'opacity-35 hover:opacity-60'}`}
-                  >
-                    {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-3">
+            {/* Logo a vlajky jazyka pryč — jazyk je v Nastavení (David 17. 10.) */}
+            <div className="flex items-center gap-3">
               {role === 'business' && <Link to="/business" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Building2 className="w-4 h-4" />
                   {t('home.business')}

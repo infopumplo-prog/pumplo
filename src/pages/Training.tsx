@@ -417,9 +417,9 @@ const Training = () => {
     try {
       const r = await adaptExercisesToGym(list, gymId, supabaseAdaptDeps);
       console.info('[gymAdapt] result ' + JSON.stringify({ skipped: r.skipped, swapped: r.swapped, unresolved: r.unresolved, out: r.exercises.map(e => e.exerciseName) }));
-      if (r.skipped) toast.info(t('training.gym_adapt_offline'));
-      else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }));
-      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }));
+      if (r.skipped) toast.info(t('training.gym_adapt_offline'), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
       return r.exercises;
     } catch (e) {
       console.warn('[Training] gym adaptation failed', e);
@@ -436,9 +436,9 @@ const Training = () => {
     setIsAdaptingToGym(true);
     try {
       const r = await adaptExercisesToGym(list, CUSTOM_EQUIPMENT_GYM_KEY, customEquipmentAdaptDeps(equipment), { requireSecondaryMachine: true });
-      if (r.skipped) toast.info(t('nogym.adapt_offline'));
-      else if (r.swapped.length > 0) toast.success(t('nogym.adapted', { count: r.swapped.length }));
-      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('nogym.adapt_unresolved', { names: r.unresolved.join(', ') }));
+      if (r.skipped) toast.info(t('nogym.adapt_offline'), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      else if (r.swapped.length > 0) toast.success(t('nogym.adapted', { count: r.swapped.length }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('nogym.adapt_unresolved', { names: r.unresolved.join(', ') }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
       return r.exercises;
     } catch (e) {
       console.warn('[Training] custom equipment adaptation failed', e);
