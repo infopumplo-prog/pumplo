@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatWeekRange,
   pragueWeekStart,
   pragueLocalToDate,
   currentCheckinWeekStart,
@@ -153,5 +154,17 @@ describe('aggregateCheckinsByWeek', () => {
     expect(agg.map((w) => w.weekStart)).toEqual(['2026-10-12', '2026-10-05']);
     expect(agg[0]).toMatchObject({ count: 3, avgMood: 4.3, avgTraining: 3 });
     expect(agg[0].texts.map((t) => t.id)).toEqual(['2']);
+  });
+});
+
+describe('formatWeekRange', () => {
+  it('formats a week inside one month in Czech', () => {
+    expect(formatWeekRange('2026-10-12', 'cs')).toBe('12.–18. 10.');
+  });
+  it('formats a week across months in Czech', () => {
+    expect(formatWeekRange('2026-09-28', 'cs')).toBe('28. 9. – 4. 10.');
+  });
+  it('formats in English', () => {
+    expect(formatWeekRange('2026-10-12', 'en')).toBe('Oct 12–18');
   });
 });

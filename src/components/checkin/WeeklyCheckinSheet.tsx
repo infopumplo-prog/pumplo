@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatistics } from '@/hooks/useStatistics';
 import { cn } from '@/lib/utils';
-import { CHECKIN_FEEDBACK_SOURCE, CHECKIN_TEXT_MAX, clampText, parseWeightKg, recordsInWeek, sanitizeWeightInput, weekRange, weightChange } from '@/lib/weeklyCheckin';
+import { CHECKIN_FEEDBACK_SOURCE, CHECKIN_TEXT_MAX, clampText, parseWeightKg, formatWeekRange, recordsInWeek, sanitizeWeightInput, weekRange, weightChange } from '@/lib/weeklyCheckin';
 
 // Týdenní check-in (feedback 13. 10.): souhrn týdne + 2 hodnocení 1–5 + 2 volné texty.
 
@@ -134,7 +134,7 @@ const WeekSummary = ({ weekStart, trainingDaysCount }: { weekStart: string; trai
 };
 
 const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, onSkip, onLater }: WeeklyCheckinSheetProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [mood, setMood] = useState(0);
   const [training, setTraining] = useState(0);
@@ -257,6 +257,8 @@ const WeeklyCheckinSheet = ({ open, weekStart, trainingDaysCount, onSubmitted, o
               <div>
                 <h2 id="checkin-title" className="text-xl font-bold">{t('checkin.title')}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{t('checkin.subtitle')}</p>
+                {/* Ke kterému týdnu souhrn patří (David 17. 10.: „odjel jsem trénink a nic“). */}
+                <p className="text-xs font-semibold text-primary mt-2">{formatWeekRange(weekStart, i18n.language)}</p>
               </div>
 
               {open && <WeekSummary weekStart={weekStart} trainingDaysCount={trainingDaysCount} />}

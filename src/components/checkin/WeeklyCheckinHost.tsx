@@ -6,7 +6,7 @@ import { App as CapApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { OPEN_CHECKIN_EVENT, currentCheckinWeekStart, shouldShowCheckin } from '@/lib/weeklyCheckin';
+import { OPEN_CHECKIN_EVENT, currentCheckinWeekStart, pragueWeekStart, shouldShowCheckin } from '@/lib/weeklyCheckin';
 import {
   PENDING_CHECKIN_KEY,
   listenWeeklyCheckinTap,
@@ -65,16 +65,19 @@ const WeeklyCheckinHost = () => {
     scheduleWeeklyCheckinNotification(t('checkin.notification_title'), t('checkin.notification_body'));
   }, [user, profile?.onboarding_completed, t]);
 
-  const forceOpen = useCallback(() => {
-    setWeekStart(currentCheckinWeekStart(new Date()));
+  // currentWeek = admin test z profilu (David 17. 10.): ukázat rozběhnutý týden,
+  // ne ten minulý — jinak souhrn ukazuje nuly, i když se tento týden cvičilo.
+  const forceOpen = useCallback((currentWeek = false) => {
+    const now = new Date();
+    setWeekStart(currentWeek ? pragueWeekStart(now) : currentCheckinWeekStart(now));
     setOpen(true);
   }, []);
 
   // Klepnutí na notifikaci, admin tlačítko v profilu
   useEffect(() => {
-    const onOpen = () => {
+    const onOpen = (e: Event) => {
       try { sessionStorage.removeItem(PENDING_CHECKIN_KEY); } catch { /* noop */ }
-      forceOpen();
+      forceOpen(!!(e as CustomEvent<{ currentWeek?: boolean }>).detail?.currentWeek);
     };
     window.addEventListener(OPEN_CHECKIN_EVENT, onOpen);
     let removeTap: (() => void) | undefined;

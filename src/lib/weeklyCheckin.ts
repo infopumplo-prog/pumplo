@@ -264,3 +264,14 @@ export function buildCheckinTrend(rows: CheckinTrendRow[]): CheckinTrend {
 
 /** Odkaz feedbacku z check-inu (user_feedback.responses) — admin podle něj pozná zdroj. */
 export const CHECKIN_FEEDBACK_SOURCE = 'weekly_checkin';
+
+// Popisek týdne pro check-in, např. „12.–18. 10.“ / „Oct 12–18“ (David 17. 10.).
+export function formatWeekRange(weekStart: string, lang: string): string {
+  const [, m, d] = weekStart.split('-').map(Number);
+  const [, em, ed] = addDays(weekStart, 6).split('-').map(Number);
+  if (lang.startsWith('en')) {
+    const mon = (mm: number) => new Date(Date.UTC(2000, mm - 1, 1)).toLocaleString('en', { month: 'short', timeZone: 'UTC' });
+    return m === em ? `${mon(m)} ${d}–${ed}` : `${mon(m)} ${d} – ${mon(em)} ${ed}`;
+  }
+  return m === em ? `${d}.–${ed}. ${m}.` : `${d}. ${m}. – ${ed}. ${em}.`;
+}

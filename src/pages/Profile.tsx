@@ -104,7 +104,7 @@ const Profile = () => {
     { icon: MessageSquare, label: t('profile.feedback'), onClick: () => setFeedbackOpen(true) },
     // Týdenní check-in — ruční spuštění pro test bez čekání na neděli, jen admin (feedback 13. 10.)
     ...(role === 'admin'
-      ? [{ icon: HeartPulse, label: t('checkin.admin_open'), onClick: () => window.dispatchEvent(new CustomEvent(OPEN_CHECKIN_EVENT)) }]
+      ? [{ icon: HeartPulse, label: t('checkin.admin_open'), onClick: () => window.dispatchEvent(new CustomEvent(OPEN_CHECKIN_EVENT, { detail: { currentWeek: true } })) }]
       : []),
   ];
 
