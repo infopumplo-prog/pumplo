@@ -469,7 +469,9 @@ const Home = () => {
                             const durationMin = todayWorkoutSession ? Math.round((todayWorkoutSession.duration_seconds || 0) / 60) : 0;
                             return (
                               <div
-                                className="rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                                // Ve zvolené barvě appky místo zelené, ta v kartě křičela (David 17. 10.).
+                                className="rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                                style={{ background: 'var(--gradient-primary)' }}
                                 onClick={() => setShowSessionDetail(true)}
                               >
                                 <div className="flex items-center gap-3 mb-3">
