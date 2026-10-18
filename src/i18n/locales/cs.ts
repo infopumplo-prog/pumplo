@@ -165,6 +165,12 @@ const cs = {
   'theme_intro.body': 'Appka se teď sama přizpůsobí tvému telefonu. Můžeš si ale vybrat, jak ji chceš mít.',
   'theme_intro.hint': 'Změnit to můžeš kdykoliv v Nastavení → Vzhled.',
   'theme_intro.confirm': 'Rozumím',
+  // Souhlas s tipy e-mailem (F1 e-maily 19. 10.)
+  'email_consent.title': 'Chceš od nás občas tip k tréninku e-mailem?',
+  'email_consent.body': 'Krátce a jen občas: jak začít, jak se vrátit do tempa, co je v appce nového. Žádný spam.',
+  'email_consent.yes': 'Ano, posílejte',
+  'email_consent.no': 'Ne, díky',
+  'email_consent.hint': 'Změnit to můžeš kdykoliv v Nastavení → E-maily s tipy.',
   'settings.appearance': 'Vzhled',
   'settings.theme_light': 'Světlý',
   'settings.theme_dark': 'Tmavý',

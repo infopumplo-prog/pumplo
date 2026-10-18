@@ -11,7 +11,7 @@ import { useTheme, type ThemePreference } from '@/contexts/ThemeContext';
 const SEEN_KEY = 'pumplo_theme_intro';
 const VERSION = 1;
 
-const hasSeenThemeIntro = (): boolean => {
+export const hasSeenThemeIntro = (): boolean => {
   try {
     return Number(localStorage.getItem(SEEN_KEY) || 0) >= VERSION;
   } catch {

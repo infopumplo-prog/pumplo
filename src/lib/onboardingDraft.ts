@@ -45,6 +45,11 @@ export interface OnboardingDraft {
   accentColor?: string;
   /** Zaškrtnuté „Nechci dostávat tipy a novinky e-mailem“ (F0 e-maily 18. 10.) → user_profiles.marketing_optout_at. */
   marketingOptOut?: boolean;
+  /**
+   * Klient zaškrtávátko odmítnutí opravdu ukázal (F1 e-maily 19. 10.) → user_profiles.email_optout_offered_at.
+   * Koncepty ze starších buildů ho nemají → odmítnutí se nepovažuje za nabídnuté.
+   */
+  optOutOffered?: boolean;
 }
 
 // Never persisted: the password. A draft is recoverable input, not a credential.

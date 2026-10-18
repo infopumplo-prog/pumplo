@@ -46,6 +46,10 @@ export interface UserProfile {
   marketing_optout_at?: string | null;
   /** Odhlášení ze všech e-mailů Pumpla (patička, one-click, Nastavení). */
   email_unsubscribed_at?: string | null;
+  /** Výslovný souhlas s tipy e-mailem (in-app žádost / Nastavení), F1 e-maily 19. 10. */
+  marketing_consent_at?: string | null;
+  /** Registrace nabídla odmítnutí obchodních e-mailů (§ 7 odst. 3), F1 e-maily 19. 10. */
+  email_optout_offered_at?: string | null;
   push_subscription: Record<string, unknown> | null;
   language: 'cs' | 'en' | null;
   avatar_url: string | null;

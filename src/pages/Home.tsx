@@ -18,7 +18,9 @@ import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
-import ThemeIntroSheet from '@/components/ThemeIntroSheet';
+import ThemeIntroSheet, { hasSeenThemeIntro } from '@/components/ThemeIntroSheet';
+import EmailConsentSheet from '@/components/home/EmailConsentSheet';
+import { readEmailConsentAsked, shouldAskEmailConsent } from '@/lib/emailConsent';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -56,7 +58,8 @@ const Home = () => {
   const { user } = useAuth();
   const {
     profile,
-    isLoading
+    isLoading,
+    updateProfile
   } = useUserProfile();
   const {
     isAdmin,
@@ -709,6 +712,19 @@ const Home = () => {
       {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
       {/* Ani přes kartu prvního tréninku (David 18. 10.). */}
       <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen && completedCountLoaded && !firstCardActive} />
+      {/* Souhlas s tipy e-mailem (F1 19. 10.): jednou, jen na Home, ne s rozpracovaným tréninkem ani přes jiné panely. */}
+      <EmailConsentSheet
+        enabled={shouldAskEmailConsent({
+          isSignedIn: !!user,
+          isGuest,
+          onboardingCompleted: isOnboardingComplete,
+          profile,
+          hasPausedWorkout: !!pausedWorkout || !!pausedCustomWorkout,
+          otherOverlayActive: tour.open || onboardingOpen || !completedCountLoaded || firstCardActive || !hasSeenThemeIntro(),
+          alreadyAsked: readEmailConsentAsked(),
+        })}
+        onAnswer={updateProfile}
+      />
     </PageTransition>;
 };
 export default Home;

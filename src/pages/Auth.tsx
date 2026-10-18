@@ -255,6 +255,8 @@ const Auth = () => {
     motivations, motivationText, expectations, expectationText, planChoice,
     accentColor: accent,
     marketingOptOut,
+    // Zaškrtávátko „Nechci dostávat tipy…“ je v tomhle kroku vidět (e-mail i Apple/Google).
+    optOutOffered: true,
   });
 
   const handleRegister = async (e: React.FormEvent) => {
