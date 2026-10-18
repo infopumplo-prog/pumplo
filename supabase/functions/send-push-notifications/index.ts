@@ -578,6 +578,16 @@ interface UserProfile {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function hasActiveWorkoutPlan(supabase: SupabaseClient<any>, userId: string): Promise<boolean> {
+  const { count } = await supabase
+    .from('user_workout_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_active', true);
+  return (count ?? 0) > 0;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWorkoutName(supabase: SupabaseClient<any>, userId: string, lang: Lang): Promise<string> {
   const fallback = lang === 'en' ? 'workout' : 'trénink';
 
@@ -793,8 +803,10 @@ async function processMorningNotifications(
       ? await countNotificationsSince(supabase, user.user_id, 'missed', missedWindowStart(dateKey), dateKey)
       : 0;
 
+    const hasActivePlan = completedWorkouts > 0 ? true : await hasActiveWorkoutPlan(supabase, user.user_id);
     const kind = decidePushKind({
       completedWorkouts,
+      hasActivePlan,
       daysSinceSignup: daysSinceSignup(user.created_at, dateKey),
       isTrainingDay,
       missedPrevious,

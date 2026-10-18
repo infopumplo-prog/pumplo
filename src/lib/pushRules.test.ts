@@ -19,6 +19,7 @@ const trained: MorningPushInput = {
   isTrainingDay: true,
   missedPrevious: false,
   recentMissedCount: 0,
+  hasActivePlan: true,
 };
 
 describe('decidePushKind — nikdy netrénoval', () => {
@@ -34,6 +35,12 @@ describe('decidePushKind — nikdy netrénoval', () => {
     const sent = Array.from({ length: 31 }, (_, d) => d)
       .filter((d) => decidePushKind({ ...never, daysSinceSignup: d }) === 'first_workout');
     expect(sent).toEqual([0, 1, 3, 7]);
+  });
+
+  it('bez aktivního plánu (nedokončený dotazník) nic nedostane', () => {
+    for (const d of [0, 1, 3, 7]) {
+      expect(decidePushKind({ ...never, daysSinceSignup: d, hasActivePlan: false })).toBe('none');
+    }
   });
 
   it('nezávisí na tréninkovém dni', () => {

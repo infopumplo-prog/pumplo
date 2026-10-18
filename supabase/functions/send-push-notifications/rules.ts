@@ -26,11 +26,14 @@ export interface MorningPushInput {
   missedPrevious: boolean;
   /** Počet 'missed' v notification_logs za posledních 7 dní (včetně dneška). */
   recentMissedCount: number;
+  /** Má aktivní plán (user_workout_plans.is_active) — bez něj není „první trénink“ k čemu zvát. */
+  hasActivePlan: boolean;
 }
 
 export function decidePushKind(i: MorningPushInput): MorningPushKind {
   if (i.completedWorkouts <= 0) {
-    if (i.daysSinceSignup === null) return 'none';
+    // Nedokončený dotazník = žádný plán → „tvůj trénink je připravený“ by lhalo (review PR #42).
+    if (!i.hasActivePlan || i.daysSinceSignup === null) return 'none';
     return FIRST_WORKOUT_DAYS.includes(i.daysSinceSignup) ? 'first_workout' : 'none';
   }
   if (!i.isTrainingDay) return 'none';

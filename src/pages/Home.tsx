@@ -124,8 +124,15 @@ const Home = () => {
   const [completedCount, setCompletedCount] = useState<number | null>(null);
   const [completedCountLoaded, setCompletedCountLoaded] = useState(false);
   const [firstCardDismissedOn, setFirstCardDismissedOn] = useState<string | null>(() => readFirstWorkoutDismissed());
+  const completedCountUser = useRef<string | null>(null);
   useEffect(() => {
     if (!user) { setCompletedCount(null); setCompletedCountLoaded(true); return; }
+    // Jiný účet = zahodit starý počet, ať karta/prohlídka nebliknou podle cizích dat (review PR #42).
+    if (completedCountUser.current !== user.id) {
+      completedCountUser.current = user.id;
+      setCompletedCount(null);
+      setCompletedCountLoaded(false);
+    }
     let cancelled = false;
     (async () => {
       const { count, error } = await supabase
