@@ -134,7 +134,7 @@ const Privacy = () => {
           <p className="text-muted-foreground">{t('privacy.checkin_body')}</p>
         </section>
 
-        {/* ČEKÁ NA SCHVÁLENÍ DAVIDA — návrh odstavců o e-mailech z aplikace (F0 e-maily 18. 10. 2026), text v i18n privacy.emails_* */}
+        {/* E-maily z aplikace — schválil David 18. 10. 2026, text v i18n privacy.emails_* */}
         <section id="app-emails" className="space-y-3 scroll-mt-20">
           <h2 className="text-base font-bold">{t('privacy.emails_title')}</h2>
           <p className="text-muted-foreground">{t('privacy.emails_service')}</p>
