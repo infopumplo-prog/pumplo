@@ -21,6 +21,10 @@ import {
   pragueDateKey,
   shiftKey,
   workoutWindows,
+  planWelcome,
+  isWithinWelcomeWindow,
+  WELCOME_DATA_KEYS,
+  WELCOME_WINDOW_HOURS,
   type EventHistory,
   type LoopsFactsRow,
 } from '../../supabase/functions/loops-sync/sync';
@@ -266,5 +270,56 @@ describe('loopsRequest — rate limit', () => {
     expect(await loopsRequest(mk(429), 'POST', '/events/send', {}, 'i')).toMatchObject({ ok: false, rateLimited: true });
     expect(await loopsRequest(mk(409), 'POST', '/events/send', {}, 'i')).toEqual({ ok: true, status: 409, duplicate: true });
     expect(await loopsRequest(mk(400), 'PUT', '/contacts/update', {})).toEqual({ ok: false, status: 400, error: 'bad' });
+  });
+});
+
+describe('M0 Vítej — servisní transactional e-mail', () => {
+  const NO_HISTORY = { sentUserIds: new Set<string>(), suppressedEmails: new Set<string>() };
+  const fresh = (over: Partial<LoopsFactsRow> = {}) => row({ signed_up_at: hoursAgo(5), ...over });
+
+  it('jde i bez marketingAllowed (odmítl tipy / bez právního základu obchodních e-mailů)', () => {
+    for (const over of [
+      { marketing_optout_at: hoursAgo(4) },
+      { email_optout_offered_at: null, marketing_consent_at: null },
+    ]) {
+      const r = fresh(over);
+      expect(belongsInLoops(buildContact(r))).toBe(false);
+      expect(planWelcome(r, NO_HISTORY, NOW, 'tx_1').kind).toBe('send');
+    }
+  });
+
+  it('nepřidá do audience a posílá jen firstName + language', () => {
+    const p = planWelcome(fresh(), NO_HISTORY, NOW, 'tx_1');
+    expect(p.kind).toBe('send');
+    if (p.kind !== 'send') return;
+    expect(p.body).toEqual({
+      transactionalId: 'tx_1',
+      email: 'jana@example.com',
+      addToAudience: false,
+      dataVariables: { language: 'cs', firstName: 'Jana' },
+    });
+    for (const k of Object.keys(p.body.dataVariables)) expect(WELCOME_DATA_KEYS).toContain(k);
+    expect(JSON.stringify(p.body)).not.toMatch(/marketingAllowed|gymName|weight|height|injur/);
+    expect(p.idemKey).toBe('11111111-2222-4333-8444-555555555555:M0:life');
+  });
+
+  it('firstName je volitelné, angličtina projde', () => {
+    const p = planWelcome(fresh({ first_name: '  ', language: 'en' }), NO_HISTORY, NOW, 'tx_1');
+    expect(p.kind === 'send' && p.body.dataVariables).toEqual({ language: 'en' });
+  });
+
+  it('respektuje odhlášení a suppressions', () => {
+    expect(planWelcome(fresh({ email_unsubscribed_at: hoursAgo(1) }), NO_HISTORY, NOW, 'tx_1')).toEqual({ kind: 'skip', reason: 'unsubscribed' });
+    const sup = { sentUserIds: new Set<string>(), suppressedEmails: new Set(['jana@example.com']) };
+    expect(planWelcome(fresh(), sup, NOW, 'tx_1')).toEqual({ kind: 'skip', reason: 'suppressed' });
+  });
+
+  it('nejvýš jednou a jen účtům do 72 h', () => {
+    const sent = { sentUserIds: new Set(['11111111-2222-4333-8444-555555555555']), suppressedEmails: new Set<string>() };
+    expect(planWelcome(fresh(), sent, NOW, 'tx_1')).toEqual({ kind: 'skip', reason: 'already_sent' });
+    expect(planWelcome(fresh({ signed_up_at: hoursAgo(WELCOME_WINDOW_HOURS + 1) }), NO_HISTORY, NOW, 'tx_1').kind).toBe('skip');
+    expect(isWithinWelcomeWindow(hoursAgo(WELCOME_WINDOW_HOURS), NOW)).toBe(true);
+    expect(isWithinWelcomeWindow(null, NOW)).toBe(false);
+    expect(planWelcome(fresh({ email: 'bez-zavinace' }), NO_HISTORY, NOW, 'tx_1')).toEqual({ kind: 'skip', reason: 'no_email' });
   });
 });

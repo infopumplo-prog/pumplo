@@ -12,6 +12,12 @@ import {
   planContact,
   belongsInLoops,
   planDropout,
+  planWelcome,
+  isWithinWelcomeWindow,
+  WELCOME_CONTACT_TYPE,
+  WELCOME_EPISODE,
+  WELCOME_TEMPLATE_KEY,
+  WELCOME_TEMPLATE_VERSION,
   type DropoutReason,
   type FetchLike,
   type LoopsFactsRow,
@@ -25,6 +31,9 @@ import {
 //     (loops_contacts.props_hash), z view loops_contact_facts (= email_eligible_users).
 //  2. Události: computeEvents → loops_event_log (unique user_id+event+episode) → Loops.
 //     Řádek se zakládá PŘED odesláním; když Loops odmítne, řádek se smaže a příště se zkusí znovu.
+//  0. M0 Vítej: servisní transactional e-mail (Loops /transactional, addToAudience false)
+//     každému novému účtu (≤ 72 h) jednou — bez marketingAllowed, s odhlášením a suppressions.
+//     Bez LOOPS_WELCOME_TRANSACTIONAL_ID se přeskočí (log).
 //  3. Vyřazení: kdo je v Loops a ztratil marketingAllowed / vypadl z eligible / smazal účet
 //     → kontakt v Loops smazat, důvod do loops_contacts.removed_reason + log.
 //
@@ -124,6 +133,7 @@ Deno.serve(async (req) => {
     events_failed: 0,
     skipped_not_allowed: 0,
     dropouts: { marketing_not_allowed: 0, not_eligible: 0, account_deleted: 0, failed: 0 },
+    welcome: { would_send: 0, sent: 0, failed: 0, skipped: {} as Record<string, number> },
     requests: 0,
     stopped: null as string | null,
     sample: [] as unknown[],
@@ -131,6 +141,84 @@ Deno.serve(async (req) => {
   const sample = (x: unknown) => {
     if (summary.sample.length < 20) summary.sample.push(x);
   };
+
+  // 0. M0 Vítej — servisní transactional e-mail KAŽDÉMU novému členovi jednou.
+  //    NEPOTŘEBUJE marketingAllowed (rozhodnutí v planWelcome), ale respektuje odhlášení
+  //    a suppressions (rows = email_eligible_users + pojistka v planWelcome).
+  //    addToAudience: false → nikoho to nepřidá do audience obchodních e-mailů.
+  //    Jednou za život: zámek = řádek email_sends (unique user+M0+life) PŘED odesláním.
+  const welcomeId = (Deno.env.get("LOOPS_WELCOME_TRANSACTIONAL_ID") ?? "").trim();
+  const welcomeRows = rows.filter((r) => isWithinWelcomeWindow(r.signed_up_at, now));
+  const welcomeSent = new Set<string>();
+  const suppressedEmails = new Set<string>();
+  if (welcomeRows.length) {
+    for (const ids of chunk(welcomeRows.map((r) => r.user_id), 200)) {
+      const { data, error } = await supabase
+        .from("email_sends")
+        .select("user_id")
+        .eq("template_key", WELCOME_TEMPLATE_KEY)
+        .in("user_id", ids);
+      if (error) return json({ error: error.message }, 500);
+      for (const s of data ?? []) welcomeSent.add(s.user_id);
+    }
+    const { data: sup, error: supErr } = await supabase.from("email_suppressions").select("email").limit(20000);
+    if (supErr) return json({ error: supErr.message }, 500);
+    for (const s of sup ?? []) if (s.email) suppressedEmails.add(String(s.email).trim().toLowerCase());
+  }
+  if (!welcomeId && welcomeRows.length) {
+    console.warn("LOOPS_WELCOME_TRANSACTIONAL_ID not set — M0 welcome skipped", welcomeRows.length);
+  }
+  for (const w of welcomeRows) {
+    if (stoppedReason) break;
+    const plan = planWelcome(w, { sentUserIds: welcomeSent, suppressedEmails }, now, welcomeId || "(LOOPS_WELCOME_TRANSACTIONAL_ID chybí)");
+    if (plan.kind === "skip") {
+      summary.welcome.skipped[plan.reason] = (summary.welcome.skipped[plan.reason] ?? 0) + 1;
+      continue;
+    }
+    if (dryRun) {
+      summary.welcome.would_send++;
+      sample({ welcome: { userId: w.user_id, dataVariables: plan.body.dataVariables, transactionalIdSet: !!welcomeId } });
+      continue;
+    }
+    if (!welcomeId) {
+      summary.welcome.skipped.no_transactional_id = (summary.welcome.skipped.no_transactional_id ?? 0) + 1;
+      continue;
+    }
+    const { data: claim, error: claimErr } = await supabase
+      .from("email_sends")
+      .insert({
+        user_id: w.user_id,
+        template_key: WELCOME_TEMPLATE_KEY,
+        template_version: WELCOME_TEMPLATE_VERSION,
+        locale: plan.locale,
+        episode_key: WELCOME_EPISODE,
+        status: "sent",
+      })
+      .select("id")
+      .single();
+    if (claimErr || !claim) {
+      if (claimErr?.code !== "23505") console.error("email_sends M0 claim failed", w.user_id, claimErr?.message);
+      summary.welcome.skipped.already_sent = (summary.welcome.skipped.already_sent ?? 0) + 1;
+      continue;
+    }
+    welcomeSent.add(w.user_id);
+    const res = await call("POST", "/transactional", { ...plan.body }, plan.idemKey);
+    if (res?.ok) {
+      summary.welcome.sent++;
+      const { error } = await supabase.from("contact_log").insert({ user_id: w.user_id, channel: "email", type: WELCOME_CONTACT_TYPE });
+      if (error) console.error("contact_log M0 insert failed", w.user_id, error.message);
+    } else {
+      summary.welcome.failed++;
+      if (res) console.error("loops M0 failed", w.user_id, res.status, res.error);
+      if (!res || res.status === 429 || res.status >= 500) {
+        // Neodešlo (strop běhu / rate limit / chyba Loops) → uvolnit zámek, další běh to zkusí znovu.
+        await supabase.from("email_sends").delete().eq("id", claim.id);
+      } else {
+        // 4xx (např. nepublikovaný e-mail) → neopakovat; řádek zůstane 'failed' s chybou.
+        await supabase.from("email_sends").update({ status: "failed", error: res.error.slice(0, 300) }).eq("id", claim.id);
+      }
+    }
+  }
 
   // 1+2. Kontakty a události (kontakt vždy před událostmi téhož člověka).
   for (const r of rows) {

@@ -453,3 +453,75 @@ export async function loopsRequest(
     return { ok: false, status: res.status, error: text.slice(0, 300) };
   }
 }
+
+// ─── M0 Vítej — servisní transactional e-mail od zakladatelů (18. 10. 2026) ──
+//
+// Jde KAŽDÉMU novému členovi jednou (kdo za Pumplem stojí, jak začít; bez propagace),
+// proto NEPOTŘEBUJE marketingAllowed (čl. 6 odst. 1 písm. b) GDPR) — ale respektuje
+// odhlášení (email_unsubscribed_at) a blokované adresy (email_suppressions).
+// Posílá se přes Loops transactional API s addToAudience: false → člověk se tím
+// NEDOSTANE do audience obchodních e-mailů. Jednou za život: email_sends
+// (template_key 'M0', episode_key 'life', unique) + Idempotency-Key.
+
+export const WELCOME_TEMPLATE_KEY = 'M0';
+export const WELCOME_TEMPLATE_VERSION = 1;
+export const WELCOME_EPISODE = 'life';
+/** M0 jen účtům založeným v posledních 72 h (po zapnutí žádné hromadné rozeslání starým účtům). */
+export const WELCOME_WINDOW_HOURS = 72;
+export const WELCOME_CONTACT_TYPE = 'welcome';
+
+/** Data variables, které smí do Loops s M0 odejít. Nic jiného. */
+export const WELCOME_DATA_KEYS = ['firstName', 'language'] as const;
+
+export type WelcomeRow = Pick<LoopsFactsRow, 'user_id' | 'email' | 'first_name' | 'language' | 'signed_up_at' | 'email_unsubscribed_at'>;
+
+export interface WelcomeHistory {
+  /** user_id, kterým už M0 odešel (nebo je zamčený) v email_sends. */
+  sentUserIds: ReadonlySet<string>;
+  /** E-maily z email_suppressions (malými písmeny). */
+  suppressedEmails: ReadonlySet<string>;
+}
+
+export type WelcomeSkipReason = 'no_email' | 'outside_window' | 'already_sent' | 'unsubscribed' | 'suppressed';
+
+export type WelcomeBody = {
+  transactionalId: string;
+  email: string;
+  addToAudience: false;
+  dataVariables: { language: 'cs' | 'en'; firstName?: string };
+};
+
+export type WelcomePlan =
+  | { kind: 'skip'; reason: WelcomeSkipReason }
+  | { kind: 'send'; locale: 'cs' | 'en'; body: WelcomeBody; idemKey: string };
+
+/** Účet založený nejvýš před 72 h (a ne v budoucnosti). */
+export function isWithinWelcomeWindow(signedUpAt: string | null | undefined, now: Date): boolean {
+  const t = signedUpAt ? Date.parse(signedUpAt) : NaN;
+  if (!Number.isFinite(t)) return false;
+  const h = (now.getTime() - t) / 3_600_000;
+  return h >= 0 && h <= WELCOME_WINDOW_HOURS;
+}
+
+/**
+ * Rozhodnutí o M0 pro jednoho člověka. ZÁMĚRNĚ nečte právní bránu obchodních e-mailů
+ * (souhlas / odmítnutí tipů) — M0 je servisní. Odhlášení a suppression blokují vždy.
+ */
+export function planWelcome(r: WelcomeRow, h: WelcomeHistory, now: Date, transactionalId: string): WelcomePlan {
+  const email = (r.email ?? '').trim().toLowerCase();
+  if (!email.includes('@')) return { kind: 'skip', reason: 'no_email' };
+  if (h.sentUserIds.has(r.user_id)) return { kind: 'skip', reason: 'already_sent' };
+  if (r.email_unsubscribed_at) return { kind: 'skip', reason: 'unsubscribed' };
+  if (h.suppressedEmails.has(email)) return { kind: 'skip', reason: 'suppressed' };
+  if (!isWithinWelcomeWindow(r.signed_up_at, now)) return { kind: 'skip', reason: 'outside_window' };
+  const locale: 'cs' | 'en' = r.language === 'en' ? 'en' : 'cs';
+  const dataVariables: WelcomeBody['dataVariables'] = { language: locale };
+  const firstName = firstWord(r.first_name);
+  if (firstName) dataVariables.firstName = firstName; // volitelná proměnná — v Loops označit jako optional
+  return {
+    kind: 'send',
+    locale,
+    body: { transactionalId, email, addToAudience: false, dataVariables },
+    idemKey: `${r.user_id}:${WELCOME_TEMPLATE_KEY}:${WELCOME_EPISODE}`.slice(0, 100),
+  };
+}

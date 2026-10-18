@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Kontroly e-mailů přes Loops (19. 10. 2026). Použití:
-//   node scripts/ci/check-email-loops.mjs <vitest|build|privacy|lifecycle|migration|docs>
+//   node scripts/ci/check-email-loops.mjs <vitest|build|privacy|lifecycle|migration|docs|welcome-consent|welcome-once>
 // Každý režim na konci vypíše EMAIL_LOOPS_<REŽIM>_OK, jinak skončí s exit 1.
 // Režimy s negativní kontrolou ověřují, že pokažený vstup kontrolou NEPROJDE.
 import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -299,8 +299,10 @@ function docsProblems(doc) {
   for (const j of retention) if (!/\*\*Audience filtr:\*\* `marketingAllowed = true` \*\*a\*\* `retentionEmailsAllowed = true`/.test(j)) p.push(`${j.split('\n')[0]}: chybí filtr retentionEmailsAllowed`);
   if (!doc.includes('`Pumplo <zpravy@pumplo.com>`') || !doc.includes('reply-to stejný')) p.push('odesílatel není Pumplo <zpravy@pumplo.com> s reply-to stejným');
   if (/David z Pumpla“\)|mail\.pumplo\.com|reply-to `info@/.test(doc)) p.push('dokument má jiného odesílatele / reply-to');
-  for (const n of ['#0B1222', '#4CC9FF', 'Nunito 900', 'Setup checklist', 'LOOPS_API_KEY', 'LOOPS_DRY_RUN=true', 'LOOPS_WEBHOOK_SECRET', 'Cloudflare', '/functions/v1/loops-webhook', 'marketingAllowed', 'ČEKÁ NA SCHVÁLENÍ DAVIDA']) if (!doc.includes(n)) p.push(`dokument nezmiňuje ${n}`);
-  for (const bad of ['vynechal', 'zklamal', 'lenost', 'výmluv', 'zranění tě', 'hubnut']) if (doc.toLowerCase().includes(bad)) p.push(`texty obsahují „${bad}“`);
+  for (const n of ['#0B1222', '#4CC9FF', 'Nunito 900', 'Setup checklist', 'LOOPS_API_KEY', 'LOOPS_DRY_RUN=true', 'LOOPS_WEBHOOK_SECRET', 'Cloudflare', '/functions/v1/loops-webhook', 'marketingAllowed', 'schválil David 18. 10. 2026', '## M0 Vítej', 'addToAudience: false', 'LOOPS_WELCOME_TRANSACTIONAL_ID', '## M1 ', 'secondary_machine_id', 'stationUrl']) if (!doc.includes(n)) p.push(`dokument nezmiňuje ${n}`);
+  // M0 = medailonky zakladatelů (fakta zadal David, Adam „hubnutí“) → ze stylové kontroly obchodních textů vyjmuto.
+  const marketingDoc = doc.replace(/\n## M0 Vítej[\s\S]*?\n## M1 /, '\n## M1 ');
+  for (const bad of ['vynechal', 'zklamal', 'lenost', 'výmluv', 'zranění tě', 'hubnut']) if (marketingDoc.toLowerCase().includes(bad)) p.push(`texty obsahují „${bad}“`);
   return p;
 }
 function checkDocs() {
@@ -313,9 +315,12 @@ function checkDocs() {
     const line = loc.split('\n').find((l) => l.includes("'privacy.emails_processor_loops':"));
     if (!line || !line.includes('Loops') || !/USA/.test(line) || !/(standardních smluvních doložek|standard contractual clauses)/.test(line)) problems.push(`${name}: privacy text o Loops (USA, SCC) chybí`);
     const idx = loc.indexOf("'privacy.emails_processor_loops':");
-    if (!loc.slice(Math.max(0, idx - 200), idx).includes('ČEKÁ NA SCHVÁLENÍ DAVIDA')) problems.push(`${name}: chybí značka ČEKÁ NA SCHVÁLENÍ DAVIDA`);
+    if (!loc.slice(Math.max(0, idx - 200), idx).includes('schválil David 18. 10. 2026')) problems.push(`${name}: chybí značka schválil David 18. 10. 2026`);
+    if (loc.includes('ČEKÁ NA SCHVÁLENÍ DAVIDA (F0') || /ČEKÁ NA SCHVÁLENÍ DAVIDA \(19/.test(loc)) problems.push(`${name}: zůstala stará značka ČEKÁ NA SCHVÁLENÍ u schválených textů`);
+    if (!/'privacy\.emails_welcome_loops': '[^\n]*(čl\. 6 odst\. 1 písm\. b|Art\. 6\(1\)\(b\))[^\n]*Loops/.test(loc)) problems.push(`${name}: chybí privacy text M0 (servisní, Loops)`);
   }
   if (!privacy.includes("t('privacy.emails_processor_loops')")) problems.push('Privacy.tsx text nezobrazuje');
+  if (!privacy.includes("t('privacy.emails_welcome_loops')")) problems.push('Privacy.tsx nezobrazuje text M0');
   if (problems.length) fail(problems.join('; '));
   // Negativní fixture: journey bez filtru marketingAllowed neprojde.
   const bad = doc.replace('**Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.\n- **Průběh:** Wait 2 dny', '**Audience filtr:** všichni.\n- **Průběh:** Wait 2 dny');
@@ -327,7 +332,77 @@ function checkDocs() {
   console.log('EMAIL_LOOPS_DOCS_OK');
 }
 
-const modes = { vitest: checkVitest, build: checkBuild, privacy: checkPrivacy, lifecycle: checkLifecycle, migration: checkMigration, docs: checkDocs };
+
+// ─── M0 Vítej: servisní, bez marketingAllowed, ale s odhlášením/suppressions, max 1× ───
+function welcomeSourceProblems(idx) {
+  const p = [];
+  const start = idx.indexOf('// 0. M0 Vítej');
+  const end = idx.indexOf('// 1+2. Kontakty');
+  if (start < 0 || end < 0 || start > end) return ['index: chybí blok M0 před kontakty'];
+  const w = idx.slice(start, end);
+  if (/belongsInLoops|marketingAllowed\(|marketing_consent|marketing_optout/.test(w.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n'))) p.push('M0 blok podmiňuje marketingAllowed');
+  if (!w.includes('planWelcome(')) p.push('M0 nejde přes planWelcome');
+  if (!w.includes('.from("email_suppressions")')) p.push('M0 nečte email_suppressions');
+  if (!w.includes('LOOPS_WELCOME_TRANSACTIONAL_ID')) p.push('M0 nečte LOOPS_WELCOME_TRANSACTIONAL_ID');
+  const dry = w.indexOf('if (dryRun) {');
+  const noId = w.indexOf('if (!welcomeId) {');
+  const claim = w.indexOf('.from("email_sends")\n      .insert(');
+  const send = w.indexOf('await call("POST", "/transactional"');
+  if (dry < 0 || noId < 0 || claim < 0 || send < 0) p.push('M0: chybí dry run / kontrola ID / zámek email_sends / odeslání');
+  else {
+    if (!(dry < claim && noId < claim && claim < send)) p.push('M0: pořadí musí být dry run → bez ID přeskočit → zámek → odeslání');
+    if (!/continue;\s*\}/.test(w.slice(dry, noId))) p.push('M0: dry-run větev nekončí continue');
+    if (!/23505|claimErr \|\| !claim/.test(w.slice(claim, send)) || !/continue;\s*\}/.test(w.slice(claim, send))) p.push('M0: bez zámku se neodesílá (chybí continue)');
+  }
+  if (!w.includes('template_key: WELCOME_TEMPLATE_KEY') || !w.includes('episode_key: WELCOME_EPISODE')) p.push('M0: zámek není M0/life');
+  if (!w.includes('.eq("template_key", WELCOME_TEMPLATE_KEY)')) p.push('M0: nečte historii email_sends M0');
+  if (!/from\("contact_log"\)\.insert\(\{ user_id: w\.user_id, channel: "email", type: WELCOME_CONTACT_TYPE \}\)/.test(w)) p.push('M0: chybí contact_log email/welcome');
+  return p;
+}
+function onceMigrationProblems(f0) {
+  return /constraint email_sends_user_template_episode_key unique \(user_id, template_key, episode_key\)/.test(stripSqlComments(f0)) ? [] : ['email_sends nemá unique(user_id, template_key, episode_key)'];
+}
+async function checkWelcome(part) {
+  const idx = read('supabase/functions/loops-sync/index.ts');
+  const s = await imp('supabase/functions/loops-sync/sync.ts');
+  const NOW = new Date('2026-10-20T14:40:00Z');
+  const h = (x) => new Date(NOW.getTime() - x * 3600000).toISOString();
+  const base = { user_id: '11111111-2222-4333-8444-555555555555', email: 'A@b.cz', first_name: 'Jana', language: 'cs', signed_up_at: h(3), email_unsubscribed_at: null };
+  const empty = { sentUserIds: new Set(), suppressedEmails: new Set() };
+  const problems = welcomeSourceProblems(idx);
+  if (part === 'consent') {
+    // Bez marketingAllowed (odmítl tipy, žádný právní základ obchodních e-mailů) M0 jde.
+    const noMk = { ...base, marketing_optout_at: h(2), marketing_consent_at: null, email_optout_offered_at: null };
+    if (s.planWelcome(noMk, empty, NOW, 'tx').kind !== 'send') problems.push('M0 nejde člověku bez marketingAllowed');
+    const sent = s.planWelcome(base, empty, NOW, 'tx');
+    if (sent.kind !== 'send' || sent.body.addToAudience !== false) problems.push('M0 nemá addToAudience: false');
+    if (sent.kind === 'send') for (const k of Object.keys(sent.body.dataVariables)) if (!['firstName', 'language'].includes(k)) problems.push(`M0 posílá ${k}`);
+    if (s.planWelcome({ ...base, email_unsubscribed_at: h(1) }, empty, NOW, 'tx').kind !== 'skip') problems.push('M0 jde odhlášenému');
+    if (s.planWelcome(base, { sentUserIds: new Set(), suppressedEmails: new Set(['a@b.cz']) }, NOW, 'tx').kind !== 'skip') problems.push('M0 jde na blokovanou adresu');
+    // Negativní fixtures: kontrola musí odhalit podmínění marketingAllowed i chybějící suppressions.
+    const bad1 = idx.replace('const plan = planWelcome(w,', 'if (!belongsInLoops(buildContact(w as LoopsFactsRow))) continue;\n    const plan = planWelcome(w,');
+    if (bad1 === idx || welcomeSourceProblems(bad1).length === 0) fail('kontrola neodhalila M0 podmíněný marketingAllowed');
+    const bad2 = idx.replace('.from("email_suppressions")', '.from("email_nothing")');
+    if (bad2 === idx || welcomeSourceProblems(bad2).length === 0) fail('kontrola neodhalila M0 bez suppressions');
+    if (problems.length) fail(problems.join('; '));
+    console.log('EMAIL_LOOPS_WELCOME_CONSENT_OK');
+    return;
+  }
+  // once
+  problems.push(...onceMigrationProblems(read('supabase/migrations/20261018_email_f0.sql')));
+  if (s.planWelcome(base, { sentUserIds: new Set([base.user_id]), suppressedEmails: new Set() }, NOW, 'tx').kind !== 'skip') problems.push('M0 by šel podruhé');
+  if (s.planWelcome({ ...base, signed_up_at: h(73) }, empty, NOW, 'tx').kind !== 'skip') problems.push('M0 jde účtu staršímu 72 h');
+  const a = s.planWelcome(base, empty, NOW, 'tx');
+  const b = s.planWelcome(base, empty, new Date(NOW.getTime() + 3600000), 'tx');
+  if (a.kind !== 'send' || b.kind !== 'send' || a.idemKey !== b.idemKey || !a.idemKey.endsWith(':M0:life')) problems.push('Idempotency-Key M0 není stabilní <userId>:M0:life');
+  const bad = idx.replace('.from("email_sends")\n      .insert(', '.from("email_sends_x")\n      .insertx(');
+  if (bad === idx || welcomeSourceProblems(bad).length === 0) fail('kontrola neodhalila M0 bez zámku');
+  if (onceMigrationProblems('create table public.email_sends (id uuid);').length === 0) fail('kontrola neodhalila chybějící unique');
+  if (problems.length) fail(problems.join('; '));
+  console.log('EMAIL_LOOPS_WELCOME_ONCE_OK');
+}
+
+const modes = { 'welcome-consent': () => checkWelcome('consent'), 'welcome-once': () => checkWelcome('once'), vitest: checkVitest, build: checkBuild, privacy: checkPrivacy, lifecycle: checkLifecycle, migration: checkMigration, docs: checkDocs };
 const mode = process.argv[2];
 if (!modes[mode]) fail(`neznámý režim ${mode}; použij ${Object.keys(modes).join('|')}`);
 await modes[mode]();
