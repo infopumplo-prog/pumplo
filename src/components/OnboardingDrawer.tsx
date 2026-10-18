@@ -129,14 +129,17 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
 
   // Popis zranění žije mimo profil (tabulka user_injury_notes, majitel posilovny ho
   // nevidí — 17. 10.); načte se při otevření dotazníku, ukládá se zvlášť a neblokujícně.
-  const [savedInjuryNote, setSavedInjuryNote] = useState<string | null>(null);
+  // undefined = ještě nenačteno / načtení selhalo → při ukládání vždy zapsat (i smazání).
+  const [savedInjuryNote, setSavedInjuryNote] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     if (!open || !profile?.user_id) return;
     let cancelled = false;
+    setSavedInjuryNote(undefined);
     loadInjuryNote(profile.user_id).then((note) => {
       if (cancelled) return;
       setSavedInjuryNote(note);
-      setInjuryNote(note ?? '');
+      // Nepřepsat, co uživatel mezitím napsal (pomalá síť — review PR #38).
+      if (note) setInjuryNote((current) => current || note);
     });
     return () => { cancelled = true; };
   }, [open, profile?.user_id]);
@@ -144,7 +147,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const saveInjuryNote = async () => {
     if (!profile?.user_id) return;
     const next = hasRealInjuriesIn(injuries) ? injuryNote.trim() || null : null;
-    if (next === savedInjuryNote) return;
+    if (savedInjuryNote !== undefined && next === savedInjuryNote) return;
     if (await saveInjuryNoteToDb(profile.user_id, next)) setSavedInjuryNote(next);
   };
 

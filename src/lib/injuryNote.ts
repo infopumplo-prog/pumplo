@@ -7,11 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const notes = () => (supabase as any).from('user_injury_notes');
 
-export async function loadInjuryNote(userId: string): Promise<string | null> {
+/** null = žádný popis, undefined = načtení selhalo (stav neznámý — nesmí se brát jako „nic“). */
+export async function loadInjuryNote(userId: string): Promise<string | null | undefined> {
   const { data, error } = await notes().select('note').eq('user_id', userId).maybeSingle();
   if (error) {
     console.error('Injury note not loaded:', error);
-    return null;
+    return undefined;
   }
   return (data?.note as string | undefined) ?? null;
 }
