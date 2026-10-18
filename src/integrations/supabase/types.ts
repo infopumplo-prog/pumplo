@@ -56,18 +56,21 @@ export type Database = {
           plan_id: string
           day_number: number
           name: string | null
+          name_en: string | null
         }
         Insert: {
           id?: string
           plan_id: string
           day_number: number
           name?: string | null
+          name_en?: string | null
         }
         Update: {
           id?: string
           plan_id?: string
           day_number?: number
           name?: string | null
+          name_en?: string | null
         }
         Relationships: [
           {
@@ -132,6 +135,17 @@ export type Database = {
           created_at: string
           share_token: string
           is_public: boolean
+          published_at: string | null
+          description: string | null
+          goal: string | null
+          level: string | null
+          focus: string | null
+          trainer_id: string | null
+          cover_url: string | null
+          name_en: string | null
+          description_en: string | null
+          secondary_focuses: string[]
+          source_plan_id: string | null
         }
         Insert: {
           id?: string
@@ -140,6 +154,17 @@ export type Database = {
           created_at?: string
           share_token?: string
           is_public?: boolean
+          published_at?: string | null
+          description?: string | null
+          goal?: string | null
+          level?: string | null
+          focus?: string | null
+          trainer_id?: string | null
+          cover_url?: string | null
+          name_en?: string | null
+          description_en?: string | null
+          secondary_focuses?: string[]
+          source_plan_id?: string | null
         }
         Update: {
           id?: string
@@ -148,6 +173,17 @@ export type Database = {
           created_at?: string
           share_token?: string
           is_public?: boolean
+          published_at?: string | null
+          description?: string | null
+          goal?: string | null
+          level?: string | null
+          focus?: string | null
+          trainer_id?: string | null
+          cover_url?: string | null
+          name_en?: string | null
+          description_en?: string | null
+          secondary_focuses?: string[]
+          source_plan_id?: string | null
         }
         Relationships: []
       }
@@ -893,6 +929,7 @@ export type Database = {
           current_day_index: number | null
           current_step: number | null
           current_streak: number | null
+          custom_equipment: string[] | null
           equipment_preference: string | null
           first_name: string | null
           gender: string | null
@@ -902,6 +939,7 @@ export type Database = {
           injuries: string[] | null
           last_name: string | null
           max_streak: number | null
+          accent_color: string | null
           motivations: string[] | null
           notification_closing_soon: boolean | null
           notification_comeback: boolean | null
@@ -932,6 +970,7 @@ export type Database = {
           current_day_index?: number | null
           current_step?: number | null
           current_streak?: number | null
+          custom_equipment?: string[] | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
@@ -941,6 +980,7 @@ export type Database = {
           injuries?: string[] | null
           last_name?: string | null
           max_streak?: number | null
+          accent_color?: string | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
           notification_comeback?: boolean | null
@@ -971,6 +1011,7 @@ export type Database = {
           current_day_index?: number | null
           current_step?: number | null
           current_streak?: number | null
+          custom_equipment?: string[] | null
           equipment_preference?: string | null
           first_name?: string | null
           gender?: string | null
@@ -980,6 +1021,7 @@ export type Database = {
           injuries?: string[] | null
           last_name?: string | null
           max_streak?: number | null
+          accent_color?: string | null
           motivations?: string[] | null
           notification_closing_soon?: boolean | null
           notification_comeback?: boolean | null
@@ -1320,6 +1362,40 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      // Týdenní check-in (feedback 13. 10.) — migrace 20261014_weekly_checkins.sql
+      weekly_checkins: {
+        Row: {
+          id: string
+          user_id: string
+          week_start: string
+          mood: number
+          training: number
+          hardest: string | null
+          app_feedback: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          week_start: string
+          mood: number
+          training: number
+          hardest?: string | null
+          app_feedback?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          week_start?: string
+          mood?: number
+          training?: number
+          hardest?: string | null
+          app_feedback?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -3,6 +3,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+// Jen typy (rozšíření L o maplibreGL). Samotná knihovna (~1 MB) se načítá až s mapou,
+// jinak hlavní bundle přeroste 2 MB limit PWA service workeru a build spadne.
+import type {} from '@maplibre/maplibre-gl-leaflet';
+import { useTheme } from '@/contexts/ThemeContext';
 import { OpeningHours } from '@/hooks/useGym';
 import { PublicGym } from '@/hooks/usePublishedGyms';
 import { isGymCurrentlyOpen, isClosingSoon } from '@/lib/gymUtils';
@@ -116,7 +120,7 @@ const createGymIcon = (
 };
 
 const createUserIcon = () => {
-  // Use fixed color for user marker (primary color #4CC9FF)
+  // Moje poloha v barvě appky (fáze 2: barva appky podle uživatele)
   return L.divIcon({
     className: 'user-marker',
     html: `
@@ -129,7 +133,7 @@ const createUserIcon = () => {
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          background: rgba(76, 201, 255, 0.3);
+          background: hsl(var(--primary) / 0.3);
         "></div>
         <div style="
           position: absolute;
@@ -139,7 +143,7 @@ const createUserIcon = () => {
           width: 18px;
           height: 18px;
           border-radius: 50%;
-          background: #4CC9FF;
+          background: hsl(var(--primary));
           border: 3px solid white;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         "></div>
@@ -150,7 +154,16 @@ const createUserIcon = () => {
   });
 };
 
+// Styly OpenFreeMap: světlý Positron (David 8. 10. vybral před barevným Liberty), tmavý Dark.
+const mapStyleUrl = (theme: 'light' | 'dark') =>
+  `https://tiles.openfreemap.org/styles/${theme === 'dark' ? 'dark' : 'positron'}`;
+
 const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }: GymMapProps) => {
+  const { theme } = useTheme();
+  const baseLayerRef = useRef<L.MaplibreGL | null>(null);
+  // Aktuální motiv pro asynchronně načítanou vrstvu (init efekt běží jen jednou).
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const { t } = useTranslation();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -183,6 +196,11 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
     [51.1, 18.9]  // Northeast corner
   );
 
+  // Světlý / tmavý motiv → jen vyměnit styl podkladu, mapa i piny zůstávají.
+  useEffect(() => {
+    baseLayerRef.current?.getMaplibreMap().setStyle(mapStyleUrl(theme));
+  }, [theme]);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -199,9 +217,18 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
       zoomControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(map);
+    // Carto basemaps od 10/2026 bez API klíče vrací jen dlaždici „API KEY REQUIRED“ →
+    // OpenFreeMap (vektorové, zdarma, bez klíče a limitů). Licence OSM vyžaduje uvedení zdroje.
+    let disposed = false;
+    void Promise.all([import('maplibre-gl/dist/maplibre-gl.css'), import('@maplibre/maplibre-gl-leaflet')]).then(() => {
+      if (disposed || mapRef.current !== map) return;
+      baseLayerRef.current = L.maplibreGL({
+        style: mapStyleUrl(themeRef.current),
+        // Atribuci čte Leaflet z customAttribution (styl se načítá asynchronně).
+        attributionControl: { customAttribution: '© <a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' },
+      }).addTo(map);
+    });
+    L.control.attribution({ prefix: false, position: 'topleft' }).addTo(map);
 
 
     // Set view to show all of Czechia centered
@@ -224,6 +251,8 @@ const GymMap = ({ gyms, userLocation, onGymSelect, selectedGymId, mapHandleRef }
     setTimeout(() => map.invalidateSize(), 500);
 
     return () => {
+      disposed = true;
+      baseLayerRef.current = null;
       window.removeEventListener('resize', handleResize);
       if (mapRef.current) {
         mapRef.current.remove();

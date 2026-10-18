@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FETCH_TIMEOUT_MS, readCache, resolveWithCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
 import { useAuth } from '@/contexts/AuthContext';
+import { tr } from '@/lib/uiLocale';
 
 export interface UserProfile {
   id: string;
@@ -21,11 +22,14 @@ export interface UserProfile {
   training_split: string | null;
   equipment_preference: string | null;
   motivations: string[] | null;
+  accent_color: string | null;
   onboarding_completed: boolean;
   current_step: number;
   gym_license_count: number;
   user_level: 'beginner' | 'intermediate' | 'advanced' | null;
   selected_gym_id: string | null;
+  /** Vlastní vybavení bez posilovny (feedback 13. 10.), viz lib/customEquipment */
+  custom_equipment?: string[] | null;
   current_day_index: number;
   // Streak fields
   current_streak: number;
@@ -113,7 +117,7 @@ export const useUserProfile = () => {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
-    if (!user) return { success: false, error: 'Nejsi přihlášen.' };
+    if (!user) return { success: false, error: tr('common_errors.not_logged_in_short') };
 
     const { error } = await supabase
       .from('user_profiles')

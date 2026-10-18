@@ -6,7 +6,7 @@ import { cs, enUS } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Check, Flame, Trophy, Target, Search, X, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { useStatistics } from '@/hooks/useStatistics';
@@ -14,6 +14,8 @@ import { MuscleBodySvg } from '@/components/workout/MuscleBodySvg';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { translateMuscle } from '@/lib/muscleTranslation';
 import { cn } from '@/lib/utils';
+import CheckinTrendsCard from '@/components/statistics/CheckinTrendsCard';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 type MetricKey = 'weight' | 'duration' | 'sets';
 type Period = 'today' | 'week' | 'month' | '3m' | 'all';
@@ -84,9 +86,10 @@ const Statistics = () => {
   const isEn = i18n.language === 'en';
   const dateLocale = isEn ? enUS : cs;
   const { stats, isLoading } = useStatistics();
+  const { profile } = useUserProfile();
 
   const METRICS: { key: MetricKey; label: string; unit: string; color: string }[] = [
-    { key: 'weight', label: t('stats.volume'), unit: 'kg', color: '#4CC9FF' },
+    { key: 'weight', label: t('stats.volume'), unit: 'kg', color: 'hsl(var(--primary))' },
     { key: 'duration', label: t('stats.time'), unit: 'min', color: '#34D399' },
     { key: 'sets', label: t('stats.series_count'), unit: '', color: '#FBBF24' },
   ];
@@ -321,7 +324,7 @@ const Statistics = () => {
                             : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        {day.trained ? '✓' : day.missed ? '✗' : ''}
+                        {day.trained ? <Check className="w-4 h-4" strokeWidth={3} aria-hidden="true" /> : day.missed ? <X className="w-4 h-4" strokeWidth={3} aria-hidden="true" /> : null}
                       </div>
                     </div>
                   ))}
@@ -395,6 +398,11 @@ const Statistics = () => {
                 )}
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Týdenní check-in: váha v čase, nálada, tréninky (David 15. 10.) */}
+          <motion.div variants={itemVariants}>
+            <CheckinTrendsCard goal={profile?.primary_goal ?? null} />
           </motion.div>
 
           {/* Muscle distribution — body figure + top groups, for the period */}

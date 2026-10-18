@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { isPlainBrowser, isPublicWebPath } from '@/lib/webGate';
 import { openAppOrStore, APP_STORE_URL, PLAY_STORE_URL } from '@/lib/appRedirect';
+import { useTranslation } from 'react-i18next';
 
 const BG = '#0B1222';
 const ACCENT = '#4CC9FF';
@@ -13,6 +14,7 @@ const ACCENT = '#4CC9FF';
  */
 const WebGate = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
+  const { t } = useTranslation();
   const gated = isPlainBrowser() && !isPublicWebPath(pathname);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -39,11 +41,11 @@ const WebGate = ({ children }: { children: ReactNode }) => {
           P
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">Pokračujte v aplikaci Pumplo</h1>
+        <h1 className="text-2xl font-bold mb-2">{t('web_gate.title')}</h1>
         <p className="text-sm mb-8" style={{ color: '#9FB0C9' }}>
           {isDesktop
-            ? 'Pumplo používejte v mobilní aplikaci. Stáhněte si ji zdarma:'
-            : 'Otevíráme aplikaci… Pokud se neotevřela, stáhněte si ji:'}
+            ? t('web_gate.desktop_desc')
+            : t('web_gate.mobile_desc')}
         </p>
 
         {!isDesktop && (
@@ -52,7 +54,7 @@ const WebGate = ({ children }: { children: ReactNode }) => {
             className="w-full rounded-xl py-3 px-4 font-semibold mb-4"
             style={{ background: ACCENT, color: BG }}
           >
-            Otevřít aplikaci
+            {t('web_gate.open_app')}
           </button>
         )}
 

@@ -1,4 +1,5 @@
 import { UserLevel } from '@/lib/trainingGoals';
+import { IconBadge, LEVEL_ICONS } from '@/components/icons/appIcons';
 import { USER_LEVEL_OPTIONS } from '@/lib/onboardingTypes';
 import { useTranslation } from 'react-i18next';
 
@@ -29,7 +30,7 @@ const OnboardingLevelStep = ({ value, onChange }: OnboardingLevelStepProps) => {
                 : 'border-border bg-card hover:border-primary/50'
             }`}
           >
-            <span className="text-3xl">{level.emoji}</span>
+            <IconBadge icon={LEVEL_ICONS[level.id]} active={value === level.id} size="lg" />
             <div>
               <span className="font-medium block">{t(`onboarding.level_${level.id}`)}</span>
               <span className="text-sm text-muted-foreground">{t(`onboarding.level_${level.id}_desc`)}</span>
@@ -37,6 +38,8 @@ const OnboardingLevelStep = ({ value, onChange }: OnboardingLevelStepProps) => {
           </button>
         ))}
       </div>
+      {/* Lidé nevěděli, kam se zařadit (sportuje, ale do fitka nechodí) — feedback 13. 10. */}
+      <p className="text-xs text-muted-foreground text-center px-2">{t('onboarding.level_help')}</p>
     </div>
   );
 };

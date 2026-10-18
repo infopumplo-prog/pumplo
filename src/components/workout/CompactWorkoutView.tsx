@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Video, X, ChevronRight, Check, SkipForward, RefreshCw, Play, Pause, Square, Timer, Info, Trophy, Plus } from 'lucide-react';
-import { TRAINING_ROLE_NAMES } from '@/lib/trainingRoles';
+import { getTrainingRoleName } from '@/lib/trainingRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchLastWeight } from '@/lib/lastWeight';
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish, playBeep, unlockAudio } from '@/lib/workoutAudio';
@@ -417,7 +417,7 @@ export const CompactWorkoutView = ({
             const exTargetSec = isExCardio ? ex.repMax : 0;
             const fmtExTarget = isExCardio ? formatTimer(exTargetSec) : '';
             const thumb = ex.exerciseId ? thumbById.get(ex.exerciseId) : null;
-            const exName = (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || TRAINING_ROLE_NAMES[ex.roleId as keyof typeof TRAINING_ROLE_NAMES] || ex.roleId);
+            const exName = (isEn && ex.exerciseNameEn) ? ex.exerciseNameEn : (ex.exerciseName || getTrainingRoleName(ex.roleId, isEn) || ex.roleId);
 
             return (
               <div

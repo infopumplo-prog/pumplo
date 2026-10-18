@@ -55,7 +55,9 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        maximumFileSizeToCacheInBytes: 3000000,
+        // Hlavní bundle po veřejných trénincích a onboardingu 2.0 ~3 MB; 3,5 MB rezerva (15. 10. 2026).
+        // Týká se jen webové PWA precache — nativní appky mají soubory přibalené.
+        maximumFileSizeToCacheInBytes: 3500000,
       },
     }),
   ].filter(Boolean),
@@ -65,6 +67,8 @@ export default defineConfig(({ mode }) => ({
       // Native-only FCM plugin imports firebase/messaging in its web entry;
       // Pumplo uses VAPID on web, so stub it out of the web build.
       "firebase/messaging": path.resolve(__dirname, "./src/lib/firebaseMessagingWebStub.ts"),
+      // Same for the native-only Firebase Analytics plugin (measurement is app-only).
+      "firebase/analytics": path.resolve(__dirname, "./src/lib/firebaseAnalyticsWebStub.ts"),
     },
   },
 }));

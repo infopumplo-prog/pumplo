@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check } from 'lucide-react';
+import { GOAL_ICONS, IconBadge } from '@/components/icons/appIcons';
 import { MVP_GOALS, TrainingGoalId, PLAN_DURATION_WEEKS } from '@/lib/trainingGoals';
 import { useTranslation } from 'react-i18next';
 
@@ -58,7 +59,7 @@ const OnboardingGoalStep = ({ value, onChange, onNext }: OnboardingGoalStepProps
                     : 'border-border bg-card hover:border-primary/50'
                 }`}
               >
-                <span className="text-2xl">{goal.emoji}</span>
+                <IconBadge icon={GOAL_ICONS[goal.id] ?? GOAL_ICONS.general_fitness} active={isSelected} />
                 <div className="flex-1">
                   <span className="font-medium block">{t(`onboarding.goal_${goal.id}_label`)}</span>
                   <span className="text-sm text-muted-foreground">{t(`onboarding.goal_${goal.id}_desc`)}</span>

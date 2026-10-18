@@ -2,12 +2,14 @@ import { motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface UpdateBannerProps {
   onUpdate: () => void;
 }
 
 const UpdateBanner = ({ onUpdate }: UpdateBannerProps) => {
+  const { t } = useTranslation();
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ const UpdateBanner = ({ onUpdate }: UpdateBannerProps) => {
         <div className="flex items-center gap-2">
           <RefreshCw className="w-5 h-5 animate-spin" />
           <span className="font-medium text-sm">
-            Aktualizace za {countdown > 0 ? `${countdown}s` : '...'}
+            {t('update_banner.updating_in', { time: countdown > 0 ? `${countdown}s` : '...' })}
           </span>
         </div>
         <Button 
@@ -36,7 +38,7 @@ const UpdateBanner = ({ onUpdate }: UpdateBannerProps) => {
           onClick={onUpdate}
           className="shrink-0"
         >
-          Aktualizovat teď
+          {t('update_banner.update_now')}
         </Button>
       </div>
     </motion.div>

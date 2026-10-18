@@ -12,6 +12,7 @@
 // profile is confirmed, so the answers outlive every failure in between.
 
 import { TrainingGoalId, UserLevel, SplitType } from '@/lib/trainingGoals';
+import type { PlanChoice } from '@/lib/onboardingFlow';
 
 const KEY = 'pumplo:onboarding-draft';
 
@@ -29,9 +30,19 @@ export interface OnboardingDraft {
   height: string;
   weight: string;
   injuries: string[];
+  /** Nepovinný popis zranění (feedback 13. 10.) — zdravotní údaj, jen lokálně do uložení profilu. */
+  injuryNote?: string;
   equipmentPreference: string | null;
   selectedGymId: string | null;
   splitOverride?: SplitType | null;
+  // Onboarding 2.0 (8. 10. 2026) — volitelné, starší koncepty je nemají.
+  motivations?: string[];
+  motivationText?: string;
+  expectations?: string[];
+  expectationText?: string;
+  planChoice?: PlanChoice;
+  /** Barva appky z kroku se jménem (OAuth registrace ji jinak ztratí). */
+  accentColor?: string;
 }
 
 // Never persisted: the password. A draft is recoverable input, not a credential.

@@ -25,11 +25,15 @@ export type TrainingGoalId = typeof TRAINING_GOAL_IDS[number];
 export type SplitType = 'full_body' | 'upper_lower' | 'ppl';
 
 // Split info for UI display
-export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; days: string[] }> = {
-  full_body: { label: 'Full Body A/B', labelCz: 'Full Body', days: ['A', 'B'] },
-  upper_lower: { label: 'Upper/Lower A/B', labelCz: 'Horní / Dolní tělo', days: ['A', 'B'] },
-  ppl: { label: 'Push/Pull/Legs A/B/C', labelCz: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
+export const SPLIT_INFO: Record<SplitType, { label: string; labelCz: string; labelEn: string; days: string[] }> = {
+  full_body: { label: 'Full Body A/B', labelCz: 'Full Body', labelEn: 'Full Body', days: ['A', 'B'] },
+  upper_lower: { label: 'Upper/Lower A/B', labelCz: 'Horní / Dolní tělo', labelEn: 'Upper / Lower', days: ['A', 'B'] },
+  ppl: { label: 'Push/Pull/Legs A/B/C', labelCz: 'Push / Pull / Legs', labelEn: 'Push / Pull / Legs', days: ['A', 'B', 'C'] }
 };
+
+/** Short split name in the UI language (without the A/B day suffix). */
+export const getSplitLabel = (split: SplitType, isEn: boolean): string =>
+  isEn ? SPLIT_INFO[split].labelEn : SPLIT_INFO[split].labelCz;
 
 /**
  * Určí split na základě počtu tréninkových dnů a úrovně uživatele
@@ -72,7 +76,6 @@ export const MVP_GOALS = [
   {
     id: 'muscle_gain' as TrainingGoalId,
     label: 'Nabrat svaly',
-    emoji: '💪',
     description: 'Hypertrofie - více objemu',
     detail: {
       summary: 'Trénink zaměřený na maximální růst svalové hmoty.',
@@ -89,7 +92,6 @@ export const MVP_GOALS = [
   {
     id: 'fat_loss' as TrainingGoalId,
     label: 'Zhubnout',
-    emoji: '🔥',
     description: 'Spalování tuků + udržení svalů',
     detail: {
       summary: 'Silový trénink doplněný o kondičku pro maximální spalování.',
@@ -106,7 +108,6 @@ export const MVP_GOALS = [
   {
     id: 'strength' as TrainingGoalId,
     label: 'Získat sílu',
-    emoji: '🏋️',
     description: 'Nižší opakování, vyšší váhy',
     detail: {
       summary: 'Trénink zaměřený na maximální sílu v klíčových cvicích.',
@@ -123,7 +124,6 @@ export const MVP_GOALS = [
   {
     id: 'general_fitness' as TrainingGoalId,
     label: 'Celková kondice',
-    emoji: '✨',
     description: 'Vyvážený trénink celého těla',
     detail: {
       summary: 'Univerzální trénink kombinující sílu, svaly i kondici.',
@@ -232,7 +232,9 @@ export interface PlanInputsSnapshot {
   duration_minutes: number;
   equipment_preference: string | null;
   injuries: string[];
-  gym_id: string;
+  gym_id: string | null;
+  /** Vlastní vybavení, když plán nevznikl pro posilovnu (feedback 13. 10.) */
+  custom_equipment?: string[] | null;
   equipment_available_snapshot: string[]; // machine_ids at time of generation
   training_days: string[];
   generated_at: string;

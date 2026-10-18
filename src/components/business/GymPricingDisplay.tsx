@@ -1,5 +1,6 @@
 import { CreditCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { uiLocaleTag } from '@/lib/uiLocale';
 import { GymPricing, PricingItem } from '@/contexts/GymContext';
 
 interface GymPricingDisplayProps {
@@ -8,7 +9,7 @@ interface GymPricingDisplayProps {
 
 const formatPrice = (price: number | null) => {
   if (price === null) return '—';
-  return `${price.toLocaleString('cs-CZ')} Kč`;
+  return `${price.toLocaleString(uiLocaleTag())} Kč`;
 };
 
 const groupByColumns = (items: PricingItem[]) => {

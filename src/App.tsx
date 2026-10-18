@@ -10,6 +10,8 @@ import { App as CapApp } from "@capacitor/app";
 import { StatusBar } from "@capacitor/status-bar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { GuestProvider, useGuest } from "@/contexts/GuestContext";
+import { GUEST_HOME, isGuestPath } from "@/lib/guestMode";
 import { GymProvider } from "@/contexts/GymContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -17,6 +19,15 @@ import AppLayout from "@/components/AppLayout";
 import UpdateBanner from "@/components/UpdateBanner";
 import { setUpdateBannerCallback, updateSW } from "@/main";
 import { forceAppRefresh } from "@/lib/appVersion";
+import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { loadOnboardingDraft, clearOnboardingDraft } from "@/lib/onboardingDraft";
+import { persistOnboarding } from "@/lib/persistOnboarding";
+import { installVideoKeepPlaying } from "@/lib/videoKeepPlaying";
+
+installVideoKeepPlaying();
+import { trackTutorialComplete } from "@/lib/appAnalytics";
+import { routeAfterRegistration, savePlanChoice } from "@/lib/onboardingFlow";
 import Auth from "@/pages/Auth";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -60,8 +71,16 @@ import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { usePushNavigation } from "@/hooks/usePushNavigation";
 import { flushWorkoutSaveQueue } from "@/lib/workoutSaveQueue";
 import WebGate from "@/components/WebGate";
+import { AppConsentGate } from "@/components/AppConsentScreen";
+import { initAppAnalytics, trackDeepLink, trackScreen } from "@/lib/appAnalytics";
 
 const StationPage = lazy(() => import('./pages/StationPage'));
+// Hlavní bundle je těsně pod limitem PWA precache (3 MB) — nové stránky načítat až při otevření (14. 10.).
+const Trainers = lazy(() => import('./pages/Trainers'));
+const PublicWorkouts = lazy(() => import('./pages/PublicWorkouts'));
+const PageFallback = () => (
+  <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+);
 const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
 
 // Handles deep links: com.pumplo.app://plan/{token} (custom scheme) and
@@ -72,7 +91,10 @@ const PlanDeepLinkNavigator = () => {
     if (!Capacitor.isNativePlatform()) return;
     const handle = (url: string) => {
       const m = url.match(/\/(plan|cvik)\/([^/?#]+)/);
-      if (m) navigate(`/${m[1]}/${m[2]}`);
+      if (m) {
+        trackDeepLink(`/${m[1]}/${m[2]}`);
+        navigate(`/${m[1]}/${m[2]}`);
+      }
     };
     const listener = CapApp.addListener('appUrlOpen', ({ url }) => handle(url));
     // Studený start: appUrlOpen se vyvolá dřív, než je posluchač zaregistrovaný →
@@ -80,6 +102,13 @@ const PlanDeepLinkNavigator = () => {
     CapApp.getLaunchUrl().then((r) => { if (r?.url) handle(r.url); }).catch(() => {});
     return () => { listener.then(h => h.remove()); };
   }, [navigate]);
+  return null;
+};
+
+// screen_view pro měření v appce (bez souhlasu nic neodejde).
+const ScreenViewTracker = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { trackScreen(pathname); }, [pathname]);
   return null;
 };
 
@@ -97,6 +126,47 @@ const PendingSharedPlanResume = () => {
       navigate(`/plan/${pending}`);
     }
   }, [user, location.pathname, navigate]);
+  return null;
+};
+
+// Registrace přes Apple/Google: přihlášení odvede z Auth dřív, než se uloží dotazník.
+// Odpovědi čekají v konceptu (onboardingDraft) — tady je po přihlášení dopíšeme do profilu.
+// Jen když profil ještě není dokončený, ať koncept nikdy nepřepíše cizí hotový účet.
+const PendingOnboardingFinisher = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { user, isRegistering } = useAuth();
+  const running = useRef(false);
+  useEffect(() => {
+    // E-mailová registrace si dotazník ukládá sama (isRegistering) — nezdvojovat.
+    if (!user || isRegistering || running.current) return;
+    const draft = loadOnboardingDraft();
+    if (!draft) return;
+    running.current = true;
+    (async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (profile?.onboarding_completed) { clearOnboardingDraft(); return; }
+        const saved = await persistOnboarding(user.id, draft, t('onboarding.own_plan_name'));
+        if (!saved.ok) return; // koncept zůstává, další spuštění to zkusí znovu
+        clearOnboardingDraft();
+        trackTutorialComplete();
+        const choice = draft.planChoice ?? 'pumplo';
+        savePlanChoice(choice);
+        await queryClient.invalidateQueries();
+        navigate(routeAfterRegistration(choice, saved.ownPlanId, draft.injuries), { replace: true });
+      } catch (err) {
+        console.error('Pending onboarding not saved:', err);
+      } finally {
+        running.current = false;
+      }
+    })();
+  }, [user, isRegistering, navigate, queryClient, t]);
   return null;
 };
 
@@ -134,14 +204,21 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children, allowGuest = false }: { children: React.ReactNode; allowGuest?: boolean }) => {
   const { user, isLoading } = useAuth();
+  const { isGuest } = useGuest();
+  const { pathname } = useLocation();
   
   if (isLoading) {
     return <LoadingSpinner />;
   }
   
   if (!user) {
+    // Host („Vyzkoušet bez registrace“, feedback 13. 10.): katalog a mapa bez účtu,
+    // ostatní obrazovky ho vrátí na katalog (registraci nabízí sheet, ne přesměrování).
+    if (allowGuest && isGuest) {
+      return isGuestPath(pathname) ? <>{children}</> : <Navigate to={GUEST_HOME} replace />;
+    }
     return <Navigate to="/auth" replace />;
   }
   
@@ -257,9 +334,12 @@ const AppRoutes = () => {
   <>
     <PasswordResetNavigator />
     <PlanDeepLinkNavigator />
+    <ScreenViewTracker />
     <PendingSharedPlanResume />
+    <PendingOnboardingFinisher />
     <SaveQueueFlusher />
     <GymDataRefresher />
+    <AppConsentGate />
   <WebGate>
   <Routes>
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -272,7 +352,7 @@ const AppRoutes = () => {
     <Route path="/go/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       }>
         <FlyerLanding />
@@ -281,7 +361,7 @@ const AppRoutes = () => {
     <Route path="/s/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#4CC9FF' }} />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       }>
         <StationPage />
@@ -289,7 +369,7 @@ const AppRoutes = () => {
     } />
     {/* Moje cviky = plná stránka bez spodní lišty a feedbacku (jen auth guard) */}
     <Route path="/profile/exercises" element={<ProtectedRoute><MyExercisesPage /></ProtectedRoute>} />
-    <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute allowGuest><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Index />} />
       <Route path="/map" element={<Map />} />
       <Route path="/statistics" element={<Statistics />} />
@@ -301,9 +381,11 @@ const AppRoutes = () => {
       <Route path="/messages" element={<Messages />} />
       <Route path="/messages/chat/:conversationId" element={<ChatThread />} />
       <Route path="/custom-plan/:id" element={<CustomPlanDetail />} />
+      <Route path="/workouts" element={<Suspense fallback={<PageFallback />}><PublicWorkouts /></Suspense>} />
       <Route path="/custom-workout/:id" element={<CustomWorkoutPlayer />} />
       <Route path="/become-trainer" element={<BecomeTrainer />} />
       <Route path="/trainer-profile" element={<TrainerProfile />} />
+      <Route path="/trainers" element={<Suspense fallback={<PageFallback />}><Trainers /></Suspense>} />
     </Route>
     
     {/* Admin & Business routes removed — use pumplo-admin.vercel.app */}
@@ -325,6 +407,8 @@ const App = () => {
     setUpdateBannerCallback(() => {
       setShowUpdateBanner(true);
     });
+
+    initAppAnalytics();
 
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: true });
@@ -353,7 +437,9 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <AppRoutes />
+              <GuestProvider>
+                <AppRoutes />
+              </GuestProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

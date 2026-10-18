@@ -395,7 +395,7 @@ const TrainerProfile = () => {
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="trener@email.cz"
+                  placeholder={t('trainer_profile.email_example')}
                 />
               </div>
               <div className="space-y-2">
@@ -419,7 +419,7 @@ const TrainerProfile = () => {
                   id="contactWeb"
                   value={contactWeb}
                   onChange={(e) => setContactWeb(e.target.value)}
-                  placeholder="www.mujweb.cz"
+                  placeholder={t('trainer_profile.web_placeholder')}
                 />
               </div>
             </div>

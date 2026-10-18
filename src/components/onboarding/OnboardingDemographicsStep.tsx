@@ -1,4 +1,6 @@
 import { Input } from '@/components/ui/input';
+import { Check } from 'lucide-react';
+import { GENDER_ICONS, IconBadge } from '@/components/icons/appIcons';
 import { useTranslation } from 'react-i18next';
 
 interface OnboardingDemographicsStepProps {
@@ -35,9 +37,14 @@ const OnboardingDemographicsStep = ({
 }: OnboardingDemographicsStepProps) => {
   const { t } = useTranslation();
 
+  // Vyplněné vs. nevyplněné muselo jít poznat na první pohled (feedback 13. 10.):
+  // vzorová hodnota jako „např. 25“, vyplněné pole s barevným rámečkem.
+  const filledClass = (v: string) =>
+    `text-lg placeholder:text-muted-foreground/50 placeholder:italic ${v ? 'border-primary border-2 font-semibold' : ''}`;
+
   const genders = [
-    { id: 'muž', label: t('onboarding.male'), emoji: '👨' },
-    { id: 'žena', label: t('onboarding.female'), emoji: '👩' },
+    { id: 'muž', label: t('onboarding.male') },
+    { id: 'žena', label: t('onboarding.female') },
   ];
 
   return (
@@ -69,12 +76,17 @@ const OnboardingDemographicsStep = ({
               onClick={() => onGenderChange(g.id)}
               className={`p-4 rounded-xl border-2 transition-all ${
                 gender === g.id
-                  ? 'border-primary bg-primary/10 shadow-primary'
-                  : 'border-border bg-card hover:border-primary/50'
-              }`}
+                  ? 'border-primary bg-primary/20 ring-2 ring-primary/40 shadow-primary'
+                  : 'border-border bg-card opacity-80 hover:border-primary/50'
+              } relative`}
             >
-              <span className="text-2xl block mb-1">{g.emoji}</span>
+              <span className="flex justify-center mb-2"><IconBadge icon={GENDER_ICONS[g.id]} active={gender === g.id} /></span>
               <span className="font-medium">{g.label}</span>
+              {gender === g.id && (
+                <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5" />
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -87,8 +99,8 @@ const OnboardingDemographicsStep = ({
             type="number"
             value={age}
             onChange={(e) => onAgeChange(e.target.value)}
-            placeholder="25"
-            className="text-lg"
+            placeholder={t('onboarding.example_value', { value: 25 })}
+            className={filledClass(age)}
           />
         </div>
         <div>
@@ -97,8 +109,8 @@ const OnboardingDemographicsStep = ({
             type="number"
             value={height}
             onChange={(e) => onHeightChange(e.target.value)}
-            placeholder="175"
-            className="text-lg"
+            placeholder={t('onboarding.example_value', { value: 175 })}
+            className={filledClass(height)}
           />
         </div>
         <div>
@@ -107,8 +119,8 @@ const OnboardingDemographicsStep = ({
             type="number"
             value={weight}
             onChange={(e) => onWeightChange(e.target.value)}
-            placeholder="75"
-            className="text-lg"
+            placeholder={t('onboarding.example_value', { value: 75 })}
+            className={filledClass(weight)}
           />
         </div>
       </div>

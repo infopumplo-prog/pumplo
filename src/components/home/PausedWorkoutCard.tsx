@@ -3,7 +3,7 @@ import { Play, X, Clock, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PausedWorkoutState } from '@/hooks/usePausedWorkout';
 import { formatDistanceToNow } from 'date-fns';
-import { cs } from 'date-fns/locale';
+import { cs, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 
 interface PausedWorkoutCardProps {
@@ -13,10 +13,10 @@ interface PausedWorkoutCardProps {
 }
 
 export const PausedWorkoutCard = ({ pausedWorkout, onResume, onDiscard }: PausedWorkoutCardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const pausedTimeAgo = formatDistanceToNow(new Date(pausedWorkout.pausedAt), {
     addSuffix: true,
-    locale: cs
+    locale: i18n.language === 'en' ? enUS : cs
   });
   
   const completedExercises = Object.keys(pausedWorkout.completedSets).length;
