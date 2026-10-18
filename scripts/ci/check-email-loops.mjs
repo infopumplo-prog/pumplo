@@ -61,17 +61,34 @@ function viewHealthProblems(sql) {
   if (!view) return ['chybí view loops_contact_facts'];
   return ['injuries', 'weight_kg', 'height_cm', '.age', 'gender', 'motivations'].filter((b) => view[1].includes(b)).map((b) => `view vybírá ${b}`);
 }
+// Minimalizace: kontakt bez marketingAllowed se do Loops neposílá a dřív poslaný se smaže.
+function minimisationProblems(idx) {
+  const p = [];
+  const loop = idx.slice(idx.indexOf('for (const r of rows) {'));
+  const gate = loop.indexOf('if (!belongsInLoops(contact)) {');
+  const plan = loop.indexOf('planContact(contact, prev)');
+  if (gate < 0 || plan < 0 || gate > plan) p.push('kontakt bez marketingAllowed není vyřazen před planContact');
+  else if (!/continue;\s*\}/.test(loop.slice(gate, plan))) p.push('brána belongsInLoops nekončí continue');
+  const drop = idx.slice(idx.indexOf('// 3. Vyřazení'));
+  if (!drop.includes('!inLoops.has(id)')) p.push('vyřazení nebere ztrátu marketingAllowed');
+  if (!drop.includes('"/contacts/delete"')) p.push('vyřazení nemaže kontakt v Loops');
+  if (!drop.includes('removed_reason: reason')) p.push('vyřazení se nezaloguje do loops_contacts');
+  return p;
+}
+
 async function checkPrivacy() {
   const files = {
     'sync.ts': read('supabase/functions/loops-sync/sync.ts'),
     'index.ts': read('supabase/functions/loops-sync/index.ts'),
   };
-  const problems = [...sourceHealthProblems(files), ...viewHealthProblems(read('supabase/migrations/20261019b_loops.sql'))];
+  const problems = [...sourceHealthProblems(files), ...viewHealthProblems(read('supabase/migrations/20261019b_loops.sql')), ...minimisationProblems(files['index.ts'])];
   if (problems.length) fail(problems.join('; '));
   // Negativní fixtures: kontrola musí odhalit únik.
   const leakSrc = { 'sync.ts': files['sync.ts'].replace("c.firstName = firstName;", "c.firstName = firstName; (c as any).weightKg = (r as any).weight_kg;") };
   if (leakSrc['sync.ts'] === files['sync.ts']) fail('negativní fixture (zdroj) nic nezměnila');
   if (sourceHealthProblems(leakSrc).length === 0) fail('kontrola zdroje neodhalila weight_kg');
+  if (minimisationProblems(files['index.ts'].replace('if (!belongsInLoops(contact)) {', 'if (false) {')).length === 0) fail('kontrola neodhalila chybějící bránu marketingAllowed');
+  if (minimisationProblems(files['index.ts'].replace('!inLoops.has(id)', '!eligible.has(id)')).length === 0) fail('kontrola neodhalila vyřazení jen podle eligible');
   const leakView = read('supabase/migrations/20261019b_loops.sql').replace('  f.first_name,', '  f.first_name,\n  p.injuries,');
   if (viewHealthProblems(leakView).length === 0) fail('kontrola view neodhalila injuries');
 
@@ -82,7 +99,7 @@ async function checkPrivacy() {
   const dirty = {
     user_id: '11111111-2222-4333-8444-555555555555', email: 'a@b.cz', first_name: 'Jana', language: 'cs',
     signed_up_at: h(3), onboarding_completed: true, selected_gym_id: 'g', selected_gym_name: 'Gym',
-    marketing_consent_at: null, email_optout_offered_at: h(3), marketing_optout_at: null, email_unsubscribed_at: null,
+    marketing_consent_at: null, email_optout_offered_at: h(3), marketing_optout_at: null, email_unsubscribed_at: null, notification_comeback: false,
     completed_workouts: 1, first_completed_at: h(1), last_completed_at: h(1), workout_dates: ['2026-10-20'],
     training_days: ['monday'], plan_training_days: null, first_plan_at: h(2), first_gym_plan_at: h(2), has_active_plan: true,
     recent_workouts: [{ id: 'w1', at: h(1) }],
@@ -91,9 +108,13 @@ async function checkPrivacy() {
   const c = s.buildContact(dirty);
   const evs = s.computeEvents(dirty, { logged: new Set(), lastPlanSlowingAt: null }, NOW);
   if (evs.length < 4) fail(`fixture měla vyvolat ≥ 4 události, je ${evs.length}`);
-  const payload = JSON.stringify([c, s.planContact(c, undefined), ...evs.map((e) => s.eventBody(c, e)), s.planDropout('u', 'a@b.cz', true)]);
+  const payload = JSON.stringify([c, s.planContact(c, undefined), ...evs.map((e) => s.eventBody(c, e)), s.planDropout('u', 'marketing_not_allowed')]);
   for (const leak of ['XKOLENOX', 'XBOLESTX', '987', '654', '321', 'XGENDERX', 'weight', 'height', 'injur']) if (payload.includes(leak)) fail(`payload obsahuje ${leak}`);
   for (const k of Object.keys(c)) if (!s.ALLOWED_CONTACT_KEYS.includes(k)) fail(`kontakt má klíč mimo allowlist: ${k}`);
+  if (c.retentionEmailsAllowed !== false) fail('notification_comeback=false nedává retentionEmailsAllowed=false');
+  if (s.buildContact({ ...dirty, notification_comeback: null }).retentionEmailsAllowed !== true) fail('výchozí comeback nedává retentionEmailsAllowed=true');
+  if (s.belongsInLoops(s.buildContact({ ...dirty, email_optout_offered_at: null })) !== false) fail('kontakt bez právního základu by šel do Loops');
+  if (s.belongsInLoops(c) !== true) fail('pozitivní kontrola: kontakt se souhlasem by do Loops nešel');
   // Pozitivní kontrola: stejný detektor únik v payloadu najde.
   if (!JSON.stringify({ ...c, weightKg: 987 }).includes('987')) fail('pozitivní kontrola detektoru selhala');
 
@@ -273,6 +294,11 @@ function docsProblems(doc) {
     const ev = j.match(/\*\*Trigger:\*\* událost `([a-z_0-9]+)`/);
     if (ev && !EVENTS.includes(ev[1])) p.push(`${title}: neznámá událost ${ev[1]}`);
   }
+  const retention = journeys.filter((j) => /`(first_workout_completed|plan_slowing|inactive_21d)`/.test(j.split('**Audience filtr:**')[0]));
+  if (retention.length !== 3) p.push(`čekám 3 udržovací journeys, je ${retention.length}`);
+  for (const j of retention) if (!/\*\*Audience filtr:\*\* `marketingAllowed = true` \*\*a\*\* `retentionEmailsAllowed = true`/.test(j)) p.push(`${j.split('\n')[0]}: chybí filtr retentionEmailsAllowed`);
+  if (!doc.includes('`Pumplo <zpravy@pumplo.com>`') || !doc.includes('reply-to stejný')) p.push('odesílatel není Pumplo <zpravy@pumplo.com> s reply-to stejným');
+  if (/David z Pumpla“\)|mail\.pumplo\.com|reply-to `info@/.test(doc)) p.push('dokument má jiného odesílatele / reply-to');
   for (const n of ['#0B1222', '#4CC9FF', 'Nunito 900', 'Setup checklist', 'LOOPS_API_KEY', 'LOOPS_DRY_RUN=true', 'LOOPS_WEBHOOK_SECRET', 'Cloudflare', '/functions/v1/loops-webhook', 'marketingAllowed', 'ČEKÁ NA SCHVÁLENÍ DAVIDA']) if (!doc.includes(n)) p.push(`dokument nezmiňuje ${n}`);
   for (const bad of ['vynechal', 'zklamal', 'lenost', 'výmluv', 'zranění tě', 'hubnut']) if (doc.toLowerCase().includes(bad)) p.push(`texty obsahují „${bad}“`);
   return p;
@@ -292,9 +318,12 @@ function checkDocs() {
   if (!privacy.includes("t('privacy.emails_processor_loops')")) problems.push('Privacy.tsx text nezobrazuje');
   if (problems.length) fail(problems.join('; '));
   // Negativní fixture: journey bez filtru marketingAllowed neprojde.
-  const bad = doc.replace('**Audience filtr:** `marketingAllowed = true`.\n- **Průběh:** Wait 2 dny', '**Audience filtr:** všichni.\n- **Průběh:** Wait 2 dny');
+  const bad = doc.replace('**Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.\n- **Průběh:** Wait 2 dny', '**Audience filtr:** všichni.\n- **Průběh:** Wait 2 dny');
   if (bad === doc) fail('negativní fixture docs nic nezměnila');
   if (docsProblems(bad).length === 0) fail('kontrola neodhalila journey bez marketingAllowed');
+  const badRet = doc.replace('**Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.\n- **Průběh:** Wait 2 dny', '**Audience filtr:** `marketingAllowed = true`.\n- **Průběh:** Wait 2 dny');
+  if (badRet === doc || docsProblems(badRet).length === 0) fail('kontrola neodhalila M6 bez retentionEmailsAllowed');
+  if (docsProblems(doc.replace('`Pumplo <zpravy@pumplo.com>`', '`Pumplo <tipy@mail.pumplo.com>`')).length === 0) fail('kontrola neodhalila jiného odesílatele');
   console.log('EMAIL_LOOPS_DOCS_OK');
 }
 

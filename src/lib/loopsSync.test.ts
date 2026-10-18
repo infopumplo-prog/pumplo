@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   ALLOWED_CONTACT_KEYS,
+  belongsInLoops,
   FORBIDDEN_FIELDS,
   LOOPS_EVENTS,
   buildContact,
@@ -44,6 +45,7 @@ const row = (over: Partial<LoopsFactsRow> = {}): LoopsFactsRow => ({
   email_optout_offered_at: hoursAgo(24 * 30),
   marketing_optout_at: null,
   email_unsubscribed_at: null,
+  notification_comeback: null,
   completed_workouts: 0,
   first_completed_at: null,
   last_completed_at: null,
@@ -101,6 +103,7 @@ describe('buildContact — allowlist, žádné zdravotní údaje', () => {
       onboardingCompleted: true,
       hasPlan: true,
       marketingAllowed: true,
+      retentionEmailsAllowed: true,
       userGroup: 'retention',
     });
   });
@@ -212,15 +215,33 @@ describe('tělo události a idempotence', () => {
   it('event nese marketingAllowed jako vlastnost kontaktu', () => {
     const c = buildContact(row({ email_optout_offered_at: null }))!;
     const b = eventBody(c, { event: 'signed_up', episode: 'life', eventProperties: {} });
-    expect(b).toEqual({ email: 'jana@example.com', userId: c.userId, eventName: 'signed_up', eventProperties: {}, marketingAllowed: false });
+    expect(b).toEqual({ email: 'jana@example.com', userId: c.userId, eventName: 'signed_up', eventProperties: {}, marketingAllowed: false, retentionEmailsAllowed: true });
     expect(idempotencyKey(c.userId, { event: 'workout_completed', episode: 'x'.repeat(200) }).length).toBe(100);
   });
 });
 
-describe('planDropout', () => {
-  it('smazaný účet → delete jen podle userId; jinak subscribed:false', () => {
-    expect(planDropout('u', 'a@b.cz', false)).toEqual({ kind: 'delete', body: { userId: 'u' } });
-    expect(planDropout('u', 'a@b.cz', true)).toEqual({ kind: 'unsubscribe', body: { userId: 'u', email: 'a@b.cz', subscribed: false, marketingAllowed: false } });
+describe('minimalizace dat a vyřazení', () => {
+  it('do Loops patří jen kontakt s marketingAllowed', () => {
+    expect(belongsInLoops(buildContact(row()))).toBe(true);
+    expect(belongsInLoops(buildContact(row({ email_optout_offered_at: null })))).toBe(false); // app-store bez souhlasu
+    expect(belongsInLoops(buildContact(row({ marketing_optout_at: hoursAgo(1) })))).toBe(false); // odmítl
+    expect(belongsInLoops(buildContact(row({ marketing_consent_at: hoursAgo(5), marketing_optout_at: hoursAgo(1) })))).toBe(false); // stáhl souhlas
+    expect(belongsInLoops(buildContact(row({ email: null })))).toBe(false);
+  });
+  it('vyřazení = smazat kontakt jen podle userId, s důvodem', () => {
+    for (const reason of ['marketing_not_allowed', 'not_eligible', 'account_deleted'] as const) {
+      expect(planDropout('u', reason)).toEqual({ kind: 'delete', reason, body: { userId: 'u' } });
+    }
+  });
+});
+
+describe('retentionEmailsAllowed (comeback pushe)', () => {
+  it('vypnutý comeback → false, zapnutý nebo neuvedený → true; jde i s událostí', () => {
+    expect(buildContact(row({ notification_comeback: false }))!.retentionEmailsAllowed).toBe(false);
+    expect(buildContact(row({ notification_comeback: true }))!.retentionEmailsAllowed).toBe(true);
+    expect(buildContact(row({ notification_comeback: null }))!.retentionEmailsAllowed).toBe(true);
+    const c = buildContact(row({ notification_comeback: false }))!;
+    expect(eventBody(c, { event: 'inactive_21d', episode: 'x', eventProperties: {} }).retentionEmailsAllowed).toBe(false);
   });
 });
 

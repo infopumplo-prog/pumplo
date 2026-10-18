@@ -5,7 +5,10 @@
 //  - Supabase = zdroj pravdy: kdo smí dostat obchodní e-mail (právní brána), odhlášení,
 //    suppressions, interní účty (view email_eligible_users).
 //  - Loops = e-maily, editor, časování journeys. Každá obchodní journey v Loops MUSÍ mít
-//    audience filtr marketingAllowed = true (docs/email/loops-journeys.md).
+//    audience filtr marketingAllowed = true (docs/email/loops-journeys.md), udržovací
+//    M6–M8 navíc retentionEmailsAllowed = true.
+//  - Minimalizace dat: do Loops jde JEN kontakt s marketingAllowed = true. Kdo ho ztratí
+//    (odmítnutí, odhlášení, stažený souhlas, bounce, smazaný účet), je z Loops smazán.
 //
 // Do Loops jde jen allowlist vlastností z buildContact(). NIKDY zranění, váha, výška,
 // věk, pohlaví ani jiné tělesné/zdravotní údaje.
@@ -55,6 +58,7 @@ export const ALLOWED_CONTACT_KEYS = [
   'onboardingCompleted',
   'hasPlan',
   'marketingAllowed',
+  'retentionEmailsAllowed',
   'userGroup',
   'subscribed',
 ] as const;
@@ -176,6 +180,8 @@ export interface LoopsFactsRow {
   email_optout_offered_at: string | null;
   marketing_optout_at: string | null;
   email_unsubscribed_at: string | null;
+  /** user_profiles.notification_comeback (null = výchozí true). */
+  notification_comeback: boolean | null;
   completed_workouts: number;
   first_completed_at: string | null;
   last_completed_at: string | null;
@@ -200,6 +206,8 @@ export type LoopsContact = {
   onboardingCompleted: boolean;
   hasPlan: boolean;
   marketingAllowed: boolean;
+  /** false = uživatel vypnul comeback pushe → žádné udržovací e-maily M6–M8. */
+  retentionEmailsAllowed: boolean;
   /** activation = 0 tréninků, retention = ≥ 1 (segmentace v Loops). */
   userGroup: 'activation' | 'retention';
 };
@@ -231,6 +239,7 @@ export function buildContact(r: LoopsFactsRow): LoopsContact | null {
       marketingOptoutAt: r.marketing_optout_at,
       emailUnsubscribedAt: r.email_unsubscribed_at,
     }),
+    retentionEmailsAllowed: r.notification_comeback !== false,
     userGroup: (Number(r.completed_workouts) || 0) > 0 ? 'retention' : 'activation',
   };
   const firstName = firstWord(r.first_name);
@@ -382,6 +391,7 @@ export function eventBody(c: LoopsContact, e: PlannedEvent): Record<string, unkn
     eventName: e.event,
     eventProperties: e.eventProperties,
     marketingAllowed: c.marketingAllowed,
+    retentionEmailsAllowed: c.retentionEmailsAllowed,
   };
 }
 
@@ -391,19 +401,22 @@ export const idempotencyKey = (userId: string, e: Pick<PlannedEvent, 'event' | '
 
 // ─── Vyřazení z Loops ────────────────────────────────────────────────────────
 
+export type DropoutReason = 'marketing_not_allowed' | 'not_eligible' | 'account_deleted';
+
 /**
- * Kdo byl v Loops a už není v email_eligible_users (odhlásil se u nás, bounce, stal se
- * staff, smazal účet): smazaný účet → smazat kontakt (GDPR), jinak subscribed:false
- * + marketingAllowed:false (Loops mu nic nepošle).
+ * Kdo je v Loops a už tam být nemá → kontakt v Loops SMAZAT (POST /contacts/delete, jen userId):
+ *  - marketing_not_allowed: je oslovitelný, ale ztratil právní základ (odmítl, stáhl souhlas),
+ *  - not_eligible: vypadl z email_eligible_users (odhlásil se, bounce/spam, staff, role),
+ *  - account_deleted: účet už neexistuje.
+ * Náš záznam (odhlášení, suppressions) zůstává v Supabase, takže se do Loops nevrátí,
+ * dokud znovu nesplní marketingAllowed.
  */
-export function planDropout(userId: string, email: string | null, authUserExists: boolean):
-  | { kind: 'delete'; body: Record<string, unknown> }
-  | { kind: 'unsubscribe'; body: Record<string, unknown> } {
-  if (!authUserExists) return { kind: 'delete', body: { userId } };
-  const body: Record<string, unknown> = { userId, subscribed: false, marketingAllowed: false };
-  if (email) body.email = email;
-  return { kind: 'unsubscribe', body };
+export function planDropout(userId: string, reason: DropoutReason): { kind: 'delete'; reason: DropoutReason; body: { userId: string } } {
+  return { kind: 'delete', reason, body: { userId } };
 }
+
+/** Má kontakt být v Loops? Jen s e-mailem a marketingAllowed = true. */
+export const belongsInLoops = (c: LoopsContact | null): c is LoopsContact => !!c && c.marketingAllowed === true;
 
 // ─── HTTP s ohledem na rate limit ────────────────────────────────────────────
 

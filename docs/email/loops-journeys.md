@@ -9,14 +9,17 @@ odmítnutí, odhlášení a blokované adresy.
 
 | Kdo | Co dělá |
 |---|---|
-| `supabase/functions/loops-sync` (cron každou hodinu v :40) | Posílá do Loops kontakty (jen z `email_eligible_users`) a události počítané z DB. Výchozí `LOOPS_DRY_RUN=true` = jen log. |
+| `supabase/functions/loops-sync` (cron každou hodinu v :40) | Posílá do Loops **jen kontakty s `marketingAllowed = true`** (z `email_eligible_users`) a jejich události počítané z DB. Výchozí `LOOPS_DRY_RUN=true` = jen log. |
 | `supabase/functions/loops-webhook` | Odhlášení v Loops → `user_profiles.email_unsubscribed_at`; odeslaný e-mail → `contact_log` (ranní push ten den vynechá); hard bounce / spam → `email_suppressions`; vše do `email_events`. |
 | `supabase/functions/lifecycle-emails` | Dál posílá **jen M2A** (servisní, přes Resend, beze změny). M3–M8 už neposílá. |
 | Loops | Journeys níže, editor, šablony, statistiky. |
 
-Kdo se u nás odhlásí, je vyřazen (bounce, spam, staff, smazaný účet), přestane být v
-`email_eligible_users` → loops-sync mu v Loops nastaví `subscribed=false` a `marketingAllowed=false`
-(smazaný účet → kontakt v Loops smaže).
+**Minimalizace dat:** do Loops jde jen kontakt, který smí dostávat obchodní e-maily
+(`marketingAllowed = true`). Kdo to ztratí (odmítne tipy, stáhne souhlas, odhlásí se, bounce/spam,
+stane se staff, smaže účet), tomu loops-sync **kontakt v Loops smaže** (`POST /v1/contacts/delete`)
+a důvod zapíše do `loops_contacts.removed_reason` (`marketing_not_allowed` / `not_eligible` /
+`account_deleted`) + log funkce. Vrátí se, až znovu splní `marketingAllowed`.
+M2A (servisní) zůstává v našem systému, Loops tedy nikoho jiného nepotřebuje.
 
 ## ⚠️ Povinné pravidlo pro KAŽDOU obchodní journey
 
@@ -26,9 +29,11 @@ aktualizuje každou hodinu a posílá ji i s každou událostí).
 
 `marketingAllowed` = stejná právní brána jako F1 (§ 7 odst. 3 zák. 480/2004 Sb.):
 souhlas v appce **NEBO** (při registraci nabídnuté odmítnutí **A** neodmítl **A** neodhlásil se).
-Uživatel z buildu v obchodě bez zaškrtávátka a bez souhlasu má `false` → nedostane nic.
-Loops kontakty s `marketingAllowed=false` vidí (kvůli případným servisním e-mailům),
-ale **žádná obchodní journey je nesmí oslovit**.
+Uživatel z buildu v obchodě bez zaškrtávátka a bez souhlasu má `false` → do Loops se vůbec nedostane.
+Filtr v journeys je druhá pojistka (hodnota se může změnit mezi syncem a odesláním).
+
+**Udržovací journeys M6–M8 (J3, J4, J5) navíc filtrují `retentionEmailsAllowed = true`**
+— `false`, když si uživatel v appce vypnul comeback připomínky (`notification_comeback = false`).
 
 Každý e-mail v Loops musí v patičce mít: „Obchodní sdělení“, GynTools CZ s.r.o., IČ 27804461,
 proč e-mail přišel, odkaz na odhlášení (Loops ho doplňuje sám — nesmazat).
@@ -47,6 +52,7 @@ proč e-mail přišel, odkaz na odhlášení (Loops ho doplňuje sám — nesmaz
 | `onboardingCompleted` | Boolean | dotazník dokončen |
 | `hasPlan` | Boolean | má aktivní plán |
 | `marketingAllowed` | Boolean | **právní brána — filtr všech obchodních journeys** |
+| `retentionEmailsAllowed` | Boolean | **comeback připomínky zapnuté — filtr M6–M8** |
 
 Nikdy se neposílá: zranění, váha, výška, věk, pohlaví, motivace (hlídá test + CI).
 
@@ -69,8 +75,8 @@ Event properties se v editoru vkládají přes `{` → dynamický obsah (`{EVENT
 
 - **Strop 1 kontakt / den napříč kanály** Loops neumí. Náhrada: každý e-mail z Loops se přes webhook
   zapíše do `contact_log` a ranní push ten den vynechá. Opačně (push → e-mail) se e-mail nepozdrží.
-- **Vypnutý comeback push** (`notification_comeback=false`) F1 bral jako zákaz M6–M8. Do Loops se teď
-  neposílá — otevřená otázka (viz konec).
+- **Vypnutý comeback push** (`notification_comeback=false`) = zákaz M6–M8 jako v F1, přes vlastnost
+  `retentionEmailsAllowed` (posílá se s kontaktem i s každou událostí).
 - Slot 16:30: nastavit v Loops odesílací čas, pokud to workflow umí; jinak čekání volit tak, aby
   e-mail šel odpoledne.
 
@@ -121,7 +127,7 @@ EN: *Where do you train?* — your questionnaire is done. To build a workout tha
 (Odpovědi s názvem posilovny = B2B lead → reply-to musí být čtená schránka.)
 
 ### M5 — Můžu se na něco zeptat?
-_Náhled:_ Stačí odpovědět jedním slovem. **Prostý text, bez tlačítka a bez grafiky, odesílatel David.**
+_Náhled:_ Stačí odpovědět jedním slovem. **Prostý text, bez tlačítka a bez grafiky** (podpis David, odesílatel stejný jako u ostatních).
 
 > Ahoj,
 >
@@ -165,8 +171,8 @@ EN: *Your first workout is waiting for you* — your first Pumplo workout is set
 ## J3 — Druhý trénink (M6)
 
 - **Trigger:** událost `first_workout_completed`, jednou na kontakt.
-- **Audience filtr:** `marketingAllowed = true`.
-- **Průběh:** Wait 2 dny → Branch `workoutsCompleted = 1` a `marketingAllowed = true`, jinak **exit** → **M6**.
+- **Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.
+- **Průběh:** Wait 2 dny → Branch `workoutsCompleted = 1`, `marketingAllowed = true` a `retentionEmailsAllowed = true`, jinak **exit** → **M6**.
 - **Exit:** druhý trénink (`workoutsCompleted ≥ 2`).
 
 ### M6 — První trénink máš. Druhý je na řadě
@@ -187,8 +193,8 @@ EN: *First workout done. The second one is next* — your first workout is done.
 ## J4 — Zpomalení plánu (M7)
 
 - **Trigger:** událost `plan_slowing`, **pokaždé** (opakování hlídá loops-sync: max 1× / 21 dní).
-- **Audience filtr:** `marketingAllowed = true`.
-- **Průběh:** Branch `marketingAllowed = true` → **M7**. Bez čekání.
+- **Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.
+- **Průběh:** Branch `marketingAllowed = true` a `retentionEmailsAllowed = true` → **M7**. Bez čekání.
 - **Exit:** — (jeden e-mail).
 - Záměrně neradit „sniž počet dní“ (nový plán vynuluje postup).
 
@@ -212,8 +218,8 @@ EN: *One workout this week is enough* — Your plan is set to {trainingsPerWeek}
 ## J5 — Návrat po pauze (M8)
 
 - **Trigger:** událost `inactive_21d`, **pokaždé** (loops-sync: jednou na výpadek, max 2× / 90 dní).
-- **Audience filtr:** `marketingAllowed = true`.
-- **Průběh:** Branch `marketingAllowed = true` → **M8**.
+- **Audience filtr:** `marketingAllowed = true` **a** `retentionEmailsAllowed = true`.
+- **Průběh:** Branch `marketingAllowed = true` a `retentionEmailsAllowed = true` → **M8**.
 - **Exit:** —. Comeback push má den 23; e-mail přijde den 21–22, push skip přes `contact_log` řeší jen ranní push ten den.
 
 ### M8 — Nezačínáš od nuly
@@ -247,12 +253,12 @@ k odhlášení. Do té doby v Loops M2A **nestavět** — jinak by šel dvakrát
 - **Tělo:** bílé pozadí, text `#111111`, systémové písmo (-apple-system, Segoe UI, Roboto, Helvetica, Arial), 16 px, řádkování 1,5, šířka max 480–560 px.
 - **Patička:** šedá `#6B7280`, 12 px: „Obchodní sdělení · GynTools CZ s.r.o., IČ 27804461 · Přišlo ti to, protože máš účet v Pumplu a zasílání tipů jsi neodmítl(a). · Odhlásit“.
 - **Tón:** tykání, krátké věty, žádné výčitky, nikdy tělo/váha/zranění. M5 prostý text bez grafiky.
-- **Odesílatel:** „Pumplo“ (M5: „David z Pumpla“), reply-to `info@pumplo.com`.
+- **Odesílatel (rozhodnutí Davida):** přesně `Pumplo <zpravy@pumplo.com>` u všech e-mailů včetně M5, **reply-to stejný** `zpravy@pumplo.com` (odpovědi M3B/M5 musí někdo číst).
 
 ## Setup checklist pro Davida (v tomto pořadí)
 
 1. **Účet:** založit na loops.so (team Pumplo), vyplnit firmu GynTools CZ s.r.o., podepsat DPA (SCC) v nastavení.
-2. **Sending domain:** Settings → Domain → zadat subdoménu, např. `mail.pumplo.com`. Loops ukáže záznamy (MX, TXT/SPF na `envelope.…`, DKIM CNAME, případně DMARC) → přidat v **Cloudflare** DNS zóně pumplo.com, u CNAME **DNS only** (šedý mráček) → Verify Records.
+2. **Sending domain:** odesílatel je `Pumplo <zpravy@pumplo.com>` → v Loops Settings → Domain zadat `pumplo.com`. Loops ukáže záznamy (MX + TXT/SPF na `envelope.pumplo.com`, DKIM CNAME, případně DMARC) → přidat v **Cloudflare** DNS zóně pumplo.com, u CNAME **DNS only** (šedý mráček). Stávající záznamy Resendu (stejná adresa pro M2A) **nemazat** — Loops má vlastní DKIM selektor a SPF na envelope subdoméně. Pak Verify Records. Výchozí odesílatel + reply-to: `zpravy@pumplo.com`.
 3. **Vlastnosti kontaktu:** vytvořit podle tabulky výše (přesné API názvy a typy — později nejdou měnit).
 4. **API klíč:** Settings → API → Generate key, pak
    `supabase secrets set LOOPS_API_KEY=… LOOPS_DRY_RUN=true --project-ref udqwjqgdsjobdufdxbpn`
@@ -266,6 +272,6 @@ k odhlášení. Do té doby v Loops M2A **nestavět** — jinak by šel dvakrát
    `supabase secrets set LOOPS_WEBHOOK_SECRET=whsec_… --project-ref udqwjqgdsjobdufdxbpn` → Send test event.
 7. **Cron:** odkomentovat a spustit blok z `20261019b_loops.sql` (loops-sync v :40).
    Ručně: `curl -X POST …/functions/v1/loops-sync -H "Authorization: Bearer $CRON_SECRET"` → v dry runu vrátí, co by poslal.
-8. **Journeys:** postavit J1–J5 podle tohoto dokumentu, **každá s filtrem `marketingAllowed = true`**, nechat v draftu.
+8. **Journeys:** postavit J1–J5 podle tohoto dokumentu, **každá s filtrem `marketingAllowed = true`, J3–J5 navíc `retentionEmailsAllowed = true`**, nechat v draftu.
 9. Po kontrole dry-run výstupu: `supabase secrets set LOOPS_DRY_RUN=false` → kontakty a události tečou do Loops. Journeys zapínat jednotlivě až po schválení textů.
 10. Schválit a nasadit text v Zásadách ochrany osobních údajů (`privacy.emails_processor_loops`).

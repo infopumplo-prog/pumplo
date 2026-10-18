@@ -10,7 +10,9 @@ import {
   isLoopsDryRun,
   loopsRequest,
   planContact,
+  belongsInLoops,
   planDropout,
+  type DropoutReason,
   type FetchLike,
   type LoopsFactsRow,
   type SyncedState,
@@ -19,11 +21,12 @@ import {
 // loops-sync (19. 10. 2026): Supabase → Loops. Logika v sync.ts (testovaná vitestem).
 // Spouští pg_cron každou hodinu v :40 (SQL v migraci 20261019b_loops.sql, zakomentované).
 //
-//  1. Kontakty: upsert jen při změně (loops_contacts.props_hash), jen z view
-//     loops_contact_facts (= email_eligible_users, bez interních/odhlášených/suppressions).
+//  1. Kontakty: JEN s marketingAllowed = true (minimalizace dat), upsert jen při změně
+//     (loops_contacts.props_hash), z view loops_contact_facts (= email_eligible_users).
 //  2. Události: computeEvents → loops_event_log (unique user_id+event+episode) → Loops.
 //     Řádek se zakládá PŘED odesláním; když Loops odmítne, řádek se smaže a příště se zkusí znovu.
-//  3. Vyřazení: kdo byl v Loops a už není oslovitelný → subscribed:false, smazaný účet → delete.
+//  3. Vyřazení: kdo je v Loops a ztratil marketingAllowed / vypadl z eligible / smazal účet
+//     → kontakt v Loops smazat, důvod do loops_contacts.removed_reason + log.
 //
 // Pojistky:
 //  - LOOPS_DRY_RUN je výchozí true → jen vypíše, co by poslal; nevolá Loops a nic nezapisuje.
@@ -37,7 +40,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const FACT_COLUMNS =
   "user_id, email, first_name, language, signed_up_at, onboarding_completed, selected_gym_id, selected_gym_name, " +
-  "marketing_consent_at, email_optout_offered_at, marketing_optout_at, email_unsubscribed_at, completed_workouts, " +
+  "marketing_consent_at, email_optout_offered_at, marketing_optout_at, email_unsubscribed_at, notification_comeback, completed_workouts, " +
   "first_completed_at, last_completed_at, workout_dates, training_days, plan_training_days, first_plan_at, " +
   "first_gym_plan_at, has_active_plan, recent_workouts";
 
@@ -119,7 +122,8 @@ Deno.serve(async (req) => {
     contacts: { upserted: 0, unchanged: 0, failed: 0 },
     events: {} as Record<string, number>,
     events_failed: 0,
-    dropouts: { unsubscribed: 0, deleted: 0, failed: 0 },
+    skipped_not_allowed: 0,
+    dropouts: { marketing_not_allowed: 0, not_eligible: 0, account_deleted: 0, failed: 0 },
     requests: 0,
     stopped: null as string | null,
     sample: [] as unknown[],
@@ -132,7 +136,11 @@ Deno.serve(async (req) => {
   for (const r of rows) {
     if (stoppedReason) break;
     const contact = buildContact(r);
-    if (!contact) continue;
+    if (!belongsInLoops(contact)) {
+      // Bez právního základu do Loops nic (ani kontakt, ani události); případný starý kontakt smaže krok 3.
+      summary.skipped_not_allowed++;
+      continue;
+    }
     const prev = synced.get(r.user_id);
     const action = planContact(contact, prev);
     const events = computeEvents(r, {
@@ -200,30 +208,34 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3. Vyřazení: v Loops, ale už ne oslovitelný.
+  // 3. Vyřazení: v Loops, ale už tam nepatří → smazat kontakt.
+  const inLoops = new Set(rows.filter((r) => belongsInLoops(buildContact(r))).map((r) => r.user_id));
   const eligible = new Set(rows.map((r) => r.user_id));
-  const dropouts = [...synced].filter(([id, s]) => !s.removedAt && !eligible.has(id));
-  for (const [userId, s] of dropouts) {
+  const dropouts = [...synced].filter(([id, s]) => !s.removedAt && !inLoops.has(id));
+  for (const [userId] of dropouts) {
     if (stoppedReason) break;
-    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-    const plan = planDropout(userId, s.email, !!authUser?.user);
+    let reason: DropoutReason = "marketing_not_allowed";
+    if (!eligible.has(userId)) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+      reason = authUser?.user ? "not_eligible" : "account_deleted";
+    }
+    const plan = planDropout(userId, reason);
     if (dryRun) {
-      summary.dropouts[plan.kind === "delete" ? "deleted" : "unsubscribed"]++;
+      summary.dropouts[reason]++;
       sample({ dropout: plan });
       continue;
     }
-    const res = plan.kind === "delete"
-      ? await call("POST", "/contacts/delete", plan.body)
-      : await call("PUT", "/contacts/update", plan.body);
+    const res = await call("POST", "/contacts/delete", plan.body);
     if (!res) break;
-    if (res.ok || (plan.kind === "delete" && res.status === 404)) {
-      summary.dropouts[plan.kind === "delete" ? "deleted" : "unsubscribed"]++;
+    if (res.ok || res.status === 404) {
+      summary.dropouts[reason]++;
+      console.log("loops contact deleted", userId, reason, res.status);
       await supabase.from("loops_contacts")
-        .update({ removed_at: now.toISOString(), removed_reason: plan.kind === "delete" ? "account_deleted" : "not_eligible" })
+        .update({ removed_at: now.toISOString(), removed_reason: reason })
         .eq("user_id", userId);
     } else {
       summary.dropouts.failed++;
-      console.error("loops dropout failed", userId, res.status, res.error);
+      console.error("loops dropout failed", userId, reason, res.status, res.error);
     }
   }
 

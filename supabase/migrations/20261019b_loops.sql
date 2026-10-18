@@ -25,15 +25,17 @@ create index if not exists loops_event_log_sent_idx on public.loops_event_log (s
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. loops_contacts — kdo je v Loops a s jakým otiskem vlastností
 -- ─────────────────────────────────────────────────────────────────────────────
--- Bez FK na auth.users ZÁMĚRNĚ: po smazání účtu musí loops-sync poznat, že má kontakt
--- v Loops smazat (pak nastaví removed_at). props_hash = otisk posledně poslaných vlastností.
+-- Do Loops jde JEN kontakt s marketingAllowed = true (minimalizace dat). Kdo ho ztratí,
+-- vypadne z oslovitelných nebo smaže účet, tomu loops-sync kontakt v Loops smaže a zapíše
+-- removed_at + removed_reason (= log vyřazení). Bez FK na auth.users ZÁMĚRNĚ: po smazání
+-- účtu musí loops-sync poznat, že má kontakt smazat. props_hash = otisk posledních vlastností.
 create table if not exists public.loops_contacts (
   user_id uuid primary key,
   email text,
   props_hash text,
   synced_at timestamptz not null default now(),
   removed_at timestamptz,
-  removed_reason text check (removed_reason is null or removed_reason in ('not_eligible', 'account_deleted'))
+  removed_reason text check (removed_reason is null or removed_reason in ('marketing_not_allowed', 'not_eligible', 'account_deleted'))
 );
 create index if not exists loops_contacts_email_idx on public.loops_contacts (lower(email));
 
@@ -100,6 +102,7 @@ select
   f.email_optout_offered_at,
   f.marketing_optout_at,
   f.email_unsubscribed_at,
+  f.notification_comeback,
   f.completed_workouts,
   f.first_completed_at,
   f.last_completed_at,
