@@ -502,8 +502,9 @@ export const WorkoutSession = ({
         trackWorkoutComplete(isBonus);
         if (sessionId) {
           // One COUNT query shared by first-workout analytics and the store rating prompt.
-          const ownSessions = countOwnWorkoutSessions();
-          const countSessions = () => ownSessions;
+          // Lazy: on web both callers return before counting, so no query and no unhandled rejection there.
+          let ownSessions: Promise<number | null> | undefined;
+          const countSessions = () => (ownSessions ??= countOwnWorkoutSessions());
           void trackFirstWorkoutIfFirst(countSessions);
           // Store rating prompt after the 3rd / 10th / 25th workout (native only, never guests).
           void requestReviewAfterWorkout(countSessions);
