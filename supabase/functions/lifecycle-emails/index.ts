@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { buildUnsubscribeUrl } from "../_shared/emailUnsubToken.ts";
+import { buildUnsubscribePageUrl, buildUnsubscribeUrl } from "../_shared/emailUnsubToken.ts";
 import {
   M2A_CTA_URL,
   M2A_EPISODE,
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     if (!latest) return json({ preview: true, error: "no template" }, 404);
     const mail = renderEmail({
       template: latest, locale, firstName: "Jana", currentStep: 0,
-      ctaUrl: M2A_CTA_URL, unsubscribeUrl: `${supabaseUrl}/functions/v1/email-unsubscribe?u=…&t=…`,
+      ctaUrl: M2A_CTA_URL, unsubscribeUrl: "https://app.pumplo.com/odhlasit?u=…&t=…",
     });
     return json({ preview: true, version: latest.version, status: latest.status, ...mail });
   }
@@ -167,10 +167,12 @@ Deno.serve(async (req) => {
     const template = pickApprovedTemplate(templates, M2A_KEY, locale);
     if (!template) continue;
     const mailLocale = normalizeLocale(template.locale);
-    const unsubscribeUrl = await buildUnsubscribeUrl(supabaseUrl, c.user_id, unsubSecret);
+    // Patička → potvrzovací stránka v appce (GET nic nemění); hlavička → funkce (one-click POST).
+    const unsubscribePageUrl = await buildUnsubscribePageUrl(c.user_id, unsubSecret);
+    const oneClickUrl = await buildUnsubscribeUrl(supabaseUrl, c.user_id, unsubSecret);
     const mail = renderEmail({
       template, locale: mailLocale, firstName: c.first_name, currentStep: c.current_step,
-      ctaUrl: M2A_CTA_URL, unsubscribeUrl,
+      ctaUrl: M2A_CTA_URL, unsubscribeUrl: unsubscribePageUrl,
     });
 
     // Zámek přes unique: kdo řádek nezaloží (souběžný běh), nic neposílá.
@@ -198,7 +200,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const sent = await sendViaResend(apiKey, c.email!, mail, unsubscribeHeaders(unsubscribeUrl));
+    const sent = await sendViaResend(apiKey, c.email!, mail, unsubscribeHeaders(oneClickUrl));
     if (sent.ok) {
       await supabase.from("email_sends").update({ status: "sent", resend_id: sent.id, error: null }).eq("id", claimed.id);
       results.push({ user_id: c.user_id, status: "sent" });

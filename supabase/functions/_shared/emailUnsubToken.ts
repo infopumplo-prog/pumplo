@@ -60,3 +60,15 @@ export async function buildUnsubscribeUrl(supabaseUrl: string, userId: string, s
   const base = supabaseUrl.replace(/\/+$/, '');
   return `${base}/functions/v1/email-unsubscribe?u=${encodeURIComponent(userId)}&t=${encodeURIComponent(t)}`;
 }
+
+export const UNSUBSCRIBE_PAGE_BASE = 'https://app.pumplo.com/odhlasit';
+
+/**
+ * Viditelný odkaz v patičce: stránka v appce s potvrzovacím tlačítkem (POST).
+ * Skener odkazů, který ji otevře, nic neodhlásí. Hlavička List-Unsubscribe dál
+ * míří na funkci (buildUnsubscribeUrl), kterou poštovní klient volá POSTem.
+ */
+export async function buildUnsubscribePageUrl(userId: string, secret: string, pageBase = UNSUBSCRIBE_PAGE_BASE): Promise<string> {
+  const t = await signUnsubToken(userId, secret);
+  return `${pageBase}?u=${encodeURIComponent(userId)}&t=${encodeURIComponent(t)}`;
+}

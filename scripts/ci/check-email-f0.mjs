@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Kontroly F0 e-mailů (18. 10. 2026). Použití:
-//   node scripts/ci/check-email-f0.mjs <migration|dryrun|ui|vitest|build>
+//   node scripts/ci/check-email-f0.mjs <migration|dryrun|unsubget|ui|vitest|build>
 // Každý režim na konci vypíše EMAIL_F0_<REŽIM>_OK, jinak skončí s exit 1.
 // migration i dryrun mají vestavěnou negativní kontrolu: pokažený vstup MUSÍ
 // kontrolou neprojít, jinak by kontrola neuměla selhat.
@@ -105,6 +105,32 @@ async function checkDryRun() {
   console.log('EMAIL_F0_DRYRUN_OK');
 }
 
+async function checkUnsubGet() {
+  const { handleUnsubscribe } = await import(pathToFileURL(join(root, 'supabase/functions/email-unsubscribe/handler.ts')).href);
+  const tok = await import(pathToFileURL(join(root, 'supabase/functions/_shared/emailUnsubToken.ts')).href);
+  const secret = 'gate-secret-0123456789abcdef';
+  const user = '3f2b8c1e-4a5d-4e6f-9a0b-1c2d3e4f5a6b';
+  const url = await tok.buildUnsubscribeUrl('https://abc.supabase.co', user, secret);
+  let calls = 0;
+  const deps = { secret, unsubscribe: async () => { calls++; return { error: null }; } };
+  for (const method of ['GET', 'HEAD']) {
+    const res = await handleUnsubscribe(new Request(url, { method }), deps);
+    if (res.status !== 200) fail(`${method} vrátil ${res.status}`);
+  }
+  if (calls !== 0) fail(`GET/HEAD s platným tokenem odhlásil (${calls}×)`);
+  // Pozitivní kontrola: stejný odkaz POSTem odhlásit MUSÍ, jinak by kontrola neuměla selhat.
+  const post = await handleUnsubscribe(new Request(url, { method: 'POST', body: 'List-Unsubscribe=One-Click', headers: { 'content-type': 'application/x-www-form-urlencoded' } }), deps);
+  if (post.status !== 200 || calls !== 1) fail(`POST neodhlásil (status ${post.status}, volání ${calls})`);
+  // Patička vede na stránku v appce, hlavička na funkci.
+  const page = await tok.buildUnsubscribePageUrl(user, secret);
+  if (!page.startsWith('https://app.pumplo.com/odhlasit?u=')) fail(`odkaz v patičce nevede na /odhlasit: ${page}`);
+  const life = read('supabase/functions/lifecycle-emails/index.ts');
+  if (!life.includes('unsubscribeUrl: unsubscribePageUrl') || !life.includes('unsubscribeHeaders(oneClickUrl)')) fail('lifecycle-emails nepoužívá stránku v patičce + funkci v hlavičce');
+  const idx = read('supabase/functions/email-unsubscribe/index.ts');
+  if (!idx.includes('handleUnsubscribe(req')) fail('index.ts nepoužívá testovaný handler');
+  console.log('EMAIL_F0_UNSUB_GET_OK');
+}
+
 function checkUi() {
   const auth = read('src/pages/Auth.tsx');
   const persist = read('src/lib/persistOnboarding.ts');
@@ -118,7 +144,13 @@ function checkUi() {
   if (!persist.includes('d.marketingOptOut ? { marketing_optout_at:')) fail('persistOnboarding nezapisuje marketing_optout_at');
   if (!settings.includes("t('settings.email_tips_title')") || !settings.includes('email_unsubscribed_at: new Date().toISOString()') || !settings.includes('email_unsubscribed_at: null')) fail('přepínač v Nastavení chybí');
   if (!privacy.includes('ČEKÁ NA SCHVÁLENÍ DAVIDA')) fail('zásady bez značky ČEKÁ NA SCHVÁLENÍ DAVIDA');
-  const keys = ['auth.marketing_optout', 'settings.email_tips_title', 'settings.email_tips_desc', 'settings.email_tips_on', 'settings.email_tips_off', 'privacy.emails_title', 'privacy.emails_service', 'privacy.emails_tips', 'privacy.emails_processor', 'privacy.emails_optout'];
+  const app = read('src/App.tsx');
+  if (!app.includes('<Route path="/odhlasit" element={<EmailUnsubscribe />} />')) fail('chybí veřejná routa /odhlasit');
+  if (!/PUBLIC_EXACT = \[[^\]]*'\/odhlasit'/.test(read('src/lib/webGate.ts'))) fail('/odhlasit není ve WebGate allowlistu');
+  const page = read('src/pages/EmailUnsubscribe.tsx');
+  if (page.includes('useAuth') || !page.includes('confirmUnsubscribe(')) fail('stránka /odhlasit vyžaduje přihlášení nebo neposílá POST');
+  if (!cs.includes("'Opravdu se chceš odhlásit z e-mailů s tipy?'")) fail('cs otázka na /odhlasit se liší od zadání');
+  const keys = ['unsubscribe.confirm_title', 'unsubscribe.confirm_desc', 'unsubscribe.confirm_button', 'unsubscribe.done_title', 'unsubscribe.done_desc', 'unsubscribe.invalid_title', 'unsubscribe.invalid_desc', 'unsubscribe.error', 'auth.marketing_optout', 'settings.email_tips_title', 'settings.email_tips_desc', 'settings.email_tips_on', 'settings.email_tips_off', 'privacy.emails_title', 'privacy.emails_service', 'privacy.emails_tips', 'privacy.emails_processor', 'privacy.emails_optout'];
   for (const k of keys) {
     if (!cs.includes(`'${k}':`)) fail(`cs.ts nemá ${k}`);
     if (!en.includes(`'${k}':`)) fail(`en.ts nemá ${k}`);
@@ -138,7 +170,7 @@ function checkVitest() {
   const summary = out.split('\n').filter((l) => /Test Files|Tests /.test(l)).join(' | ');
   console.log(summary);
   if (code !== 0 || /failed/i.test(summary)) fail(`vitest exit ${code}`);
-  for (const f of ['emailUnsubToken.test.ts', 'lifecycleEmailRules.test.ts']) if (!out.includes(f)) fail(`vitest nespustil ${f}`);
+  for (const f of ['emailUnsubToken.test.ts', 'lifecycleEmailRules.test.ts', 'emailUnsubscribeHandler.test.ts']) if (!out.includes(f)) fail(`vitest nespustil ${f}`);
   console.log('EMAIL_F0_VITEST_OK');
 }
 
@@ -153,6 +185,6 @@ function checkBuild() {
 }
 
 const mode = process.argv[2];
-const modes = { migration: checkMigration, dryrun: checkDryRun, ui: checkUi, vitest: checkVitest, build: checkBuild };
+const modes = { unsubget: checkUnsubGet, migration: checkMigration, dryrun: checkDryRun, ui: checkUi, vitest: checkVitest, build: checkBuild };
 if (!modes[mode]) fail(`neznámý režim ${mode}; použij ${Object.keys(modes).join('|')}`);
 await modes[mode]();

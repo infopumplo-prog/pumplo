@@ -30,6 +30,7 @@ import { trackTutorialComplete } from "@/lib/appAnalytics";
 import { routeAfterRegistration, savePlanChoice } from "@/lib/onboardingFlow";
 import Auth from "@/pages/Auth";
 import Privacy from "@/pages/Privacy";
+import EmailUnsubscribe from "@/pages/EmailUnsubscribe";
 import Terms from "@/pages/Terms";
 import Index from "@/pages/Index";
 import Map from "@/pages/Map";
@@ -345,6 +346,7 @@ const AppRoutes = () => {
     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/privacy" element={<Privacy />} />
+    <Route path="/odhlasit" element={<EmailUnsubscribe />} />
     <Route path="/terms" element={<Terms />} />
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
