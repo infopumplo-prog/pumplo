@@ -94,6 +94,12 @@ const cs = {
   // je z Pumplo plánu.
   'watch.plan_workout': 'Pumplo trénink',
   'home.next_workout': 'Další trénink',
+  // Karta prvního tréninku na Home (David 18. 10.)
+  'home.first_workout_title': 'Tvůj plán je hotový',
+  'home.first_workout_subtitle': 'První na řadě: {{workout}} · zabere asi {{minutes}} min',
+  'home.first_workout_subtitle_no_time': 'První na řadě: {{workout}}',
+  'home.first_workout_start': 'Začít první trénink',
+  'home.first_workout_later': 'Až budu v posilovně',
   'home.today_completed': 'Dnešní trénink dokončen',
   'home.business': 'Business',
   'home.trainer': 'Trenér',
