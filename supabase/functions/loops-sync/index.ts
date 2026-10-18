@@ -10,14 +10,12 @@ import {
   isLoopsDryRun,
   loopsRequest,
   planContact,
-  belongsInLoops,
   planDropout,
-  planWelcome,
-  isWithinWelcomeWindow,
-  WELCOME_CONTACT_TYPE,
-  WELCOME_EPISODE,
-  WELCOME_TEMPLATE_KEY,
-  WELCOME_TEMPLATE_VERSION,
+  loopsMembership,
+  contactForMembership,
+  eventsForMembership,
+  dropoutReasonFor,
+  type LoopsMembership,
   type DropoutReason,
   type FetchLike,
   type LoopsFactsRow,
@@ -27,13 +25,14 @@ import {
 // loops-sync (19. 10. 2026): Supabase → Loops. Logika v sync.ts (testovaná vitestem).
 // Spouští pg_cron každou hodinu v :40 (SQL v migraci 20261019b_loops.sql, zakomentované).
 //
-//  1. Kontakty: JEN s marketingAllowed = true (minimalizace dat), upsert jen při změně
+//  1. Kontakty: plná sada JEN s marketingAllowed = true; nový člen bez něj jen minimum kvůli J0 (bod 0).
+//     Upsert jen při změně
 //     (loops_contacts.props_hash), z view loops_contact_facts (= email_eligible_users).
 //  2. Události: computeEvents → loops_event_log (unique user_id+event+episode) → Loops.
 //     Řádek se zakládá PŘED odesláním; když Loops odmítne, řádek se smaže a příště se zkusí znovu.
-//  0. M0 Vítej: servisní transactional e-mail (Loops /transactional, addToAudience false)
-//     každému novému účtu (≤ 72 h) jednou — bez marketingAllowed, s odhlášením a suppressions.
-//     Bez LOOPS_WELCOME_TRANSACTIONAL_ID se přeskočí (log).
+//  0. J0 Vítej (workflow v Loops, trigger signed_up): KAŽDÝ nový člen (≤ 72 h od registrace)
+//     jde do Loops — bez marketingAllowed jen s minimem vlastností a jen se signed_up;
+//     7 dní po registraci se takový kontakt smaže (welcome_window_ended).
 //  3. Vyřazení: kdo je v Loops a ztratil marketingAllowed / vypadl z eligible / smazal účet
 //     → kontakt v Loops smazat, důvod do loops_contacts.removed_reason + log.
 //
@@ -81,12 +80,12 @@ Deno.serve(async (req) => {
 
   const { data: syncedRows, error: syncedErr } = await supabase
     .from("loops_contacts")
-    .select("user_id, email, props_hash, removed_at")
+    .select("user_id, email, props_hash, removed_at, membership")
     .limit(20000);
   if (syncedErr) return json({ error: syncedErr.message }, 500);
   const synced = new Map<string, SyncedState & { email: string | null }>();
   for (const s of syncedRows ?? []) {
-    synced.set(s.user_id, { propsHash: s.props_hash, removedAt: s.removed_at, email: s.email });
+    synced.set(s.user_id, { propsHash: s.props_hash, removedAt: s.removed_at, membership: s.membership, email: s.email });
   }
 
   // Historie událostí (jen co je potřeba: logované páry + poslední plan_slowing).
@@ -132,8 +131,8 @@ Deno.serve(async (req) => {
     events: {} as Record<string, number>,
     events_failed: 0,
     skipped_not_allowed: 0,
-    dropouts: { marketing_not_allowed: 0, not_eligible: 0, account_deleted: 0, failed: 0 },
-    welcome: { would_send: 0, sent: 0, failed: 0, skipped: {} as Record<string, number> },
+    dropouts: { marketing_not_allowed: 0, not_eligible: 0, account_deleted: 0, welcome_window_ended: 0, failed: 0 },
+    welcome_contacts: 0,
     requests: 0,
     stopped: null as string | null,
     sample: [] as unknown[],
@@ -142,100 +141,30 @@ Deno.serve(async (req) => {
     if (summary.sample.length < 20) summary.sample.push(x);
   };
 
-  // 0. M0 Vítej — servisní transactional e-mail KAŽDÉMU novému členovi jednou.
-  //    NEPOTŘEBUJE marketingAllowed (rozhodnutí v planWelcome), ale respektuje odhlášení
-  //    a suppressions (rows = email_eligible_users + pojistka v planWelcome).
-  //    addToAudience: false → nikoho to nepřidá do audience obchodních e-mailů.
-  //    Jednou za život: zámek = řádek email_sends (unique user+M0+life) PŘED odesláním.
-  const welcomeId = (Deno.env.get("LOOPS_WELCOME_TRANSACTIONAL_ID") ?? "").trim();
-  const welcomeRows = rows.filter((r) => isWithinWelcomeWindow(r.signed_up_at, now));
-  const welcomeSent = new Set<string>();
-  const suppressedEmails = new Set<string>();
-  if (welcomeRows.length) {
-    for (const ids of chunk(welcomeRows.map((r) => r.user_id), 200)) {
-      const { data, error } = await supabase
-        .from("email_sends")
-        .select("user_id")
-        .eq("template_key", WELCOME_TEMPLATE_KEY)
-        .in("user_id", ids);
-      if (error) return json({ error: error.message }, 500);
-      for (const s of data ?? []) welcomeSent.add(s.user_id);
-    }
-    const { data: sup, error: supErr } = await supabase.from("email_suppressions").select("email").limit(20000);
-    if (supErr) return json({ error: supErr.message }, 500);
-    for (const s of sup ?? []) if (s.email) suppressedEmails.add(String(s.email).trim().toLowerCase());
-  }
-  if (!welcomeId && welcomeRows.length) {
-    console.warn("LOOPS_WELCOME_TRANSACTIONAL_ID not set — M0 welcome skipped", welcomeRows.length);
-  }
-  for (const w of welcomeRows) {
-    if (stoppedReason) break;
-    const plan = planWelcome(w, { sentUserIds: welcomeSent, suppressedEmails }, now, welcomeId || "(LOOPS_WELCOME_TRANSACTIONAL_ID chybí)");
-    if (plan.kind === "skip") {
-      summary.welcome.skipped[plan.reason] = (summary.welcome.skipped[plan.reason] ?? 0) + 1;
-      continue;
-    }
-    if (dryRun) {
-      summary.welcome.would_send++;
-      sample({ welcome: { userId: w.user_id, dataVariables: plan.body.dataVariables, transactionalIdSet: !!welcomeId } });
-      continue;
-    }
-    if (!welcomeId) {
-      summary.welcome.skipped.no_transactional_id = (summary.welcome.skipped.no_transactional_id ?? 0) + 1;
-      continue;
-    }
-    const { data: claim, error: claimErr } = await supabase
-      .from("email_sends")
-      .insert({
-        user_id: w.user_id,
-        template_key: WELCOME_TEMPLATE_KEY,
-        template_version: WELCOME_TEMPLATE_VERSION,
-        locale: plan.locale,
-        episode_key: WELCOME_EPISODE,
-        status: "sent",
-      })
-      .select("id")
-      .single();
-    if (claimErr || !claim) {
-      if (claimErr?.code !== "23505") console.error("email_sends M0 claim failed", w.user_id, claimErr?.message);
-      summary.welcome.skipped.already_sent = (summary.welcome.skipped.already_sent ?? 0) + 1;
-      continue;
-    }
-    welcomeSent.add(w.user_id);
-    const res = await call("POST", "/transactional", { ...plan.body }, plan.idemKey);
-    if (res?.ok) {
-      summary.welcome.sent++;
-      const { error } = await supabase.from("contact_log").insert({ user_id: w.user_id, channel: "email", type: WELCOME_CONTACT_TYPE });
-      if (error) console.error("contact_log M0 insert failed", w.user_id, error.message);
-    } else {
-      summary.welcome.failed++;
-      if (res) console.error("loops M0 failed", w.user_id, res.status, res.error);
-      if (!res || res.status === 429 || res.status >= 500) {
-        // Neodešlo (strop běhu / rate limit / chyba Loops) → uvolnit zámek, další běh to zkusí znovu.
-        await supabase.from("email_sends").delete().eq("id", claim.id);
-      } else {
-        // 4xx (např. nepublikovaný e-mail) → neopakovat; řádek zůstane 'failed' s chybou.
-        await supabase.from("email_sends").update({ status: "failed", error: res.error.slice(0, 300) }).eq("id", claim.id);
-      }
-    }
-  }
-
   // 1+2. Kontakty a události (kontakt vždy před událostmi téhož člověka).
+  // Kdo patří do Loops a proč (marketing = plná sada, welcome = jen minimum kvůli J0 Vítej).
+  const memberships = new Map<string, LoopsMembership>();
+  for (const r of rows) memberships.set(r.user_id, loopsMembership(buildContact(r), r.signed_up_at, synced.get(r.user_id), now));
+
   for (const r of rows) {
     if (stoppedReason) break;
-    const contact = buildContact(r);
-    if (!belongsInLoops(contact)) {
-      // Bez právního základu do Loops nic (ani kontakt, ani události); případný starý kontakt smaže krok 3.
+    const full = buildContact(r);
+    const membership = memberships.get(r.user_id) ?? "none";
+    if (!full || membership === "none") {
+      // Bez právního základu a mimo okno uvítání do Loops nic; případný starý kontakt smaže krok 3.
       summary.skipped_not_allowed++;
       continue;
     }
+    // welcome → jen minimální vlastnosti (marketingAllowed=false, retentionEmailsAllowed=false).
+    const contact = contactForMembership(full, membership);
+    if (membership === "welcome") summary.welcome_contacts++;
     const prev = synced.get(r.user_id);
     const action = planContact(contact, prev);
-    const events = computeEvents(r, {
+    const events = eventsForMembership(membership, computeEvents(r, {
       logged: logged.get(r.user_id) ?? new Set(),
       lastPlanSlowingAt: lastSlowing.get(r.user_id) ?? null,
       inactiveSentAt: inactiveSent.get(r.user_id) ?? [],
-    }, now);
+    }, now));
 
     if (dryRun) {
       if (action.kind === "upsert") {
@@ -261,6 +190,7 @@ Deno.serve(async (req) => {
           synced_at: now.toISOString(),
           removed_at: null,
           removed_reason: null,
+          membership,
         }, { onConflict: "user_id" });
         if (error) console.error("loops_contacts upsert failed", r.user_id, error.message);
       } else {
@@ -297,16 +227,17 @@ Deno.serve(async (req) => {
   }
 
   // 3. Vyřazení: v Loops, ale už tam nepatří → smazat kontakt.
-  const inLoops = new Set(rows.filter((r) => belongsInLoops(buildContact(r))).map((r) => r.user_id));
+  const inLoops = new Set([...memberships].filter(([, m]) => m !== "none").map(([id]) => id));
   const eligible = new Set(rows.map((r) => r.user_id));
   const dropouts = [...synced].filter(([id, s]) => !s.removedAt && !inLoops.has(id));
-  for (const [userId] of dropouts) {
+  for (const [userId, prevState] of dropouts) {
     if (stoppedReason) break;
-    let reason: DropoutReason = "marketing_not_allowed";
+    let accountExists = true;
     if (!eligible.has(userId)) {
       const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-      reason = authUser?.user ? "not_eligible" : "account_deleted";
+      accountExists = !!authUser?.user;
     }
+    const reason: DropoutReason = dropoutReasonFor(prevState, eligible.has(userId), accountExists);
     const plan = planDropout(userId, reason);
     if (dryRun) {
       summary.dropouts[reason]++;

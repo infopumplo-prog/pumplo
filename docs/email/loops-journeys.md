@@ -1,7 +1,8 @@
-# Pumplo e-maily v Loops — journeys M3–M8 (spec ke stavbě)
+# Pumplo e-maily v Loops — J0 Vítej + journeys M3–M8 (spec ke stavbě)
 
 Stav: texty M3–M8 a privacy odstavce o e-mailech / Loops **schválil David 18. 10. 2026**.
-Nový uvítací e-mail **M0 Vítej** (text zadal David 18. 10. 2026) — jeho privacy odstavec `privacy.emails_welcome_loops` **ČEKÁ NA SCHVÁLENÍ DAVIDA**.
+Nový uvítací e-mail **M0 Vítej** (text zadal David 18. 10. 2026) běží jako **workflow J0 v Loops** (ne transactional —
+Loops transactional pro neservisní poštu zakazuje). Jeho privacy odstavec `privacy.emails_welcome_loops` **ČEKÁ NA SCHVÁLENÍ DAVIDA**.
 Rozhodnutí: obchodní e-maily (journeys + vizuální editor) běží v **Loops** (loops.so).
 **Supabase zůstává zdrojem pravdy**, kdo smí obchodní e-mail dostat: právní brána, souhlas,
 odmítnutí, odhlášení a blokované adresy.
@@ -10,33 +11,39 @@ odmítnutí, odhlášení a blokované adresy.
 
 | Kdo | Co dělá |
 |---|---|
-| `supabase/functions/loops-sync` (cron každou hodinu v :40) | **M0 Vítej** (transactional, všem novým jednou, viz níže) + posílá do Loops **jen kontakty s `marketingAllowed = true`** (z `email_eligible_users`) a jejich události počítané z DB. Výchozí `LOOPS_DRY_RUN=true` = jen log. |
+| `supabase/functions/loops-sync` (cron každou hodinu v :40) Posílá do Loops kontakty s `marketingAllowed = true` (plná sada) **a každého nového člena** (≤ 72 h od registrace) kvůli J0 Vítej — bez `marketingAllowed` jen s minimem vlastností a jen událostí `signed_up`, smazán 7 dní po registraci (z `email_eligible_users`). Události počítá z DB. Výchozí `LOOPS_DRY_RUN=true` = jen log. |
 | `supabase/functions/loops-webhook` | Odhlášení v Loops → `user_profiles.email_unsubscribed_at`; odeslaný e-mail → `contact_log` (ranní push ten den vynechá); hard bounce / spam → `email_suppressions`; vše do `email_events`. |
 | `supabase/functions/lifecycle-emails` | Dál posílá **jen M2A** (servisní, přes Resend, beze změny). M3–M8 už neposílá. |
 | Loops | Journeys níže, editor, šablony, statistiky. |
 
-**Minimalizace dat:** do Loops jde jen kontakt, který smí dostávat obchodní e-maily
-(`marketingAllowed = true`). Kdo to ztratí (odmítne tipy, stáhne souhlas, odhlásí se, bounce/spam,
+**Minimalizace dat:** plná sada vlastností jde do Loops jen u kontaktu, který smí dostávat obchodní e-maily
+(`marketingAllowed = true`). **Výjimka J0 Vítej:** nový člen bez `marketingAllowed` jde do Loops jen s
+`firstName`, `language`, `signupAt`, `userGroup`, `marketingAllowed = false`, `retentionEmailsAllowed = false`,
+dostane jen událost `signed_up` a **7 dní po registraci ho loops-sync z Loops smaže**
+(`removed_reason = 'welcome_window_ended'`). Přidává se jen do 72 h od registrace (žádný backfill starých účtů);
+kdo byl v Loops kvůli tipům a souhlas ztratí, tam kvůli uvítání nezůstává. Kdo `marketingAllowed` ztratí (odmítne tipy, stáhne souhlas, odhlásí se, bounce/spam,
 stane se staff, smaže účet), tomu loops-sync **kontakt v Loops smaže** (`POST /v1/contacts/delete`)
 a důvod zapíše do `loops_contacts.removed_reason` (`marketing_not_allowed` / `not_eligible` /
-`account_deleted`) + log funkce. Vrátí se, až znovu splní `marketingAllowed`.
+`account_deleted` / `welcome_window_ended`) + log funkce. Vrátí se, až znovu splní `marketingAllowed`.
 M2A (servisní) zůstává v našem systému, Loops tedy nikoho jiného nepotřebuje.
 
-## ⚠️ Povinné pravidlo pro KAŽDOU obchodní journey
+## ⚠️ Povinné pravidlo pro KAŽDOU journey kromě J0 Vítej
 
-**Audience filtr: `marketingAllowed` is `true`.** A před každým e-mailem v journey ještě jednou
+**Audience filtr: `marketingAllowed` is `true`.** Platí pro **J1–J5 a každou další journey, kterou kdy
+postavíš** — jedinou výjimkou je J0 Vítej (servisní, trigger `signed_up`). V Loops jsou od J0 i kontakty
+s `marketingAllowed = false`; **journey bez tohoto filtru by jim poslala obchodní sdělení = porušení zákona.** A před každým e-mailem v journey ještě jednou
 Branch na `marketingAllowed = true` (hodnota se může mezi čekáním změnit — loops-sync ji
 aktualizuje každou hodinu a posílá ji i s každou událostí).
 
 `marketingAllowed` = stejná právní brána jako F1 (§ 7 odst. 3 zák. 480/2004 Sb.):
 souhlas v appce **NEBO** (při registraci nabídnuté odmítnutí **A** neodmítl **A** neodhlásil se).
-Uživatel z buildu v obchodě bez zaškrtávátka a bez souhlasu má `false` → do Loops se vůbec nedostane.
-Filtr v journeys je druhá pojistka (hodnota se může změnit mezi syncem a odesláním).
+Uživatel z buildu v obchodě bez zaškrtávátka a bez souhlasu má `false` → do Loops jde jen na 7 dní kvůli J0
+s minimem dat a `marketingAllowed = false`. **Filtr v journeys je proto hlavní pojistka**, ne jen druhá.
 
 **Udržovací journeys M6–M8 (J3, J4, J5) navíc filtrují `retentionEmailsAllowed = true`**
 — `false`, když si uživatel v appce vypnul comeback připomínky (`notification_comeback = false`).
 
-Každý e-mail v Loops musí v patičce mít: „Obchodní sdělení“, GynTools CZ s.r.o., IČ 27804461,
+Každý obchodní e-mail (J1–J5) musí v patičce mít: „Obchodní sdělení“, GynTools CZ s.r.o., IČ 27804461,
 proč e-mail přišel, odkaz na odhlášení (Loops ho doplňuje sám — nesmazat).
 
 ## Kontaktní vlastnosti (vytvořit v Loops → Audience → Properties před prvním syncem)
@@ -61,7 +68,7 @@ Nikdy se neposílá: zranění, váha, výška, věk, pohlaví, motivace (hlíd�
 
 | Událost | Kdy | eventProperties |
 |---|---|---|
-| `signed_up` | registrace (do 48 h zpět) | — |
+| `signed_up` | registrace (do 72 h zpět) — trigger **J0 Vítej**, jde **každému** novému členovi (i bez `marketingAllowed`) | — |
 | `onboarding_completed` | dotazník hotový = vznikl první plán | `hasGym`, `gymName` |
 | `plan_ready` | plán postavený pro stroje posilovny (= „Začít trénink“), nebo po dotazníku bez posilovny | `gymName`, `noGym` |
 | `first_workout_completed` | první dokončený trénink | `gymName`, `workoutsCompleted` |
@@ -69,7 +76,7 @@ Nikdy se neposílá: zranění, váha, výška, věk, pohlaví, motivace (hlíd�
 | `inactive_21d` | 21–24 dní od posledního tréninku, jednou na výpadek, max 2× / 90 dní | `workoutsCompleted`, `daysSinceLastWorkout` |
 | `plan_slowing` | zpomalení plánu (definice M7 z 1. 10.), max 1× / 21 dní | `trainingsPerWeek`, `workoutsLast14d` |
 
-Okamžikové události jdou jen 48 h zpět → po zapnutí nedojde k hromadnému rozeslání staré historie.
+Okamžikové události jdou jen 48 h zpět (`signed_up` 72 h) → po zapnutí nedojde k hromadnému rozeslání staré historie.
 Event properties se v editoru vkládají přes `{` → dynamický obsah (`{EVENT_PROPERTY:gymName}`), fungují jen v e-mailech uvnitř workflow.
 
 ## Rozdíly proti F1 (vědomě)
@@ -80,6 +87,79 @@ Event properties se v editoru vkládají přes `{` → dynamický obsah (`{EVENT
   `retentionEmailsAllowed` (posílá se s kontaktem i s každou událostí).
 - Slot 16:30: nastavit v Loops odesílací čas, pokud to workflow umí; jinak čekání volit tak, aby
   e-mail šel odpoledne.
+
+---
+
+## J0 — Vítej (M0, od zakladatelů)
+
+- **Trigger:** událost `signed_up`, jednou na kontakt (loops-sync ji pošle každému novému členovi jednou, `loops_event_log`).
+- **Audience filtr:** všichni — **jediná journey BEZ filtru `marketingAllowed`** (servisní/onboardingový e-mail bez propagace,
+  čl. 6 odst. 1 písm. b) GDPR). Odhlášení a blokované adresy hlídá Supabase (do Loops nejdou) a Loops sám neposílá odhlášeným.
+- **Průběh:** hned (nebo Wait 10 min) → **M0**.
+- **Exit:** — (jeden e-mail).
+- **Odesílatel:** `Pumplo <zpravy@pumplo.com>`, reply-to `zpravy@pumplo.com` (odpovědi čteme my tři).
+- **Patička:** **bez** „Obchodní sdělení“, ale s firmou a důvodem: „GynTools CZ s.r.o., IČ 27804461 · Tento e-mail ti
+  přišel, protože sis založil(a) účet v Pumplu.“ (Odkaz na odhlášení Loops doplní sám.)
+- **Nic víc:** do J0 nepřidávat další e-maily ani nabídky — cokoli dalšího patří do J1–J5 s filtrem `marketingAllowed = true`.
+- Kontakty jen kvůli J0 mají `marketingAllowed = false`, `retentionEmailsAllowed = false` a jen vlastnosti
+  `firstName`, `language`, `signupAt`, `userGroup`; 7 dní po registraci je loops-sync z Loops smaže.
+- Pozn.: M2A (servisní připomínka dotazníku, 2 h po registraci, Resend) běží dál — nový člen tak může dostat M0 i M2A v jeden den.
+
+**Rozvržení (návrh):**
+- Hlavička navy `#0B1222`, bílé logo pumplo.
+- Pod ní **tři kulaté fotky vedle sebe** (96 px, kruh, rámeček 3 px cyan `#4CC9FF`), pod každou jméno:
+  - David Novotný — fotku nahraje David (v DB je jen avatar u demo trenéra: `https://udqwjqgdsjobdufdxbpn.supabase.co/storage/v1/object/public/avatars/2e70d26e-ff70-44b7-a4fe-a6902f409c7b/avatar.jpeg` — použít jen pokud ji David schválí)
+  - David „Benda“ Beníšek — `https://udqwjqgdsjobdufdxbpn.supabase.co/storage/v1/object/public/gym-assets/trainers/benisek.jpg`
+  - Adam Kakiš — `https://auth.pumplo.com/storage/v1/object/public/gym-assets/trainers/9ca7aeaf-32d1-4988-b0ca-c820e8242067/1791484949038.png`
+  (URL z `gym_trainers.photo_url`, read-only dotaz 18. 10. 2026.)
+- Tělo bílé, text `#111111`, 16 px; „Jak začít“ jako číslovaný seznam s cyan číslicemi; žádné tlačítko
+  s nabídkou — nejvýš nenápadný odkaz „Otevřít Pumplo“ na `https://app.pumplo.com/`.
+
+### M0 (cs) — Vítej v Pumplu, tady David, Benda a Adam
+_Náhled:_ Kdo za Pumplem stojí a jak začít.
+
+_Oslovení v Loops:_ `Ahoj` + kontaktní vlastnost `firstName` s mezerou před ní jen když je vyplněná (Dynamic content → Contact property `firstName`, fallback prázdný). Bez jména tedy jen „Ahoj,“.
+
+> Ahoj{{firstName? ' ' + firstName}},
+>
+> vítej v Pumplu. Jsme malý tým a Pumplo děláme proto, aby se nikdo v posilovně necítil ztracený a věděl přesně, co dnes cvičit.
+>
+> **David Novotný** — Pumplo založil a stará se o appku. Když ti něco nefunguje, píšeš vlastně jemu.
+>
+> **David „Benda“ Beníšek** — hlavní trenér a spoluzakladatel. 12 let trénuje klienty od úplných začátků až po první závody a stojí za cviky a plány, podle kterých budeš cvičit.
+>
+> **Adam Kakiš** — trenér se zaměřením na nabírání svalů a hubnutí, v posilovně je 11 let. Natáčí cviky a připravuje hotové tréninky.
+>
+> **Jak začít:**
+> 1. Otevři svůj plán na Domů — je poskládaný podle strojů tvé posilovny.
+> 2. V posilovně ťukni na Začít trénink, appka tě provede cvik po cviku i s videem.
+> 3. Na strojích najdeš samolepky s QR kódem — naskenuj a uvidíš, co se na stroji dá cvičit.
+>
+> Cokoli tě napadne, odpověz na tenhle e-mail. Čteme to my tři.
+>
+> David, Benda a Adam
+
+### M0 (en) — Welcome to Pumplo, this is David, Benda and Adam
+_Preview:_ Who is behind Pumplo and how to get started.
+
+> Hi{{firstName? ' ' + firstName}},
+>
+> welcome to Pumplo. We are a small team and we build Pumplo so that nobody feels lost in the gym and everyone knows exactly what to train today.
+>
+> **David Novotný** — founded Pumplo and looks after the app. If something does not work for you, you are actually writing to him.
+>
+> **David “Benda” Beníšek** — head coach and co-founder. He has been coaching clients for 12 years, from complete beginners to their first competitions, and he is behind the exercises and plans you will train with.
+>
+> **Adam Kakiš** — a coach focused on building muscle and losing weight, 11 years in the gym. He films the exercises and prepares ready-made workouts.
+>
+> **How to start:**
+> 1. Open your plan on Home — it is built for the machines in your gym.
+> 2. At the gym, tap Start workout and the app guides you exercise by exercise, with videos.
+> 3. On the machines you will find stickers with a QR code — scan it to see what you can train on that machine.
+>
+> Anything on your mind, just reply to this e-mail. The three of us read it.
+>
+> David, Benda and Adam
 
 ---
 
@@ -240,98 +320,6 @@ EN: *You are not starting from zero* — it has been about three weeks since you
 
 ---
 
-## M0 Vítej — od zakladatelů (transactional, všem novým jednou)
-
-**Co to je:** servisní/onboardingový e-mail (kdo za Pumplem stojí, jak začít), **bez propagace**.
-Právní základ plnění smlouvy (čl. 6 odst. 1 písm. b) GDPR) → **nepotřebuje `marketingAllowed`**,
-ale **respektuje odhlášení** (`email_unsubscribed_at`) a **blokované adresy** (`email_suppressions`).
-
-**Jak se posílá (hotovo v kódu, `loops-sync`):**
-- Kandidáti = `email_eligible_users` (přes `loops_contact_facts`; bez demo, staff, odhlášených, suppressions),
-  účet založený **v posledních 72 h** (po zapnutí tedy žádné hromadné rozeslání starým účtům).
-- Jednou za život: zámek = řádek `email_sends` (`template_key 'M0'`, `episode_key 'life'`, unique) založený
-  **před** odesláním + `Idempotency-Key` `<userId>:M0:life`.
-- `POST /api/v1/transactional` s `addToAudience: false` → člověk se tím **nedostane do audience** obchodních e-mailů.
-- Po odeslání řádek `contact_log` (`channel 'email'`, `type 'welcome'`) → ranní push ten den vynechá.
-  (Webhook `transactional.email.sent` zapíše do `contact_log` ještě jeden řádek se zdrojem — neškodí.)
-- Bez `LOOPS_WELCOME_TRANSACTIONAL_ID` se M0 přeskočí a zaloguje; `LOOPS_DRY_RUN=true` jen vypíše, komu by šel.
-- Chyba Loops 5xx / 429 → zámek se uvolní a příští běh to zkusí znovu; 4xx (např. nepublikovaný e-mail)
-  → řádek zůstane `failed` s chybou, neopakuje se (po opravě smazat ručně, pokud má jít znovu, do 72 h).
-- Pozn.: M2A (servisní připomínka dotazníku, 2 h po registraci, Resend) běží dál — nový člověk tak může
-  dostat M0 i M2A v jeden den. Pokud to bude vadit, M2A posunout.
-
-**Data variables (Loops → transactional e-mail → Data variables):**
-
-| Název | Typ | Poznámka |
-|---|---|---|
-| `firstName` | String, **optional** | křestní jméno (první slovo); když chybí, neposílá se → v editoru označit jako optional |
-| `language` | String | `cs` / `en` — v Loops buď dvě transactional verze, nebo Branch/Conditional podle jazyka |
-
-Nic dalšího (žádná posilovna, souhlasy, tělesné údaje).
-
-**Nastavení v Loops:** Transactional → New → název „M0 Vítej“, odesílatel `Pumplo <zpravy@pumplo.com>`,
-reply-to `zpravy@pumplo.com` (odpovědi čteme my tři) → vložit text níže → Publish → zkopírovat Transactional ID →
-`LOOPS_WELCOME_TRANSACTIONAL_ID` (viz Setup checklist). Patička **bez** „Obchodní sdělení“ (je servisní),
-ale s firmou: „GynTools CZ s.r.o., IČ 27804461 · Tento e-mail ti přišel, protože sis založil(a) účet v Pumplu.“
-
-**Rozvržení (návrh):**
-- Hlavička navy `#0B1222`, bílé logo pumplo.
-- Pod ní **tři kulaté fotky vedle sebe** (96 px, kruh, rámeček 3 px cyan `#4CC9FF`), pod každou jméno:
-  - David Novotný — fotku nahraje David (v DB je jen avatar u demo trenéra: `https://udqwjqgdsjobdufdxbpn.supabase.co/storage/v1/object/public/avatars/2e70d26e-ff70-44b7-a4fe-a6902f409c7b/avatar.jpeg` — použít jen pokud ji David schválí)
-  - David „Benda“ Beníšek — `https://udqwjqgdsjobdufdxbpn.supabase.co/storage/v1/object/public/gym-assets/trainers/benisek.jpg`
-  - Adam Kakiš — `https://auth.pumplo.com/storage/v1/object/public/gym-assets/trainers/9ca7aeaf-32d1-4988-b0ca-c820e8242067/1791484949038.png`
-  (URL z `gym_trainers.photo_url`, read-only dotaz 18. 10. 2026.)
-- Tělo bílé, text `#111111`, 16 px; „Jak začít“ jako číslovaný seznam s cyan číslicemi; žádné tlačítko
-  s nabídkou — nejvýš nenápadný odkaz „Otevřít Pumplo“ na `https://app.pumplo.com/`.
-
-### M0 (cs) — Vítej v Pumplu, tady David, Benda a Adam
-_Náhled:_ Kdo za Pumplem stojí a jak začít.
-
-_Oslovení v Loops:_ `Ahoj` + optional data variable `firstName` s mezerou před ním jen když je vyplněné (Loops: Dynamic content → Data variable `firstName`, fallback prázdný). Bez jména tedy jen „Ahoj,“.
-
-> Ahoj{{firstName? ' ' + firstName}},
->
-> vítej v Pumplu. Jsme malý tým a Pumplo děláme proto, aby se nikdo v posilovně necítil ztracený a věděl přesně, co dnes cvičit.
->
-> **David Novotný** — Pumplo založil a stará se o appku. Když ti něco nefunguje, píšeš vlastně jemu.
->
-> **David „Benda“ Beníšek** — hlavní trenér a spoluzakladatel. 12 let trénuje klienty od úplných začátků až po první závody a stojí za cviky a plány, podle kterých budeš cvičit.
->
-> **Adam Kakiš** — trenér se zaměřením na nabírání svalů a hubnutí, v posilovně je 11 let. Natáčí cviky a připravuje hotové tréninky.
->
-> **Jak začít:**
-> 1. Otevři svůj plán na Domů — je poskládaný podle strojů tvé posilovny.
-> 2. V posilovně ťukni na Začít trénink, appka tě provede cvik po cviku i s videem.
-> 3. Na strojích najdeš samolepky s QR kódem — naskenuj a uvidíš, co se na stroji dá cvičit.
->
-> Cokoli tě napadne, odpověz na tenhle e-mail. Čteme to my tři.
->
-> David, Benda a Adam
-
-### M0 (en) — Welcome to Pumplo, this is David, Benda and Adam
-_Preview:_ Who is behind Pumplo and how to get started.
-
-> Hi{{firstName? ' ' + firstName}},
->
-> welcome to Pumplo. We are a small team and we build Pumplo so that nobody feels lost in the gym and everyone knows exactly what to train today.
->
-> **David Novotný** — founded Pumplo and looks after the app. If something does not work for you, you are actually writing to him.
->
-> **David “Benda” Beníšek** — head coach and co-founder. He has been coaching clients for 12 years, from complete beginners to their first competitions, and he is behind the exercises and plans you will train with.
->
-> **Adam Kakiš** — a coach focused on building muscle and losing weight, 11 years in the gym. He films the exercises and prepares ready-made workouts.
->
-> **How to start:**
-> 1. Open your plan on Home — it is built for the machines in your gym.
-> 2. At the gym, tap Start workout and the app guides you exercise by exercise, with videos.
-> 3. On the machines you will find stickers with a QR code — scan it to see what you can train on that machine.
->
-> Anything on your mind, just reply to this e-mail. The three of us read it.
->
-> David, Benda and Adam
-
----
-
 ## M1 — po skenu QR kódu (pozdější fáze, ZATÍM NESTAVĚT)
 
 Scénář: člověk bez účtu naskenuje samolepku na stroji (`/s/<short_code>`, `StationPage`) a nechá e-mail.
@@ -386,10 +374,7 @@ k odhlášení. Do té doby v Loops M2A **nestavět** — jinak by šel dvakrát
 3. **Vlastnosti kontaktu:** vytvořit podle tabulky výše (přesné API názvy a typy — později nejdou měnit).
 4. **API klíč:** Settings → API → Generate key, pak
    `supabase secrets set LOOPS_API_KEY=… LOOPS_DRY_RUN=true --project-ref udqwjqgdsjobdufdxbpn`
-4b. **M0 Vítej:** Transactional → postavit podle sekce M0, `firstName` jako optional, Publish → ID do schránky →
-   `supabase secrets set LOOPS_WELCOME_TRANSACTIONAL_ID="$(pbpaste)" --project-ref udqwjqgdsjobdufdxbpn`.
-   Bez tohoto secretu loops-sync M0 přeskočí (a zaloguje).
-5. **Nasadit (po merge PR):** migrace `20261019_email_f1.sql`, pak `20261019b_loops.sql`;
+5. **Nasadit (po merge PR):** migrace `20261019_email_f1.sql`, pak `20261019b_loops.sql`, pak `20261019c_loops_welcome.sql`;
    `supabase functions deploy loops-sync loops-webhook lifecycle-emails --project-ref udqwjqgdsjobdufdxbpn`
    (loops-webhook a loops-sync mají `verify_jwt = false` v config.toml).
 6. **Webhook:** Loops → Settings → Webhooks → endpoint
@@ -399,6 +384,6 @@ k odhlášení. Do té doby v Loops M2A **nestavět** — jinak by šel dvakrát
    `supabase secrets set LOOPS_WEBHOOK_SECRET=whsec_… --project-ref udqwjqgdsjobdufdxbpn` → Send test event.
 7. **Cron:** odkomentovat a spustit blok z `20261019b_loops.sql` (loops-sync v :40).
    Ručně: `curl -X POST …/functions/v1/loops-sync -H "Authorization: Bearer $CRON_SECRET"` → v dry runu vrátí, co by poslal.
-8. **Journeys:** postavit J1–J5 podle tohoto dokumentu, **každá s filtrem `marketingAllowed = true`, J3–J5 navíc `retentionEmailsAllowed = true`**, nechat v draftu.
+8. **Journeys:** postavit J0 Vítej (audience všichni, trigger `signed_up`) a J1–J5 podle tohoto dokumentu, **J1–J5 každá s filtrem `marketingAllowed = true`, J3–J5 navíc `retentionEmailsAllowed = true`** — zkontrolovat dvakrát, v Loops jsou od J0 i lidé bez souhlasu. Nechat v draftu.
 9. Po kontrole dry-run výstupu: `supabase secrets set LOOPS_DRY_RUN=false` → kontakty a události tečou do Loops. Journeys zapínat jednotlivě až po schválení textů.
-10. Zásady: `privacy.emails_*` a `privacy.emails_processor_loops` schválil David 18. 10. 2026; **`privacy.emails_welcome_loops` (M0) ČEKÁ NA SCHVÁLENÍ DAVIDA** — schválit před zapnutím M0 naostro (`LOOPS_DRY_RUN=false`).
+10. Zásady: `privacy.emails_*` a `privacy.emails_processor_loops` schválil David 18. 10. 2026; **`privacy.emails_welcome_loops` (M0) ČEKÁ NA SCHVÁLENÍ DAVIDA** — schválit před zapnutím naostro (`LOOPS_DRY_RUN=false`) — od té chvíle jdou do Loops i noví členové bez souhlasu s tipy.
