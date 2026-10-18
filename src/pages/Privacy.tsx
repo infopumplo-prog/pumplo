@@ -134,8 +134,17 @@ const Privacy = () => {
           <p className="text-muted-foreground">{t('privacy.checkin_body')}</p>
         </section>
 
+        {/* E-maily z aplikace — schválil David 18. 10. 2026, text v i18n privacy.emails_* */}
+        <section id="app-emails" className="space-y-3 scroll-mt-20">
+          <h2 className="text-base font-bold">{t('privacy.emails_title')}</h2>
+          <p className="text-muted-foreground">{t('privacy.emails_service')}</p>
+          <p className="text-muted-foreground">{t('privacy.emails_tips')}</p>
+          <p className="text-muted-foreground">{t('privacy.emails_processor')}</p>
+          <p className="text-muted-foreground">{t('privacy.emails_optout')}</p>
+        </section>
+
         <section className="space-y-3">
-          <h2 className="text-base font-bold">10. Kontakt</h2>
+          <h2 className="text-base font-bold">11. Kontakt</h2>
           <p className="text-muted-foreground">
             Pro uplatnění práv nebo dotazy ohledně zpracování osobních údajů nás kontaktujte na{' '}
             <a href="mailto:info.pumplo@gmail.com" className="text-primary underline">info.pumplo@gmail.com</a>.

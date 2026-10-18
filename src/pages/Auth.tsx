@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import PumploLogo from '@/components/PumploLogo';
@@ -84,6 +85,8 @@ const Auth = () => {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
+  // Odmítnutí tipů a novinek e-mailem už při registraci (F0 e-maily 18. 10.) — výchozí nezaškrtnuto.
+  const [marketingOptOut, setMarketingOptOut] = useState(false);
   
   // Onboarding state (steps 0-6)
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -166,6 +169,7 @@ const Auth = () => {
     setExpectations((draft.expectations ?? []).filter((e): e is Expectation => (EXPECTATIONS as readonly string[]).includes(e)));
     setExpectationText(draft.expectationText ?? '');
     if (draft.planChoice) { setPlanChoice(draft.planChoice); setPlanChoiceTouched(true); }
+    setMarketingOptOut(draft.marketingOptOut === true);
     // A gym from a fresh QR scan wins over the one stored in the draft.
     setSelectedGymId(prev => prev ?? draft.selectedGymId);
 
@@ -250,6 +254,7 @@ const Auth = () => {
     splitOverride,
     motivations, motivationText, expectations, expectationText, planChoice,
     accentColor: accent,
+    marketingOptOut,
   });
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -574,6 +579,16 @@ const Auth = () => {
                   {error}
                 </motion.p>
               )}
+
+              <label htmlFor="marketing-optout" className="flex items-start gap-3 pt-1 cursor-pointer select-none">
+                <Checkbox
+                  id="marketing-optout"
+                  checked={marketingOptOut}
+                  onCheckedChange={(v) => setMarketingOptOut(v === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-muted-foreground leading-snug">{t('auth.marketing_optout')}</span>
+              </label>
 
               <Button
                 type="submit"
