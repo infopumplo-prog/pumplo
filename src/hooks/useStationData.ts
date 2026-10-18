@@ -68,7 +68,9 @@ export const useStationData = (shortCode: string | undefined) => {
       const { data: exercises } = await supabase
         .from('exercises')
         .select('id, name, name_en, video_path, description, description_en, setup_instructions, setup_instructions_en, common_mistakes, common_mistakes_en, tips, tips_en, primary_muscles, secondary_muscles, primary_muscles_en, secondary_muscles_en, difficulty, category, equipment_type')
-        .eq('machine_id', gymMachine.machine_id);
+        // I cviky, kde je stroj jen sekundární vybavení — stanoviště „Osa“ sdružuje
+        // cviky s osou z half racku, benche a platformy (David 18. 10.).
+        .or(`machine_id.eq.${gymMachine.machine_id},secondary_machine_id.eq.${gymMachine.machine_id}`);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const machine = gymMachine.machines as { name: string; name_en: string | null; description: string | null } | null;
