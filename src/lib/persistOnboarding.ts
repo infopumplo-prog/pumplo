@@ -39,6 +39,9 @@ export async function persistOnboarding(
   // Popis zranění jen u skutečného zranění, jinak nic neukládat (feedback 13. 10., GDPR).
   const injuryNote = hasRealInjuries(d.injuries) ? clampFreeText(d.injuryNote?.trim() ?? '') || null : null;
 
+  // Čas nabídnutí odmítnutí = čas uložení registrace (F1 e-maily 19. 10.).
+  const consentChoiceAt = new Date().toISOString();
+
   // 1. Profile (retry: the signup trigger may not have created the row yet).
   let profileUpdated = false;
   for (let attempt = 1; attempt <= 3 && !profileUpdated; attempt++) {
@@ -68,7 +71,9 @@ export async function persistOnboarding(
         motivations,
         ...(d.accentColor ? { accent_color: d.accentColor } : {}),
         // Odmítnutí obchodních sdělení už při sběru e-mailu (§ 7 odst. 3 zák. 480/2004 Sb.).
-        ...(d.marketingOptOut ? { marketing_optout_at: new Date().toISOString() } : {}),
+        ...(d.marketingOptOut ? { marketing_optout_at: consentChoiceAt } : {}),
+        // Volba odmítnutí byla při sběru e-mailu nabídnuta — jen když ji klient opravdu ukázal.
+        ...(d.optOutOffered === true ? { email_optout_offered_at: consentChoiceAt } : {}),
       })
       .eq('user_id', userId)
       .select('user_id');

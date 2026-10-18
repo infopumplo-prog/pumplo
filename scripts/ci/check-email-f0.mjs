@@ -97,7 +97,8 @@ async function checkDryRun() {
   if (!(dryBranch < sendCall)) fail('dry-run větev není před odesláním');
   const branch = src.slice(dryBranch, sendCall);
   if (!/continue;/.test(branch)) fail('dry-run větev nekončí continue');
-  if (src.match(/sendViaResend\(/g).length !== 2) fail('sendViaResend se volá mimo smyčku'); // definice + 1 volání
+  // definice + M2A smyčka + (od F1) smyčka M3–M8; každé volání hlídá check-email-f1.mjs m2a
+  if (src.match(/sendViaResend\(/g).length !== 3) fail('sendViaResend se volá mimo smyčky');
   if (!src.includes('status: dryRun ? "dry_run"')) fail('dry run nepíše status dry_run');
   if (rules.MAX_EMAILS_PER_RUN !== 40) fail('strop na běh není 40');
   // Negativní kontrola: výchozí true by bez guardu neprošlo.
@@ -140,7 +141,7 @@ function checkUi() {
   const en = read('src/i18n/locales/en.ts');
   if (!/const \[marketingOptOut, setMarketingOptOut\] = useState\(false\)/.test(auth)) fail('checkbox není výchozí nezaškrtnutý');
   if (!auth.includes("t('auth.marketing_optout')") || !auth.includes('<Checkbox')) fail('checkbox v registraci chybí');
-  if (!/marketingOptOut,\n\s*\}\);/.test(auth)) fail('marketingOptOut není v konceptu registrace');
+  if (!/marketingOptOut,\n(\s*\/\/[^\n]*\n)?(\s*optOutOffered: true,\n)?\s*\}\);/.test(auth)) fail('marketingOptOut není v konceptu registrace');
   if (!persist.includes('d.marketingOptOut ? { marketing_optout_at:')) fail('persistOnboarding nezapisuje marketing_optout_at');
   if (!settings.includes("t('settings.email_tips_title')") || !settings.includes('email_unsubscribed_at: new Date().toISOString()') || !settings.includes('email_unsubscribed_at: null')) fail('přepínač v Nastavení chybí');
   if (!privacy.includes('ČEKÁ NA SCHVÁLENÍ DAVIDA')) fail('zásady bez značky ČEKÁ NA SCHVÁLENÍ DAVIDA');

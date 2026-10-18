@@ -163,6 +163,12 @@ const en = {
   'theme_intro.body': 'The app now follows your phone automatically. You can also pick how you want it.',
   'theme_intro.hint': 'You can change this anytime in Settings → Appearance.',
   'theme_intro.confirm': 'Got it',
+  // E-mail tips consent (F1 e-mails 19 Oct)
+  'email_consent.title': 'Would you like an occasional training tip by e-mail?',
+  'email_consent.body': 'Short and only now and then: how to start, how to get back on track, what is new in the app. No spam.',
+  'email_consent.yes': 'Yes, send them',
+  'email_consent.no': 'No, thanks',
+  'email_consent.hint': 'You can change this anytime in Settings → Tips by e-mail.',
   'settings.appearance': 'Appearance',
   'settings.theme_light': 'Light',
   'settings.theme_dark': 'Dark',
