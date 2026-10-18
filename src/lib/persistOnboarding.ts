@@ -67,6 +67,8 @@ export async function persistOnboarding(
         ...(d.lastName ? { last_name: d.lastName } : {}),
         motivations,
         ...(d.accentColor ? { accent_color: d.accentColor } : {}),
+        // Odmítnutí obchodních sdělení už při sběru e-mailu (§ 7 odst. 3 zák. 480/2004 Sb.).
+        ...(d.marketingOptOut ? { marketing_optout_at: new Date().toISOString() } : {}),
       })
       .eq('user_id', userId)
       .select('user_id');

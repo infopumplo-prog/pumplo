@@ -328,6 +328,25 @@ const Settings = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  // E-maily s tipy: zapnuto = není odhlášený ani neodmítl tipy při registraci.
+  // Zapnutí je výslovná volba, proto ruší i odmítnutí z registrace.
+  const [isTogglingEmailTips, setIsTogglingEmailTips] = useState(false);
+  const emailTipsEnabled = !profile?.email_unsubscribed_at && !profile?.marketing_optout_at;
+  const handleEmailTipsToggle = async (enabled: boolean) => {
+    setIsTogglingEmailTips(true);
+    const result = await updateProfile(
+      enabled
+        ? { email_unsubscribed_at: null, marketing_optout_at: null }
+        : { email_unsubscribed_at: new Date().toISOString() },
+    );
+    setIsTogglingEmailTips(false);
+    if (result.success) {
+      toast({ title: t('toast.saved'), description: enabled ? t('settings.email_tips_on') : t('settings.email_tips_off') });
+    } else {
+      toast({ title: t('settings.email_tips_title'), description: result.error, variant: 'destructive' });
+    }
+  };
+
   // Check if profile data has changed
   const hasProfileChanges = 
     firstName !== (profile?.first_name || '') || 
@@ -633,6 +652,20 @@ const Settings = () => {
               {!isSupported && (
                 <p className="px-4 py-3 text-sm text-muted-foreground">{t('settings.no_notification_support')}</p>
               )}
+              {/* E-maily s tipy (F0 e-maily 18. 10.): vypnutí = email_unsubscribed_at, nezávisle na pushi. */}
+              <div className="min-h-[56px] flex items-center gap-3 px-4 py-3">
+                <RowIcon icon={Mail} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-medium">{t('settings.email_tips_title')}</p>
+                  <p className="text-xs text-muted-foreground">{t('settings.email_tips_desc')}</p>
+                </div>
+                <Switch
+                  checked={emailTipsEnabled}
+                  onCheckedChange={handleEmailTipsToggle}
+                  disabled={!profile || isTogglingEmailTips}
+                  aria-label={t('settings.email_tips_title')}
+                />
+              </div>
             </SettingsGroup>
           </motion.div>
 

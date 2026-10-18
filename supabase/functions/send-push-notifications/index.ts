@@ -1,5 +1,12 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sendFcmToUser } from "../_shared/fcm.ts";
+import {
+  decidePushKind,
+  daysSinceSignup,
+  missedWindowStart,
+  usableTemplates,
+  fillTemplate,
+} from "./rules.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +27,8 @@ type Lang = 'cs' | 'en';
 interface MessageBundle {
   morning: MessageTemplate[];
   missed: MessageTemplate[];
+  /** Nováček bez dokončeného tréninku, dny 0–1, 3 a 7 od registrace (David 18. 10.). */
+  firstWorkout: MessageTemplate[];
   closing: MessageTemplate[];
   closingStreak: MessageTemplate[];
   test: MessageTemplate;
@@ -36,11 +45,17 @@ const MESSAGES: Record<Lang, MessageBundle> = {
       { title: '⚡ Energie na maximum!', body: '{workout} – dnešní cíl. Zvládneš to!' },
       { title: '🎯 Soustřeď se na cíl!', body: 'Dnes {workout}. Každý trénink tě posouvá vpřed!' },
     ],
+    // Bez výčitek (David 18. 10.) — povzbudit, ne vyčítat. Max 2× za 7 dní.
     missed: [
-      { title: '😤 Včera jsi vynechal trénink!', body: 'Dnes to naprav. {workout} na tebe čeká!' },
-      { title: '💪 Návrat silnější!', body: 'Vynechaný trénink? Dnes to dožeň s {workout}!' },
-      { title: '🔥 Čas na comeback!', body: 'Včera pauza, dnes {workout}. Jdeme!' },
-      { title: '⚡ Dvojnásobná motivace!', body: 'Za včerejšek i dnešek – {workout} volá!' },
+      { title: '💪 Nový den, nová šance', body: 'Minule to nevyšlo, nevadí. Dnes je na řadě {workout}.' },
+      { title: '🙂 Jdeme na to znovu?', body: '{workout} je připravený, kdykoliv budeš mít chvilku.' },
+      { title: '🌱 Každý trénink se počítá', body: 'Pauza se stane. Dnes ti stačí {workout} a jsi zpátky.' },
+      { title: '⚡ Zpátky do rytmu', body: 'Dnes {workout} — klidně ve svém tempu.' },
+    ],
+    firstWorkout: [
+      { title: 'Tvůj první trénink je připravený 💪', body: '{workout} zabere jen ~{minutes} min. V posilovně stačí zmáčknout Začít.' },
+      { title: 'Plán máš hotový 🙂', body: '{workout} tě provede cvik po cviku. Kdy do toho jdeš?' },
+      { title: 'Stačí ~{minutes} minut', body: 'A první trénink máš za sebou. {workout} na tebe čeká v appce.' },
     ],
     closing: [
       { title: '⏰ Posilovna brzy zavírá!', body: 'Ještě {time} do zavření. Stihneš rychlý trénink?' },
@@ -63,10 +78,15 @@ const MESSAGES: Record<Lang, MessageBundle> = {
       { title: '🎯 Focus on the goal!', body: '{workout} today. Every workout moves you forward!' },
     ],
     missed: [
-      { title: '😤 You skipped yesterday’s workout!', body: 'Make up for it today. {workout} is waiting!' },
-      { title: '💪 Come back stronger!', body: 'Missed a workout? Make it up today with {workout}!' },
-      { title: '🔥 Time for a comeback!', body: 'Rest yesterday, {workout} today. Let’s go!' },
-      { title: '⚡ Double the motivation!', body: 'For yesterday and today – {workout} is calling!' },
+      { title: '💪 New day, new chance', body: 'Last time didn’t work out — no problem. {workout} is up today.' },
+      { title: '🙂 Ready to go again?', body: '{workout} is ready whenever you have a moment.' },
+      { title: '🌱 Every workout counts', body: 'Breaks happen. One {workout} today and you’re back.' },
+      { title: '⚡ Back into the rhythm', body: '{workout} today — at your own pace.' },
+    ],
+    firstWorkout: [
+      { title: 'Your first workout is ready 💪', body: '{workout} takes just ~{minutes} min. At the gym, just tap Start.' },
+      { title: 'Your plan is ready 🙂', body: '{workout} guides you exercise by exercise. When are you going?' },
+      { title: 'Just ~{minutes} minutes', body: 'And your first workout is done. {workout} is waiting in the app.' },
     ],
     closing: [
       { title: '⏰ The gym closes soon!', body: '{time} left until closing. Time for a quick workout?' },
@@ -145,7 +165,7 @@ function fillName(text: string, name: string | null): string {
 // Helpers
 // ============================================================================
 
-type NotificationType = 'morning' | 'missed' | 'closing' | 'comeback';
+type NotificationType = 'morning' | 'missed' | 'first_workout' | 'closing' | 'comeback';
 
 function getRandomMessage(messages: MessageTemplate[]): MessageTemplate {
   return messages[Math.floor(Math.random() * messages.length)];
@@ -553,6 +573,18 @@ interface UserProfile {
   notification_closing_soon: boolean;
   selected_gym_id: string | null;
   language: string | null;
+  created_at?: string | null;
+  training_duration_minutes?: number | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function hasActiveWorkoutPlan(supabase: SupabaseClient<any>, userId: string): Promise<boolean> {
+  const { count } = await supabase
+    .from('user_workout_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_active', true);
+  return (count ?? 0) > 0;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -666,6 +698,43 @@ async function logNotification(
   });
 }
 
+// Odešla dnes už ranní připomínka jakéhokoliv druhu? (David 18. 10.)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function wasAnyNotificationSentToday(
+  supabase: SupabaseClient<any>,
+  userId: string,
+  types: NotificationType[],
+  dateKey: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('notification_logs')
+    .select('id')
+    .eq('user_id', userId)
+    .in('notification_type', types)
+    .eq('date_key', dateKey)
+    .limit(1);
+  return (data?.length || 0) > 0;
+}
+
+// Kolik notifikací daného typu odešlo od fromKey do toKey včetně (date_key je YYYY-MM-DD).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function countNotificationsSince(
+  supabase: SupabaseClient<any>,
+  userId: string,
+  notificationType: NotificationType,
+  fromKey: string,
+  toKey: string
+): Promise<number> {
+  const { count } = await supabase
+    .from('notification_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('notification_type', notificationType)
+    .gte('date_key', fromKey)
+    .lte('date_key', toKey);
+  return count || 0;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function processMorningNotifications(
   supabase: SupabaseClient<any>,
@@ -705,7 +774,7 @@ async function processMorningNotifications(
   // native-app users (FCM device tokens, no web sub) are included too.
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout, language')
+    .select('user_id, push_subscription, training_days, preferred_time, current_streak, notification_morning_reminder, notification_missed_workout, language, created_at, training_duration_minutes')
     .eq('preferred_time', targetPreferredTime)
     .eq('notification_morning_reminder', true);
 
@@ -717,35 +786,47 @@ async function processMorningNotifications(
   console.log(`Found ${users?.length || 0} users with matching preferences`);
 
   for (const user of (users || []) as UserProfile[]) {
-    // Check if today is a training day
-    if (!user.training_days?.includes(weekday)) {
+    // Already sent a morning-slot push (morning / missed / first_workout) today,
+    // or a comeback push (avoid double-spam).
+    if (await wasAnyNotificationSentToday(supabase, user.user_id, ['morning', 'missed', 'first_workout', 'comeback'], dateKey)) {
       stats.skipped++;
       continue;
     }
 
-    // Check if already sent today
-    if (await wasNotificationSentToday(supabase, user.user_id, 'morning', dateKey)) {
+    // Kdo nikdy netrénoval, nedostane „vynechal jsi“, jen první-tréninkovou
+    // připomínku ve dnech 0–1, 3 a 7; kdo trénoval, 'missed' max 2× za 7 dní (David 18. 10.).
+    const completedWorkouts = await getCompletedWorkoutCount(supabase, user.user_id);
+    const isTrainingDay = !!user.training_days?.includes(weekday);
+    const missedPrevious = completedWorkouts > 0 && isTrainingDay && user.notification_missed_workout &&
+      await checkMissedPreviousTraining(supabase, user.user_id, user.training_days || []);
+    const recentMissedCount = missedPrevious
+      ? await countNotificationsSince(supabase, user.user_id, 'missed', missedWindowStart(dateKey), dateKey)
+      : 0;
+
+    const hasActivePlan = completedWorkouts > 0 ? true : await hasActiveWorkoutPlan(supabase, user.user_id);
+    const kind = decidePushKind({
+      completedWorkouts,
+      hasActivePlan,
+      daysSinceSignup: daysSinceSignup(user.created_at, dateKey),
+      isTrainingDay,
+      missedPrevious,
+      recentMissedCount,
+    });
+    if (kind === 'none') {
       stats.skipped++;
       continue;
     }
-
-    // Suppress if a comeback push already went out today (avoid double-spam).
-    if (await wasNotificationSentToday(supabase, user.user_id, 'comeback', dateKey)) {
-      stats.skipped++;
-      continue;
-    }
-
-    // Check if missed previous training
-    const missedPrevious = user.notification_missed_workout && 
-      await checkMissedPreviousTraining(supabase, user.user_id, user.training_days);
 
     const lang = pickLang(user.language);
     const workoutName = await getWorkoutName(supabase, user.user_id, lang);
-    const messages = missedPrevious ? MESSAGES[lang].missed : MESSAGES[lang].morning;
+    const minutes = user.training_duration_minutes ?? null;
+    const messages = kind === 'first_workout'
+      ? usableTemplates(MESSAGES[lang].firstWorkout, minutes != null)
+      : kind === 'missed' ? MESSAGES[lang].missed : MESSAGES[lang].morning;
     const message = getRandomMessage(messages);
 
-    const title = message.title.replace('{workout}', workoutName);
-    const body = message.body.replace('{workout}', workoutName);
+    const title = fillTemplate(message.title, workoutName, minutes);
+    const body = fillTemplate(message.body, workoutName, minutes);
 
     const payload = JSON.stringify({
       title,
@@ -785,9 +866,9 @@ async function processMorningNotifications(
     }
 
     if (delivered) {
-      await logNotification(supabase, user.user_id, missedPrevious ? 'missed' : 'morning', dateKey);
+      await logNotification(supabase, user.user_id, kind, dateKey);
       stats.sent++;
-      console.log(`Sent ${missedPrevious ? 'missed' : 'morning'} notification to user ${user.user_id}`);
+      console.log(`Sent ${kind} notification to user ${user.user_id}`);
     } else {
       stats.skipped++;
     }
@@ -1337,7 +1418,7 @@ Deno.serve(async (req) => {
   }
 
   // Process morning/missed notifications
-  if (!notificationType || notificationType === 'morning' || notificationType === 'missed') {
+  if (!notificationType || notificationType === 'morning' || notificationType === 'missed' || notificationType === 'first_workout') {
     results.morning = await processMorningNotifications(
       supabase,
       vapidPublicKey,
