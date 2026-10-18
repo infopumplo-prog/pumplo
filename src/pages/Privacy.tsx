@@ -140,6 +140,7 @@ const Privacy = () => {
           <p className="text-muted-foreground">{t('privacy.emails_service')}</p>
           <p className="text-muted-foreground">{t('privacy.emails_tips')}</p>
           <p className="text-muted-foreground">{t('privacy.emails_processor')}</p>
+          <p className="text-muted-foreground">{t('privacy.emails_processor_loops')}</p>
           <p className="text-muted-foreground">{t('privacy.emails_optout')}</p>
         </section>
 

@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.resend-webhook]
 verify_jwt = false
+
+[functions.loops-sync]
+verify_jwt = false
+
+[functions.loops-webhook]
+verify_jwt = false
