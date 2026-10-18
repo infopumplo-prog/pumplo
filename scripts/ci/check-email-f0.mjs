@@ -144,7 +144,7 @@ function checkUi() {
   if (!/marketingOptOut,\n(\s*\/\/[^\n]*\n)?(\s*optOutOffered: true,\n)?\s*\}\);/.test(auth)) fail('marketingOptOut není v konceptu registrace');
   if (!persist.includes('d.marketingOptOut ? { marketing_optout_at:')) fail('persistOnboarding nezapisuje marketing_optout_at');
   if (!settings.includes("t('settings.email_tips_title')") || !settings.includes('email_unsubscribed_at: new Date().toISOString()') || !settings.includes('email_unsubscribed_at: null')) fail('přepínač v Nastavení chybí');
-  if (!privacy.includes('ČEKÁ NA SCHVÁLENÍ DAVIDA')) fail('zásady bez značky ČEKÁ NA SCHVÁLENÍ DAVIDA');
+  if (!/ČEKÁ NA SCHVÁLENÍ DAVIDA|schválil David \d+\. \d+\. 2026/.test(privacy)) fail('zásady bez značky schválení (ČEKÁ NA SCHVÁLENÍ DAVIDA / schválil David)');
   const app = read('src/App.tsx');
   if (!app.includes('<Route path="/odhlasit" element={<EmailUnsubscribe />} />')) fail('chybí veřejná routa /odhlasit');
   if (!/PUBLIC_EXACT = \[[^\]]*'\/odhlasit'/.test(read('src/lib/webGate.ts'))) fail('/odhlasit není ve WebGate allowlistu');

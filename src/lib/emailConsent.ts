@@ -4,8 +4,8 @@
 // (§ 7 odst. 3 zák. 480/2004 Sb.), takže jim M3–M8 smí chodit jen se souhlasem.
 // Jednou se jich zeptáme na Home: Ano → marketing_consent_at, Ne → marketing_optout_at.
 // Nikdy během tréninku (jen Home, ne s rozpracovaným tréninkem) a ne přes jiné panely.
-// Právní brána je sdílená s lifecycle-emails (legalGate) — jeden zdroj pravdy.
-import { legalGate } from '../../supabase/functions/lifecycle-emails/rules';
+// Právní brána je sdílená s loops-sync (legalGate = marketingAllowed v Loops) — jeden zdroj pravdy.
+import { legalGate } from '../../supabase/functions/loops-sync/sync';
 
 export const EMAIL_CONSENT_SEEN_KEY = 'pumplo_email_consent_asked';
 
@@ -16,7 +16,7 @@ export interface ConsentProfile {
   email_unsubscribed_at?: string | null;
 }
 
-/** Smí uživateli chodit obchodní e-maily (tipy)? Stejná brána jako lifecycle-emails. */
+/** Smí uživateli chodit obchodní e-maily (tipy)? Stejná brána jako marketingAllowed v Loops. */
 export const hasMarketingBasis = (p: ConsentProfile | null | undefined): boolean =>
   !!p && legalGate({
     marketingConsentAt: p.marketing_consent_at ?? null,
