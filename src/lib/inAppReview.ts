@@ -4,10 +4,8 @@
  * Talks to a Capacitor plugin registered as "InAppReview" with `requestReview()`,
  * which is exactly what `@capacitor-community/in-app-review` (v8, Capacitor 8) registers
  * (SKStoreReviewController on iOS, Play In-App Review API on Android).
- *
- * The npm package is NOT installed yet: until it is (`npm i @capacitor-community/in-app-review@8`
- * + `npx cap sync`), `Capacitor.isPluginAvailable('InAppReview')` is false and every call is a
- * no-op that does not consume a milestone. No JS change is needed after installing it.
+ * Where the plugin is unavailable (web, an old native build), every call is a no-op that does
+ * not consume a milestone.
  *
  * Decision rules live in ./inAppReviewCore (unit-tested).
  */

@@ -501,9 +501,12 @@ export const WorkoutSession = ({
 
         trackWorkoutComplete(isBonus);
         if (sessionId) {
-          void trackFirstWorkoutIfFirst(countOwnWorkoutSessions);
+          // One COUNT query shared by first-workout analytics and the store rating prompt.
+          const ownSessions = countOwnWorkoutSessions();
+          const countSessions = () => ownSessions;
+          void trackFirstWorkoutIfFirst(countSessions);
           // Store rating prompt after the 3rd / 10th / 25th workout (native only, never guests).
-          void requestReviewAfterWorkout(countOwnWorkoutSessions);
+          void requestReviewAfterWorkout(countSessions);
         }
 
         setWorkoutSaved(true);
