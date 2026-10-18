@@ -7,8 +7,9 @@
 //  - Loops = e-maily, editor, časování journeys. Každá obchodní journey v Loops MUSÍ mít
 //    audience filtr marketingAllowed = true (docs/email/loops-journeys.md), udržovací
 //    M6–M8 navíc retentionEmailsAllowed = true.
-//  - Minimalizace dat: do Loops jde JEN kontakt s marketingAllowed = true. Kdo ho ztratí
-//    (odmítnutí, odhlášení, stažený souhlas, bounce, smazaný účet), je z Loops smazán.
+//  - Minimalizace dat: plná sada vlastností jde do Loops JEN s marketingAllowed = true. Kdo ho ztratí
+//    (odmítnutí, odhlášení, stažený souhlas, bounce, smazaný účet), je z Loops smazán. Výjimka:
+//    nový člen kvůli uvítání J0 — jen minimum vlastností, nejvýš 7 dní od registrace (viz konec souboru).
 //
 // Do Loops jde jen allowlist vlastností z buildContact(). NIKDY zranění, váha, výška,
 // věk, pohlaví ani jiné tělesné/zdravotní údaje.
@@ -271,12 +272,16 @@ export function fnv1a(s: string): string {
   return h.toString(16).padStart(8, '0');
 }
 
-export const contactHash = (c: LoopsContact): string => fnv1a(stableJson(c));
+export const contactHash = (c: ContactPayload): string => fnv1a(stableJson(c));
 
 export interface SyncedState {
   propsHash: string | null;
   removedAt: string | null;
+  /** Proč je kontakt v Loops (loops_contacts.membership; null = starší řádek = 'marketing'). */
+  membership?: 'marketing' | 'welcome' | null;
 }
+
+export type ContactPayload = LoopsContact | LoopsMinimalContact;
 
 export type ContactAction =
   | { kind: 'skip' }
@@ -286,7 +291,7 @@ export type ContactAction =
  * Upsert jen při změně otisku. Návrat po vyřazení (removed_at) = výslovně subscribed:true,
  * jinak se `subscribed` neposílá (Loops doporučuje ho vynechat; nový kontakt je subscribed).
  */
-export function planContact(c: LoopsContact, prev: SyncedState | undefined): ContactAction {
+export function planContact(c: ContactPayload, prev: SyncedState | undefined): ContactAction {
   const hash = contactHash(c);
   const returning = !!prev?.removedAt;
   if (prev && !returning && prev.propsHash === hash) return { kind: 'skip' };
@@ -313,11 +318,14 @@ export interface EventHistory {
   inactiveSentAt?: readonly string[];
 }
 
-const withinLookback = (iso: string | null | undefined, now: Date): boolean => {
+const hoursSince = (iso: string | null | undefined, now: Date): number => {
   const t = iso ? Date.parse(iso) : NaN;
-  if (!Number.isFinite(t)) return false;
-  const h = (now.getTime() - t) / 3_600_000;
-  return h >= 0 && h <= EVENT_LOOKBACK_HOURS;
+  return Number.isFinite(t) ? (now.getTime() - t) / 3_600_000 : NaN;
+};
+
+const withinLookback = (iso: string | null | undefined, now: Date, hours = EVENT_LOOKBACK_HOURS): boolean => {
+  const h = hoursSince(iso, now);
+  return Number.isFinite(h) && h >= 0 && h <= hours;
 };
 
 export const eventKey = (event: string, episode: string): string => `${event}|${episode}`;
@@ -335,7 +343,8 @@ export function computeEvents(r: LoopsFactsRow, h: EventHistory, now: Date): Pla
   const workouts = Math.max(0, Number(r.completed_workouts) || 0);
   const today = pragueDateKey(now);
 
-  if (withinLookback(r.signed_up_at, now)) add('signed_up', 'life');
+  // signed_up = trigger J0 Vítej pro KAŽDÉHO nového člena (stejné okno jako přidání do Loops).
+  if (withinLookback(r.signed_up_at, now, WELCOME_ADD_WINDOW_HOURS)) add('signed_up', 'life');
 
   // Dotazník dokončen = vznikl první plán (persistOnboarding ho zakládá s gym_id null).
   if (r.onboarding_completed && withinLookback(r.first_plan_at, now)) {
@@ -384,7 +393,7 @@ export function computeEvents(r: LoopsFactsRow, h: EventHistory, now: Date): Pla
  * Tělo POST /v1/events/send. marketingAllowed jde i jako vlastnost kontaktu
  * (kořenový klíč aktualizuje kontakt), aby filtr journey nikdy nečetl starou hodnotu.
  */
-export function eventBody(c: LoopsContact, e: PlannedEvent): Record<string, unknown> {
+export function eventBody(c: ContactPayload, e: PlannedEvent): Record<string, unknown> {
   return {
     email: c.email,
     userId: c.userId,
@@ -401,13 +410,14 @@ export const idempotencyKey = (userId: string, e: Pick<PlannedEvent, 'event' | '
 
 // ─── Vyřazení z Loops ────────────────────────────────────────────────────────
 
-export type DropoutReason = 'marketing_not_allowed' | 'not_eligible' | 'account_deleted';
+export type DropoutReason = 'marketing_not_allowed' | 'not_eligible' | 'account_deleted' | 'welcome_window_ended';
 
 /**
  * Kdo je v Loops a už tam být nemá → kontakt v Loops SMAZAT (POST /contacts/delete, jen userId):
  *  - marketing_not_allowed: je oslovitelný, ale ztratil právní základ (odmítl, stáhl souhlas),
  *  - not_eligible: vypadl z email_eligible_users (odhlásil se, bounce/spam, staff, role),
- *  - account_deleted: účet už neexistuje.
+ *  - account_deleted: účet už neexistuje,
+ *  - welcome_window_ended: byl v Loops jen kvůli uvítání (J0) a od registrace uběhlo 7 dní.
  * Náš záznam (odhlášení, suppressions) zůstává v Supabase, takže se do Loops nevrátí,
  * dokud znovu nesplní marketingAllowed.
  */
@@ -454,74 +464,83 @@ export async function loopsRequest(
   }
 }
 
-// ─── M0 Vítej — servisní transactional e-mail od zakladatelů (18. 10. 2026) ──
+
+// ─── J0 Vítej: každý nový člen v Loops (i bez marketingAllowed), s minimem dat ───
 //
-// Jde KAŽDÉMU novému členovi jednou (kdo za Pumplem stojí, jak začít; bez propagace),
-// proto NEPOTŘEBUJE marketingAllowed (čl. 6 odst. 1 písm. b) GDPR) — ale respektuje
-// odhlášení (email_unsubscribed_at) a blokované adresy (email_suppressions).
-// Posílá se přes Loops transactional API s addToAudience: false → člověk se tím
-// NEDOSTANE do audience obchodních e-mailů. Jednou za život: email_sends
-// (template_key 'M0', episode_key 'life', unique) + Idempotency-Key.
+// Rozhodnutí 18. 10. 2026: uvítací e-mail M0 je workflow J0 v Loops (trigger signed_up,
+// audience všichni) — transactional Loops pro neservisní poštu zakazuje. Proto jde do Loops
+// i nový člen BEZ marketingAllowed, ale:
+//  - jen s minimem vlastností (MINIMAL_CONTACT_KEYS), marketingAllowed=false, retentionEmailsAllowed=false,
+//  - jen událost signed_up (žádné další události → do obchodních journeys se nedostane,
+//    a i kdyby, všechny ostatní journeys filtrují marketingAllowed = true),
+//  - přidá se jen do 72 h od registrace a 7 dní po registraci se z Loops SMAŽE
+//    (removed_reason 'welcome_window_ended'). Když později splní marketingAllowed, vrátí se jako dosud.
+// Odhlášení a suppressions vyřazuje už view (email_eligible_users).
 
-export const WELCOME_TEMPLATE_KEY = 'M0';
-export const WELCOME_TEMPLATE_VERSION = 1;
-export const WELCOME_EPISODE = 'life';
-/** M0 jen účtům založeným v posledních 72 h (po zapnutí žádné hromadné rozeslání starým účtům). */
-export const WELCOME_WINDOW_HOURS = 72;
-export const WELCOME_CONTACT_TYPE = 'welcome';
+/** Nový člen se do Loops přidá kvůli uvítání jen do 72 h od registrace (žádný backfill starých účtů). */
+export const WELCOME_ADD_WINDOW_HOURS = 72;
+/** Kontakt jen kvůli uvítání se z Loops smaže 7 dní po registraci. */
+export const WELCOME_KEEP_DAYS = 7;
 
-/** Data variables, které smí do Loops s M0 odejít. Nic jiného. */
-export const WELCOME_DATA_KEYS = ['firstName', 'language'] as const;
+/** Vlastnosti kontaktu bez marketingAllowed (jen kvůli uvítání). Nic jiného. */
+export const MINIMAL_CONTACT_KEYS = [
+  'email', 'userId', 'firstName', 'language', 'signupAt', 'marketingAllowed', 'retentionEmailsAllowed', 'userGroup', 'subscribed',
+] as const;
 
-export type WelcomeRow = Pick<LoopsFactsRow, 'user_id' | 'email' | 'first_name' | 'language' | 'signed_up_at' | 'email_unsubscribed_at'>;
-
-export interface WelcomeHistory {
-  /** user_id, kterým už M0 odešel (nebo je zamčený) v email_sends. */
-  sentUserIds: ReadonlySet<string>;
-  /** E-maily z email_suppressions (malými písmeny). */
-  suppressedEmails: ReadonlySet<string>;
-}
-
-export type WelcomeSkipReason = 'no_email' | 'outside_window' | 'already_sent' | 'unsubscribed' | 'suppressed';
-
-export type WelcomeBody = {
-  transactionalId: string;
+export type LoopsMinimalContact = {
   email: string;
-  addToAudience: false;
-  dataVariables: { language: 'cs' | 'en'; firstName?: string };
+  userId: string;
+  firstName?: string;
+  language: 'cs' | 'en';
+  signupAt?: string;
+  marketingAllowed: false;
+  retentionEmailsAllowed: false;
+  userGroup: 'activation' | 'retention';
 };
 
-export type WelcomePlan =
-  | { kind: 'skip'; reason: WelcomeSkipReason }
-  | { kind: 'send'; locale: 'cs' | 'en'; body: WelcomeBody; idemKey: string };
-
-/** Účet založený nejvýš před 72 h (a ne v budoucnosti). */
-export function isWithinWelcomeWindow(signedUpAt: string | null | undefined, now: Date): boolean {
-  const t = signedUpAt ? Date.parse(signedUpAt) : NaN;
-  if (!Number.isFinite(t)) return false;
-  const h = (now.getTime() - t) / 3_600_000;
-  return h >= 0 && h <= WELCOME_WINDOW_HOURS;
-}
+export type LoopsMembership = 'marketing' | 'welcome' | 'none';
 
 /**
- * Rozhodnutí o M0 pro jednoho člověka. ZÁMĚRNĚ nečte právní bránu obchodních e-mailů
- * (souhlas / odmítnutí tipů) — M0 je servisní. Odhlášení a suppression blokují vždy.
+ * Patří člověk do Loops a proč?
+ *  - marketing: marketingAllowed = true (plná sada vlastností jako dosud),
+ *  - welcome: nový člen bez marketingAllowed — přidat do 72 h od registrace, držet nejvýš 7 dní,
+ *  - none: nepatří (kdo byl v Loops jako marketing a souhlas ztratil, NEZŮSTÁVÁ tam ani kvůli uvítání).
  */
-export function planWelcome(r: WelcomeRow, h: WelcomeHistory, now: Date, transactionalId: string): WelcomePlan {
-  const email = (r.email ?? '').trim().toLowerCase();
-  if (!email.includes('@')) return { kind: 'skip', reason: 'no_email' };
-  if (h.sentUserIds.has(r.user_id)) return { kind: 'skip', reason: 'already_sent' };
-  if (r.email_unsubscribed_at) return { kind: 'skip', reason: 'unsubscribed' };
-  if (h.suppressedEmails.has(email)) return { kind: 'skip', reason: 'suppressed' };
-  if (!isWithinWelcomeWindow(r.signed_up_at, now)) return { kind: 'skip', reason: 'outside_window' };
-  const locale: 'cs' | 'en' = r.language === 'en' ? 'en' : 'cs';
-  const dataVariables: WelcomeBody['dataVariables'] = { language: locale };
-  const firstName = firstWord(r.first_name);
-  if (firstName) dataVariables.firstName = firstName; // volitelná proměnná — v Loops označit jako optional
-  return {
-    kind: 'send',
-    locale,
-    body: { transactionalId, email, addToAudience: false, dataVariables },
-    idemKey: `${r.user_id}:${WELCOME_TEMPLATE_KEY}:${WELCOME_EPISODE}`.slice(0, 100),
+export function loopsMembership(c: LoopsContact | null, signedUpAt: string | null | undefined, prev: SyncedState | undefined, now: Date): LoopsMembership {
+  if (!c) return 'none';
+  if (c.marketingAllowed) return 'marketing';
+  const active = !!prev && !prev.removedAt;
+  if (active && (prev!.membership ?? 'marketing') === 'marketing') return 'none';
+  const h = hoursSince(signedUpAt, now);
+  if (!Number.isFinite(h) || h < 0 || h > WELCOME_KEEP_DAYS * 24) return 'none';
+  if (h <= WELCOME_ADD_WINDOW_HOURS) return 'welcome';
+  return active && prev!.membership === 'welcome' ? 'welcome' : 'none';
+}
+
+/** Minimální kontakt — explicitní výběr, nic se nekopíruje hromadně. */
+export function minimalContact(c: LoopsContact): LoopsMinimalContact {
+  const m: LoopsMinimalContact = {
+    email: c.email,
+    userId: c.userId,
+    language: c.language,
+    marketingAllowed: false,
+    retentionEmailsAllowed: false,
+    userGroup: c.userGroup,
   };
+  if (c.firstName) m.firstName = c.firstName;
+  if (c.signupAt) m.signupAt = c.signupAt;
+  return m;
+}
+
+export const contactForMembership = (c: LoopsContact, m: Exclude<LoopsMembership, 'none'>): ContactPayload =>
+  m === 'marketing' ? c : minimalContact(c);
+
+/** Kontakt jen kvůli uvítání dostane jen signed_up. */
+export const eventsForMembership = (m: LoopsMembership, events: PlannedEvent[]): PlannedEvent[] =>
+  m === 'marketing' ? events : m === 'welcome' ? events.filter((e) => e.event === 'signed_up') : [];
+
+/** Důvod vyřazení kontaktu, který je v Loops a už tam nepatří. */
+export function dropoutReasonFor(prev: SyncedState | undefined, stillEligible: boolean, accountExists: boolean): DropoutReason {
+  if (!stillEligible) return accountExists ? 'not_eligible' : 'account_deleted';
+  return prev?.membership === 'welcome' ? 'welcome_window_ended' : 'marketing_not_allowed';
 }
