@@ -43,6 +43,8 @@ export interface OnboardingDraft {
   planChoice?: PlanChoice;
   /** Barva appky z kroku se jménem (OAuth registrace ji jinak ztratí). */
   accentColor?: string;
+  /** Zaškrtnuté „Nechci dostávat tipy a novinky e-mailem“ (F0 e-maily 18. 10.) → user_profiles.marketing_optout_at. */
+  marketingOptOut?: boolean;
 }
 
 // Never persisted: the password. A draft is recoverable input, not a credential.

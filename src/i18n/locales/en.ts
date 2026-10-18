@@ -38,6 +38,7 @@ const en = {
   'auth.terms': 'Terms of Service',
   'auth.and': 'and',
   'auth.privacy': 'Privacy Policy',
+  'auth.marketing_optout': "I don't want to receive tips and news by e-mail",
   'auth.login_failed': 'Login failed',
   'auth.invalid_credentials': 'Invalid email or password',
   'auth.user_exists': 'An account with this email already exists',
@@ -212,6 +213,10 @@ const en = {
   'settings.notif.closing_desc': 'Notification 2h before closing',
   'settings.notif.comeback_title': 'Comeback reminders',
   'settings.notif.comeback_desc': 'When you haven’t trained for a while, we’ll nudge you back',
+  'settings.email_tips_title': 'Tips by e-mail',
+  'settings.email_tips_desc': 'Training tips, news and account reminders. Login and password e-mails always arrive.',
+  'settings.email_tips_on': 'Tips by e-mail are on',
+  'settings.email_tips_off': 'Tips by e-mail are off',
 
   // Toasts
   'toast.saved': 'Saved',
@@ -2971,6 +2976,12 @@ const en = {
   // GDPR check-in text — approved by David 17. 10. 2026
   'privacy.checkin_title': '9. Weekly check-in',
   'privacy.checkin_body': 'Once a week (Sunday evening) the app offers a short check-in: how you feel and how your workouts went (rating 1–5) and, optionally, your current weight (we show its change since last week and also save it to your profile), what was hardest and what you would improve in the app (max. 300 characters each). We use the answers to improve your training and the Pumplo app (legitimate interest, Art. 6(1)(f) GDPR). Only the Pumplo team sees them; they are not shared with your gym. The check-in is voluntary — you can skip it at any time. We keep the answers for as long as your account exists and they are deleted together with it; they are also included in the data export in Settings.',
+  // ČEKÁ NA SCHVÁLENÍ DAVIDA (F0 e-maily 18. 10. 2026) — návrh odstavců do zásad
+  'privacy.emails_title': '10. E-mails from the app',
+  'privacy.emails_service': 'We may send a service e-mail about your account to the address you registered with, for example a reminder that the intro questionnaire still needs to be finished to build your training plan. The legal basis is performance of a contract (Art. 6(1)(b) GDPR). Service e-mails contain no advertising.',
+  'privacy.emails_tips': "If you did not tick “I don't want to receive tips and news by e-mail” when registering, we may send you, as a Pumplo user, training tips and news about the app (Section 7(3) of Czech Act No. 480/2004 Coll., legitimate interest under Art. 6(1)(f) GDPR). These e-mails are marked as commercial messages. We never personalise them based on health data, weight, height or age.",
+  'privacy.emails_processor': 'We send e-mails through Resend (USA) as our processor under standard contractual clauses (Art. 46 GDPR); it receives only your e-mail address, name and the e-mail content. We keep a record of sent e-mails (when, which e-mail, delivery result) for as long as your account exists. Addresses that bounce or that reported spam are kept on a block list so that nothing else is sent to them.',
+  'privacy.emails_optout': 'You can unsubscribe at any time with one click via the link in the footer of every e-mail, in the app under Settings → Notifications → Tips by e-mail, or via the contact e-mail below. E-mails needed for login and password reset keep arriving after you unsubscribe.',
   'admin.checkins_title': 'Weekly check-ins',
   'admin.checkins_empty': 'No check-ins yet.',
   'admin.checkins_count_one': '{{count}} answer',

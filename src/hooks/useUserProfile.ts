@@ -42,6 +42,10 @@ export interface UserProfile {
   notification_comeback: boolean;
   notification_onboarding_shown: boolean;
   is_staff: boolean;
+  /** Odmítnutí obchodních e-mailů (registrace / Nastavení), F0 e-maily 18. 10. */
+  marketing_optout_at?: string | null;
+  /** Odhlášení ze všech e-mailů Pumpla (patička, one-click, Nastavení). */
+  email_unsubscribed_at?: string | null;
   push_subscription: Record<string, unknown> | null;
   language: 'cs' | 'en' | null;
   avatar_url: string | null;
