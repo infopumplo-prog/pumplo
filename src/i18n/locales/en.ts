@@ -92,6 +92,12 @@ const en = {
   'home.today_workout': "Today's workout",
   'watch.plan_workout': 'Pumplo workout',
   'home.next_workout': 'Next workout',
+  // First-workout card on Home (David 18. 10.)
+  'home.first_workout_title': 'Your plan is ready',
+  'home.first_workout_subtitle': 'First up: {{workout}} · takes about {{minutes}} min',
+  'home.first_workout_subtitle_no_time': 'First up: {{workout}}',
+  'home.first_workout_start': 'Start your first workout',
+  'home.first_workout_later': "When I'm at the gym",
   'home.today_completed': "Today's workout done",
   'home.business': 'Business',
   'home.trainer': 'Trainer',

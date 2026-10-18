@@ -27,6 +27,9 @@ import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import CustomPlansTab from '@/components/home/CustomPlansTab';
+import { FirstWorkoutCard } from '@/components/home/FirstWorkoutCard';
+import { useGuest } from '@/contexts/GuestContext';
+import { shouldShowFirstWorkoutCard, readFirstWorkoutDismissed, dismissFirstWorkoutForToday, localDateKey } from '@/lib/firstWorkoutCard';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -114,10 +117,46 @@ const Home = () => {
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+  const { isGuest } = useGuest();
+
+  // Karta „Tvůj první trénink“ (David 18. 10.): počet DOKONČENÝCH tréninků.
+  // useWorkoutStats počítá i nedokončené, proto vlastní lehký dotaz (jen count).
+  const [completedCount, setCompletedCount] = useState<number | null>(null);
+  const [completedCountLoaded, setCompletedCountLoaded] = useState(false);
+  const [firstCardDismissedOn, setFirstCardDismissedOn] = useState<string | null>(() => readFirstWorkoutDismissed());
+  useEffect(() => {
+    if (!user) { setCompletedCount(null); setCompletedCountLoaded(true); return; }
+    let cancelled = false;
+    (async () => {
+      const { count, error } = await supabase
+        .from('workout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('completed_at', 'is', null);
+      if (cancelled) return;
+      // Při chybě kartu raději neukážeme (null) — stávajícím by se ukázala omylem.
+      setCompletedCount(error ? null : count ?? 0);
+      setCompletedCountLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, location.key]);
+
+  const firstCardActive = isOnboardingComplete && shouldShowFirstWorkoutCard({
+    isSignedIn: !!user,
+    isGuest,
+    hasActivePlan: !!plan,
+    completedWorkouts: completedCount,
+    hasPausedWorkout: !!pausedWorkout,
+    dismissedOn: firstCardDismissedOn,
+    today: localDateKey(),
+  });
 
   // First-run guided tour (also replayable via the ? button).
   // Verze 3: krok o sekci Tréninky + pořadí podle volby plánu z dotazníku (David 8. 10.).
-  const tour = useCoachTour('home', 3, isOnboardingComplete);
+  // Karta prvního tréninku má přednost (David 18. 10.): prohlídka by ji zastínila
+  // overlayem, takže se automaticky spustí až po jejím odložení nebo po 1. tréninku.
+  // Čeká i na plán a počet tréninků, aby nevyskočila dřív, než se rozhodne o kartě.
+  const tour = useCoachTour('home', 3, isOnboardingComplete && !planLoading && completedCountLoaded && !firstCardActive);
   const planChoice = readPlanChoice();
   const homeSteps: Record<HomeTourStep, { target: string; title: string; body: string }> = {
     today: { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
@@ -194,6 +233,36 @@ const Home = () => {
     sunday: t('myplan.day_sunday'),
   };
   const today = getCurrentWeekday();
+  const dayNameMap: Record<string, string> = {
+    'Horní tělo': t('workout.day_upper_body'),
+    'Dolní tělo': t('workout.day_lower_body'),
+    'Celotělový': t('workout.day_full_body'),
+    'Celé tělo': t('workout.day_full_body'),
+    'Celé tělo A': `${t('workout.day_full_body')} A`,
+    'Celé tělo B': `${t('workout.day_full_body')} B`,
+    'Push': 'Push',
+    'Pull': 'Pull',
+    'Nožní den': t('workout.day_leg_day'),
+    'Nohy': t('workout.day_leg_day'),
+    'Tlak': 'Push',
+    'Tah': 'Pull',
+    'Odpočinek': t('workout.rest') || 'Rest',
+  };
+
+  // Název a délka prvního tréninku pro kartu „Tvůj plán je hotový“ (David 18. 10.).
+  const firstDayLetter = schedule[0]?.dayLetter;
+  const firstDayTemplate = plan?.allDays?.find(d => d.dayLetter === firstDayLetter);
+  const firstWorkoutName = (dayNameMap[firstDayTemplate?.dayName || ''] ?? firstDayTemplate?.dayName)
+    || (firstDayLetter ? t('workout.day_label', { letter: firstDayLetter }) : t('home.today_workout'));
+  const firstWorkoutMinutes = plan?.inputsSnapshot?.duration_minutes || profile?.training_duration_minutes || null;
+  const startButton = (
+    <StartWorkoutButton
+      selectedGymId={profile?.selected_gym_id || null}
+      customEquipment={profile?.custom_equipment ?? null}
+      label={firstCardActive ? t('home.first_workout_start') : undefined}
+      className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
+    />
+  );
 
   // Week progress calculation - use actual training days per week
   const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
@@ -397,6 +466,23 @@ const Home = () => {
                   </div>
                 </motion.div>) : plan ? (/* Active plan */
           <>
+                  {/* Tvůj první trénink — nahoře, dokud nemá 1. dokončený trénink (David 18. 10.).
+                      Start tlačítko (a ref pro kartu dalšího tréninku) se sem přesune. */}
+                  {firstCardActive && (
+                    <motion.div variants={itemVariants} ref={startButtonRef}>
+                      <FirstWorkoutCard
+                        workoutName={firstWorkoutName}
+                        minutes={firstWorkoutMinutes}
+                        startButton={startButton}
+                        onDismiss={() => {
+                          const day = localDateKey();
+                          dismissFirstWorkoutForToday(day);
+                          setFirstCardDismissedOn(day);
+                        }}
+                      />
+                    </motion.div>
+                  )}
+
                   {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants} data-coach="home-today">
                     <div className="rounded-3xl bg-[hsl(var(--hero-card))] overflow-hidden">
@@ -448,21 +534,6 @@ const Home = () => {
                           const isCompletedToday = wasCompletedToday;
                           const completedLetter = (completedTodayDayLetter || '').replace('_EXT', '');
                           const dayTemplate = plan.allDays?.find(d => d.dayLetter === (isCompletedToday ? completedLetter : nextDay.dayLetter));
-                          const dayNameMap: Record<string, string> = {
-                            'Horní tělo': t('workout.day_upper_body'),
-                            'Dolní tělo': t('workout.day_lower_body'),
-                            'Celotělový': t('workout.day_full_body'),
-                            'Celé tělo': t('workout.day_full_body'),
-                            'Celé tělo A': `${t('workout.day_full_body')} A`,
-                            'Celé tělo B': `${t('workout.day_full_body')} B`,
-                            'Push': 'Push',
-                            'Pull': 'Pull',
-                            'Nožní den': t('workout.day_leg_day'),
-                            'Nohy': t('workout.day_leg_day'),
-                            'Tlak': 'Push',
-                            'Tah': 'Pull',
-                            'Odpočinek': t('workout.rest') || 'Rest',
-                          };
                           const dayTypeName = dayNameMap[dayTemplate?.dayName || ''] ?? (dayTemplate?.dayName || '');
 
                           if (isCompletedToday) {
@@ -592,13 +663,9 @@ const Home = () => {
                   )}
 
                   {/* Start Training Button */}
-                  {plan && !wasCompletedToday && !pausedWorkout && (
+                  {plan && !wasCompletedToday && !pausedWorkout && !firstCardActive && (
                     <motion.div variants={itemVariants} ref={startButtonRef}>
-                      <StartWorkoutButton
-                        selectedGymId={profile?.selected_gym_id || null}
-                        customEquipment={profile?.custom_equipment ?? null}
-                        className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
-                      />
+                      {startButton}
                     </motion.div>
                   )}
 
@@ -633,7 +700,8 @@ const Home = () => {
       </div>
       <CoachTour screenId="home" version={3} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
       {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
-      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen} />
+      {/* Ani přes kartu prvního tréninku (David 18. 10.). */}
+      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen && completedCountLoaded && !firstCardActive} />
     </PageTransition>;
 };
 export default Home;

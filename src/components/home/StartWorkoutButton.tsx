@@ -18,9 +18,11 @@ interface StartWorkoutButtonProps {
   /** Vlastní vybavení z profilu (feedback 13. 10.) */
   customEquipment?: string[] | null;
   className?: string;
+  /** Vlastní text tlačítka — karta prvního tréninku (David 18. 10.); výchozí „Začít trénink“. */
+  label?: string;
 }
 
-export const StartWorkoutButton = ({ selectedGymId, customEquipment, className }: StartWorkoutButtonProps) => {
+export const StartWorkoutButton = ({ selectedGymId, customEquipment, className, label }: StartWorkoutButtonProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -109,7 +111,7 @@ export const StartWorkoutButton = ({ selectedGymId, customEquipment, className }
           className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"
         >
           <Play className="w-5 h-5" />
-          {t('home.start_workout')}
+          {label ?? t('home.start_workout')}
         </Button>
       </motion.div>
     </>
