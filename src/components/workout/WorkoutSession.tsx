@@ -25,6 +25,7 @@ import { scheduleRestEndNotification, cancelRestEndNotification } from '@/lib/re
 import { playCountdown3, playCountdown2, playCountdown1, playAlarmFinish } from '@/lib/workoutAudio';
 import { useWorkoutHistory } from '@/hooks/useWorkoutHistory';
 import { setWorkoutActive, trackFirstWorkoutIfFirst, trackWorkoutComplete, trackWorkoutStart } from '@/lib/appAnalytics';
+import { countOwnWorkoutSessions, requestReviewAfterWorkout } from '@/lib/inAppReview';
 import { writePausedWorkoutSnapshot, clearPausedWorkoutStorage } from '@/hooks/usePausedWorkout';
 import { ExerciseSkipDialog } from './ExerciseSkipDialog';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
@@ -500,15 +501,13 @@ export const WorkoutSession = ({
 
         trackWorkoutComplete(isBonus);
         if (sessionId) {
-          void trackFirstWorkoutIfFirst(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) return null;
-            const { count, error } = await supabase
-              .from('workout_sessions')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', session.user.id);
-            return error ? null : count;
-          });
+          // One COUNT query shared by first-workout analytics and the store rating prompt.
+          // Lazy: on web both callers return before counting, so no query and no unhandled rejection there.
+          let ownSessions: Promise<number | null> | undefined;
+          const countSessions = () => (ownSessions ??= countOwnWorkoutSessions());
+          void trackFirstWorkoutIfFirst(countSessions);
+          // Store rating prompt after the 3rd / 10th / 25th workout (native only, never guests).
+          void requestReviewAfterWorkout(countSessions);
         }
 
         setWorkoutSaved(true);

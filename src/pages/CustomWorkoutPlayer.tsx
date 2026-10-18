@@ -34,6 +34,7 @@ import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction
 import { useWatchBridge } from '@/hooks/useWatchBridge';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
 import { customDayName } from '@/components/workout/CustomPlanDayChips';
+import { requestReviewAfterWorkout } from '@/lib/inAppReview';
 
 interface ExerciseWithVideo {
   id: string;
@@ -1227,6 +1228,8 @@ const CustomWorkoutPlayer = () => {
           recordLocalCompleted(id, selectedDayId, completedAt.toISOString());
           if (!sessionError && session) await tagSessionWithCycleDay(session.id, id, selectedDayId);
         }
+        // Store rating prompt after the 3rd / 10th / 25th workout (native only, never guests).
+        if (!sessionError && session) void requestReviewAfterWorkout();
       }
     } catch (err) {
       console.error('Error saving custom workout session:', err);
