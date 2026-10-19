@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CONSENT_TEXT_VERSION, LEAD_RATE_LIMIT_PER_HOUR, consentTextFor, isBot, isValidEmail, normalizeEmail, toLang } from "./lead.ts";
-import { type CodeLookup, flyerDestination, isAction, isSourceType, resolveTarget, scanDetail, skipReason } from "./request.ts";
+import { type CodeLookup, flyerDestination, flyerStoreTarget, isAction, isSourceType, resolveTarget, scanDetail, skipReason } from "./request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,6 +57,7 @@ const logFlyerScan = async (
   ipHash: string | null,
   uaHash: string | null,
   plat: string,
+  storeClick: boolean,
 ): Promise<string | null> => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -81,36 +82,50 @@ const logFlyerScan = async (
     event_type: "scan", source_type: "flyer", code, gym_id: qr.gym_id,
     machine_id: null, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
   }).select("id").single();
-  return data?.id ?? null;
+  const scanId = data?.id ?? null;
+  // Sent straight to the store: the scan is also the store click (keeps the funnel's Kliky honest).
+  if (storeClick) {
+    await supabase.from("qr_events").insert({
+      event_type: "store_click", source_type: "flyer", code, gym_id: qr.gym_id,
+      machine_id: null, scan_id: scanId, platform: plat, ip_hash: ipHash, ua_hash: uaHash,
+    });
+  }
+  return scanId;
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // GET ?go=1&code=<code> — the flyer QR entry point: log the scan, then send
-  // the reader to the website. Analytics failures must not cost us the visitor,
+  // the reader to the website (or straight to the phone's store, see DIRECT_STORE_FLYERS).
+  // Analytics failures must not cost us the visitor,
   // so every error path still redirects.
   if (req.method === "GET") {
     const url = new URL(req.url);
     const code = url.searchParams.get("code") ?? "";
+    const ua = req.headers.get("user-agent") ?? "";
+    const plat = platformFromUa(ua);
+    const store = flyerStoreTarget(code, plat);
     let scanId: string | null = null;
 
     if (code && code.length <= 64) {
       try {
         const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
-        const ua = req.headers.get("user-agent") ?? "";
         scanId = await Promise.race([
           logFlyerScan(
             code,
             ip ? await sha256(`pumplo-qr|${ip}`) : null,
             ua ? await sha256(`pumplo-qr|${ua}`) : null,
-            platformFromUa(ua),
+            plat,
+            store !== null,
           ),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), LOG_TIMEOUT_MS)),
         ]);
       } catch { /* tracking never costs us a flyer reader */ }
     }
 
+    if (store === "ios") return redirect(APP_STORE_URL);
+    if (store === "android") return redirect(playUrl(scanId));
     // The website's e-mail prompt pairs its lead with the scan (qr_scan, an opaque id).
     return redirect(flyerDestination(WEB_URL, code, scanId));
   }

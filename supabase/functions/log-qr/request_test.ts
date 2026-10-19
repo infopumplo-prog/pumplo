@@ -21,7 +21,7 @@ Deno.test("flyer is a valid source for every action incl. lead (web popup, optio
   assertEquals(isSourceType("web"), false);
 });
 
-import { flyerDestination, resolveTarget, type CodeLookup } from "./request.ts";
+import { flyerDestination, flyerStoreTarget, resolveTarget, type CodeLookup } from "./request.ts";
 const fakeDb = (tables: Record<string, Record<string, Record<string, unknown>>>): CodeLookup & { calls: string[] } => {
   const calls: string[] = [];
   return {
@@ -48,4 +48,13 @@ Deno.test("flyer destination carries UTM + scan id; old shape when no scan", () 
   assertEquals(withScan.searchParams.get("utm_campaign"), "eurogym");
   assertEquals(withScan.searchParams.get("qr_scan"), "11111111-1111-1111-1111-111111111111");
   assertEquals(flyerDestination("https://pumplo.com", "eurogym", null), "https://pumplo.com/?utm_source=qr&utm_medium=flyer&utm_campaign=eurogym");
+});
+
+Deno.test("direct-store flyer opens the phone's store; other devices and flyers keep the website", () => {
+  assertEquals(flyerStoreTarget("ftk-olomouc", "ios"), "ios");
+  assertEquals(flyerStoreTarget("ftk-olomouc", "android"), "android");
+  assertEquals(flyerStoreTarget("eurogym-tv", "ios"), "ios");
+  assertEquals(flyerStoreTarget("ftk-olomouc", "other"), null);
+  assertEquals(flyerStoreTarget("eurogym", "ios"), null);
+  assertEquals(flyerStoreTarget("", "android"), null);
 });
