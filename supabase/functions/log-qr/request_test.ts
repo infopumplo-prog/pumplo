@@ -53,6 +53,7 @@ Deno.test("flyer destination carries UTM + scan id; old shape when no scan", () 
 Deno.test("direct-store flyer opens the phone's store; other devices and flyers keep the website", () => {
   assertEquals(flyerStoreTarget("ftk-olomouc", "ios"), "ios");
   assertEquals(flyerStoreTarget("ftk-olomouc", "android"), "android");
+  assertEquals(flyerStoreTarget("eurogym-tv", "ios"), "ios");
   assertEquals(flyerStoreTarget("ftk-olomouc", "other"), null);
   assertEquals(flyerStoreTarget("eurogym", "ios"), null);
   assertEquals(flyerStoreTarget("", "android"), null);
