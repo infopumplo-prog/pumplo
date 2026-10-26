@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { acceptTrainerInvite } from "@/lib/trainerApi";
 import { clearPendingTrainerInvite, mapAcceptInviteError, readPendingTrainerInvite } from "@/lib/trainerInvite";
 import { useInvalidateTrainerData } from "@/hooks/useTrainerAssignments";
+import { clearTrainerLightSignup, notifyProfileChanged, readTrainerLightSignup, shouldApplyLightRegistration } from "@/lib/trainerClientOnboarding";
+import { applyLightRegistration } from "@/lib/lightRegistration";
 
 installVideoKeepPlaying();
 import { trackTutorialComplete } from "@/lib/appAnalytics";
@@ -241,6 +243,49 @@ const PendingOnboardingFinisher = () => {
   return null;
 };
 
+// Krátká registrace přes pozvánku trenéra (Apple/Google, nebo přihlášení účtu s nedokončeným
+// onboardingem): přihlášení odvede z Auth dřív, než se zapíše profil. Příznak čeká v localStorage,
+// tady profil dokončíme bez dotazníku. Hotový účet se nikdy nemění (shouldApplyLightRegistration).
+const PendingTrainerLightSignup = () => {
+  const queryClient = useQueryClient();
+  const { user, isRegistering } = useAuth();
+  const running = useRef(false);
+  useEffect(() => {
+    // E-mailová krátká registrace si profil zapisuje sama (isRegistering) — nezdvojovat.
+    if (!user || isRegistering || running.current) return;
+    if (!readTrainerLightSignup()) return;
+    // Rozdělaná plná registrace (Apple/Google s dotazníkem) má přednost — dopíše ji PendingOnboardingFinisher.
+    if (loadOnboardingDraft()) { clearTrainerLightSignup(); return; }
+    running.current = true;
+    (async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed, primary_goal')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) return; // příznak zůstává, zkusí se při dalším spuštění
+        if (!profile) {
+          // Řádek profilu zakládá trigger — zápis s opakováním na něj počká.
+          if (await applyLightRegistration(user.id)) clearTrainerLightSignup();
+        } else if (shouldApplyLightRegistration(true, profile)) {
+          if (await applyLightRegistration(user.id)) clearTrainerLightSignup();
+        } else {
+          clearTrainerLightSignup();
+          return;
+        }
+        notifyProfileChanged();
+        await queryClient.invalidateQueries();
+      } catch (err) {
+        console.error('Trainer light sign-up not finished:', err);
+      } finally {
+        running.current = false;
+      }
+    })();
+  }, [user, isRegistering, queryClient]);
+  return null;
+};
+
 // Navigates to /reset-password when a password reset deep link is detected
 const PasswordResetNavigator = () => {
   const { pendingPasswordReset } = useAuth();
@@ -409,6 +454,7 @@ const AppRoutes = () => {
     <PendingSharedPlanResume />
     <PendingTrainerInviteAccept />
     <PendingOnboardingFinisher />
+    <PendingTrainerLightSignup />
     <SaveQueueFlusher />
     <GymDataRefresher />
     <AppConsentGate />

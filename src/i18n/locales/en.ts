@@ -3132,6 +3132,18 @@ const en = {
   'trainer_client.end_confirm_cancel': 'Cancel',
   'trainer_client.end_done': 'Your cooperation with trainer {{name}} has ended',
   'trainer_client.end_error': "We couldn't end the cooperation. Please try again.",
+  // Trainer client short registration + questionnaire card on Home (26 Oct 2026)
+  'trainer_client.light_title': 'Trainer {{name}} invites you to Pumplo',
+  'trainer_client.light_title_noname': 'Your trainer invites you to Pumplo',
+  'trainer_client.light_desc': "Just your name, e-mail and a password. You'll see your trainer's plans right after signing up — the questionnaire can wait.",
+  'trainer_client.light_last_name_optional': 'Last name (optional)',
+  'trainer_client.light_submit': 'Sign up',
+  'trainer_client.light_save_failed': 'Your account was created, but we could not finish setting it up. Please try again.',
+  'trainer_client.qcard_title': 'Want your own Pumplo plan too?',
+  'trainer_client.qcard_desc': "Fill in a short questionnaire (2 min) and Pumplo will build a plan just for you — alongside your trainer's plans.",
+  'trainer_client.qcard_pumplo_tab_desc': "Your trainer's plans are in the Custom workout tab. Fill in a short questionnaire (2 min) and Pumplo will build a plan just for you too.",
+  'trainer_client.qcard_cta': 'Fill in the questionnaire',
+  'trainer_client.qcard_later': 'Not now',
 };
 
 export default en;

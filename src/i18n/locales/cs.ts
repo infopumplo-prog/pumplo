@@ -3135,6 +3135,18 @@ const cs = {
   'trainer_client.end_confirm_cancel': 'Zrušit',
   'trainer_client.end_done': 'Spolupráce s trenérem {{name}} skončila',
   'trainer_client.end_error': 'Spolupráci se nepodařilo ukončit. Zkus to znovu.',
+  // Krátká registrace klienta trenéra + karta dotazníku na Home (26. 10. 2026)
+  'trainer_client.light_title': 'Trenér {{name}} tě zve do Pumpla',
+  'trainer_client.light_title_noname': 'Tvůj trenér tě zve do Pumpla',
+  'trainer_client.light_desc': 'Stačí jméno, e-mail a heslo. Plány od trenéra uvidíš hned po registraci, dotazník můžeš vyplnit kdykoli později.',
+  'trainer_client.light_last_name_optional': 'Příjmení (nepovinné)',
+  'trainer_client.light_submit': 'Zaregistrovat se',
+  'trainer_client.light_save_failed': 'Účet je založený, ale nepodařilo se ho dokončit. Zkus to prosím znovu.',
+  'trainer_client.qcard_title': 'Chceš i vlastní plán od Pumpla?',
+  'trainer_client.qcard_desc': 'Vyplň krátký dotazník (2 min) a Pumplo ti sestaví plán na míru — vedle plánů od trenéra.',
+  'trainer_client.qcard_pumplo_tab_desc': 'Plány od trenéra najdeš v záložce Vlastní trénink. Když vyplníš krátký dotazník (2 min), Pumplo ti sestaví i vlastní plán na míru.',
+  'trainer_client.qcard_cta': 'Vyplnit dotazník',
+  'trainer_client.qcard_later': 'Teď ne',
 };
 
 export default cs;
