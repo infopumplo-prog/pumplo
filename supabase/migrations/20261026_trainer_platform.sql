@@ -253,6 +253,10 @@ CREATE POLICY "exercises_read_in_readable_plans" ON public.exercises FOR SELECT
     JOIN custom_plan_days d ON d.id = cpe.day_id
     JOIN custom_plans p ON p.id = d.plan_id
     WHERE cpe.exercise_id = exercises.id
+      -- Cvik musí patřit vlastníkovi plánu nebo trenérovi, který plán přiřadil — jinak by šlo
+      -- vložit cizí exercise_id do vlastního plánu a cizí soukromý cvik si tak přečíst.
+      AND (exercises.owner_id = p.user_id
+           OR exercises.owner_id IN (SELECT a.trainer_user_id FROM trainer_plan_assignments a WHERE a.plan_id = p.id))
       AND (p.user_id = auth.uid() OR public.trainer_manages_plan(p.id)
            OR (p.is_template AND p.template_visibility = 'public' AND public.is_trainer()))
   ));

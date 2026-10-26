@@ -17,6 +17,9 @@ const T3 = 'deadbeef-7a1e-4000-8000-000000000005';
 const TPL = 'deadbeef-7a1e-4000-8000-0000000000a1';
 const TPL_PRIV = 'deadbeef-7a1e-4000-8000-0000000000a2';
 const SESS = 'deadbeef-7a1e-4000-8000-0000000000b1';
+const EX = 'deadbeef-7a1e-4000-8000-0000000000c1';
+const C2PLAN = 'deadbeef-7a1e-4000-8000-0000000000d1';
+const C2DAY = 'deadbeef-7a1e-4000-8000-0000000000d2';
 
 const as = (uid) => `reset role; select set_config('request.jwt.claims', json_build_object('sub', '${uid}', 'role', 'authenticated')::text, true); set local role authenticated;`;
 const asAnon = `reset role; select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true); set local role anon;`;
@@ -47,6 +50,12 @@ insert into custom_plan_days (plan_id, day_number, name)
 insert into custom_plan_exercises (day_id, exercise_id, sets, reps, order_index)
   select d.id, (select id from exercises where owner_id is null order by id limit 1), 4, 8, 0
   from custom_plan_days d where d.plan_id in ('${TPL}', '${TPL_PRIV}');
+-- Soukromý cvik T1 v jeho veřejné šabloně (klient ho uvidí v kopii, cizí člověk ne).
+insert into exercises (id, name, owner_id) values ('${EX}', 'Probe soukromý cvik', '${T1}');
+insert into custom_plan_exercises (day_id, exercise_id, sets, reps, order_index)
+  select d.id, '${EX}', 3, 10, 1 from custom_plan_days d where d.plan_id = '${TPL}';
+insert into custom_plans (id, user_id, name) values ('${C2PLAN}', '${C2}', 'C2 vlastní');
+insert into custom_plan_days (id, plan_id, day_number) values ('${C2DAY}', '${C2PLAN}', 1);
 
 -- ── Přístup: T1, T2 mezi prvními 10 → zdarma; doplnit do 10 zakladatelů; T3 = waitlist ──
 ${as(T1)}
@@ -115,6 +124,7 @@ ${tryBlock('t1_publish_copy', `update custom_plans set is_public = true where na
 -- ── C1 odcvičí trénink z kopie + zpětná vazba ──
 ${as(C1)}
 ${put('c1_sees_copy', `select count(*) from custom_plans where name = 'Upraveno trenérem'`)}
+${put('c1_sees_trainer_ex', `select count(*) from exercises where id = '${EX}'`)}
 insert into workout_sessions (id, user_id, plan_id, day_letter, goal_id, started_at, completed_at, custom_plan_id)
   values ('${SESS}', '${C1}', null, 'PR', 'general_fitness', now() - interval '1 hour', now(),
           (select plan_id from trainer_plan_assignments where client_user_id = '${C1}' limit 1));
@@ -147,6 +157,8 @@ ${tryBlock('t2_assign_public', `perform trainer_assign_plan((select id from trai
 -- ── C2 (běžný člen) veřejnou šablonu nevidí ──
 ${as(C2)}
 ${put('c2_public_tpl', `select count(*) from custom_plans where id = '${TPL}'`)}
+insert into custom_plan_exercises (day_id, exercise_id, sets, reps, order_index) values ('${C2DAY}', '${EX}', 3, 10, 0);
+${put('c2_reads_foreign_ex', `select count(*) from exercises where id = '${EX}'`)}
 
 -- ── C1 vidí srdíčko, pak ukončí spolupráci → T1 ztratí přístup ──
 ${as(C1)}
@@ -220,7 +232,9 @@ if (mode === 'live') {
   expect('c1_my_trainers', r.c1_my_trainers === '1');
   expect('c2_accept_used', err('c2_accept_used', 'invite_used'));
   expect('copy_owner_is_client', r.copy_owner_is_client === 'true');
-  expect('copy_exercises', r.copy_exercises === '1');
+  expect('copy_exercises', r.copy_exercises === '2');
+  expect('c1_sees_trainer_ex', r.c1_sees_trainer_ex === '1');
+  expect('c2_reads_foreign_ex', r.c2_reads_foreign_ex === '0');
   expect('t1_updates_copy', r.t1_updates_copy === '1');
   expect('t1_steal_copy', err('t1_steal_copy', 'plan_owner_fields_locked'));
   expect('t1_publish_copy', err('t1_publish_copy', 'plan_owner_fields_locked'));
