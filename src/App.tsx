@@ -24,6 +24,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadOnboardingDraft, clearOnboardingDraft } from "@/lib/onboardingDraft";
 import { persistOnboarding } from "@/lib/persistOnboarding";
 import { installVideoKeepPlaying } from "@/lib/videoKeepPlaying";
+import { toast } from "sonner";
+import { acceptTrainerInvite } from "@/lib/trainerApi";
+import { clearPendingTrainerInvite, mapAcceptInviteError, readPendingTrainerInvite } from "@/lib/trainerInvite";
+import { useInvalidateTrainerData } from "@/hooks/useTrainerAssignments";
 
 installVideoKeepPlaying();
 import { trackTutorialComplete } from "@/lib/appAnalytics";
@@ -83,15 +87,16 @@ const PageFallback = () => (
   <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
 );
 const FlyerLanding = lazy(() => import('./pages/FlyerLanding'));
+const TrainerInvite = lazy(() => import('./pages/TrainerInvite'));
 
 // Handles deep links: com.pumplo.app://plan/{token} (custom scheme) and
-// https://app.pumplo.com/plan/{token} | /cvik/{id} (Universal Links, iOS applinks)
+// https://app.pumplo.com/plan/{token} | /cvik/{id} | /trener/{token} (Universal Links, iOS applinks)
 const PlanDeepLinkNavigator = () => {
   const navigate = useNavigate();
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const handle = (url: string) => {
-      const m = url.match(/\/(plan|cvik)\/([^/?#]+)/);
+      const m = url.match(/\/(plan|cvik|trener)\/([^/?#]+)/);
       if (m) {
         trackDeepLink(`/${m[1]}/${m[2]}`);
         navigate(`/${m[1]}/${m[2]}`);
@@ -127,6 +132,71 @@ const PendingSharedPlanResume = () => {
       navigate(`/plan/${pending}`);
     }
   }, [user, location.pathname, navigate]);
+  return null;
+};
+
+// Pozvánka od trenéra (/trener/:token): nepřihlášený si token odložil, po registraci
+// nebo přihlášení ho tady přijmeme — i uprostřed dotazníku, bez přesměrování.
+// Síťová chyba / nenasazená migrace = token zůstává a zkusí se znovu (online/resume/další start).
+let trainerInviteInFlight = false;
+let trainerInviteLastFailAt = 0;
+const PendingTrainerInviteAccept = () => {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const invalidateTrainerData = useInvalidateTrainerData();
+  const [retryTick, setRetryTick] = useState(0);
+  const seenTick = useRef(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const bump = () => setRetryTick((n) => n + 1);
+    window.addEventListener('online', bump);
+    let listener: Promise<{ remove: () => void }> | null = null;
+    if (Capacitor.isNativePlatform()) listener = CapApp.addListener('resume', bump);
+    return () => {
+      window.removeEventListener('online', bump);
+      listener?.then(h => h.remove());
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Na stránce pozvánky rozhoduje tlačítko — nezdvojovat přijetí ani toast.
+    if (pathname.startsWith('/trener/')) return;
+    const token = readPendingTrainerInvite();
+    if (!token || trainerInviteInFlight) return;
+    // Po neúspěchu (offline, migrace ještě není) nezkoušet při každé navigaci — nejdřív za minutu,
+    // hned jen po návratu sítě / appky z pozadí.
+    const fromEvent = retryTick !== seenTick.current;
+    seenTick.current = retryTick;
+    if (!fromEvent && Date.now() - trainerInviteLastFailAt < 60_000) return;
+    trainerInviteInFlight = true;
+    (async () => {
+      try {
+        const { data, error } = await acceptTrainerInvite(token);
+        if (error) {
+          const info = mapAcceptInviteError(error);
+          if (info.clearToken) {
+            clearPendingTrainerInvite(token);
+            if (info.messageKey) toast.error(t(info.messageKey), { id: `trainer-invite-${token}` });
+          } else {
+            trainerInviteLastFailAt = Date.now(); // token zůstává, tichý pokus později
+          }
+          return;
+        }
+        clearPendingTrainerInvite(token);
+        trainerInviteLastFailAt = 0;
+        void invalidateTrainerData();
+        toast.success(t('trainer_client.accepted_toast', { name: data?.trainer_name ?? '' }), { id: `trainer-invite-${token}` });
+      } catch (err) {
+        trainerInviteLastFailAt = Date.now();
+        console.warn('[trainer] pending invite not accepted', err);
+      } finally {
+        trainerInviteInFlight = false;
+      }
+    })();
+  }, [user, pathname, retryTick, t, invalidateTrainerData]);
   return null;
 };
 
@@ -337,6 +407,7 @@ const AppRoutes = () => {
     <PlanDeepLinkNavigator />
     <ScreenViewTracker />
     <PendingSharedPlanResume />
+    <PendingTrainerInviteAccept />
     <PendingOnboardingFinisher />
     <SaveQueueFlusher />
     <GymDataRefresher />
@@ -351,6 +422,7 @@ const AppRoutes = () => {
     <Route path="/install" element={<Install />} />
     <Route path="/plan/:token" element={<SharedPlan />} />
     <Route path="/cvik/:id" element={<SharedExercisePage />} />
+    <Route path="/trener/:token" element={<Suspense fallback={<PageFallback />}><TrainerInvite /></Suspense>} />
     <Route path="/go/:code" element={
       <Suspense fallback={
         <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0B1222' }}>

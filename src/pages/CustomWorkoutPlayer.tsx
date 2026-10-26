@@ -34,6 +34,8 @@ import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction
 import { useWatchBridge } from '@/hooks/useWatchBridge';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
 import { customDayName } from '@/components/workout/CustomPlanDayChips';
+import { useInvalidateTrainerData, useTrainerAssignments } from '@/hooks/useTrainerAssignments';
+import { TrainerFeedbackSheet } from '@/components/trainer/TrainerFeedbackSheet';
 
 interface ExerciseWithVideo {
   id: string;
@@ -129,6 +131,10 @@ const CustomWorkoutPlayer = () => {
   const { plan, isLoading } = useCustomPlanDetail(id || null);
   const { pausedWorkout, savePausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const { profile } = useUserProfile();
+  // Plán od trenéra → po uložení tréninku se zeptat na obtížnost (uložení na tom nezávisí).
+  const { assignmentForPlan, trainerNameFor } = useTrainerAssignments();
+  const invalidateTrainerData = useInvalidateTrainerData();
+  const [trainerFeedback, setTrainerFeedback] = useState<{ sessionId: string; trainerName: string | null } | null>(null);
   const searchParams = new URLSearchParams(window.location.search);
   const resumeMode = searchParams.get('resume') === 'true';
   // Gym chosen already on the plan page (selector + location gate ran there) —
@@ -1165,8 +1171,10 @@ const CustomWorkoutPlayer = () => {
 
   // Finish workout — save session + navigate home
   const handleFinishWorkout = async () => {
+    if (isSaving || trainerFeedback) return;
     try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
     setIsSaving(true);
+    let feedbackFor: { sessionId: string; trainerName: string | null } | null = null;
     try {
       if (user) {
         const completedAt = new Date();
@@ -1227,11 +1235,22 @@ const CustomWorkoutPlayer = () => {
           recordLocalCompleted(id, selectedDayId, completedAt.toISOString());
           if (!sessionError && session) await tagSessionWithCycleDay(session.id, id, selectedDayId);
         }
+        // Trénink plánu od trenéra (session je uložená a označená custom_plan_id) → dotaz pro trenéra.
+        const assignment = assignmentForPlan(id);
+        if (!sessionError && session && assignment) {
+          feedbackFor = { sessionId: session.id, trainerName: trainerNameFor(assignment) };
+          void invalidateTrainerData(); // plnění plánu v detailu
+        }
       }
     } catch (err) {
       console.error('Error saving custom workout session:', err);
     }
     clearPausedWorkout();
+    if (feedbackFor) {
+      setIsSaving(false);
+      setTrainerFeedback(feedbackFor);
+      return;
+    }
     navigate('/');
   };
 
@@ -1447,6 +1466,7 @@ const CustomWorkoutPlayer = () => {
   if (playerState === 'completed') {
     const sc = shareCache;
     return (
+      <>
       <WorkoutShareCard
         dayLetter={sc?.dayLetter ?? plan?.name.substring(0, 2).toUpperCase() ?? ''}
         dayName={sc?.dayName ?? plan?.name ?? ''}
@@ -1468,6 +1488,14 @@ const CustomWorkoutPlayer = () => {
         isSaving={isSaving}
         onAbandon={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} navigate(-1); }}
       />
+      {trainerFeedback && (
+        <TrainerFeedbackSheet
+          sessionId={trainerFeedback.sessionId}
+          trainerName={trainerFeedback.trainerName}
+          onDone={() => { setTrainerFeedback(null); void invalidateTrainerData(); navigate('/'); }}
+        />
+      )}
+      </>
     );
   }
 

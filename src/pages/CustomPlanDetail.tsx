@@ -31,6 +31,7 @@ import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import PublishPlanDialog from '@/components/PublishPlanDialog';
+import { TrainerAssignmentInfo } from '@/components/trainer/TrainerAssignmentInfo';
 import CustomPlanDayChips, { useDayLabel } from '@/components/workout/CustomPlanDayChips';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1275,6 +1276,8 @@ const CustomPlanDetail = () => {
               {t('public_workouts.published_badge')}
             </button>
           )}
+          {/* Plán od trenéra: štítek + období + plnění (jen info, trénuje se dál cokoli) */}
+          <TrainerAssignmentInfo planId={plan.id} />
           <PublishPlanDialog
             open={publishOpen}
             onOpenChange={setPublishOpen}

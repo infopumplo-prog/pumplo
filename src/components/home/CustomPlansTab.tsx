@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { cn } from '@/lib/utils';
 import type { CustomPlanSummary } from '@/hooks/useCustomPlans';
+import { useTrainerAssignments } from '@/hooks/useTrainerAssignments';
+import { TrainerPlanBadge } from '@/components/trainer/TrainerPlanBadge';
 
 const CustomPlansTab = () => {
   const navigate = useNavigate();
@@ -27,6 +29,12 @@ const CustomPlansTab = () => {
   const { plans, isLoading, createPlan, deletePlan } = useCustomPlans();
   const { pausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const { user } = useAuth();
+  // Plán od trenéra jen označíme — co klient trénuje, si vybírá sám (26. 10. 2026).
+  const { assignmentForPlan, trainerNameFor } = useTrainerAssignments();
+  const trainerBadge = (planId: string, variant: 'default' | 'hero') => {
+    const assignment = assignmentForPlan(planId);
+    return assignment ? <TrainerPlanBadge trainerName={trainerNameFor(assignment)} variant={variant} className="mt-1" /> : null;
+  };
   const dayLabel = useDayLabel();
   const dayWord = (n: number) => n === 1 ? t('messages.day_singular') : n < 5 ? t('messages.day_2_4') : t('messages.day_plural');
 
@@ -173,6 +181,7 @@ const CustomPlansTab = () => {
                       ? t('custom_plan.hero_days_cycle', { count: plan.day_count, days: dayWord(plan.day_count) })
                       : `${plan.day_count} ${dayWord(plan.day_count)}`}
                   </p>
+                  {trainerBadge(plan.id, 'hero')}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -330,6 +339,7 @@ const CustomPlansTab = () => {
                           </span>
                         )}
                       </p>
+                      {trainerBadge(plan.id, 'default')}
                     </div>
                   </div>
 
