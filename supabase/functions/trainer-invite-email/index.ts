@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     });
     const { data: link, error: linkError } = await adminClient
       .from("trainer_clients")
-      .select("id, trainer_user_id, invite_email, invite_token, status")
+      .select("id, trainer_user_id, invite_email, invite_token, status, invite_email_sent_at")
       .eq("id", linkId)
       .maybeSingle();
     if (linkError) return json(req, { error: "lookup_failed" }, 500, linkError);
@@ -136,6 +136,11 @@ Deno.serve(async (req) => {
     if (link.status !== "invited") return json(req, { error: "not_invited" }, 409);
     const email = typeof link.invite_email === "string" ? link.invite_email.trim() : "";
     if (!email) return json(req, { error: "no_email" }, 422);
+    // Ochrana proti spamování adresáta: nejvýš jeden e-mail na pozvánku za 10 minut.
+    const lastSent = link.invite_email_sent_at ? Date.parse(link.invite_email_sent_at) : NaN;
+    if (!Number.isNaN(lastSent) && Date.now() - lastSent < 10 * 60 * 1000) {
+      return json(req, { error: "rate_limited" }, 429);
+    }
 
     const { data: nameData, error: nameError } = await adminClient.rpc("trainer_display_name", { p_user: user.id });
     if (nameError) console.error("trainer_display_name failed:", nameError);
@@ -144,6 +149,11 @@ Deno.serve(async (req) => {
     const link_url = `${APP_INVITE_BASE}${link.invite_token}`;
     const sent = await sendInviteEmail(email, trainerName, link_url);
     if (!sent) return json(req, { error: "email_failed" }, 502);
+    const { error: stampError } = await adminClient
+      .from("trainer_clients")
+      .update({ invite_email_sent_at: new Date().toISOString() })
+      .eq("id", link.id);
+    if (stampError) console.error("invite_email_sent_at update failed:", stampError);
 
     return json(req, { ok: true });
   } catch (error) {
