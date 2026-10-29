@@ -97,8 +97,10 @@
 
     <!-- Health Connect (@capgo/capacitor-health): appka jen ČTE váhu. Plugin do manifestu přidává
          oprávnění pro všechny typy dat; Google Play vyžaduje zdůvodnit každé deklarované zdravotní
-         oprávnění, proto necháváme jen READ_WEIGHT a zbytek z merge odstraňujeme. -->
+         oprávnění, proto necháváme jen READ_WEIGHT (+ READ_HEALTH_DATA_HISTORY) a zbytek z merge odstraňujeme. -->
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+    <!-- Čtení starších záznamů než 30 dní (první import 90 dní zpět). -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
     <uses-permission android:name="android.permission.health.READ_STEPS" tools:node="remove" />
     <uses-permission android:name="android.permission.health.WRITE_STEPS" tools:node="remove" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" tools:node="remove" />

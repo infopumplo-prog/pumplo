@@ -226,7 +226,8 @@ export const connectHealth = async (userId: string): Promise<HealthConnectResult
   if (availability !== 'available') return { ok: false, reason: availability };
   try {
     const Health = await loadHealth();
-    const status = await Health.requestAuthorization({ read: ['weight'], write: [] });
+    // Android: READ_HEALTH_DATA_HISTORY → první import i starší než 30 dní (90 dní, David 29. 10.); iOS volbu ignoruje.
+    const status = await Health.requestAuthorization({ read: ['weight'], write: [], requestHistoryAccess: true });
     // iOS záměrně neprozradí, zda čtení povolil — zamítnutí se projeví jen prázdnými daty.
     if (platform === 'android' && !status.readAuthorized.includes('weight')) return { ok: false, reason: 'denied' };
   } catch (e) {
