@@ -14,6 +14,7 @@ import { deleteWeightEntry, upsertWeightEntry, type BodyWeightEntry, type Weight
 import { toLocalIsoDate } from '@/lib/trainerClient';
 import { parseWeightKg, sanitizeWeightInput } from '@/lib/weeklyCheckin';
 import FullscreenSheet from './FullscreenSheet';
+import HealthConnectCard from './HealthConnectCard';
 
 const sourceKey: Record<WeightSource, string> = {
   manual: 'trainer_client.weight_source_manual',
@@ -103,6 +104,8 @@ const BodyWeightSheet = ({ open, onClose }: { open: boolean; onClose: () => void
             {t('trainer_client.weight_save')}
           </Button>
         </div>
+
+        <HealthConnectCard />
 
         {weights.isLoading ? (
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />

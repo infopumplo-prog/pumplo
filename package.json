@@ -30,6 +30,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "@capgo/capacitor-app-tracking-transparency": "^8.1.16",
     "@capgo/capacitor-facebook-analytics": "^8.1.13",
+    "@capgo/capacitor-health": "8.11.12",
     "@capgo/capacitor-install-referrer": "^8.1.11",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@dnd-kit/core": "^6.3.1",

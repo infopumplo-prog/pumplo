@@ -509,7 +509,8 @@ RETURNS TABLE (
   ORDER BY c.status = 'active' DESC, COALESCE(c.accepted_at, c.created_at) DESC
 $$;
 
--- Moji trenéři (pro klienta v appce).
+-- Moji trenéři (pro klienta v appce). DROP kvůli opakovatelnosti — 20261030 mění návratový typ.
+DROP FUNCTION IF EXISTS public.my_trainers();
 CREATE OR REPLACE FUNCTION public.my_trainers()
 RETURNS TABLE (link_id uuid, trainer_user_id uuid, trainer_name text, trainer_photo text, accepted_at timestamptz)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$

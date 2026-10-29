@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { acceptTrainerInvite } from "@/lib/trainerApi";
 import { clearPendingTrainerInvite, mapAcceptInviteError, readPendingTrainerInvite } from "@/lib/trainerInvite";
 import { useInvalidateTrainerData } from "@/hooks/useTrainerAssignments";
+import { HealthWeightAutoSync } from "@/hooks/useHealthWeights";
 import { clearTrainerLightSignup, notifyProfileChanged, readTrainerLightSignup, shouldApplyLightRegistration } from "@/lib/trainerClientOnboarding";
 import { applyLightRegistration } from "@/lib/lightRegistration";
 
@@ -453,6 +454,7 @@ const AppRoutes = () => {
     <ScreenViewTracker />
     <PendingSharedPlanResume />
     <PendingTrainerInviteAccept />
+    <HealthWeightAutoSync />
     <PendingOnboardingFinisher />
     <PendingTrainerLightSignup />
     <SaveQueueFlusher />
