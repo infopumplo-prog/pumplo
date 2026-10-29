@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
-import { Loader2, UserRound } from 'lucide-react';
+import { ChevronRight, ClipboardCheck, Loader2, Scale, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -15,8 +15,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useInvalidateTrainerData, useTrainerAssignments } from '@/hooks/useTrainerAssignments';
-import { endTrainerCooperation } from '@/lib/trainerApi';
+import { Switch } from '@/components/ui/switch';
+import { endTrainerCooperation, setWeightSharing } from '@/lib/trainerApi';
 import type { MyTrainer } from '@/lib/trainerClient';
+import { hasCheckinConfigured } from '@/lib/trainerCheckin';
+import { useTrainerCheckins } from '@/hooks/useTrainerCheckins';
+import TrainerCheckinSheet from '@/components/trainer/TrainerCheckinSheet';
+import BodyWeightSheet from '@/components/trainer/BodyWeightSheet';
 
 // Nastavení → „Můj trenér“: s kým klient spolupracuje + ukončení spolupráce. Bez trenéra se neukazuje.
 export const MyTrainersSection = () => {
@@ -25,8 +30,32 @@ export const MyTrainersSection = () => {
   const invalidateTrainerData = useInvalidateTrainerData();
   const [confirming, setConfirming] = useState<MyTrainer | null>(null);
   const [endingId, setEndingId] = useState<string | null>(null);
+  const { byLink } = useTrainerCheckins();
+  const [checkinFor, setCheckinFor] = useState<MyTrainer | null>(null);
+  const [weightOpen, setWeightOpen] = useState(false);
+  // Optimistický stav přepínače sdílení vah (link_id → hodnota), než se načte znovu my_trainers.
+  const [shareOverride, setShareOverride] = useState<Record<string, boolean>>({});
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
   if (trainers.length === 0) return null;
+  // Sloupce z migrace 20261030 — bez nich se váhy ani sdílení neukazují.
+  const weightsAvailable = trainers.some((tr) => typeof tr.client_shares_weight === 'boolean');
+
+  const handleShare = async (trainer: MyTrainer, share: boolean) => {
+    if (sharingId) return;
+    setSharingId(trainer.link_id);
+    setShareOverride((prev) => ({ ...prev, [trainer.link_id]: share }));
+    const { error } = await setWeightSharing(trainer.link_id, share);
+    setSharingId(null);
+    if (error) {
+      console.warn('[trainer] weight sharing not saved', error);
+      setShareOverride((prev) => ({ ...prev, [trainer.link_id]: !share }));
+      toast.error(t('trainer_client.share_weight_error'));
+      return;
+    }
+    toast.success(share ? t('trainer_client.share_weight_on') : t('trainer_client.share_weight_off'));
+    await invalidateTrainerData();
+  };
 
   const locale = i18n.language === 'en' ? enUS : cs;
   const since = (iso: string | null) => {
@@ -57,7 +86,8 @@ export const MyTrainersSection = () => {
         {trainers.map((trainer) => {
           const sinceText = since(trainer.accepted_at);
           return (
-            <div key={trainer.link_id} className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
+            <div key={trainer.link_id} className="divide-y divide-border">
+            <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
               <span className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
                 {trainer.trainer_photo ? (
                   <img src={trainer.trainer_photo} alt="" className="w-full h-full object-cover" />
@@ -80,10 +110,51 @@ export const MyTrainersSection = () => {
                 {endingId === trainer.link_id ? <Loader2 className="w-4 h-4 animate-spin" /> : t('trainer_client.end_cooperation')}
               </button>
             </div>
+            {(hasCheckinConfigured(trainer) || (byLink.get(trainer.link_id)?.length ?? 0) > 0) && (
+              <button
+                type="button"
+                onClick={() => setCheckinFor(trainer)}
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[52px] text-left active:bg-muted/60"
+              >
+                <ClipboardCheck className="w-5 h-5 text-primary shrink-0" />
+                <span className="flex-1 text-[15px]">{t('trainer_client.ci_open_from_settings')}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+            {typeof trainer.client_shares_weight === 'boolean' && (
+              <div className="flex items-start gap-3 px-4 py-3">
+                <span className="flex-1 min-w-0">
+                  <label htmlFor={`share-weight-${trainer.link_id}`} className="block text-[15px] font-medium">{t('trainer_client.share_weight_label')}</label>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{t('trainer_client.share_weight_desc')}</span>
+                </span>
+                <Switch
+                  id={`share-weight-${trainer.link_id}`}
+                  checked={shareOverride[trainer.link_id] ?? trainer.client_shares_weight}
+                  disabled={sharingId === trainer.link_id}
+                  onCheckedChange={(v) => void handleShare(trainer, v)}
+                  className="mt-1"
+                />
+              </div>
+            )}
+            </div>
           );
         })}
+        {weightsAvailable && (
+          <button
+            type="button"
+            onClick={() => setWeightOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 min-h-[52px] text-left active:bg-muted/60"
+          >
+            <Scale className="w-5 h-5 text-primary shrink-0" />
+            <span className="flex-1 text-[15px]">{t('trainer_client.weight_title')}</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
       <p className="px-4 mt-2 text-xs text-muted-foreground">{t('trainer_client.my_trainer_footer')}</p>
+
+      <TrainerCheckinSheet trainer={checkinFor} open={!!checkinFor} onClose={() => setCheckinFor(null)} initialTab="history" />
+      <BodyWeightSheet open={weightOpen} onClose={() => setWeightOpen(false)} />
 
       <AlertDialog open={!!confirming} onOpenChange={(open) => { if (!open && !endingId) setConfirming(null); }}>
         <AlertDialogContent>

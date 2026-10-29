@@ -30,6 +30,7 @@ import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import CustomPlansTab from '@/components/home/CustomPlansTab';
 import TrainerQuestionnaireCard from '@/components/home/TrainerQuestionnaireCard';
+import TrainerCheckinCard from '@/components/home/TrainerCheckinCard';
 import {
   defaultHomeTab,
   dismissQuestionnaireCard,
@@ -410,6 +411,11 @@ const Home = () => {
         {profile && !profile.onboarding_completed && <div className="px-6">
             <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
           </div>}
+
+        {/* Check-in pro trenéra (jen klienti trenéra s nastaveným check-inem) */}
+        <div className="px-6 pt-2 space-y-3 empty:hidden">
+          <TrainerCheckinCard />
+        </div>
 
         {/* Tab Switch */}
         {isOnboardingComplete && (

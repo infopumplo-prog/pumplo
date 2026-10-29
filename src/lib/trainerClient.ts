@@ -20,6 +20,10 @@ export interface MyTrainer {
   trainer_name: string;
   trainer_photo: string | null;
   accepted_at: string | null;
+  /** Od migrace 20261030 — bez ní chybí (undefined) a check-in/váhy se neukazují. */
+  checkin_form_id?: string | null;
+  checkin_weekday?: number | null;
+  client_shares_weight?: boolean;
 }
 
 export const NOTE_MAX_LENGTH = 1000;

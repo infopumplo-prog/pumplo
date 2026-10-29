@@ -130,3 +130,13 @@ export const fetchSessionTrainerFeedback = async (sessionIds: string[]): Promise
   }
   return result;
 };
+
+/** Souhlas klienta: trenér vidí jeho váhy (vč. dat ze Zdraví). Migrace 20261030. */
+export const setWeightSharing = async (linkId: string, share: boolean): Promise<{ error: { message: string } | null }> => {
+  try {
+    const { error } = await untyped().rpc('set_weight_sharing', { p_link: linkId, p_share: share });
+    return { error: error ? asError(error) : null };
+  } catch (e) {
+    return { error: asError(e) };
+  }
+};
