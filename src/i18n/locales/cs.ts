@@ -3147,6 +3147,22 @@ const cs = {
   'trainer_client.qcard_pumplo_tab_desc': 'Plány od trenéra najdeš v záložce Vlastní trénink. Když vyplníš krátký dotazník (2 min), Pumplo ti sestaví i vlastní plán na míru.',
   'trainer_client.qcard_cta': 'Vyplnit dotazník',
   'trainer_client.qcard_later': 'Teď ne',
+  'trainer_client.phase_now': 'Teď: {{phase}} · týden {{week}} z {{total}}',
+  'trainer_client.phase_now_no_total': 'Teď: {{phase}} · týden {{week}}',
+  'trainer_client.phase_week_of': 'Týden {{week}} z {{total}}',
+  'trainer_client.phase_week': 'Týden {{week}}',
+  'trainer_client.phase_weeks': 'týden {{start}}–{{end}}',
+  'trainer_client.phase_weeks_single': 'týden {{start}}',
+  'trainer_client.phase_finished': 'Plán skončil — pokračuješ podle posledního týdne.',
+  'trainer_client.phase_next_days': 'Další fáze',
+  'trainer_client.phase_prev_days': 'Předchozí fáze',
+  'trainer_client.progression_from_week': 'od {{week}}. týdne {{changes}}',
+  'trainer_client.progression_this_week': 'Tento týden: {{changes}}',
+  'trainer_client.progression_sets_1': '{{count}} série',
+  'trainer_client.progression_sets_few': '{{count}} série',
+  'trainer_client.progression_sets_many': '{{count}} sérií',
+  'trainer_client.progression_reps': '{{count}} opakování',
+  'trainer_client.progression_weight': '{{kg}} kg',
 };
 
 export default cs;

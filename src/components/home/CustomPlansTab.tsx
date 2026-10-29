@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Plus, Calendar, ChevronRight, ChevronDown, Trash2, Dumbbell, Play, Globe, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCustomPlans } from '@/hooks/useCustomPlans';
+import { nextDayForSummary, summaryActiveDayIds, useCustomPlans } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout, PausedCustomWorkoutState } from '@/hooks/usePausedCustomWorkout';
 import { cycleLetter, fetchLastCustomPlanSession, type CustomPlanSessionRow } from '@/lib/customPlanCycle';
 import { customDayName, useDayLabel } from '@/components/workout/CustomPlanDayChips';
@@ -26,11 +26,17 @@ const CustomPlansTab = () => {
     const name = customDayName(next, i18n.language);
     return name ? `${letter} · ${name}` : t('custom_plan.day_letter_name', { letter });
   };
-  const { plans, isLoading, createPlan, deletePlan } = useCustomPlans();
+  const { plans: rawPlans, isLoading, createPlan, deletePlan } = useCustomPlans();
   const { pausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const { user } = useAuth();
   // Plán od trenéra jen označíme — co klient trénuje, si vybírá sám (26. 10. 2026).
-  const { assignmentForPlan, trainerNameFor } = useTrainerAssignments();
+  const { assignmentForPlan, trainerNameFor, assignments } = useTrainerAssignments();
+  // Fáze plánu (trenér): „Další“ se točí jen mezi dny platnými tento týden; týden
+  // se počítá od startu přiřazení. Plány bez fází zůstávají beze změny.
+  const plans = useMemo(
+    () => rawPlans.map(p => (p.phases.length ? { ...p, next_day: nextDayForSummary(p, assignments) } : p)),
+    [rawPlans, assignments],
+  );
   const trainerBadge = (planId: string, variant: 'default' | 'hero') => {
     const assignment = assignmentForPlan(planId);
     return assignment ? <TrainerPlanBadge trainerName={trainerNameFor(assignment)} variant={variant} className="mt-1" /> : null;
@@ -132,7 +138,8 @@ const CustomPlansTab = () => {
   // Hero karta — vzhled stejný jako karta Pumplo plánu v Home.tsx.
   const renderHero = (plan: CustomPlanSummary) => {
     const days = plan.cycle_days;
-    const playable = days.filter(d => d.exerciseCount > 0);
+    const activeIds = summaryActiveDayIds(plan, assignments);
+    const playable = days.filter(d => d.exerciseCount > 0 && (!activeIds || activeIds.has(d.id)));
     // Víc dnů → další den kruhu; jeden den → ten jediný hratelný.
     const target = plan.next_day
       ? { id: plan.next_day.id, index: plan.next_day.index, day: plan.next_day }

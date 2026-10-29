@@ -3144,6 +3144,22 @@ const en = {
   'trainer_client.qcard_pumplo_tab_desc': "Your trainer's plans are in the Custom workout tab. Fill in a short questionnaire (2 min) and Pumplo will build a plan just for you too.",
   'trainer_client.qcard_cta': 'Fill in the questionnaire',
   'trainer_client.qcard_later': 'Not now',
+  'trainer_client.phase_now': 'Now: {{phase}} · week {{week}} of {{total}}',
+  'trainer_client.phase_now_no_total': 'Now: {{phase}} · week {{week}}',
+  'trainer_client.phase_week_of': 'Week {{week}} of {{total}}',
+  'trainer_client.phase_week': 'Week {{week}}',
+  'trainer_client.phase_weeks': 'weeks {{start}}–{{end}}',
+  'trainer_client.phase_weeks_single': 'week {{start}}',
+  'trainer_client.phase_finished': 'Plan finished — you continue with the last week.',
+  'trainer_client.phase_next_days': 'Next phases',
+  'trainer_client.phase_prev_days': 'Previous phases',
+  'trainer_client.progression_from_week': 'from week {{week}}: {{changes}}',
+  'trainer_client.progression_this_week': 'This week: {{changes}}',
+  'trainer_client.progression_sets_1': '{{count}} set',
+  'trainer_client.progression_sets_few': '{{count}} sets',
+  'trainer_client.progression_sets_many': '{{count}} sets',
+  'trainer_client.progression_reps': '{{count}} reps',
+  'trainer_client.progression_weight': '{{kg}} kg',
 };
 
 export default en;
