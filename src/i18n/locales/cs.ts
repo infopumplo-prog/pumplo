@@ -3232,6 +3232,7 @@ const cs = {
   'trainer_client.health_open_store': 'Otevřít Obchod Play',
   'trainer_client.health_unsupported': 'Na tomhle zařízení propojení není k dispozici.',
   'trainer_client.health_ios_empty_hint': 'Nic se nenačetlo? Zkontroluj ve Zdraví → profil → Aplikace → Pumplo, že je čtení váhy povolené.',
+  'trainer_client.health_android_sources_hint': 'Vážíš se přes Samsung Health, Google Fit, Withings, Xiaomi nebo jinou appku? V ní zapni synchronizaci do Health Connect a Pumplo váhy načte samo.',
   'trainer_client.share_weight_label': 'Sdílet váhu s trenérem',
   'trainer_client.share_weight_desc': 'Trenér uvidí tvoje zápisy váhy včetně dat ze Zdraví (Apple Health / Health Connect). Vypnout to můžeš kdykoli.',
   'trainer_client.share_weight_error': 'Nastavení se nepodařilo uložit. Zkus to znovu.',

@@ -3229,6 +3229,7 @@ const en = {
   'trainer_client.health_open_store': 'Open Google Play',
   'trainer_client.health_unsupported': 'Connecting is not available on this device.',
   'trainer_client.health_ios_empty_hint': 'Nothing imported? In Health → profile → Apps → Pumplo, check that reading weight is allowed.',
+  'trainer_client.health_android_sources_hint': 'Weighing in with Samsung Health, Google Fit, Withings, Xiaomi or another app? Turn on syncing to Health Connect there and Pumplo picks the weights up automatically.',
   'trainer_client.share_weight_label': 'Share weight with trainer',
   'trainer_client.share_weight_desc': 'Your trainer will see your weigh-ins, including data from Health (Apple Health / Health Connect). You can turn this off anytime.',
   'trainer_client.share_weight_error': 'The setting could not be saved. Please try again.',

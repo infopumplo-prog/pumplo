@@ -136,6 +136,10 @@ const HealthConnectCard = ({ className = '' }: { className?: string }) => {
       {emptyHint && (
         <p className="text-xs text-muted-foreground">{t('trainer_client.health_ios_empty_hint')}</p>
       )}
+      {!ios && problem !== 'unsupported' && (
+        // Android: váhy se do Health Connect dostanou ze Samsung Health, Google Fit, Withings, Xiaomi/Zepp…
+        <p className="text-xs text-muted-foreground">{t('trainer_client.health_android_sources_hint')}</p>
+      )}
     </div>
   );
 };
