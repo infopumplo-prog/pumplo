@@ -58,6 +58,7 @@ insert into custom_plans (id, user_id, name) values ('${C2PLAN}', '${C2}', 'C2 v
 insert into custom_plan_days (id, plan_id, day_number) values ('${C2DAY}', '${C2PLAN}', 1);
 
 -- ── Přístup: T1, T2 mezi prvními 10 → zdarma; doplnit do 10 zakladatelů; T3 = waitlist ──
+insert into _tp select 'founders_existing', count(*)::text from trainer_access where tier = 'founder_free';
 ${as(T1)}
 ${put('t1_tier', `select trainer_claim_access()`)}
 ${put('t1_tier_again', `select trainer_claim_access()`)}
@@ -214,7 +215,8 @@ if (mode === 'live') {
   expect('t2_tier', r.t2_tier === 'founder_free');
   expect('client_claim', err('client_claim', 'not_trainer'));
   expect('client_write_access', err('client_write_access', 'row-level security'));
-  expect('founders_before_fill', r.founders_before_fill === '2');
+  // Skuteční zakladatelé na produkci (David, Adam…) se počítají zvlášť → +2 za T1 a T2.
+  expect('founders_before_fill', Number(r.founders_before_fill) === Number(r.founders_existing) + 2 && Number(r.founders_existing) <= 8);
   expect('t3_tier', r.t3_tier === 'waitlist');
   expect('t3_status', r.t3_status === 'waitlist|10|10');
   expect('t3_invite', err('t3_invite', 'trainer_access_required'));
