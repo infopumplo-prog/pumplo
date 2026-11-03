@@ -18,6 +18,7 @@ export interface ExerciseMeta {
   name: string;
   name_en?: string | null;
   machine_id: string | null;
+  secondary_machine_id?: string | null;
   category: string | null;
   primary_role: string | null;
   primary_muscles: string[] | null;
@@ -68,6 +69,8 @@ export const adaptExercisesToGym = async (
   exercises: WorkoutExercise[],
   gymId: string,
   deps: AdaptDeps,
+  /** Vlastní vybavení (feedback 13. 10.): vyžadovat i vedlejší stroj cviku. */
+  opts: { requireSecondaryMachine?: boolean } = {},
 ): Promise<AdaptResult> => {
   const machineIds = await deps.getGymMachineIds(gymId);
   console.info('[gymAdapt] gym machines', gymId, machineIds ? machineIds.size : null);
@@ -94,7 +97,8 @@ export const adaptExercisesToGym = async (
     if (!ex.exerciseId) { result.push(ex); continue; }
     const meta = await metaOf(ex.exerciseId);
     // Bez metadat (offline bez cache) nebo bez stroje → cvik je dostupný všude
-    if (!meta || !meta.machine_id || machineIds.has(meta.machine_id)) { result.push(ex); continue; }
+    const secondaryOk = !opts.requireSecondaryMachine || !meta?.secondary_machine_id || machineIds.has(meta.secondary_machine_id);
+    if (!meta || ((!meta.machine_id || machineIds.has(meta.machine_id)) && secondaryOk)) { result.push(ex); continue; }
 
     const candidates = await deps.getAlternatives({
       primaryRole: meta.primary_role ?? ex.roleId ?? null,

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { newSessionId, saveWorkoutWriteAhead } from '@/lib/workoutSaveQueue';
+import { tr } from '@/lib/uiLocale';
 
 interface SetData {
   completed: boolean;
@@ -31,7 +32,7 @@ export const useWorkoutHistory = () => {
 
   const saveWorkoutSession = useCallback(async (data: WorkoutSessionData): Promise<string | null> => {
     if (!user) {
-      setError('Uživatel není přihlášen');
+      setError(tr('common_errors.not_logged_in'));
       return null;
     }
 
@@ -62,7 +63,7 @@ export const useWorkoutHistory = () => {
       id: sessionId,
       user_id: user.id,
       plan_id: data.planId,
-      gym_id: data.gymId,
+      gym_id: data.gymId || null, // bez posilovny (feedback 13. 10.) prázdné → null
       day_letter: data.dayLetter,
       goal_id: data.goalId,
       started_at: data.startedAt.toISOString(),
@@ -94,7 +95,7 @@ export const useWorkoutHistory = () => {
       const saved = await saveWorkoutWriteAhead({ sessionId, session: sessionInsert, setGroups });
       if (saved) return sessionId;
       // Still queued; App.tsx flushes on start and on reconnect.
-      setError('Trénink se zatím neuložil, zkusíme to znovu po připojení');
+      setError(tr('common_errors.workout_queued'));
       return null;
     } finally {
       setIsSaving(false);

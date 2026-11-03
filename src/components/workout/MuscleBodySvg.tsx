@@ -4,6 +4,7 @@
 // (src/lib/muscleGroups.ts) with 0..1 intensity blending grey → Pumplo cyan.
 import { useMemo } from 'react';
 import Model, { type IExerciseData, type Muscle } from 'react-body-highlighter';
+import { ACCENT_SWATCH, asAccent } from '@/lib/accentColors';
 
 interface MuscleBodySvgProps {
   intensities: Record<string, number>; // group key -> 0..1
@@ -26,27 +27,42 @@ const GROUP_TO_MUSCLES: Record<string, Muscle[]> = {
   calves: ['calves'],
 };
 
-// 6-step ramp: the MORE a muscle is trained, the DARKER the blue.
-// grey-blue → Pumplo cyan (mid) → deep blue (top).
+// 6-step ramp: the MORE a muscle is trained, the DARKER the colour.
+// grey → app accent (mid) → deep accent (top). Accent = the colour the person
+// picked (blue default); before 13. 10. 2026 it was always Pumplo cyan.
 const STEPS = 6;
-const CYAN: [number, number, number] = [76, 201, 255];
-const DEEP: [number, number, number] = [13, 94, 175]; // deep blue for the most-trained
-const lerp = (a: [number, number, number], b: [number, number, number], t: number) =>
-  a.map((v, k) => Math.round(v + (b[k] - v) * t)) as [number, number, number];
-const rampColor = (i: number, dark: boolean): string => {
-  const base: [number, number, number] = dark ? [148, 163, 184] : [203, 213, 225];
+type RGB = [number, number, number];
+const hslToRgb = (h: number, s: number, l: number): RGB => {
+  s /= 100; l /= 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+};
+const parseHsl = (v: string): [number, number, number] => {
+  const [h, s, l] = v.replace(/%/g, '').split(/\s+/).map(Number);
+  return [h, s, l];
+};
+const lerp = (a: RGB, b: RGB, t: number) =>
+  a.map((v, k) => Math.round(v + (b[k] - v) * t)) as RGB;
+const rampColor = (i: number, dark: boolean, mid: RGB, deep: RGB): string => {
+  const base: RGB = dark ? [148, 163, 184] : [203, 213, 225];
   const t = i / (STEPS - 1);
   const mix = t <= 0.5
-    ? lerp(base, CYAN, 0.3 + 1.4 * t)   // 0→0.5: grey → cyan
-    : lerp(CYAN, DEEP, (t - 0.5) * 2);   // 0.5→1: cyan → deep blue
+    ? lerp(base, mid, 0.3 + 1.4 * t)   // 0→0.5: grey → accent
+    : lerp(mid, deep, (t - 0.5) * 2);   // 0.5→1: accent → deep accent
   return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
 };
 
 export const MuscleBodySvg = ({ intensities, side, width = 110, dark = false }: MuscleBodySvgProps) => {
-  const highlightedColors = useMemo(
-    () => Array.from({ length: STEPS }, (_, i) => rampColor(i, dark)),
-    [dark]
-  );
+  // Z <html data-accent> (ThemeContext) — funguje i ve share kartě mimo provider.
+  const accent = asAccent(typeof document !== 'undefined' ? document.documentElement.dataset.accent : null);
+  const highlightedColors = useMemo(() => {
+    const [h, sat, l] = parseHsl(ACCENT_SWATCH[accent].light);
+    const mid = accent === 'blue' ? [76, 201, 255] as RGB : hslToRgb(h, sat, l);
+    const deep = accent === 'blue' ? [13, 94, 175] as RGB : hslToRgb(h, Math.min(100, sat + 5), Math.max(18, l * 0.55));
+    return Array.from({ length: STEPS }, (_, i) => rampColor(i, dark, mid, deep));
+  }, [dark, accent]);
 
   // One synthetic "exercise" per bucket so frequency == bucket index + 1.
   const data = useMemo(() => {

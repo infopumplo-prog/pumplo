@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { tr } from '@/lib/uiLocale';
 
 export interface AlternativeExercise {
   id: string;
@@ -106,7 +107,7 @@ export async function checkCustomPlanEquipment(
 
     return {
       exercise_id: pe.exercise_id,
-      exercise_name: ex?.name || 'Neznámý cvik',
+      exercise_name: ex?.name || tr('custom_plan.exercise_unknown'),
       exercise_name_en: ex?.name_en || null,
       primary_role: role,
       primary_muscles: muscles,

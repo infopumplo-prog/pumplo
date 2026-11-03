@@ -14,7 +14,7 @@ interface SessionInsert {
   id: string;
   user_id: string;
   plan_id: string | null;
-  gym_id: string;
+  gym_id: string | null;
   day_letter: string;
   goal_id: string;
   started_at: string;

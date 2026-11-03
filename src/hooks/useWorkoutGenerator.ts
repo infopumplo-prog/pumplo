@@ -49,6 +49,9 @@ import {
   CARDIO_ROLE_IDS,
   getCardioDurationMinutes,
 } from '@/lib/bmiUtils';
+import { sanitizeCustomEquipment } from '@/lib/customEquipment';
+import { tr } from '@/lib/uiLocale';
+import { fetchCustomEquipmentMachineIds } from '@/lib/customEquipmentData';
 
 export const useWorkoutGenerator = () => {
   const { user } = useAuth();
@@ -381,7 +384,7 @@ export const useWorkoutGenerator = () => {
    */
   const saveAtomicPlan = async (
     userId: string,
-    gymId: string,
+    gymId: string | null,
     goalId: string,
     exercises: ExerciseInsert[],
     inputsSnapshot: PlanInputsSnapshot,
@@ -425,7 +428,7 @@ export const useWorkoutGenerator = () => {
 
     if (error) {
       console.error('[WorkoutGenerator] Atomic save failed:', error);
-      throw new Error('Nepodařilo se uložit tréninkový plán: ' + error.message);
+      throw new Error(tr('generator.save_failed', { message: error.message }));
     }
 
     return data as string;
@@ -443,7 +446,7 @@ export const useWorkoutGenerator = () => {
    * - Pre-commit validation
    */
   const generateWorkoutPlan = useCallback(async (
-    gymId: string,
+    gymId: string | null,
     goalId: TrainingGoalId,
     userLevel: UserLevel,
     userInjuries: string[],
@@ -451,10 +454,12 @@ export const useWorkoutGenerator = () => {
     durationMinutes: number = 60,
     trainingDays: string[] = [],
     userHeightCm?: number | null,
-    userWeightKg?: number | null
+    userWeightKg?: number | null,
+    // Režim „bez posilovny" (feedback 13. 10.): skupiny vlastního vybavení, použijí se jen bez gymId
+    customEquipment?: string[] | null
   ): Promise<string | null> => {
     if (!user) {
-      setError('Uživatel není přihlášen');
+      setError(tr('generator.not_logged_in'));
       return null;
     }
 
@@ -488,8 +493,22 @@ export const useWorkoutGenerator = () => {
       const selectionSeed = generateSelectionSeed();
       console.log('[WorkoutGenerator v2.0] Selection seed:', selectionSeed);
 
-      // Fetch gym equipment
-      const { machineIds, equipmentTypes, machineIdToBenchConfigs } = await fetchGymEquipment(gymId);
+      // Fetch gym equipment — nebo vlastní vybavení, když člověk nechodí do žádné posilovny
+      const equipmentGroups = gymId ? [] : sanitizeCustomEquipment(customEquipment);
+      const customEquipmentMode = !gymId;
+      let machineIds: Set<string>;
+      let equipmentTypes: Set<string>;
+      let machineIdToBenchConfigs: Map<string, string[]>;
+      if (gymId) {
+        ({ machineIds, equipmentTypes, machineIdToBenchConfigs } = await fetchGymEquipment(gymId));
+      } else {
+        const resolved = await fetchCustomEquipmentMachineIds(equipmentGroups);
+        if (!resolved) throw new Error(tr('generator.equipment_load_failed'));
+        machineIds = resolved;
+        equipmentTypes = new Set<string>(['machine', 'cable', 'bodyweight', 'free_weights']);
+        machineIdToBenchConfigs = new Map();
+        console.log('[WorkoutGenerator v2.1] Custom equipment:', equipmentGroups);
+      }
       console.log('[WorkoutGenerator v2.0] Available machines:', machineIds.size);
 
       // Fetch exercise history for anti-repetition
@@ -513,7 +532,7 @@ export const useWorkoutGenerator = () => {
       // Fetch day templates by split type and goal
       const templates = await fetchDayTemplates(splitType, goalId);
       if (templates.length === 0) {
-        throw new Error(`Nenalezeny šablony pro split: ${splitType}`);
+        throw new Error(tr('generator.templates_not_found', { split: splitType }));
       }
       console.log(`[WorkoutGenerator v2.0] Found ${templates.length} day templates for split: ${splitType}`);
 
@@ -595,6 +614,7 @@ export const useWorkoutGenerator = () => {
           // Build selection context with BMI adjustments
           const context: SelectionContext = {
             gymId,
+            customEquipmentMode,
             userLevel,
             injuries: userInjuries,
             equipmentPreference,
@@ -701,6 +721,7 @@ export const useWorkoutGenerator = () => {
         equipment_preference: equipmentPreference,
         injuries: userInjuries,
         gym_id: gymId,
+        custom_equipment: customEquipmentMode ? equipmentGroups : null,
         equipment_available_snapshot: Array.from(machineIds),
         training_days: trainingDays,
         generated_at: new Date().toISOString(),
@@ -733,7 +754,7 @@ export const useWorkoutGenerator = () => {
 
     } catch (err) {
       console.error('[WorkoutGenerator v2.0] Error generating workout plan:', err);
-      setError(err instanceof Error ? err.message : 'Neznámá chyba');
+      setError(err instanceof Error ? err.message : tr('generator.unknown_error'));
       return null;
     } finally {
       setIsGenerating(false);

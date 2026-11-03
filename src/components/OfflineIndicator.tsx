@@ -61,7 +61,7 @@ const OfflineIndicator = () => {
               <button
                 type="button"
                 onClick={() => setDismissed(true)}
-                aria-label="Zavřít"
+                aria-label={t('station.close')}
                 className="ml-2 -mr-2 p-1 rounded-full hover:bg-white/20"
               >
                 <X className="w-4 h-4" />

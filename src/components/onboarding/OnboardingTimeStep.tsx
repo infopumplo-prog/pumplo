@@ -1,4 +1,5 @@
 import { Slider } from '@/components/ui/slider';
+import { IconBadge, TIME_ICONS } from '@/components/icons/appIcons';
 import { TIMES, getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
 import { UserLevel, TrainingGoalId } from '@/lib/trainingGoals';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,11 @@ const OnboardingTimeStep = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-center">{t('onboarding.time_title')}</h2>
+      <div className="text-center">
+        <h2 className="text-2xl font-bold">{t('onboarding.time_title')}</h2>
+        {/* Co se od času odvíjí — testeři nevěděli (feedback 13. 10.) */}
+        <p className="text-muted-foreground mt-2 text-sm">{t('onboarding.time_subtitle')}</p>
+      </div>
       <div className="grid grid-cols-1 gap-3">
         {TIMES.map((time) => (
           <button
@@ -45,7 +50,7 @@ const OnboardingTimeStep = ({
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{time.emoji}</span>
+              <IconBadge icon={TIME_ICONS[time.id]} active={preferredTime === time.id} size="sm" />
               <div>
                 <span className="font-medium block">{t(`onboarding.time_${time.id}`)}</span>
                 <span className="text-sm text-muted-foreground">{time.time}</span>
@@ -63,7 +68,10 @@ const OnboardingTimeStep = ({
         </div>
       ) : (
         <div className="space-y-4 pt-4">
-          <h3 className="text-lg font-semibold text-center">{t('onboarding.duration_title')}</h3>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">{t('onboarding.duration_title')}</h3>
+            <p className="text-muted-foreground mt-1 text-sm">{t('onboarding.duration_subtitle')}</p>
+          </div>
           <div className="px-4">
             <div className="text-center mb-4">
               <span className="text-4xl font-bold text-primary">{duration}</span>

@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Users, Dumbbell, Loader2, Activity, Building2, MessageSquare, SkipForward, LogOut, Layout, Target } from 'lucide-react';
-import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { useTranslation } from 'react-i18next';
 
 interface AdminLayoutProps {
@@ -99,7 +98,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
         </div>
       </nav>
-      <FeedbackButton />
     </div>
   );
 };

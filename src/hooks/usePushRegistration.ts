@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { tr } from '@/lib/uiLocale';
 
 const platform = (): 'ios' | 'android' | null => {
   const p = Capacitor.getPlatform();
@@ -52,7 +53,7 @@ export const usePushRegistration = () => {
             await FirebaseMessaging.createChannel({
               id: 'pumplo_default',
               name: 'Pumplo',
-              description: 'Připomínky tréninků a zprávy',
+              description: tr('notif_channel.default_desc'),
               importance: 4, // Importance.High -> heads-up + sound
               visibility: 1, // Visibility.Public
               vibration: true,

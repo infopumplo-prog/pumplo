@@ -292,8 +292,8 @@ const MyPlan = () => {
   if (planLoading || profileLoading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background safe-top">
-          <div className="gradient-hero px-6 pt-8 pb-6">
+        <div className="min-h-screen bg-background">
+          <div className="gradient-hero px-6 safe-top-hero pb-6">
             <div className="flex items-center gap-3">
               <Skeleton className="w-10 h-10 rounded-xl" />
               <Skeleton className="h-8 w-32" />
@@ -313,8 +313,8 @@ const MyPlan = () => {
   if (!plan) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background safe-top">
-          <div className="gradient-hero px-6 pt-8 pb-6">
+        <div className="min-h-screen bg-background">
+          <div className="gradient-hero px-6 safe-top-hero pb-6">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -364,9 +364,9 @@ const MyPlan = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-nav">
+      <div className="min-h-screen bg-background pb-nav">
         {/* Header */}
-        <div className="gradient-hero px-6 pt-8 pb-6">
+        <div className="gradient-hero px-6 safe-top-hero pb-6">
           <motion.div
             className="flex items-center gap-3"
             initial={{ opacity: 0, y: -10 }}

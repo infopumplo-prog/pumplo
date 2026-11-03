@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import davidPhoto from '@/assets/david-benisek.png';
 
 interface OnboardingTrainerWelcomeProps {
   onStart: () => void;
+  /** „Vyzkoušet bez registrace“ — prohlížení bez účtu (feedback 13. 10.). */
+  onTryAsGuest?: () => void;
 }
 
-const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) => {
+const OnboardingTrainerWelcome = ({ onStart, onTryAsGuest }: OnboardingTrainerWelcomeProps) => {
   const { t } = useTranslation();
 
   return (
@@ -27,20 +29,19 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
           />
         </div>
         <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-md">
-          <span className="text-xs font-bold text-primary-foreground">✓</span>
+          <Check className="w-4 h-4 text-primary-foreground" strokeWidth={3} aria-hidden="true" />
         </div>
       </div>
 
       <h3 className="text-xl font-bold">David Beníšek</h3>
       <p className="text-sm text-primary font-medium mt-0.5 mb-6">{t('onboarding.trainer_welcome_role')}</p>
 
+      {/* Zkrácený úvod trenéra (David 15. 10.) */}
       <div className="bg-muted/60 rounded-2xl p-5 text-left mb-8 border border-border/40 w-full">
         <p className="text-sm leading-relaxed text-foreground/90">
           "{t('onboarding.trainer_welcome_quote1')}{' '}
-          <span className="font-semibold text-foreground">{t('onboarding.trainer_welcome_emphasis')}</span>
-        </p>
-        <p className="text-sm leading-relaxed text-foreground/90 mt-3">
-          {t('onboarding.trainer_welcome_quote2')}"
+          <span className="font-semibold text-foreground">{t('onboarding.trainer_welcome_emphasis')}</span>{' '}
+          {t('onboarding.trainer_welcome_short')}"
         </p>
       </div>
 
@@ -51,6 +52,18 @@ const OnboardingTrainerWelcome = ({ onStart }: OnboardingTrainerWelcomeProps) =>
         {t('onboarding.trainer_welcome_start')}
         <ChevronRight className="w-5 h-5" />
       </Button>
+
+      {onTryAsGuest && (
+        <>
+          <Button
+            variant="outline"
+            onClick={onTryAsGuest}
+            className="w-full h-12 text-base font-semibold rounded-xl mt-3"
+          >
+            {t('guest.try_without_signup')}
+          </Button>
+        </>
+      )}
     </motion.div>
   );
 };

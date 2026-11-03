@@ -263,9 +263,19 @@ export default function MyExercisesPage() {
           <div className="space-y-2">
             {items.map(it => (
               <div key={it.id} className="flex items-center gap-3 bg-card border border-border rounded-xl p-3">
-                {it.video_path
-                  ? <video src={it.video_path} className="w-12 h-12 rounded-lg object-cover border border-border" muted />
-                  : <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground"><Video className="w-4 h-4" /></div>}
+                {/* Seznam = <img> s thumb.jpg, ne <video> — iOS u videa bez přehrání ukáže prázdný rámeček (feedback 13. 10.) */}
+                <div className="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground overflow-hidden relative shrink-0">
+                  <Video className="w-4 h-4" />
+                  {it.video_path && (
+                    <img
+                      src={getVideoThumbUrl(it.video_path) ?? undefined}
+                      alt=""
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{it.name}</p>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">

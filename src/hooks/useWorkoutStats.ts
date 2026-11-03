@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { tr } from '@/lib/uiLocale';
 
 interface WorkoutSession {
   id: string;
@@ -140,7 +141,7 @@ export const useWorkoutStats = () => {
       });
     } catch (err) {
       console.error('Error fetching workout stats:', err);
-      setError('Nepodařilo se načíst statistiky');
+      setError(tr('common_errors.stats_load_failed'));
     } finally {
       setIsLoading(false);
     }

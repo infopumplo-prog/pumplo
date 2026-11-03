@@ -50,13 +50,13 @@
 
     /* Custom gradients */
     --gradient-primary: linear-gradient(135deg, hsl(195 100% 59%), hsl(200 100% 45%));
-    --gradient-hero: linear-gradient(180deg, hsl(195 100% 59% / 0.1), transparent);
+    --gradient-hero: linear-gradient(180deg, hsl(var(--primary) / 0.1), transparent);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 20% 98%));
 
     /* Shadows */
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.05);
-    --shadow-md: 0 4px 12px hsl(195 100% 59% / 0.15);
-    --shadow-lg: 0 8px 24px hsl(195 100% 59% / 0.2);
+    --shadow-md: 0 4px 12px hsl(var(--primary) / 0.15);
+    --shadow-lg: 0 8px 24px hsl(var(--primary) / 0.2);
     --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.06);
 
     /* Navigation */
@@ -95,7 +95,7 @@
        "udělej všechno kromě loga tmavší modrou") — proto tu jen v tmavém
        režimu tlumenější, tmavší modrá. Logo je statický obrázek, tuhle
        proměnnou vůbec nepoužívá, takže zůstane beze změny. */
-    --primary: 205 65% 42%;
+    --primary: 199 95% 48%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 20% 18%;
@@ -104,7 +104,7 @@
     --muted: 220 15% 20%;
     --muted-foreground: 215 15% 65%;
 
-    --accent: 205 65% 42%;
+    --accent: 199 95% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
@@ -118,7 +118,7 @@
 
     --border: 220 15% 20%;
     --input: 220 15% 20%;
-    --ring: 205 65% 42%;
+    --ring: 199 95% 48%;
 
     /* Na tmavém podkladu by původní navy splynula s pozadím — o dva odstíny výš. */
     --action: 220 38% 32%;
@@ -128,8 +128,8 @@
        výraznější a plochy tlumenější, jinak karty splynou s pozadím. */
     /* David 24. 9.: chce přesně stejnou modrou jako písmenko dne v pilulce
        "další trénink" (to je barva --primary) — žádný přechod dvou odstínů. */
-    --gradient-primary: linear-gradient(135deg, hsl(205 65% 42%), hsl(205 65% 42%));
-    --gradient-hero: linear-gradient(180deg, hsl(205 65% 42% / 0.14), transparent);
+    --gradient-primary: linear-gradient(135deg, hsl(199 95% 48%), hsl(199 95% 42%));
+    --gradient-hero: linear-gradient(180deg, hsl(var(--primary) / 0.14), transparent);
     --gradient-card: linear-gradient(145deg, hsl(220 20% 13%), hsl(220 20% 10%));
 
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
@@ -145,6 +145,122 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* Barva appky (fáze 2 Onboarding 2.0, 8. 10. 2026). Výchozí modrá = :root/.dark výše.
+     Hodnoty musí odpovídat src/lib/accentColors.ts. */
+  [data-accent="pink"] {
+    --secondary: 330 30% 95%;
+    --secondary-foreground: 330 70% 35%;
+    --primary: 330 90% 56%;
+    --ring: 330 90% 56%;
+    --accent: 330 90% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 90% 56%), hsl(330 90% 46%));
+  }
+  .dark[data-accent="pink"] {
+    --secondary-foreground: 330 55% 72%;
+    --primary: 330 88% 55%;
+    --ring: 330 88% 55%;
+    --accent: 330 88% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(330 88% 55%), hsl(330 88% 48%));
+  }
+  [data-accent="purple"] {
+    --secondary: 262 30% 95%;
+    --secondary-foreground: 262 60% 35%;
+    --primary: 265 90% 63%;
+    --ring: 265 90% 63%;
+    --accent: 265 80% 52%;
+    --gradient-primary: linear-gradient(135deg, hsl(265 90% 63%), hsl(265 80% 52%));
+  }
+  .dark[data-accent="purple"] {
+    --secondary-foreground: 262 55% 72%;
+    --primary: 265 85% 62%;
+    --ring: 265 85% 62%;
+    --accent: 265 80% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(265 85% 62%), hsl(265 80% 55%));
+  }
+  [data-accent="green"] {
+    --secondary: 152 30% 95%;
+    --secondary-foreground: 152 60% 35%;
+    --primary: 150 80% 40%;
+    --ring: 150 80% 40%;
+    --accent: 150 80% 32%;
+    --gradient-primary: linear-gradient(135deg, hsl(150 80% 40%), hsl(150 80% 32%));
+  }
+  .dark[data-accent="green"] {
+    --secondary-foreground: 152 55% 72%;
+    --primary: 150 75% 40%;
+    --ring: 150 75% 40%;
+    --accent: 150 75% 34%;
+    --gradient-primary: linear-gradient(135deg, hsl(150 75% 40%), hsl(150 75% 34%));
+  }
+  [data-accent="orange"] {
+    --secondary: 25 30% 95%;
+    --secondary-foreground: 25 85% 35%;
+    --primary: 22 100% 52%;
+    --ring: 22 100% 52%;
+    --accent: 18 100% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(22 100% 52%), hsl(18 100% 45%));
+  }
+  .dark[data-accent="orange"] {
+    --secondary-foreground: 25 55% 72%;
+    --primary: 22 100% 52%;
+    --ring: 22 100% 52%;
+    --accent: 18 100% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(22 100% 52%), hsl(18 100% 46%));
+  }
+  [data-accent="red"] {
+    --secondary: 0 30% 95%;
+    --secondary-foreground: 0 70% 35%;
+    --primary: 0 88% 56%;
+    --ring: 0 88% 56%;
+    --accent: 0 85% 46%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 88% 56%), hsl(0 85% 46%));
+  }
+  .dark[data-accent="red"] {
+    --secondary-foreground: 0 55% 72%;
+    --primary: 0 88% 56%;
+    --ring: 0 88% 56%;
+    --accent: 0 85% 48%;
+    --gradient-primary: linear-gradient(135deg, hsl(0 88% 56%), hsl(0 85% 48%));
+  }
+
+  /* Hlavní karta plánu na Domů (Blok N + progress) ve zvolené barvě.
+     Světlý režim = barva appky, tmavý = tmavý odstín téže barvy (modrá = původní navy). */
+  :root {
+    --hero-card: 197 88% 66%;
+    --hero-card-inner: 196 67% 54%;
+  }
+  .dark {
+    --hero-card: 219 50% 13%;
+    --hero-card-inner: 219 46% 16%;
+  }
+  [data-accent]:not([data-accent="blue"]) {
+    --hero-card: var(--primary);
+    --hero-card-inner: var(--accent);
+  }
+  .dark[data-accent="pink"] { --hero-card: 330 42% 14%; --hero-card-inner: 330 38% 19%; }
+  .dark[data-accent="purple"] { --hero-card: 262 40% 15%; --hero-card-inner: 262 36% 20%; }
+  .dark[data-accent="green"] { --hero-card: 152 42% 11%; --hero-card-inner: 152 36% 15%; }
+  .dark[data-accent="orange"] { --hero-card: 25 48% 12%; --hero-card-inner: 25 42% 17%; }
+  .dark[data-accent="red"] { --hero-card: 0 45% 13%; --hero-card-inner: 0 40% 18%; }
+
+  /* Pozadí sdílecí karty po tréninku ve zvolené barvě (David 17. 10.).
+     Výchozí = původní navy (#1a1a2e → #16213e → #0f3460); karta je vždy tmavá. */
+  :root {
+    --share-bg-from: 240 28% 14%;
+    --share-bg-mid: 221 48% 17%;
+    --share-bg-to: 216 73% 22%;
+  }
+  [data-accent="pink"] { --share-bg-from: 300 28% 10%; --share-bg-mid: 325 45% 16%; --share-bg-to: 330 65% 26%; }
+  [data-accent="purple"] { --share-bg-from: 250 28% 11%; --share-bg-mid: 262 42% 17%; --share-bg-to: 265 60% 28%; }
+  [data-accent="green"] { --share-bg-from: 170 30% 8%; --share-bg-mid: 155 42% 12%; --share-bg-to: 150 60% 19%; }
+  [data-accent="orange"] { --share-bg-from: 15 28% 9%; --share-bg-mid: 22 45% 14%; --share-bg-to: 22 70% 24%; }
+  [data-accent="red"] { --share-bg-from: 350 28% 9%; --share-bg-mid: 0 45% 14%; --share-bg-to: 0 65% 24%; }
+
+  /* Hlavní akční tlačítka („Začít…“) ve zvolené barvě; modrá = původní navy. */
+  [data-accent]:not([data-accent="blue"]) {
+    --action: var(--primary);
   }
 }
 
@@ -252,6 +368,10 @@
   .safe-top {
     padding-top: env(safe-area-inset-top, 0);
   }
+  /* Modré záhlaví až pod stavovou lištu (hodiny, wifi, baterie) — místo safe-top na obalu stránky. */
+  .safe-top-hero {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+  }
 }
 
 :root {
@@ -279,4 +399,13 @@ textarea,
 [contenteditable='true'] {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* iOS: systémové tlačítko play přes video (při zablokovaném autoplay) — nestiskne se,
+   protože videa mají pointer-events:none; spouští je dotyk kamkoli (videoKeepPlaying.ts). */
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls {
+  display: none !important;
+  -webkit-appearance: none;
 }

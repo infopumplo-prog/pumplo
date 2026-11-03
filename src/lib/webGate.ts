@@ -14,7 +14,8 @@ import { Capacitor } from '@capacitor/core';
 // member auth callback. Everything else funnels straight to the app/store.
 // /plan/ a /cvik/ = sdílený trénink a cvik: musí být vidět v prohlížeči i bez appky (David 21. 9.)
 const PUBLIC_PREFIXES: string[] = ['/s/', '/plan/', '/cvik/'];
-const PUBLIC_EXACT = ['/privacy', '/terms', '/reset-password'];
+// /odhlasit = potvrzení odhlášení z e-mailů (odkaz z patičky, bez přihlášení).
+const PUBLIC_EXACT = ['/privacy', '/terms', '/reset-password', '/odhlasit'];
 
 /** True when running inside the native (Capacitor) shell. */
 export const isNativeApp = (): boolean => Capacitor.isNativePlatform();

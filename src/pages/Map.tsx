@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { Lock, X as CloseIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePublishedGyms, PublicGym } from '@/hooks/usePublishedGyms';
 import { useFavoriteGyms } from '@/hooks/useFavoriteGyms';
+import { useGuest } from '@/contexts/GuestContext';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import { trackSelectGym } from '@/lib/appAnalytics';
 import GymMap, { GymMapHandle } from '@/components/map/GymMap';
 import GymQuickPreview from '@/components/map/GymQuickPreview';
 import GymProfilePreview from '@/components/business/GymProfilePreview';
@@ -20,6 +22,7 @@ import { isGymCurrentlyOpen } from '@/lib/gymUtils';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour } from '@/components/coach/CoachTour';
 import MapPageSkeleton from '@/components/skeletons/MapPageSkeleton';
+import { ALL_EQUIPMENT, sanitizeCustomEquipment, usesCustomEquipment } from '@/lib/customEquipment';
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -100,7 +103,9 @@ const Map = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<GymFilters>(DEFAULT_FILTERS);
 
-  const isOnboardingComplete = profile?.onboarding_completed ?? false;
+  // Host (bez účtu) vidí mapu bez zámku dotazníku; výběr posilovny chce účet (feedback 13. 10.).
+  const { isGuest, requireAccount } = useGuest();
+  const isOnboardingComplete = (profile?.onboarding_completed ?? false) || isGuest;
 
   // Calculate distance for a specific gym
   const getGymDistance = useCallback((gym: PublicGym) => {
@@ -307,9 +312,11 @@ const Map = () => {
 
   const selectGym = async (gym: PublicGym | null) => {
     if (!gym) return;
+    if (isGuest) { setDetailGym(null); setQuickPreviewGym(null); requireAccount('/map'); return; }
     setIsSelectingGym(true);
     try {
-      await updateProfile({ selected_gym_id: gym.id });
+      const saved = await updateProfile({ selected_gym_id: gym.id });
+      if (saved.success) trackSelectGym(gym.id);
       toast({
         title: t('map.gym_selected'),
         description: t('map.gym_selected_desc', { name: gym.name })
@@ -327,6 +334,14 @@ const Map = () => {
       setIsSelectingGym(false);
     }
   };
+
+  // Volba „Nejsem v žádné z těchto posiloven“ z mapy pryč (David 17. 10.) — zůstává
+  // ve výběru posilovny před tréninkem; tady jen nápověda, co na mapě dělat.
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const customEquipmentActive = usesCustomEquipment(profile);
+  const customEquipmentLabel = sanitizeCustomEquipment(profile?.custom_equipment)
+    .map(id => (id === ALL_EQUIPMENT ? t('nogym.all') : t(`nogym.eq_${id}`)))
+    .join(', ');
 
   const handleSelectGymForTraining = async () => {
     if (!detailGym || !detailGymIsOpen) return;
@@ -395,9 +410,9 @@ const Map = () => {
               onClick={() => setFiltersOpen(true)}
               data-coach="map-filter"
               className="relative w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
-              aria-label="Filtrovat posilovny"
+              aria-label={t('map.aria_filter_gyms')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeFilterCount > 0 ? '#4CC9FF' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeFilterCount > 0 ? 'hsl(var(--primary))' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
               </svg>
               {activeFilterCount > 0 && (
@@ -425,9 +440,9 @@ const Map = () => {
             data-coach="map-locate"
             className="absolute right-4 z-50 w-11 h-11 bg-background rounded-full shadow-lg flex items-center justify-center border border-border hover:bg-muted active:scale-95 transition-all"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-            aria-label="Vycentrovat na mou polohu"
+            aria-label={t('map.aria_center_location')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "#4CC9FF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={userLocation ? "hsl(var(--primary))" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/>
               <path d="M12 2v4"/>
               <path d="M12 18v4"/>
@@ -436,6 +451,28 @@ const Map = () => {
             </svg>
           </button>
         </div>
+
+        {/* Co tu dělat (feedback 13. 10.) */}
+        {!quickPreviewGym && !hintDismissed && (
+          <div className="fixed left-4 right-4 z-40" style={{ bottom: 'calc(var(--bottom-nav-offset) + 8px)' }}>
+            <div className="bg-background/95 backdrop-blur rounded-2xl shadow-lg border border-border p-3">
+              <div className="flex items-start gap-2">
+                <p className="flex-1 text-sm text-foreground/90">
+                  {customEquipmentActive
+                    ? <><span className="font-semibold">{t('nogym.active_title')}.</span>{' '}{t('nogym.active_desc', { items: customEquipmentLabel })}</>
+                    : t('nogym.explainer')}
+                </p>
+                <button
+                  onClick={() => setHintDismissed(true)}
+                  className="p-1 -m-1 text-muted-foreground hover:text-foreground"
+                  aria-label={t('training.close')}
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Preview Card - positioned above bottom nav */}
         {quickPreviewGym && (

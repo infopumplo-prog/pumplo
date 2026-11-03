@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useReliableVideoPlayback } from '@/hooks/useReliableVideoPlayback';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info, Volume2, VolumeX, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Heart, SkipForward, ArrowLeft, Dumbbell, Pause, Play, Info, Volume2, VolumeX, HelpCircle } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import {
   AlertDialog,
@@ -143,16 +144,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
     return () => { cancelled = true; };
   }, [currentIndex]);
 
-  useEffect(() => {
-    if (videoRef.current && signedVideoUrl) {
-      videoRef.current.muted = true;
-      if (isPaused) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(() => {});
-      }
-    }
-  }, [isPaused, signedVideoUrl]);
+  const playVideo = useReliableVideoPlayback(videoRef, signedVideoUrl, isPaused);
 
   const handleSkipExercise = useCallback(() => {
     if (currentIndex < exercises.length - 1) {
@@ -205,6 +197,9 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               className="w-full h-full object-cover"
               style={{ pointerEvents: 'none' }}
               onError={() => setVideoError(true)}
+              onLoadedData={playVideo}
+              data-keep-playing={!isPaused ? 'true' : 'false'}
+              onCanPlay={playVideo}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-900">
@@ -219,29 +214,29 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
           <div className="absolute top-0 left-0 right-0 safe-top z-10" style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}>
             <div className="flex items-center gap-3 px-4 pt-4 pb-2">
               {currentIndex > 0 && (
-                <button onClick={handleGoPrevious} className="p-2 -ml-1 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+                <button onClick={handleGoPrevious} aria-label={t('workout.ctrl_back')} className="-ml-1 w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
               <div className="flex-1">
                 <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-blue-400 rounded-full"
+                    className="h-full bg-primary rounded-full"
                     animate={{ width: `${progressPercent}%` }}
                     transition={{ duration: 0.3 }}
                   />
                 </div>
               </div>
               <span className="text-xs text-white/70 shrink-0 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-lg">
-                💙 {currentIndex + 1}/{totalExercises}
+                <Heart className="inline-block w-3.5 h-3.5 -mt-0.5 mr-1 text-primary fill-primary" aria-hidden="true" />{currentIndex + 1}/{totalExercises}
               </span>
-              <button onClick={tour.openTour} data-coach="help-btn" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+              <button onClick={tour.openTour} data-coach="help-btn" aria-label={t('workout.ctrl_help')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                 <HelpCircle className="w-5 h-5" />
               </button>
-              <button onClick={handleSkipExercise} data-coach="cooldown-skip" className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+              <button onClick={handleSkipExercise} aria-label={t('workout.ctrl_skip')} data-coach="cooldown-skip" className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                 <SkipForward className="w-5 h-5" />
               </button>
-              <button onClick={handleToggleMute} className="p-2 rounded-xl bg-black/30 backdrop-blur-sm text-white" style={{ pointerEvents: 'auto' }}>
+              <button onClick={handleToggleMute} aria-label={t('workout.ctrl_mute')} className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/30 backdrop-blur-sm text-white relative after:absolute after:-inset-0.5 active:scale-90 active:bg-black/60 transition-transform" style={{ pointerEvents: 'auto' }}>
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
             </div>
@@ -258,7 +253,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               {currentExercise.primaryMuscles && currentExercise.primaryMuscles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {currentExercise.primaryMuscles.slice(0, 3).map(m => (
-                    <span key={m} className="text-[10px] bg-blue-400/20 text-blue-300 px-1.5 py-0.5 rounded-full">{getMuscleLabel(m, isEn)}</span>
+                    <span key={m} className="text-[10px] bg-primary/25 text-white px-1.5 py-0.5 rounded-full">{getMuscleLabel(m, isEn)}</span>
                   ))}
                 </div>
               )}
@@ -266,7 +261,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
             {hasInfo && (
               <button
                 onClick={() => setShowInfoDrawer(true)}
-                className="p-2.5 rounded-xl bg-black/40 backdrop-blur-sm text-white/70 hover:text-white transition-colors"
+                className="w-11 h-11 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur-sm text-white/80 hover:text-white active:scale-90 active:bg-black/60 transition-all"
                 style={{ pointerEvents: 'auto' }}
               >
                 <Info className="w-5 h-5" />
@@ -290,7 +285,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
               <div className="flex-1">
                 <button
                   onClick={() => setShowSkipWarning(true)}
-                  className="w-full bg-white/10 backdrop-blur-sm text-white/60 text-sm font-medium rounded-xl h-12 active:scale-95 transition-transform"
+                  className="w-full bg-white/15 backdrop-blur-sm text-white/85 text-sm font-semibold rounded-xl h-12 active:scale-95 active:bg-white/25 transition-transform"
                 >
                   {t('workout.skip_cooldown')}
                 </button>
@@ -298,8 +293,14 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
 
               {/* Pause/Play button */}
               <button
-                onClick={() => setIsPaused(!isPaused)}
-                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0 ${isPaused ? 'bg-blue-400 shadow-blue-400/40' : 'bg-white/20 backdrop-blur-sm'}`}
+                onClick={() => {
+                  // Přímo v gestu — iOS jinak play() mimo dotyk odmítne.
+                  const next = !isPaused;
+                  setIsPaused(next);
+                  const v = videoRef.current;
+                  if (v) { v.muted = true; if (next) v.pause(); else v.play().catch(() => {}); }
+                }}
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-90 active:brightness-90 transition-transform shrink-0 ${isPaused ? 'bg-primary shadow-primary/40' : 'bg-white/20 backdrop-blur-sm'}`}
               >
                 {isPaused ? <Play className="w-7 h-7 text-white ml-0.5" /> : <Pause className="w-7 h-7 text-white" />}
               </button>
@@ -342,7 +343,7 @@ export const CooldownPlayer = ({ exercises, onComplete, onSkipAll, initialIndex 
                 <p className="text-xs font-medium text-muted-foreground mb-1.5">{t('workout.muscles')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentExercise.primaryMuscles.map(m => (
-                    <span key={m} className="text-xs bg-blue-400/15 text-blue-500 px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m, isEn)}</span>
+                    <span key={m} className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full font-medium">{getMuscleLabel(m, isEn)}</span>
                   ))}
                 </div>
               </div>

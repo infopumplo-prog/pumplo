@@ -1,6 +1,6 @@
 import { DAYS } from '@/lib/onboardingTypes';
 import { useTranslation } from 'react-i18next';
-import { SPLIT_INFO, SplitType, UserLevel, getSplitFromFrequency } from '@/lib/trainingGoals';
+import { SPLIT_INFO, SplitType, UserLevel, getSplitFromFrequency, getSplitLabel } from '@/lib/trainingGoals';
 
 interface OnboardingDaysStepProps {
   value: string[];
@@ -14,7 +14,7 @@ interface OnboardingDaysStepProps {
 const SPLIT_CHOICES: (SplitType | null)[] = [null, 'full_body', 'upper_lower', 'ppl'];
 
 const OnboardingDaysStep = ({ value, onChange, splitOverride = null, onSplitOverrideChange, userLevel }: OnboardingDaysStepProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const autoSplit = getSplitFromFrequency(value.length > 0 ? value.length : 3, userLevel ?? 'beginner');
 
   const handleDayToggle = (dayId: string) => {
@@ -53,8 +53,8 @@ const OnboardingDaysStep = ({ value, onChange, splitOverride = null, onSplitOver
             {SPLIT_CHOICES.map((choice) => {
               const active = splitOverride === choice;
               const label = choice === null
-                ? t('onboarding.split_auto', { split: SPLIT_INFO[autoSplit].labelCz })
-                : SPLIT_INFO[choice].labelCz;
+                ? t('onboarding.split_auto', { split: getSplitLabel(autoSplit, i18n.language === 'en') })
+                : getSplitLabel(choice, i18n.language === 'en');
               const sub = choice === null
                 ? t('onboarding.split_auto_hint')
                 : t('onboarding.split_days_count', { n: SPLIT_INFO[choice].days.length });

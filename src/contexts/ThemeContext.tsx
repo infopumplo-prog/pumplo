@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { asAccent, type AccentColor } from '@/lib/accentColors';
 
 /** Co si uživatel zvolil. `system` sleduje nastavení telefonu i za běhu. */
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -10,6 +11,8 @@ export type ResolvedTheme = 'light' | 'dark';
 const STORAGE_KEY = 'pumplo-theme';
 // AMOLED: v tmavém režimu čistě černé pozadí (šetří baterii na OLED displejích).
 const AMOLED_KEY = 'pumplo-amoled';
+// Barva appky (fáze 2 Onboarding 2.0): uložená i v profilu, tady kvůli okamžitému startu.
+const ACCENT_KEY = 'pumplo-accent';
 
 interface ThemeContextValue {
   /** Volba uživatele včetně `system`. */
@@ -20,6 +23,9 @@ interface ThemeContextValue {
   /** AMOLED: čistě černé pozadí, uplatní se jen v tmavém režimu. */
   amoled: boolean;
   setAmoled: (on: boolean) => void;
+  /** Barva appky (Pumplo modrá, růžová, …). */
+  accent: AccentColor;
+  setAccent: (accent: AccentColor) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -39,6 +45,15 @@ const readStoredPreference = (): ThemePreference => {
 
 const readStoredAmoled = (): boolean => {
   try { return localStorage.getItem(AMOLED_KEY) === '1'; } catch { return false; }
+};
+
+const readStoredAccent = (): AccentColor => {
+  try { return asAccent(localStorage.getItem(ACCENT_KEY)); } catch { return asAccent(null); }
+};
+
+/** Barva appky = atribut na <html>; CSS [data-accent=…] přepíše --primary a odvozené proměnné. */
+const applyAccent = (accent: AccentColor) => {
+  document.documentElement.dataset.accent = accent;
 };
 
 const resolveTheme = (preference: ThemePreference): ResolvedTheme =>
@@ -70,6 +85,25 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference);
   const [theme, setTheme] = useState<ResolvedTheme>(() => resolveTheme(readStoredPreference()));
   const [amoled, setAmoledState] = useState<boolean>(readStoredAmoled);
+  // Nastavit hned (ne až v efektu), ať při startu neprobliknu výchozí modrá.
+  const [accent, setAccentState] = useState<AccentColor>(() => {
+    const initial = readStoredAccent();
+    applyAccent(initial);
+    return initial;
+  });
+
+  const setAccent = useCallback((next: AccentColor) => {
+    setAccentState(next);
+    try {
+      localStorage.setItem(ACCENT_KEY, next);
+    } catch {
+      // Volba pak nepřežije restart, ale appka běží dál.
+    }
+  }, []);
+
+  useEffect(() => {
+    applyAccent(accent);
+  }, [accent]);
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
@@ -107,7 +141,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, [preference, amoled]);
 
   return (
-    <ThemeContext.Provider value={{ preference, theme, setPreference, amoled, setAmoled }}>
+    <ThemeContext.Provider value={{ preference, theme, setPreference, amoled, setAmoled, accent, setAccent }}>
       {children}
     </ThemeContext.Provider>
   );

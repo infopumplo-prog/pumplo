@@ -32,6 +32,8 @@ import { startRestBeeps, stopRestBeeps } from '@/lib/restAudioNative';
 import { computeMuscleDistribution, muscleIntensities } from '@/lib/muscleDistribution';
 import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction } from '@/lib/watchWorkout';
 import { useWatchBridge } from '@/hooks/useWatchBridge';
+import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
+import { customDayName } from '@/components/workout/CustomPlanDayChips';
 
 interface ExerciseWithVideo {
   id: string;
@@ -142,6 +144,14 @@ const CustomWorkoutPlayer = () => {
   const [gymInstagram, setGymInstagram] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [resumeApplied, setResumeApplied] = useState(false);
+  // Poslední odcvičený den plánu → ve výběru dne štítek „Další“ (feedback 13. 10.).
+  const [lastCycleDayId, setLastCycleDayId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user || !id) return;
+    let cancelled = false;
+    fetchLastCompletedDays(user.id, [id]).then(map => { if (!cancelled) setLastCycleDayId(map[id]?.dayId ?? null); });
+    return () => { cancelled = true; };
+  }, [user, id]);
   const [exercises, setExercises] = useState<ExerciseWithVideo[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
@@ -425,15 +435,27 @@ const CustomWorkoutPlayer = () => {
     setPlayerState('select_day');
   };
 
+  // Vlastní trénink bez posilovny (David 17. 10.): žádné fitko, žádná kontrola strojů.
+  const handleSkipGym = () => {
+    try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
+    setShareCache(null);
+    setSelectedGymId(null);
+    setGymName('');
+    setGymInstagram(null);
+    setPlayerState('select_day');
+  };
+
   // Gym passed from the plan page → run the selection handler once on mount
   // (fetches gym name/IG and moves on) without showing the selector again.
   useEffect(() => {
-    if (gymParam) handleGymSelected(gymParam);
+    if (gymParam === NO_GYM_PARAM) handleSkipGym();
+    else if (gymParam) handleGymSelected(gymParam);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check exercise equipment compatibility with selected gym
   const checkEquipmentCompatibility = useCallback(async (dayExercises: ExerciseWithVideo[]) => {
-    if (!selectedGymId) return;
+    // Bez posilovny (David 17. 10.) není s čím porovnávat — rovnou cvičit.
+    if (!selectedGymId) { setPlayerState('exercise'); return; }
 
     // Get gym machines
     const { data: gymMachines } = await supabase
@@ -1200,6 +1222,11 @@ const CustomWorkoutPlayer = () => {
             if (setsError) console.error('Error saving custom workout sets:', setsError);
           }
         }
+        // Kruh dnů (feedback 13. 10.): zapamatovat odcvičený den → příště „Další: Den B“.
+        if (id && selectedDayId) {
+          recordLocalCompleted(id, selectedDayId, completedAt.toISOString());
+          if (!sessionError && session) await tagSessionWithCycleDay(session.id, id, selectedDayId);
+        }
       }
     } catch (err) {
       console.error('Error saving custom workout session:', err);
@@ -1257,6 +1284,7 @@ const CustomWorkoutPlayer = () => {
         onSelect={handleGymSelected}
         onCancel={() => navigate(-1)}
         selectedGymId={profile?.selected_gym_id}
+        onSkipGym={handleSkipGym}
       />
     );
   }
@@ -1306,21 +1334,38 @@ const CustomWorkoutPlayer = () => {
 
           <p className="text-muted-foreground mb-6">{t('workout.select_day')}</p>
           <div className="space-y-3">
-            {plan.days.filter(d => d.exercises.length > 0).map((day) => (
-              <button
-                key={day.id}
-                onClick={() => handleStartDay(day.id)}
-                className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-primary/50 transition-colors text-left"
-              >
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                  <Play className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{day.name || t('workout.day_label', { number: day.day_number })}</p>
-                  <p className="text-sm text-muted-foreground">{t('workout.exercises_count', { count: day.exercises.length })}</p>
-                </div>
-              </button>
-            ))}
+            {(() => {
+              // Pořadí kruhu A/B/C a štítek „Další“ (feedback 13. 10.).
+              const cycle = sortCycleDays(plan.days.map(d => ({ ...d, exerciseCount: d.exercises.length })));
+              const nextId = getNextCycleDay(cycle, lastCycleDayId)?.id ?? null;
+              return cycle.map((day, index) => day.exerciseCount > 0 && (
+                <button
+                  key={day.id}
+                  onClick={() => handleStartDay(day.id)}
+                  className={cn(
+                    'w-full flex items-center gap-4 p-4 bg-card border rounded-2xl hover:border-primary/50 transition-colors text-left',
+                    day.id === nextId ? 'border-primary' : 'border-border',
+                  )}
+                >
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0 text-primary font-bold text-lg">
+                    {cycleLetter(index)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">
+                      {customDayName(day, i18n.language) || t('workout.day_label', { letter: cycleLetter(index) })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{t('workout.exercises_count', { count: day.exercises.length })}</p>
+                  </div>
+                  {day.id === nextId ? (
+                    <span className="shrink-0 rounded-full bg-primary text-primary-foreground px-2.5 py-1 text-xs font-bold">
+                      {t('custom_plan.next_badge')}
+                    </span>
+                  ) : (
+                    <Play className="w-5 h-5 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+              ));
+            })()}
           </div>
         </div>
       </div>

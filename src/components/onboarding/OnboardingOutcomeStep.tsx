@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
+import { GOAL_ICONS } from '@/components/icons/appIcons';
 import { CheckCircle, Calendar, Target, Zap } from 'lucide-react';
-import { TrainingGoalId, UserLevel, resolveSplit, SplitType, SPLIT_INFO, MVP_GOALS } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, resolveSplit, SplitType, SPLIT_INFO } from '@/lib/trainingGoals';
 import { DAYS } from '@/lib/onboardingTypes';
 import { useTranslation } from 'react-i18next';
 
@@ -15,7 +16,7 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays, splitOverride }: Onb
   const { t } = useTranslation();
   const split = resolveSplit(trainingDays.length, level, splitOverride ?? null);
   const splitInfo = SPLIT_INFO[split];
-  const goalInfo = MVP_GOALS.find(g => g.id === goal);
+  const GoalIcon = GOAL_ICONS[goal] ?? Target;
   const dayLabels = DAYS.filter(d => trainingDays.includes(d.id)).map(d => t(`onboarding.days_${d.id}`));
 
   const levelKey = level === 'beginner' ? 'onboarding.level_beginner'
@@ -69,11 +70,11 @@ const OnboardingOutcomeStep = ({ goal, level, trainingDays, splitOverride }: Onb
           className="flex items-center gap-4 bg-card border border-border rounded-2xl px-4 py-3.5 text-left"
         >
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Target className="w-5 h-5 text-primary" />
+            <GoalIcon className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t('onboarding.goal_label')}</p>
-            <p className="font-semibold text-sm">{t(`onboarding.goal_${goal}_label`)} {goalInfo?.emoji}</p>
+            <p className="font-semibold text-sm">{t(`onboarding.goal_${goal}_label`)}</p>
             <p className="text-xs text-muted-foreground">{t(levelKey)}</p>
           </div>
         </motion.div>

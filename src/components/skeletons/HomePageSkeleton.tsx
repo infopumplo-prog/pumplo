@@ -2,9 +2,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const HomePageSkeleton = () => {
   return (
-    <div className="min-h-screen bg-background safe-top">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="gradient-hero px-6 pt-8 pb-6">
+      <div className="gradient-hero px-6 safe-top-hero pb-6">
         <div className="flex flex-col">
           <div className="flex justify-center mb-4">
             <Skeleton className="w-20 h-20 rounded-full" />

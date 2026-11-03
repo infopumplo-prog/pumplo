@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { homeTourOrder, readPlanChoice, type HomeTourStep } from '@/lib/onboardingFlow';
 import { useTranslation } from 'react-i18next';
-import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,13 +13,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePausedWorkout } from '@/hooks/usePausedWorkout';
 import { usePausedCustomWorkout } from '@/hooks/usePausedCustomWorkout';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star } from 'lucide-react';
-import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import { BicepsFlexed, Shield, ChevronRight, ChevronDown, Calendar, Sparkles, Check, MapPin, Dumbbell, TrendingUp, Target, Building2, Trophy, Flame, Zap, Star, Play } from 'lucide-react';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
 import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
-import ThemeIntroSheet from '@/components/ThemeIntroSheet';
+import ThemeIntroSheet, { hasSeenThemeIntro } from '@/components/ThemeIntroSheet';
+import EmailConsentSheet from '@/components/home/EmailConsentSheet';
+import { readEmailConsentAsked, shouldAskEmailConsent } from '@/lib/emailConsent';
 import HomePageSkeleton from '@/components/skeletons/HomePageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +29,9 @@ import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import CustomPlansTab from '@/components/home/CustomPlansTab';
+import { FirstWorkoutCard } from '@/components/home/FirstWorkoutCard';
+import { useGuest } from '@/contexts/GuestContext';
+import { shouldShowFirstWorkoutCard, readFirstWorkoutDismissed, dismissFirstWorkoutForToday, localDateKey } from '@/lib/firstWorkoutCard';
 import { getTrainingSchedule, getCurrentWeekday } from '@/lib/workoutRotation';
 import { cn } from '@/lib/utils';
 interface TrainingGoalWithDuration {
@@ -54,7 +58,8 @@ const Home = () => {
   const { user } = useAuth();
   const {
     profile,
-    isLoading
+    isLoading,
+    updateProfile
   } = useUserProfile();
   const {
     isAdmin,
@@ -74,6 +79,8 @@ const Home = () => {
   const { pausedWorkout, clearPausedWorkout } = usePausedWorkout();
   const { sessions: recentSessions } = useWorkoutHistory();
   const [historyExpanded, setHistoryExpanded] = useState(true);
+  // Hlavní tlačítko Začít trénink — karta dalšího tréninku na něj „klikne“ (feedback 13. 10.).
+  const startButtonRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { pausedWorkout: pausedCustomWorkout } = usePausedCustomWorkout();
   const location = useLocation();
@@ -84,6 +91,26 @@ const Home = () => {
     pausedCustomWorkout ? 'custom' : favoriteTab
   );
 
+  // Swipe mezi záložkami: vodorovný tah aspoň 60 px, výrazně víc do strany než nahoru/dolů.
+  // Tah začatý ve vodorovně scrollovaném prvku (karusel) záložku nepřepíná.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onTabSwipeStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-swipe], .overflow-x-auto, input, textarea')) { swipeStart.current = null; return; }
+    const t0 = e.touches[0];
+    swipeStart.current = { x: t0.clientX, y: t0.clientY };
+  };
+  const onTabSwipeEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start) return;
+    const t1 = e.changedTouches[0];
+    const dx = t1.clientX - start.x;
+    const dy = t1.clientY - start.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    setActiveTab(dx < 0 ? 'custom' : 'pumplo');
+  };
+
   const toggleFavorite = (tab: 'pumplo' | 'custom') => {
     setFavoriteTab(tab);
     localStorage.setItem('pumplo_favorite_tab', tab);
@@ -93,18 +120,65 @@ const Home = () => {
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
   const isOnboardingComplete = profile?.onboarding_completed ?? false;
+  const { isGuest } = useGuest();
+
+  // Karta „Tvůj první trénink“ (David 18. 10.): počet DOKONČENÝCH tréninků.
+  // useWorkoutStats počítá i nedokončené, proto vlastní lehký dotaz (jen count).
+  const [completedCount, setCompletedCount] = useState<number | null>(null);
+  const [completedCountLoaded, setCompletedCountLoaded] = useState(false);
+  const [firstCardDismissedOn, setFirstCardDismissedOn] = useState<string | null>(() => readFirstWorkoutDismissed());
+  const completedCountUser = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user) { setCompletedCount(null); setCompletedCountLoaded(true); return; }
+    // Jiný účet = zahodit starý počet, ať karta/prohlídka nebliknou podle cizích dat (review PR #42).
+    if (completedCountUser.current !== user.id) {
+      completedCountUser.current = user.id;
+      setCompletedCount(null);
+      setCompletedCountLoaded(false);
+    }
+    let cancelled = false;
+    (async () => {
+      const { count, error } = await supabase
+        .from('workout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('completed_at', 'is', null);
+      if (cancelled) return;
+      // Při chybě kartu raději neukážeme (null) — stávajícím by se ukázala omylem.
+      setCompletedCount(error ? null : count ?? 0);
+      setCompletedCountLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, location.key]);
+
+  const firstCardActive = isOnboardingComplete && shouldShowFirstWorkoutCard({
+    isSignedIn: !!user,
+    isGuest,
+    hasActivePlan: !!plan,
+    completedWorkouts: completedCount,
+    hasPausedWorkout: !!pausedWorkout,
+    dismissedOn: firstCardDismissedOn,
+    today: localDateKey(),
+  });
 
   // First-run guided tour (also replayable via the ? button).
-  const tour = useCoachTour('home', 2, isOnboardingComplete);
-  const tourSteps = [
-    { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
-    { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t('tour.home.tab_pumplo_body') },
-    { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t('tour.home.tab_custom_body') },
-    { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
-    { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
-    { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
-    { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
-  ];
+  // Verze 3: krok o sekci Tréninky + pořadí podle volby plánu z dotazníku (David 8. 10.).
+  // Karta prvního tréninku má přednost (David 18. 10.): prohlídka by ji zastínila
+  // overlayem, takže se automaticky spustí až po jejím odložení nebo po 1. tréninku.
+  // Čeká i na plán a počet tréninků, aby nevyskočila dřív, než se rozhodne o kartě.
+  const tour = useCoachTour('home', 3, isOnboardingComplete && !planLoading && completedCountLoaded && !firstCardActive);
+  const planChoice = readPlanChoice();
+  const homeSteps: Record<HomeTourStep, { target: string; title: string; body: string }> = {
+    today: { target: '[data-coach="home-today"]', title: t('tour.home.today_title'), body: t('tour.home.today_body') },
+    tab_pumplo: { target: '[data-coach="home-tab-pumplo"]', title: t('tour.home.tab_pumplo_title'), body: t(planChoice === 'pumplo' || !planChoice ? 'tour.home.tab_pumplo_body' : 'tour.home.tab_pumplo_body_backup') },
+    tab_custom: { target: '[data-coach="home-tab-custom"]', title: t('tour.home.tab_custom_title'), body: t(planChoice === 'own' ? 'tour.home.tab_custom_body_own' : planChoice === 'trainer' ? 'tour.home.tab_custom_body_trainer' : 'tour.home.tab_custom_body') },
+    nav_workouts: { target: '[data-coach="nav-workouts"]', title: t('tour.home.nav_workouts_title'), body: t(planChoice === 'trainer' ? 'tour.home.nav_workouts_body_trainer' : 'tour.home.nav_workouts_body') },
+    nav_map: { target: '[data-coach="nav-map"]', title: t('tour.home.nav_map_title'), body: t('tour.home.nav_map_body') },
+    nav_stats: { target: '[data-coach="nav-stats"]', title: t('tour.home.nav_stats_title'), body: t('tour.home.nav_stats_body') },
+    nav_profile: { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
+    help: { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
+  };
+  const tourSteps = homeTourOrder(planChoice).map((k) => homeSteps[k]);
 
   // Refetch plan and stats when navigating back to Home
   useEffect(() => {
@@ -169,6 +243,36 @@ const Home = () => {
     sunday: t('myplan.day_sunday'),
   };
   const today = getCurrentWeekday();
+  const dayNameMap: Record<string, string> = {
+    'Horní tělo': t('workout.day_upper_body'),
+    'Dolní tělo': t('workout.day_lower_body'),
+    'Celotělový': t('workout.day_full_body'),
+    'Celé tělo': t('workout.day_full_body'),
+    'Celé tělo A': `${t('workout.day_full_body')} A`,
+    'Celé tělo B': `${t('workout.day_full_body')} B`,
+    'Push': 'Push',
+    'Pull': 'Pull',
+    'Nožní den': t('workout.day_leg_day'),
+    'Nohy': t('workout.day_leg_day'),
+    'Tlak': 'Push',
+    'Tah': 'Pull',
+    'Odpočinek': t('workout.rest') || 'Rest',
+  };
+
+  // Název a délka prvního tréninku pro kartu „Tvůj plán je hotový“ (David 18. 10.).
+  const firstDayLetter = schedule[0]?.dayLetter;
+  const firstDayTemplate = plan?.allDays?.find(d => d.dayLetter === firstDayLetter);
+  const firstWorkoutName = (dayNameMap[firstDayTemplate?.dayName || ''] ?? firstDayTemplate?.dayName)
+    || (firstDayLetter ? t('workout.day_label', { letter: firstDayLetter }) : t('home.today_workout'));
+  const firstWorkoutMinutes = plan?.inputsSnapshot?.duration_minutes || profile?.training_duration_minutes || null;
+  const startButton = (
+    <StartWorkoutButton
+      selectedGymId={profile?.selected_gym_id || null}
+      customEquipment={profile?.custom_equipment ?? null}
+      label={firstCardActive ? t('home.first_workout_start') : undefined}
+      className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
+    />
+  );
 
   // Week progress calculation - use actual training days per week
   const trainingDaysCount = plan?.trainingDays?.length || trainingDays.length || 3;
@@ -216,7 +320,7 @@ const Home = () => {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 px-6 pt-8 pb-4">
+        <div className="relative z-10 px-6 pt-4 pb-2">
           <motion.div className="flex flex-col items-center" initial={{
           opacity: 0,
           y: -10
@@ -226,21 +330,8 @@ const Home = () => {
         }} transition={{
           duration: 0.4
         }}>
-            <div className="flex items-center justify-center relative w-full">
-              <img src={pumploWordmark} alt="Pumplo" className="h-8 object-contain" />
-              <div className="absolute right-0 flex gap-1">
-                {(['cs', 'en'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => changeLanguage(lang)}
-                    className={`text-xl transition-all ${i18n.language === lang ? 'opacity-100 scale-110' : 'opacity-35 hover:opacity-60'}`}
-                  >
-                    {lang === 'cs' ? '🇨🇿' : '🇬🇧'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-3">
+            {/* Logo a vlajky jazyka pryč — jazyk je v Nastavení (David 17. 10.) */}
+            <div className="flex items-center gap-3">
               {role === 'business' && <Link to="/business" className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium">
                   <Building2 className="w-4 h-4" />
                   {t('home.business')}
@@ -270,7 +361,8 @@ const Home = () => {
             <p className="text-muted-foreground text-sm">{t('home.hello')}</p>
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold text-foreground">
-                {profile?.first_name || t('home.athlete')} 💪
+                {profile?.first_name || t('home.athlete')}
+                <BicepsFlexed className="inline-block w-7 h-7 ml-2 -mt-1 text-primary" aria-hidden="true" />
               </h1>
               <CoachHelpButton onClick={tour.openTour} />
             </div>
@@ -290,18 +382,18 @@ const Home = () => {
                 onClick={() => setActiveTab('pumplo')}
                 data-coach="home-tab-pumplo"
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
                   activeTab === 'pumplo'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
-                <Zap className="w-3.5 h-3.5" />
+                <Zap className="w-4 h-4" />
                 {t('home.pumplo_workout')}
                 {activeTab === 'pumplo' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('pumplo'); }}
-                    className="ml-1"
+                    className="ml-0.5 -my-2 p-2 rounded-full active:bg-muted"
                   >
                     <Star className={cn(
                       "w-3.5 h-3.5 transition-colors",
@@ -316,18 +408,18 @@ const Home = () => {
                 onClick={() => setActiveTab('custom')}
                 data-coach="home-tab-custom"
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-[3px] -mb-px",
+                  "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
                   activeTab === 'custom'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
               >
-                <Dumbbell className="w-3.5 h-3.5" />
+                <Dumbbell className="w-4 h-4" />
                 {t('home.custom_workout')}
                 {activeTab === 'custom' && (
                   <span
                     onClick={(e) => { e.stopPropagation(); toggleFavorite('custom'); }}
-                    className="ml-1"
+                    className="ml-0.5 -my-2 p-2 rounded-full active:bg-muted"
                   >
                     <Star className={cn(
                       "w-3.5 h-3.5 transition-colors",
@@ -342,8 +434,15 @@ const Home = () => {
           </div>
         )}
 
-        {/* Content */}
-        <motion.div className="px-6 py-6 space-y-6" variants={containerVariants} initial="hidden" animate="visible">
+        {/* Content — swipe vlevo/vpravo přepíná Pumplo trénink ↔ Vlastní trénink (David 17. 10.) */}
+        <motion.div
+          className="px-6 py-6 space-y-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          onTouchStart={onTabSwipeStart}
+          onTouchEnd={onTabSwipeEnd}
+        >
           {/* Custom Plans Tab */}
           {isOnboardingComplete && activeTab === 'custom' && (
             <motion.div variants={itemVariants}>
@@ -377,9 +476,26 @@ const Home = () => {
                   </div>
                 </motion.div>) : plan ? (/* Active plan */
           <>
+                  {/* Tvůj první trénink — nahoře, dokud nemá 1. dokončený trénink (David 18. 10.).
+                      Start tlačítko (a ref pro kartu dalšího tréninku) se sem přesune. */}
+                  {firstCardActive && (
+                    <motion.div variants={itemVariants} ref={startButtonRef}>
+                      <FirstWorkoutCard
+                        workoutName={firstWorkoutName}
+                        minutes={firstWorkoutMinutes}
+                        startButton={startButton}
+                        onDismiss={() => {
+                          const day = localDateKey();
+                          dismissFirstWorkoutForToday(day);
+                          setFirstCardDismissedOn(day);
+                        }}
+                      />
+                    </motion.div>
+                  )}
+
                   {/* Week Progress Card with next training inside */}
                   <motion.div variants={itemVariants} data-coach="home-today">
-                    <div className="rounded-3xl bg-[#5BC8F5] dark:bg-[#101B30] overflow-hidden">
+                    <div className="rounded-3xl bg-[hsl(var(--hero-card))] overflow-hidden">
                       {/* Top section: Week + Goal */}
                       <div className="p-6 pb-4">
                         <div className="flex items-center justify-between mb-1">
@@ -392,14 +508,14 @@ const Home = () => {
                               <p className="text-white/70 text-sm">{t(`onboarding.goal_${plan.goalId}_label`)}</p>
                             </div>
                           </div>
-                          <button onClick={() => navigate('/profile/plan')} className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                          <button onClick={() => navigate('/profile/plan')} aria-label={t('profile.my_plan')} className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-white hover:bg-white/30 active:bg-white/40 active:scale-95 transition-all">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
 
                       {/* Progress section */}
-                      <div className="mx-3 mb-3 rounded-2xl bg-[#3AAED8] dark:bg-[#16233C] px-4 py-3">
+                      <div className="mx-3 mb-3 rounded-2xl bg-[hsl(var(--hero-card-inner))] px-4 py-3">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-white/80 text-xs font-medium">{t('home.total_progress')}</span>
                           <span className="text-white font-bold text-sm">{Math.round(weekProgress)}%</span>
@@ -428,28 +544,15 @@ const Home = () => {
                           const isCompletedToday = wasCompletedToday;
                           const completedLetter = (completedTodayDayLetter || '').replace('_EXT', '');
                           const dayTemplate = plan.allDays?.find(d => d.dayLetter === (isCompletedToday ? completedLetter : nextDay.dayLetter));
-                          const dayNameMap: Record<string, string> = {
-                            'Horní tělo': t('workout.day_upper_body'),
-                            'Dolní tělo': t('workout.day_lower_body'),
-                            'Celotělový': t('workout.day_full_body'),
-                            'Celé tělo': t('workout.day_full_body'),
-                            'Celé tělo A': `${t('workout.day_full_body')} A`,
-                            'Celé tělo B': `${t('workout.day_full_body')} B`,
-                            'Push': 'Push',
-                            'Pull': 'Pull',
-                            'Nožní den': t('workout.day_leg_day'),
-                            'Nohy': t('workout.day_leg_day'),
-                            'Tlak': 'Push',
-                            'Tah': 'Pull',
-                            'Odpočinek': t('workout.rest') || 'Rest',
-                          };
                           const dayTypeName = dayNameMap[dayTemplate?.dayName || ''] ?? (dayTemplate?.dayName || '');
 
                           if (isCompletedToday) {
                             const durationMin = todayWorkoutSession ? Math.round((todayWorkoutSession.duration_seconds || 0) / 60) : 0;
                             return (
                               <div
-                                className="rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                                // Ve zvolené barvě appky místo zelené, ta v kartě křičela (David 17. 10.).
+                                className="rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                                style={{ background: 'var(--gradient-primary)' }}
                                 onClick={() => setShowSessionDetail(true)}
                               >
                                 <div className="flex items-center gap-3 mb-3">
@@ -488,19 +591,32 @@ const Home = () => {
                             );
                           }
 
+                          // Karta dalšího tréninku vypadala klikací, ale nic nedělala → spustí trénink
+                          // přes hlavní tlačítko (výběr posilovny zůstává v něm). Feedback 13. 10.
+                          const canStart = !wasCompletedToday && !pausedWorkout;
                           return (
-                            <div className="flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[#16233C]">
-                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-[#5BC8F5] dark:bg-white/10 text-white dark:text-primary">
+                            <div
+                              role={canStart ? 'button' : undefined}
+                              tabIndex={canStart ? 0 : undefined}
+                              onClick={canStart ? () => startButtonRef.current?.querySelector('button')?.click() : undefined}
+                              className={cn('flex items-center gap-3 rounded-2xl p-3.5 bg-white dark:bg-[hsl(var(--hero-card-inner))]', canStart && 'cursor-pointer active:scale-[0.98] active:brightness-95 transition-transform')}
+                            >
+                              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-primary text-white">
                                 {nextDay.dayLetter}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm text-[#1F2937] dark:text-white">
-                                  {dayTypeName || `Den ${nextDay.dayLetter}`}
+                                  {dayTypeName || t('workout.day_label', { letter: nextDay.dayLetter })}
                                 </p>
                                 <p className="text-xs text-[#6B7280] dark:text-white/60">
                                   {isCurrentDay ? t('home.today_workout') : t('home.next_workout')}
                                 </p>
                               </div>
+                              {canStart && (
+                                <span className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+                                </span>
+                              )}
                             </div>
                           );
                         })()}
@@ -510,11 +626,11 @@ const Home = () => {
                       {recentSessions.length > 0 && (
                         <div className="mx-3 mb-3">
                           <div className="flex items-center gap-3 mb-2 px-1">
-                            <button onClick={() => setHistoryExpanded(v => !v)} className="flex items-center gap-1.5 text-white font-semibold text-sm">
+                            <button onClick={() => setHistoryExpanded(v => !v)} className="min-h-[44px] flex items-center gap-1.5 text-white font-semibold text-sm active:opacity-70">
                               {t('home.last_workout')}
                               <ChevronDown className={cn('w-4 h-4 transition-transform', historyExpanded && 'rotate-180')} />
                             </button>
-                            <Link to="/profile/history?tab=sessions" className="text-white/80 text-xs font-medium flex items-center gap-0.5">
+                            <Link to="/profile/history?tab=sessions" className="min-h-[44px] px-2 -mr-2 text-white/80 text-xs font-medium flex items-center gap-0.5 active:opacity-70">
                               {t('home.see_all')} <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
@@ -536,7 +652,7 @@ const Home = () => {
                             const letter = last.day_letter.replace('_EXT', '');
                             const tmpl = plan?.allDays?.find(d => d.dayLetter === letter);
                             const title = nameMap[tmpl?.dayName || ''] ?? (tmpl?.dayName || undefined);
-                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed />;
+                            return <WorkoutSessionCard key={last.id} session={last} variant="compact" titleOverride={title} hideStatsWhenCollapsed className="dark:bg-[hsl(var(--hero-card-inner))] dark:border-white/10" />;
                           })()}
                         </div>
                       )}
@@ -557,12 +673,9 @@ const Home = () => {
                   )}
 
                   {/* Start Training Button */}
-                  {plan && !wasCompletedToday && !pausedWorkout && (
-                    <motion.div variants={itemVariants}>
-                      <StartWorkoutButton
-                        selectedGymId={profile?.selected_gym_id || null}
-                        className="[&_button]:bg-action [&_button]:h-16 [&_button]:text-lg [&_button]:font-bold [&_button]:shadow-lg [&_button]:shadow-action/25"
-                      />
+                  {plan && !wasCompletedToday && !pausedWorkout && !firstCardActive && (
+                    <motion.div variants={itemVariants} ref={startButtonRef}>
+                      {startButton}
                     </motion.div>
                   )}
 
@@ -595,9 +708,23 @@ const Home = () => {
           </DrawerContent>
         </Drawer>
       </div>
-      <CoachTour screenId="home" version={2} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
+      <CoachTour screenId="home" version={3} steps={tourSteps} open={tour.open} onClose={tour.closeTour} />
       {/* Až po onboardingu a mimo prohlídku — dva panely přes sebe by zahltily. */}
-      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen} />
+      {/* Ani přes kartu prvního tréninku (David 18. 10.). */}
+      <ThemeIntroSheet enabled={isOnboardingComplete && !tour.open && !onboardingOpen && completedCountLoaded && !firstCardActive} />
+      {/* Souhlas s tipy e-mailem (F1 19. 10.): jednou, jen na Home, ne s rozpracovaným tréninkem ani přes jiné panely. */}
+      <EmailConsentSheet
+        enabled={shouldAskEmailConsent({
+          isSignedIn: !!user,
+          isGuest,
+          onboardingCompleted: isOnboardingComplete,
+          profile,
+          hasPausedWorkout: !!pausedWorkout || !!pausedCustomWorkout,
+          otherOverlayActive: tour.open || onboardingOpen || !completedCountLoaded || firstCardActive || !hasSeenThemeIntro(),
+          alreadyAsked: readEmailConsentAsked(),
+        })}
+        onAnswer={updateProfile}
+      />
     </PageTransition>;
 };
 export default Home;

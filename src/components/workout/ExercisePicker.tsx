@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, X, Check, Dumbbell, ChevronDown, Maximize2, Share2 } from 'lucide-react';
+import { Search, X, Check, Dumbbell, ChevronDown, Maximize2, Share2, LayoutGrid } from 'lucide-react';
+import FocusImageTile from '@/components/FocusImageTile';
 import { Share } from '@capacitor/share';
 import { toast } from 'sonner';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
@@ -362,7 +363,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
           <button
             onClick={() => setSheet('equipment')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
+              'flex items-center gap-1.5 min-h-[44px] px-3.5 py-2 rounded-xl text-sm font-medium border transition-all active:scale-95',
               equipment ? 'bg-primary text-white border-primary' : 'bg-card border-border text-foreground'
             )}
           >
@@ -372,7 +373,7 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
           <button
             onClick={() => setSheet('muscle')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
+              'flex items-center gap-1.5 min-h-[44px] px-3.5 py-2 rounded-xl text-sm font-medium border transition-all active:scale-95',
               muscle ? 'bg-primary text-white border-primary' : 'bg-card border-border text-foreground'
             )}
           >
@@ -557,11 +558,27 @@ const ExercisePicker = ({ open, onClose, onAdd, gymId }: ExercisePickerProps) =>
                       onSelect={(k) => { setEquipment(k); setSheet(null); }}
                     />
                   ) : (
-                    <FilterOptionList
-                      options={[{ key: null, label: t('exercise_picker.all') }, ...muscleGroups.map(g => ({ key: g.key, label: t(`custom_plan.muscle_${g.key}`) }))]}
-                      selected={muscle}
-                      onSelect={(k) => { setMuscle(k); setSheet(null); }}
-                    />
+                    // Partie jako dlaždice s fotkou (feedback 13. 10.); mapa fotek v src/lib/focusImages.ts.
+                    <div className="grid grid-cols-3 gap-2.5 px-4 pt-1">
+                      <FocusImageTile
+                        focusKey={null}
+                        label={t('exercise_picker.all')}
+                        selected={muscle === null}
+                        fallbackIcon={LayoutGrid}
+                        onClick={() => { setMuscle(null); setSheet(null); }}
+                        className="h-24"
+                      />
+                      {muscleGroups.map(g => (
+                        <FocusImageTile
+                          key={g.key}
+                          focusKey={g.key}
+                          label={t(`custom_plan.muscle_${g.key}`)}
+                          selected={muscle === g.key}
+                          onClick={() => { setMuscle(g.key); setSheet(null); }}
+                          className="h-24"
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </motion.div>

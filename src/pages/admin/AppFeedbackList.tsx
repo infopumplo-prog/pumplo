@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from './AdminLayout';
+import WeeklyCheckinsSection from './WeeklyCheckinsSection';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Star, MessageSquare, Calendar, ThumbsUp, AlertCircle, Lightbulb } from 'lucide-react';
@@ -180,6 +181,9 @@ export default function AppFeedbackList() {
             ))}
           </div>
         )}
+
+        {/* Týdenní check-iny (feedback 13. 10.) */}
+        <WeeklyCheckinsSection />
       </div>
     </AdminLayout>
   );

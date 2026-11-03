@@ -10,13 +10,19 @@ import { GymSelector } from '@/components/workout/GymSelector';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
 import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { tr } from '@/lib/uiLocale';
 
 interface StartWorkoutButtonProps {
   selectedGymId: string | null;
+  /** Vlastní vybavení z profilu (feedback 13. 10.) */
+  customEquipment?: string[] | null;
   className?: string;
+  /** Vlastní text tlačítka — karta prvního tréninku (David 18. 10.); výchozí „Začít trénink“. */
+  label?: string;
 }
 
-export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutButtonProps) => {
+export const StartWorkoutButton = ({ selectedGymId, customEquipment, className, label }: StartWorkoutButtonProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -39,13 +45,31 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
       .single();
 
     if (gymData?.latitude != null && gymData?.longitude != null) {
-      setGymName(gymData.name || 'Posilovna');
+      setGymName(gymData.name || tr('training.gym_fallback'));
       setGymLat(gymData.latitude);
       setGymLng(gymData.longitude);
       setShowLocationGate(true);
     } else {
       navigate(`/training?start=true&gymId=${gymId}`);
     }
+  };
+
+  // „Nejsem v žádné z těchto posiloven" (feedback 13. 10.): uložit vybavení, posilovnu zrušit
+  const handleNoGymSelected = async (equipment: string[]) => {
+    unlockAudio();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ selected_gym_id: null, custom_equipment: equipment })
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('[StartWorkoutButton] custom equipment not saved', error);
+      toast.error(t('nogym.save_error'));
+      return;
+    }
+    setShowGymSelector(false);
+    navigate(`/training?start=true&nogym=${encodeURIComponent(equipment.join(','))}`);
   };
 
   return (
@@ -55,6 +79,8 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
           onSelect={handleGymSelected}
           onCancel={() => setShowGymSelector(false)}
           selectedGymId={selectedGymId}
+          onSelectNoGym={handleNoGymSelected}
+          customEquipment={customEquipment}
         />,
         document.body
       )}
@@ -85,7 +111,7 @@ export const StartWorkoutButton = ({ selectedGymId, className }: StartWorkoutBut
           className="w-full gap-3 h-14 text-base font-semibold rounded-2xl"
         >
           <Play className="w-5 h-5" />
-          {t('home.start_workout')}
+          {label ?? t('home.start_workout')}
         </Button>
       </motion.div>
     </>

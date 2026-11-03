@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
+import { sanitizeCustomEquipment, usesCustomEquipment } from '@/lib/customEquipment';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/i18n';
 import i18n from '@/i18n';
@@ -9,11 +10,14 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { trackTutorialComplete } from '@/lib/appAnalytics';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TrainingGoalId, UserLevel, getSplitFromFrequency, resolveSplit, SplitType, SPLIT_INFO, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
+import { TrainingGoalId, UserLevel, getSplitFromFrequency, resolveSplit, SplitType, getSplitLabel, PRIMARY_GOAL_TO_TRAINING_GOAL } from '@/lib/trainingGoals';
 import { getBeginnerDefaultDuration } from '@/lib/onboardingTypes';
+import { hasRealInjuries as hasRealInjuriesIn } from '@/lib/trainersDirectory';
+import { loadInjuryNote, saveInjuryNote as saveInjuryNoteToDb } from '@/lib/injuryNote';
 import {
   OnboardingGoalStep,
   OnboardingLevelStep,
@@ -33,7 +37,7 @@ interface OnboardingDrawerProps {
 }
 
 const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { profile, updateProfile, refetch } = useUserProfile();
   const { generateWorkoutPlan, isGenerating } = useWorkoutGenerator();
   const { toast } = useToast();
@@ -52,6 +56,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
   const [injuries, setInjuries] = useState<string[]>([]);
+  // Nepovinný popis zranění (feedback 13. 10.) — mazatelný smazáním textu nebo volbou „bez zranění“.
+  const [injuryNote, setInjuryNote] = useState('');
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
   const [hasJustCompleted, setHasJustCompleted] = useState(false);
@@ -121,6 +127,30 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     return true;
   };
 
+  // Popis zranění žije mimo profil (tabulka user_injury_notes, majitel posilovny ho
+  // nevidí — 17. 10.); načte se při otevření dotazníku, ukládá se zvlášť a neblokujícně.
+  // undefined = ještě nenačteno / načtení selhalo → při ukládání vždy zapsat (i smazání).
+  const [savedInjuryNote, setSavedInjuryNote] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!open || !profile?.user_id) return;
+    let cancelled = false;
+    setSavedInjuryNote(undefined);
+    loadInjuryNote(profile.user_id).then((note) => {
+      if (cancelled) return;
+      setSavedInjuryNote(note);
+      // Nepřepsat, co uživatel mezitím napsal (pomalá síť — review PR #38).
+      if (note) setInjuryNote((current) => current || note);
+    });
+    return () => { cancelled = true; };
+  }, [open, profile?.user_id]);
+
+  const saveInjuryNote = async () => {
+    if (!profile?.user_id) return;
+    const next = hasRealInjuriesIn(injuries) ? injuryNote.trim() || null : null;
+    if (savedInjuryNote !== undefined && next === savedInjuryNote) return;
+    if (await saveInjuryNoteToDb(profile.user_id, next)) setSavedInjuryNote(next);
+  };
+
   const handleClose = async (isOpen: boolean) => {
     // Během generování plánu nejde drawer zavřít (reload/zavření by nechalo rozdělaný stav)
     if (isCompleting) return;
@@ -150,22 +180,23 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         current_step: currentStep,
         onboarding_completed: allValid,
       });
+      if (saveResult.success) await saveInjuryNote();
 
       await refetch();
 
       if (!saveResult.success) {
         // Save actually failed — do NOT pretend it worked (dřív se ukázalo „Uloženo" i při chybě)
         toast({
-          title: 'Uložení selhalo',
-          description: saveResult.error || 'Změny se nepodařilo uložit. Zkus to prosím znovu.',
+          title: t('onboarding_drawer.save_failed_title'),
+          description: saveResult.error || t('onboarding_drawer.save_failed_desc'),
           variant: 'destructive'
         });
       } else if (allValid) {
-        toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
+        toast({ title: t('onboarding_drawer.saved_title'), description: t('onboarding_drawer.saved_desc') });
       } else {
         toast({
-          title: 'Dotazník není kompletní',
-          description: 'Některé odpovědi chybí. Vyplň je prosím.',
+          title: t('onboarding_drawer.incomplete_title'),
+          description: t('onboarding_drawer.incomplete_desc'),
           variant: 'destructive'
         });
       }
@@ -204,8 +235,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const handleComplete = async () => {
     if (!areAllStepsValid()) {
       toast({ 
-        title: 'Chybí odpovědi', 
-        description: 'Prosím vyplň všechny povinné otázky.',
+        title: t('onboarding_drawer.missing_title'),
+        description: t('onboarding_drawer.missing_desc'),
         variant: 'destructive'
       });
       return;
@@ -247,12 +278,13 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       // Zápis selhal — nepokračovat na generování a přiznat chybu (dřív se tvářilo jako úspěch)
       setHasJustCompleted(false);
       toast({
-        title: 'Uložení selhalo',
-        description: saveResult.error || 'Změny se nepodařilo uložit. Zkus to prosím znovu.',
+        title: t('onboarding_drawer.save_failed_title'),
+        description: saveResult.error || t('onboarding_drawer.save_failed_desc'),
         variant: 'destructive'
       });
       return;
     }
+    await saveInjuryNote();
 
     // 2. Check if there's an active workout plan
     const { data: userData } = await supabase.auth.getUser();
@@ -289,7 +321,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     const shouldRegenerate = Boolean(primaryGoal) && (!activePlan || planInputsChanged);
 
     if (shouldRegenerate && primaryGoal) {
-      const selectedGymId = profile?.selected_gym_id;
+      const selectedGymId = profile?.selected_gym_id ?? null;
+      // Bez posilovny generujeme z vlastního vybavení (feedback 13. 10.)
+      const ownEquipment = usesCustomEquipment(profile) ? sanitizeCustomEquipment(profile?.custom_equipment) : [];
 
       // Deaktivovat stávající plán — stavíme nový
       if (activePlan?.id) {
@@ -299,7 +333,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           .eq('id', activePlan.id);
       }
 
-      if (selectedGymId && userLevel) {
+      if ((selectedGymId || ownEquipment.length > 0) && userLevel) {
         const planId = await generateWorkoutPlan(
           selectedGymId,
           primaryGoal,
@@ -308,6 +342,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           equipmentPreference,
           trainingDuration,
           trainingDays, // předat dny → generátor odvodí správný split (dřív chybělo)
+          undefined,
+          undefined,
+          selectedGymId ? null : ownEquipment,
         );
 
         if (planId) {
@@ -359,15 +396,16 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
 
       await updateProfile({ onboarding_completed: true });
       toast({
-        title: 'Hotovo!',
-        description: activePlan ? 'Plán byl přegenerován podle nových odpovědí.' : 'Tvůj profil byl vytvořen a plán připraven!',
+        title: t('onboarding_drawer.done_title'),
+        description: activePlan ? t('onboarding_drawer.plan_regenerated') : t('onboarding_drawer.profile_created'),
       });
     } else {
       // Nic plán-ovlivňujícího se nezměnilo (nebo chybí cíl) — stávající plán necháme být
       await updateProfile({ onboarding_completed: true });
-      toast({ title: 'Uloženo', description: 'Změny byly uloženy.' });
+      toast({ title: t('onboarding_drawer.saved_title'), description: t('onboarding_drawer.saved_desc') });
     }
 
+    if (!isEditMode) trackTutorialComplete();
     onOpenChange(false);
     } finally {
       setIsCompleting(false);
@@ -426,7 +464,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           />
         );
       case 5:
-        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} />;
+        return <OnboardingInjuriesStep value={injuries} onChange={setInjuries} note={injuryNote} onNoteChange={setInjuryNote} />;
       case 6:
         return <OnboardingEquipmentStep value={equipmentPreference} onChange={setEquipmentPreference} />;
       default:
@@ -437,7 +475,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   return (
     <Drawer open={open} onOpenChange={handleClose}>
       <DrawerContent className="max-h-[90vh] flex flex-col">
-        <DrawerTitle className="sr-only">Dotazník</DrawerTitle>
+        <DrawerTitle className="sr-only">{t('onboarding_drawer.title')}</DrawerTitle>
         
         {/* Header with progress */}
         <div className="px-4 pt-4 pb-4 border-b border-border">
@@ -471,8 +509,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
             <div className="mt-3 p-2 bg-muted rounded-lg text-center">
               <span className="text-xs text-muted-foreground">
                 Split: <span className="font-medium text-foreground">
-                  {SPLIT_INFO[resolveSplit(trainingDays.length, userLevel, splitOverride)].labelCz}
-                </span> {splitOverride ? '(ručně zvoleno)' : `(podle počtu dnů: ${trainingDays.length})`}
+                  {getSplitLabel(resolveSplit(trainingDays.length, userLevel, splitOverride), i18n.language === 'en')}
+                </span> {splitOverride ? t('onboarding_drawer.split_manual') : t('onboarding_drawer.split_by_days', { n: trainingDays.length })}
               </span>
             </div>
           )}
@@ -511,7 +549,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               className="flex-1"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              Zpět
+              {t('auth.back')}
             </Button>
             {currentStep < TOTAL_STEPS - 1 ? (
               <Button 
@@ -519,7 +557,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
                 className="flex-1"
                 disabled={!isEditMode && !isStepValid()}
               >
-                Další
+                {t('auth.next')}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
@@ -531,7 +569,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
                 {isCompleting ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('onboarding.generating_button')}</>
                 ) : (
-                  isEditMode ? 'Uložit' : 'Dokončit'
+                  isEditMode ? t('onboarding_drawer.save') : t('onboarding_drawer.finish')
                 )}
               </Button>
             )}

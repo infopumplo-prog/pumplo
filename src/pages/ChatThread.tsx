@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Dumbbell, X } from 'lucide-react';
+import { ArrowLeft, Megaphone, Send, Dumbbell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDirectMessages, DirectMessage } from '@/hooks/useDirectMessages';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import WorkoutMessageCard from '@/components/messages/WorkoutMessageCard';
 import PageTransition from '@/components/PageTransition';
 import { useTranslation } from 'react-i18next';
+import { uiLocaleTag } from '@/lib/uiLocale';
 
 interface TrainerInfo {
   name: string;
@@ -22,7 +23,7 @@ interface TrainerInfo {
 
 function formatMessageTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(uiLocaleTag(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDateSeparator(dateStr: string, today: string, yesterday: string): string {
@@ -33,7 +34,7 @@ function formatDateSeparator(dateStr: string, today: string, yesterday: string):
 
   if (diffDays === 0) return today;
   if (diffDays === 1) return yesterday;
-  return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString(uiLocaleTag(), { day: 'numeric', month: 'long' });
 }
 
 function shouldShowTimestamp(current: DirectMessage, previous: DirectMessage | null): boolean {
@@ -241,7 +242,7 @@ const ChatThread = () => {
           {announcement && (
             <div className="mb-4 rounded-xl border border-border bg-muted/50 p-3">
               <p className="text-xs font-semibold text-muted-foreground mb-1">
-                📢 {announcement.title}
+                <Megaphone className="inline-block w-3.5 h-3.5 -mt-0.5 mr-1" aria-hidden="true" />{announcement.title}
               </p>
               <p className="text-sm whitespace-pre-wrap">{announcement.body}</p>
             </div>
@@ -288,7 +289,7 @@ const ChatThread = () => {
                     >
                       {msg.message_type === 'workout_share' && msg.metadata?.share_token ? (
                         <WorkoutMessageCard
-                          planName={msg.metadata.plan_name || 'Trénink'}
+                          planName={msg.metadata.plan_name || t('training.workout_fallback')}
                           shareToken={msg.metadata.share_token}
                           dayCount={msg.metadata.day_count}
                           exerciseCount={msg.metadata.exercise_count}

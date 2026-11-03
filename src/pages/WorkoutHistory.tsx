@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
-import { format, subDays, startOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, subDays, startOfWeek } from 'date-fns';
+import { HISTORY_RANGES, buildHistoryBuckets, type HistoryRange } from '@/lib/historyRanges';
 import { cs, enUS } from 'date-fns/locale';
 
 const WorkoutHistory = () => {
@@ -33,20 +34,24 @@ const WorkoutHistory = () => {
   const initialTab = searchParams.get('tab') ?? 'overview';
   const [activeTab, setActiveTab] = useState(['overview', 'exercises', 'sessions'].includes(initialTab) ? initialTab : 'overview');
 
-  // Prepare chart data for last 7 days
-  const last7Days = eachDayOfInterval({
-    start: subDays(new Date(), 6),
-    end: new Date(),
-  });
-
-  const weeklyChartData = last7Days.map(day => {
-    const daySession = sessions.find(s => isSameDay(new Date(s.started_at), day));
+  // Rozsah grafů: dřív jen posledních 7 dní (feedback 13. 10.). Den / týden / měsíc
+  // podle délky rozsahu; v jednom sloupci se sčítají všechny tréninky (dřív jen první v daný den).
+  const [range, setRange] = useState<HistoryRange>('7d');
+  const weeklyChartData = buildHistoryBuckets(range, new Date()).map(b => {
+    const inBucket = sessions.filter(s => {
+      const d = new Date(s.started_at);
+      return d >= b.start && d < b.end;
+    });
     return {
-      day: format(day, 'EEE', { locale: dateLocale }),
-      date: format(day, 'd.M.'),
-      duration: daySession ? Math.round((daySession.duration_seconds || 0) / 60) : 0,
-      weight: daySession ? (daySession.total_weight_kg || 0) : 0,
-      sets: daySession ? (daySession.total_sets || 0) : 0,
+      day: b.unit === 'day' && range === '7d'
+        ? format(b.start, 'EEE', { locale: dateLocale })
+        : b.unit === 'month'
+          ? format(b.start, 'LLL', { locale: dateLocale })
+          : format(b.start, 'd.M.'),
+      date: format(b.start, 'd.M.'),
+      duration: Math.round(inBucket.reduce((acc, s) => acc + (s.duration_seconds || 0), 0) / 60),
+      weight: inBucket.reduce((acc, s) => acc + (s.total_weight_kg || 0), 0),
+      sets: inBucket.reduce((acc, s) => acc + (s.total_sets || 0), 0),
     };
   });
 
@@ -94,9 +99,9 @@ const WorkoutHistory = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background safe-top pb-8">
+      <div className="min-h-screen bg-background pb-8">
         {/* Header */}
-        <div className="gradient-hero px-6 pt-8 pb-6">
+        <div className="gradient-hero px-6 safe-top-hero pb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/profile')}
@@ -168,8 +173,21 @@ const WorkoutHistory = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      {t('history.last_7_days')}
+                      {t(`history.range_title_${range}`)}
                     </CardTitle>
+                    <div className="flex gap-1.5 pt-2">
+                      {HISTORY_RANGES.map(r => (
+                        <button
+                          key={r}
+                          onClick={() => setRange(r)}
+                          className={`px-3 h-8 rounded-full text-xs font-semibold transition-colors ${
+                            range === r ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {t(`history.range_${r}`)}
+                        </button>
+                      ))}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ChartContainer config={chartConfig} className="h-[200px] w-full">

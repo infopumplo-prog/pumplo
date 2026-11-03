@@ -49,22 +49,42 @@ export const CoachTour = ({ screenId, steps, version = 1, open, onClose }: {
 
   const step = steps[idx];
 
+  // Změří cíl bez posouvání stránky — volá se opakovaně (scroll, resize, změny layoutu).
   const measure = useCallback(() => {
     if (!step?.target) { setRect(null); return; }
     const el = document.querySelector(step.target);
     if (!el) { setRect(null); return; }
-    el.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
     const r = el.getBoundingClientRect();
     setRect({ top: r.top - PAD, left: Math.max(r.left - PAD, 4), width: Math.min(r.width + PAD * 2, window.innerWidth - 8), height: r.height + PAD * 2 });
   }, [step]);
 
+  // Rámečky neseděly (feedback 13. 10.): měřilo se jednou po 120 ms, ještě během
+  // příjezdové animace obrazovky a před dočtením obsahu. Teď: posunout cíl do středu
+  // jednou za krok, pak měřit každý snímek ~700 ms a dál při scrollu/resize/změně layoutu.
   useEffect(() => {
     if (!open) return;
-    // Wait a beat for layout/scroll to settle before measuring the target.
-    measureTimer.current = window.setTimeout(measure, 120);
+    const el = step?.target ? document.querySelector(step.target) : null;
+    el?.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
+    let raf = 0;
+    const until = performance.now() + 700;
+    const loop = () => { measure(); if (performance.now() < until) raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    measureTimer.current = window.setTimeout(measure, 1200);
     window.addEventListener('resize', measure);
-    return () => { clearTimeout(measureTimer.current); window.removeEventListener('resize', measure); };
-  }, [open, idx, measure]);
+    window.addEventListener('scroll', measure, true);
+    window.visualViewport?.addEventListener('resize', measure);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null;
+    ro?.observe(document.body);
+    if (el) ro?.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(measureTimer.current);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+      window.visualViewport?.removeEventListener('resize', measure);
+      ro?.disconnect();
+    };
+  }, [open, idx, measure, step]);
 
   const finish = useCallback(() => {
     markTourSeen(screenId, version);
@@ -87,14 +107,12 @@ export const CoachTour = ({ screenId, steps, version = 1, open, onClose }: {
       >
         {/* Spotlight hole: transparent div whose huge shadow dims the rest. */}
         {rect ? (
-          <motion.div
-            layout
-            transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+          <div
             className="absolute rounded-2xl pointer-events-none"
             style={{
               top: rect.top, left: rect.left, width: rect.width, height: rect.height,
               boxShadow: '0 0 0 9999px rgba(4, 10, 24, 0.78)',
-              border: '2px solid rgba(91, 200, 245, 0.9)',
+              border: '2px solid hsl(var(--primary))',
             }}
           />
         ) : (

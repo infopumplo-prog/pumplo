@@ -57,10 +57,10 @@ export const DAYS = [
 ];
 
 export const TIMES = [
-  { id: 'morning', label: 'Ráno', time: '6:00 - 10:00', emoji: '🌅' },
-  { id: 'late_morning', label: 'Dopoledne', time: '10:00 - 14:00', emoji: '☀️' },
-  { id: 'afternoon', label: 'Odpoledne', time: '14:00 - 18:00', emoji: '🌤️' },
-  { id: 'evening', label: 'Večer', time: '18:00 - 22:00', emoji: '🌙' },
+  { id: 'morning', label: 'Ráno', time: '6:00 - 10:00' },
+  { id: 'late_morning', label: 'Dopoledne', time: '10:00 - 14:00' },
+  { id: 'afternoon', label: 'Odpoledne', time: '14:00 - 18:00' },
+  { id: 'evening', label: 'Večer', time: '18:00 - 22:00' },
 ];
 
 export const INJURIES_LIST = [
@@ -84,9 +84,9 @@ export const EQUIPMENT_OPTIONS = [
 ];
 
 export const USER_LEVEL_OPTIONS = [
-  { id: 'beginner' as UserLevel, label: 'Začátečník', description: 'Méně než 1 rok tréninku', emoji: '🌱' },
-  { id: 'intermediate' as UserLevel, label: 'Pokročilý', description: '1-3 roky pravidelného tréninku', emoji: '💪' },
-  { id: 'advanced' as UserLevel, label: 'Expert', description: 'Více než 3 roky intenzivního tréninku', emoji: '🔥' },
+  { id: 'beginner' as UserLevel, label: 'Začátečník', description: 'Méně než 1 rok tréninku' },
+  { id: 'intermediate' as UserLevel, label: 'Pokročilý', description: '1-3 roky pravidelného tréninku' },
+  { id: 'advanced' as UserLevel, label: 'Expert', description: 'Více než 3 roky intenzivního tréninku' },
 ];
 
 export const ONBOARDING_TOTAL_STEPS = 7; // 0-6 questions, step 7 is registration

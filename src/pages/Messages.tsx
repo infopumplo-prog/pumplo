@@ -11,6 +11,7 @@ import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { uiLocaleTag } from '@/lib/uiLocale';
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const Messages = () => {
     if (diffDays === 1) return t('messages.yesterday');
     if (diffDays < 7) return t('messages.days_ago', { n: diffDays });
     if (diffDays < 30) return t('messages.weeks_ago', { n: Math.floor(diffDays / 7) });
-    return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(uiLocaleTag(), { day: 'numeric', month: 'short' });
   };
   const { messages, isLoading: gymLoading, markAsRead, unreadCount: gymUnread } = useGymMessages();
   const {

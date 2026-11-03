@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { unlockAudio } from '@/lib/workoutAudio';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
 import { adaptExercisesToGym, supabaseAdaptDeps } from '@/lib/gymAdaptation';
+import { isExerciseDoable, sanitizeCustomEquipment, usesCustomEquipment } from '@/lib/customEquipment';
+import { customEquipmentAdaptDeps, CUSTOM_EQUIPMENT_GYM_KEY, fetchCustomEquipmentMachineIds } from '@/lib/customEquipmentData';
 import { prefetchVideos } from '@/lib/videoCache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Dumbbell, MapPin, RefreshCw, Play, CheckCircle2, AlertCircle, Target, X, Check, Plus, ArrowLeft, Calendar, AlertTriangle, Minus, Star, Bell, BellOff, Flame } from 'lucide-react';
@@ -16,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { trackSelectGym } from '@/lib/appAnalytics';
 import { prefetchGymLocation } from '@/hooks/useGymLocation';
 import { useWorkoutPlan } from '@/hooks/useWorkoutPlan';
 import { useWorkoutGenerator } from '@/hooks/useWorkoutGenerator';
@@ -172,7 +175,11 @@ const Training = () => {
   // Auto-start flag from URL param
   const [autoStartTriggered, setAutoStartTriggered] = useState(false);
   const [pendingAutoStartGymId, setPendingAutoStartGymId] = useState<string | null>(null);
-  const handleRegeneratePlanRef = useRef<(gymOverride?: string) => void>(() => {});
+  const handleRegeneratePlanRef = useRef<(gymOverride?: string, equipmentOverride?: string[]) => void>(() => {});
+  // Režim „bez posilovny" (feedback 13. 10.): žádná posilovna + vlastní vybavení na profilu
+  const customEquipmentActive = usesCustomEquipment(profile);
+  const customEquipmentList = useMemo(() => sanitizeCustomEquipment(profile?.custom_equipment), [profile?.custom_equipment]);
+  const [pendingAutoStartNoGym, setPendingAutoStartNoGym] = useState(false);
   // Spuštění z hodinek přeskakuje náhled i rozehřátí — obojí jsou obrazovky
   // telefonu a stály by přesně to sáhnutí po telefonu, kvůli kterému se trénink
   // spouští z hodinek. Drží se ve stavu, protože parametr z URL se hned maže.
@@ -410,9 +417,9 @@ const Training = () => {
     try {
       const r = await adaptExercisesToGym(list, gymId, supabaseAdaptDeps);
       console.info('[gymAdapt] result ' + JSON.stringify({ skipped: r.skipped, swapped: r.swapped, unresolved: r.unresolved, out: r.exercises.map(e => e.exerciseName) }));
-      if (r.skipped) toast.info(t('training.gym_adapt_offline'));
-      else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }));
-      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }));
+      if (r.skipped) toast.info(t('training.gym_adapt_offline'), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      else if (r.swapped.length > 0) toast.success(t('training.gym_adapted', { count: r.swapped.length }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('training.gym_adapt_unresolved', { count: r.unresolved.length, names: r.unresolved.join(', ') }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
       return r.exercises;
     } catch (e) {
       console.warn('[Training] gym adaptation failed', e);
@@ -422,17 +429,43 @@ const Training = () => {
     }
   }, [plan, t]);
 
+  // Bez posilovny: dnešní trénink jen z cviků proveditelných s vlastním vybavením
+  // (plán mohl vzniknout pro posilovnu nebo pro jiné vybavení).
+  const adaptForCustomEquipment = useCallback(async (list: WorkoutExercise[], equipment: string[]): Promise<WorkoutExercise[]> => {
+    if (equipment.length === 0) return list;
+    setIsAdaptingToGym(true);
+    try {
+      const r = await adaptExercisesToGym(list, CUSTOM_EQUIPMENT_GYM_KEY, customEquipmentAdaptDeps(equipment), { requireSecondaryMachine: true });
+      if (r.skipped) toast.info(t('nogym.adapt_offline'), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      else if (r.swapped.length > 0) toast.success(t('nogym.adapted', { count: r.swapped.length }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      if (!r.skipped && r.unresolved.length > 0) toast.warning(t('nogym.adapt_unresolved', { names: r.unresolved.join(', ') }), { position: 'top-center', style: { marginTop: 'env(safe-area-inset-top, 0px)' } });
+      return r.exercises;
+    } catch (e) {
+      console.warn('[Training] custom equipment adaptation failed', e);
+      return list;
+    } finally {
+      setIsAdaptingToGym(false);
+    }
+  }, [t]);
+
   // Auto-start workout when navigating from Home with ?start=true
   useEffect(() => {
     const shouldAutoStart = searchParams.get('start') === 'true';
     
     const gymIdParam = searchParams.get('gymId') || profile?.selected_gym_id || null;
+    // Bez posilovny (feedback 13. 10.): start s vlastním vybavením. Vybavení jde i v URL
+    // (?nogym=dumbbells,bands) — profil z offline cache může být ještě ten starý s posilovnou.
+    const nogymParam = searchParams.get('nogym');
+    const startEquipment = nogymParam
+      ? sanitizeCustomEquipment(nogymParam.split(','))
+      : (customEquipmentActive ? customEquipmentList : []);
+    const noGymStart = !searchParams.get('gymId') && startEquipment.length > 0;
     if (
       shouldAutoStart &&
       !autoStartTriggered &&
       plan &&
       !planLoading &&
-      gymIdParam &&
+      (gymIdParam || noGymStart) &&
       !profileLoading
     ) {
       setAutoStartTriggered(true);
@@ -441,6 +474,7 @@ const Training = () => {
       // Clear the URL params
       searchParams.delete('start');
       searchParams.delete('gymId');
+      searchParams.delete('nogym');
       searchParams.delete('watch');
       setSearchParams(searchParams, { replace: true });
 
@@ -453,6 +487,24 @@ const Training = () => {
 
       const exercisesFromPlan = getCurrentDayExercises()
         .filter(ex => ex.exerciseId); // Remove F5 skipped slots
+
+      if (noGymStart) {
+        const startNoGym = (list: WorkoutExercise[]) => {
+          setGeneratedExercises(list);
+          if (fromWatch) startWorkoutFromWatch(list);
+          else setShowWorkoutPreview(true);
+        };
+        if (exercisesFromPlan.length > 0) {
+          setSelectedWorkoutGymId(null);
+          void adaptForCustomEquipment(exercisesFromPlan, startEquipment).then(startNoGym);
+        } else if (plan.exercises.length === 0) {
+          setPendingAutoStartNoGym(true);
+          handleRegeneratePlanRef.current(undefined, startEquipment);
+        } else {
+          setShowMissingExercisesDialog(true);
+        }
+        return;
+      }
 
       if (exercisesFromPlan.length > 0) {
         setSelectedWorkoutGymId(gymIdParam);
@@ -476,7 +528,7 @@ const Training = () => {
         setShowMissingExercisesDialog(true);
       }
     }
-  }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams, adaptForGym]);
+  }, [searchParams, autoStartTriggered, plan, planLoading, profile?.selected_gym_id, profileLoading, getCurrentDayExercises, setSearchParams, adaptForGym, adaptForCustomEquipment, customEquipmentActive, customEquipmentList]);
 
   // Once the bare plan has been generated for the picked gym, start the workout.
   useEffect(() => {
@@ -490,6 +542,19 @@ const Training = () => {
       setPendingAutoStartGymId(null);
     }
   }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartGymId, getCurrentDayExercises, autoStartFromWatch]);
+
+  // Totéž bez posilovny — plán se právě vygeneroval z vlastního vybavení
+  useEffect(() => {
+    if (!pendingAutoStartNoGym || planLoading || isRegeneratingPlan) return;
+    const exercisesFromPlan = getCurrentDayExercises().filter(ex => ex.exerciseId);
+    if (exercisesFromPlan.length > 0) {
+      setGeneratedExercises(exercisesFromPlan);
+      setSelectedWorkoutGymId(null);
+      if (autoStartFromWatch) startWorkoutFromWatch(exercisesFromPlan);
+      else setShowWorkoutPreview(true);
+      setPendingAutoStartNoGym(false);
+    }
+  }, [plan, planLoading, isRegeneratingPlan, pendingAutoStartNoGym, getCurrentDayExercises, autoStartFromWatch]);
 
   // Auto-resume paused workout when navigating from Home with ?resume=true
   useEffect(() => {
@@ -567,7 +632,7 @@ const Training = () => {
   }, [searchParams, pausedWorkout, autoStartTriggered, setSearchParams, clearPausedWorkout]);
   
   // Function to regenerate plan automatically
-  const handleRegeneratePlan = useCallback(async (gymOverride?: string) => {
+  const handleRegeneratePlan = useCallback(async (gymOverride?: string, equipmentOverride?: string[]) => {
     if (!profile?.primary_goal) return;
     
     setIsRegeneratingPlan(true);
@@ -589,11 +654,13 @@ const Training = () => {
       }
       
       // Create new plan with current profile training_days snapshot and generate exercises
-      const selectedGymId = gymOverride || profile.selected_gym_id;
+      // equipmentOverride = právě uložené vlastní vybavení (profil v closure je ještě starý)
+      const selectedGymId = equipmentOverride ? null : (gymOverride || profile.selected_gym_id);
+      const equipment = equipmentOverride ?? sanitizeCustomEquipment(profile.custom_equipment);
       const durationMinutes = profile.training_duration_minutes || 60;
       
-      if (selectedGymId && profile.user_level) {
-        // Generate full plan with exercises
+      if ((selectedGymId || equipment.length > 0) && profile.user_level) {
+        // Generate full plan with exercises (bez posilovny z vlastního vybavení — feedback 13. 10.)
         const planId = await generateWorkoutPlan(
           selectedGymId,
           mappedGoalId,
@@ -601,7 +668,10 @@ const Training = () => {
           profile.injuries || [],
           profile.equipment_preference,
           durationMinutes,
-          profile.training_days || []
+          profile.training_days || [],
+          undefined,
+          undefined,
+          selectedGymId ? null : equipment
         );
         
         if (planId) {
@@ -768,15 +838,19 @@ const Training = () => {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
 
-    // If user has a gym selected, generate full plan with exercises
-    if (profile.selected_gym_id) {
+    // If user has a gym selected (or own equipment without a gym), generate full plan with exercises
+    if (profile.selected_gym_id || customEquipmentActive) {
       const planId = await generateWorkoutPlan(
-        profile.selected_gym_id,
+        profile.selected_gym_id || null,
         selectedGoalId as any,
         profile.user_level as any,
         profile.injuries || [],
         profile.equipment_preference,
-        profile.training_duration_minutes || 60
+        profile.training_duration_minutes || 60,
+        [],
+        undefined,
+        undefined,
+        profile.selected_gym_id ? null : customEquipmentList
       );
       
       if (planId) {
@@ -961,6 +1035,36 @@ const Training = () => {
     }
   };
 
+  // „Nejsem v žádné z těchto posiloven" (feedback 13. 10.): uložit vybavení a spustit
+  // trénink bez posilovny (bez ověření polohy) — cviky jen z vlastního vybavení.
+  const saveCustomEquipment = async (equipment: string[]): Promise<boolean> => {
+    const saved = await updateProfile({ selected_gym_id: null, custom_equipment: equipment });
+    if (!saved.success) {
+      toast.error(t('nogym.save_error'));
+      return false;
+    }
+    toast.success(t('nogym.saved'), { description: t('nogym.saved_desc') });
+    return true;
+  };
+
+  const handleNoGymSelectedForStart = async (equipment: string[]) => {
+    unlockAudio();
+    if (!(await saveCustomEquipment(equipment))) return;
+    setShowGymSelectorForStart(false);
+    setShowGymSelector(false);
+    setSelectedWorkoutGymId(null);
+    const exercisesFromPlan = getCurrentDayExercises().filter(ex => ex.exerciseId);
+    if (exercisesFromPlan.length > 0) {
+      setGeneratedExercises(await adaptForCustomEquipment(exercisesFromPlan, equipment));
+      setShowWorkoutPreview(true);
+    } else if (plan && plan.exercises.length === 0) {
+      setPendingAutoStartNoGym(true);
+      handleRegeneratePlan(undefined, equipment);
+    } else {
+      setShowMissingExercisesDialog(true);
+    }
+  };
+
   // Spustí trénink po ověření polohy (nebo bez ověření)
   const handleProceedWithGym = async (gymId: string) => {
     setShowLocationGateForStart(false);
@@ -1077,11 +1181,11 @@ const Training = () => {
 
   // Handle pausing from warmup or workout
   const handlePauseFromWarmup = useCallback((currentWarmupIndex: number) => {
-    if (!plan || !profile?.selected_gym_id) return;
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive)) return;
     
     savePausedWorkout({
       planId: plan.id,
-      gymId: profile.selected_gym_id,
+      gymId: profile?.selected_gym_id ?? '',
       dayLetter: plan.currentDayLetter || 'A',
       goalId: plan.goalId,
       exercises: generatedExercises,
@@ -1099,10 +1203,10 @@ const Training = () => {
     setShowWarmup(false);
     setShowWorkoutPreview(false);
     toast.info(t('training.workout_paused'));
-  }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
+  }, [plan, profile?.selected_gym_id, customEquipmentActive, generatedExercises, warmupExercises, savePausedWorkout]);
 
   const handlePauseFromWorkout = useCallback((currentExerciseIndex: number, results: any[], currentSetIndex: number, currentExerciseSets: any[]) => {
-    if (!plan || !profile?.selected_gym_id) return;
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive)) return;
     
     const completedSets: Record<string, any[]> = {};
     results.forEach(r => {
@@ -1111,7 +1215,7 @@ const Training = () => {
     
     savePausedWorkout({
       planId: plan.id,
-      gymId: profile.selected_gym_id,
+      gymId: profile?.selected_gym_id ?? '',
       dayLetter: plan.currentDayLetter || 'A',
       goalId: plan.goalId,
       exercises: generatedExercises,
@@ -1127,7 +1231,7 @@ const Training = () => {
     
     setIsWorkoutActive(false);
     toast.info(t('training.workout_paused'));
-  }, [plan, profile?.selected_gym_id, generatedExercises, warmupExercises, savePausedWorkout]);
+  }, [plan, profile?.selected_gym_id, customEquipmentActive, generatedExercises, warmupExercises, savePausedWorkout]);
 
   const handleEndFromPreview = useCallback(() => {
     setShowWorkoutPreview(false);
@@ -1136,11 +1240,11 @@ const Training = () => {
 
   const handlePauseFromPreview = useCallback(() => {
     // Při pozastavení z preview jen zavřeme a uložíme jako "připravený k pokračování"
-    if (!plan || !profile?.selected_gym_id) return;
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive)) return;
     
     savePausedWorkout({
       planId: plan.id,
-      gymId: profile.selected_gym_id,
+      gymId: profile?.selected_gym_id ?? '',
       dayLetter: plan.currentDayLetter || 'A',
       goalId: plan.goalId,
       exercises: generatedExercises,
@@ -1155,10 +1259,11 @@ const Training = () => {
     
     setShowWorkoutPreview(false);
     toast.info(t('training.workout_paused'));
-  }, [plan, profile?.selected_gym_id, generatedExercises, savePausedWorkout]);
+  }, [plan, profile?.selected_gym_id, customEquipmentActive, generatedExercises, savePausedWorkout]);
 
   const handleGymSelect = async (gymId: string) => {
-    await updateProfile({ selected_gym_id: gymId });
+    const saved = await updateProfile({ selected_gym_id: gymId });
+    if (saved.success) trackSelectGym(gymId);
     handleGenerateDayExercises(gymId, true);
   };
 
@@ -1231,7 +1336,7 @@ const Training = () => {
   
   // Regenerate exercises - now just reloads from DB since generation happens in plan creation
   const handleRegenerateExercises = useCallback(async () => {
-    if (!plan || !profile?.selected_gym_id || !profile?.user_level) {
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive) || !profile?.user_level) {
       toast.error('Nejprve vyber posilovnu');
       return;
     }
@@ -1259,11 +1364,12 @@ const Training = () => {
 
   // Extension workout generation
   const generateExtensionExercises = useCallback(async (count: number) => {
-    if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive) || !profile?.user_level) return;
     
     setIsGeneratingExtension(true);
     
     try {
+      const customMachineIds = customEquipmentActive ? await fetchCustomEquipmentMachineIds(customEquipmentList) : null;
       const categories = ['upper', 'lower', 'core'];
       const allExtensionExercises: WorkoutExercise[] = [];
       const usedIds = new Set<string>();
@@ -1286,7 +1392,8 @@ const Training = () => {
         
         if (!exercises || exercises.length === 0) continue;
         
-        const available = exercises.filter(ex => !usedIds.has(ex.id));
+        // Bez posilovny jen cviky proveditelné s vlastním vybavením (feedback 13. 10.)
+        const available = exercises.filter(ex => !usedIds.has(ex.id) && (!customMachineIds || isExerciseDoable(ex, customMachineIds)));
         if (available.length === 0) continue;
         
         const selected = available[Math.floor(Math.random() * available.length)];
@@ -1319,16 +1426,17 @@ const Training = () => {
     } finally {
       setIsGeneratingExtension(false);
     }
-  }, [plan, profile]);
+  }, [plan, profile, customEquipmentActive, customEquipmentList]);
 
   // Bonus workout generation for non-training days
   const generateBonusWorkout = useCallback(async (count: number) => {
-    if (!plan || !profile?.selected_gym_id || !profile?.user_level) return;
+    if (!plan || !(profile?.selected_gym_id || customEquipmentActive) || !profile?.user_level) return;
     
     setIsGeneratingBonusWorkout(true);
     setIsBonusWorkout(true);
     
     try {
+      const customMachineIds = customEquipmentActive ? await fetchCustomEquipmentMachineIds(customEquipmentList) : null;
       const categories = ['upper', 'lower', 'core'];
       const bonusExercises: WorkoutExercise[] = [];
       const usedIds = new Set<string>();
@@ -1351,7 +1459,8 @@ const Training = () => {
         
         if (!exercises || exercises.length === 0) continue;
         
-        const available = exercises.filter(ex => !usedIds.has(ex.id));
+        // Bez posilovny jen cviky proveditelné s vlastním vybavením (feedback 13. 10.)
+        const available = exercises.filter(ex => !usedIds.has(ex.id) && (!customMachineIds || isExerciseDoable(ex, customMachineIds)));
         if (available.length === 0) continue;
         
         const selected = available[Math.floor(Math.random() * available.length)];
@@ -1377,7 +1486,7 @@ const Training = () => {
       }
       
       setGeneratedExercises(bonusExercises);
-      setSelectedWorkoutGymId(profile.selected_gym_id);
+      setSelectedWorkoutGymId(profile.selected_gym_id ?? null);
       // Route bonus workout through preview/warmup flow instead of starting directly
       setShowWorkoutPreview(true);
     } catch (err) {
@@ -1385,7 +1494,7 @@ const Training = () => {
     } finally {
       setIsGeneratingBonusWorkout(false);
     }
-  }, [plan, profile]);
+  }, [plan, profile, customEquipmentActive, customEquipmentList]);
   const selectedDayExercises = useMemo(() => {
     if (selectedDayIndex === null || !plan) return [];
     const day = daysInViewingWeek[selectedDayIndex];
@@ -1561,6 +1670,8 @@ const Training = () => {
         <GymSelector
           onSelect={handleGymSelect}
           onCancel={() => setShowGymSelector(false)}
+          onSelectNoGym={handleNoGymSelectedForStart}
+          customEquipment={profile?.custom_equipment ?? null}
         />
       </PageTransition>
     );
@@ -1711,7 +1822,8 @@ const Training = () => {
   if (isAdaptingToGym) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1719,7 +1831,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.adapting_gym_title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1736,7 +1848,8 @@ const Training = () => {
   if (planLoading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1744,7 +1857,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1763,7 +1876,8 @@ const Training = () => {
   if (generatorError) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-background p-4">
+        {/* Načítání: záhlaví pod stavovou lištou, kolečko uprostřed obrazovky (David 17. 10.) */}
+        <div className="min-h-[100dvh] bg-background px-4 pb-4 flex flex-col" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
               <ArrowLeft className="w-5 h-5" />
@@ -1771,7 +1885,7 @@ const Training = () => {
             <h1 className="text-2xl font-bold">{t('training.title')}</h1>
           </div>
 
-          <div className="text-center py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center pb-24">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
@@ -2127,7 +2241,7 @@ const Training = () => {
                           {t('training.workout_skipped')}
                         </p>
                       ) : day.isShiftedDay && day.isFuture ? (
-                        <p className="text-sm text-blue-500/70">
+                        <p className="text-sm text-primary/70">
                           {t('training.bonus_from_first_week')}
                         </p>
                       ) : day.isFuture ? (
@@ -2268,7 +2382,7 @@ const Training = () => {
                       </div>
                     ))}
                   </div>
-                ) : !profile?.selected_gym_id ? (
+                ) : !profile?.selected_gym_id && !customEquipmentActive ? (
                   <p className="text-sm text-muted-foreground mb-4">
                     {t('training.select_gym_for_exercises')}
                   </p>
@@ -2376,7 +2490,7 @@ const Training = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogAction 
-                onClick={handleRegeneratePlan}
+                onClick={() => handleRegeneratePlan()}
                 disabled={isRegeneratingPlan}
                 className="gap-2"
               >
@@ -2453,7 +2567,7 @@ const Training = () => {
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel>{t('myplan.cancel')}</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleRegeneratePlan}
+                onClick={() => handleRegeneratePlan()}
                 disabled={isRegeneratingPlan}
                 className="gap-2"
               >
@@ -2522,6 +2636,8 @@ const Training = () => {
             onSelect={handleGymSelectedForStart}
             onCancel={() => setShowGymSelectorForStart(false)}
             selectedGymId={profile?.selected_gym_id}
+            onSelectNoGym={handleNoGymSelectedForStart}
+            customEquipment={profile?.custom_equipment ?? null}
           />
         )}
 

@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { tr } from '@/lib/uiLocale';
 
 // The rest timer's countdown beeps come from web audio, which iOS/Android
 // suspend when the app is backgrounded. To still alert the user when their rest
@@ -33,8 +34,8 @@ async function ensureRestChannel(): Promise<void> {
   try {
     await LocalNotifications.createChannel({
       id: REST_CHANNEL_ID,
-      name: 'Konec pauzy',
-      description: 'Zvuk a vibrace na konci odpočinku mezi sériemi',
+      name: tr('notif_channel.rest_name'),
+      description: tr('notif_channel.rest_desc'),
       importance: 5, // MAX -> heads-up + sound
       visibility: 1, // Public
       sound: 'rest_beep.wav',

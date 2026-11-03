@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { signUpErrorMessage } from '@/lib/authErrors';
-import pumploWordmark from '@/assets/pumplo-wordmark.png';
+import PumploLogo from '@/components/PumploLogo';
 
 const ResetPassword = () => {
   const { t } = useTranslation();
@@ -59,7 +59,7 @@ const ResetPassword = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <img src={pumploWordmark} alt="Pumplo" className="h-10 object-contain" />
+          <PumploLogo className="h-10" />
           <p className="text-muted-foreground mt-2 text-sm">{t('auth.new_password_title')}</p>
         </motion.div>
       </div>

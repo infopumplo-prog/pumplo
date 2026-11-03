@@ -59,3 +59,18 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.email-unsubscribe]
+verify_jwt = false
+
+[functions.lifecycle-emails]
+verify_jwt = false
+
+[functions.resend-webhook]
+verify_jwt = false
+
+[functions.loops-sync]
+verify_jwt = false
+
+[functions.loops-webhook]
+verify_jwt = false

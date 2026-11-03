@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { localizeDayName } from '@/lib/dayNames';
 import { ChevronRight, Calendar, CheckCircle2, Circle, MapPin, Dumbbell, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -107,7 +108,7 @@ const MyPlanSection = () => {
   // Map day letters to day names from allDays (shows split name, e.g., "Push", "Pull & Ramena")
   const getDayName = (dayLetter: string) => {
     const dayTemplate = plan?.allDays?.find(d => d.dayLetter === dayLetter);
-    return dayTemplate?.dayName || `Trénink ${dayLetter}`;
+    return localizeDayName(dayTemplate?.dayName, t) || t('training.workout_letter', { letter: dayLetter });
   };
 
   // Day names via i18n

@@ -136,6 +136,55 @@ export const TRAINING_ROLE_NAMES: Record<string, string> = {
   hamstring_isolation: 'Zadní stehno',
 };
 
+// English names for UI display (fallback if DB not loaded)
+export const TRAINING_ROLE_NAMES_EN: Record<string, string> = {
+  horizontal_push: 'Chest press',
+  horizontal_pull: 'Back row',
+  vertical_push: 'Overhead press',
+  vertical_pull: 'Pulldown',
+  squat: 'Squats',
+  hinge: 'Deadlift',
+  lunge: 'Lunges',
+  step: 'Step',
+  jump: 'Jump',
+  elbow_flexion: 'Biceps',
+  elbow_extension: 'Triceps',
+  shoulder_abduction: 'Shoulder abduction',
+  shoulder_adduction: 'Shoulder adduction',
+  shoulder_external_rotation: 'Shoulder external rotation',
+  shoulder_internal_rotation: 'Shoulder internal rotation',
+  anti_extension: 'Anti-extension',
+  anti_flexion: 'Anti-flexion',
+  anti_rotation: 'Anti-rotation',
+  rotation: 'Torso rotation',
+  lateral_flexion: 'Lateral flexion',
+  cyclical_push: 'Cyclical push',
+  cyclical_pull: 'Cyclical pull',
+  full_body_pull: 'Full-body pull',
+  rear_delt_isolation: 'Rear delts',
+  upper_back_isolation: 'Upper back',
+  anti_lateral_flexion: 'Lateral stability',
+  // Legacy
+  knee_dominant: 'Squats',
+  hip_dominant: 'Deadlift',
+  single_leg_lower: 'Lunges',
+  calf_isolation: 'Calves',
+  biceps_isolation: 'Biceps',
+  triceps_isolation: 'Triceps',
+  core_anti_extension: 'Abs',
+  core_rotation: 'Torso rotation',
+  chest_isolation: 'Chest',
+  back_isolation: 'Back',
+  shoulder_isolation: 'Shoulders',
+  glute_isolation: 'Glutes',
+  quad_isolation: 'Quads',
+  hamstring_isolation: 'Hamstrings',
+};
+
+/** Role display name in the UI language; undefined when the role is unknown. */
+export const getTrainingRoleName = (roleId: string, isEn: boolean): string | undefined =>
+  (isEn ? TRAINING_ROLE_NAMES_EN : TRAINING_ROLE_NAMES)[roleId];
+
 export const TRAINING_ROLE_CATEGORIES: Record<string, 'upper' | 'lower' | 'core' | 'cardio' | 'compound'> = {
   horizontal_push: 'upper',
   horizontal_pull: 'upper',

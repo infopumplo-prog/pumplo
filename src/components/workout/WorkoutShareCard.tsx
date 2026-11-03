@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { FUNFACT_ICONS } from '@/components/icons/appIcons';
 import { createPortal } from 'react-dom';
 import { type LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -36,7 +37,7 @@ interface Stat { icon: LucideIcon; color: string; value: string; unit: string }
 // 1. Dark Blur
 const T_DarkBlur = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transform, exercisesLabel, repsLabel }: TProps) => (
   <>
-    <BG photo={photo} gradient="linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" />
+    <BG photo={photo} gradient="linear-gradient(135deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-mid)) 50%, hsl(var(--share-bg-to)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
@@ -55,7 +56,7 @@ const T_Minimal = ({ photo, title, gym, gymIg, date, exCount, reps, stats, trans
     <Center>
       <Draggable transform={transform}>
         <div style={{ maxWidth: '300px', width: '100%' }}>
-          <p style={{ color: '#4CC9FF', fontSize: '12px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>Pumplo</p>
+          <p style={{ color: 'hsl(var(--primary))', fontSize: '12px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>Pumplo</p>
           <p style={{ color: '#fff', fontSize: '28px', fontWeight: 800, lineHeight: 1.1, marginBottom: '4px' }}>{title}</p>
           <div className="flex items-center gap-1.5 mb-6">
             <MapPin className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
@@ -87,7 +88,7 @@ const T_Bold = ({ photo, title, gym, gymIg, date, exCount, reps, stats, transfor
     <Center>
       <Draggable transform={transform}>
         <div style={{ maxWidth: '320px', width: '100%', textAlign: 'center' }}>
-          <span style={{ color: '#4CC9FF', fontSize: '13px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase' }}>Pumplo</span>
+          <span style={{ color: 'hsl(var(--primary))', fontSize: '13px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase' }}>Pumplo</span>
           <p style={{ color: '#fff', fontSize: '48px', fontWeight: 900, lineHeight: 1, margin: '8px 0' }}>
             {stats[1].value} <span style={{ fontSize: '20px', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>kg</span>
           </p>
@@ -120,7 +121,7 @@ const T_ExerciseList = ({ photo, title, gym, gymIg, date, exercises, transform, 
         <div style={{ maxWidth: '320px', width: '100%' }}>
           <div className="flex items-center justify-between mb-3">
             <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700 }}>{title}</p>
-            <span style={{ color: '#4CC9FF', fontSize: '14px', fontWeight: 800 }}>Pumplo</span>
+            <span style={{ color: 'hsl(var(--primary))', fontSize: '14px', fontWeight: 800 }}>Pumplo</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {exercises.slice(0, 6).map((ex, i) => {
@@ -169,7 +170,7 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
       <Center>
         <Draggable transform={transform}>
           <div style={{ maxWidth: '300px', width: '100%', textAlign: 'center' }}>
-            <span style={{ color: '#4CC9FF', fontSize: '11px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase' }}>Pumplo</span>
+            <span style={{ color: 'hsl(var(--primary))', fontSize: '11px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase' }}>Pumplo</span>
             <p style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '6px 0 12px' }}>{(isEn && ex.nameEn) ? ex.nameEn : ex.name}</p>
             {maxW > 0 && (
               <p style={{ color: '#fff', fontSize: '44px', fontWeight: 900, lineHeight: 1 }}>
@@ -205,7 +206,7 @@ const T_SingleExercise = ({ photo, gym, gymIg, date, exercises, transform, selec
 // 6. Muscle map — front + back body figures with highlighted groups
 const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform, exercisesLabel, repsLabel, muscles, musclesTitle }: TProps & { muscles: Record<string, number>; musclesTitle: string }) => (
   <>
-    <BG photo={photo} gradient="linear-gradient(135deg, #0B1222 0%, #16213e 100%)" />
+    <BG photo={photo} gradient="linear-gradient(135deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-mid)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
@@ -223,35 +224,41 @@ const T_MuscleMap = ({ photo, title, gym, gymIg, date, exCount, reps, transform,
 );
 
 // 7. Fun fact — total volume compared to a real-world thing (Hevy elephant)
-const FUNFACT_TIERS: { min: number; key: string; emoji: string }[] = [
-  { min: 30000, key: 'whale', emoji: '🐋' },
-  { min: 12000, key: 'bus', emoji: '🚌' },
-  { min: 6000, key: 'elephant', emoji: '🐘' },
-  { min: 3000, key: 'rhino', emoji: '🦏' },
-  { min: 1500, key: 'car', emoji: '🚗' },
-  { min: 700, key: 'horse', emoji: '🐎' },
-  { min: 200, key: 'motorbike', emoji: '🏍️' },
-  { min: 50, key: 'dog', emoji: '🐕' },
+// Ikony místo emoji (8. 10. 2026) — srovnání s věcmi, pro které má sada ikon symbol.
+const FUNFACT_TIERS: { min: number; key: keyof typeof FUNFACT_ICONS }[] = [
+  { min: 30000, key: 'plane' },
+  { min: 12000, key: 'bus' },
+  { min: 6000, key: 'truck' },
+  { min: 3000, key: 'tractor' },
+  { min: 1000, key: 'car' },
+  { min: 400, key: 'piano' },
+  { min: 100, key: 'fridge' },
+  { min: 30, key: 'dog' },
 ];
 const funFactTier = (kg: number) => FUNFACT_TIERS.find(tier => kg >= tier.min) ?? null;
 
-const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, emoji }: TProps & { totalKg: number; liftedLabel: string; factText: string; emoji: string }) => (
+const T_FunFact = ({ photo, gym, gymIg, title, date, exCount, reps, transform, exercisesLabel, repsLabel, totalKg, liftedLabel, factText, factKey, isEn }: TProps & { totalKg: number; liftedLabel: string; factText: string; factKey: keyof typeof FUNFACT_ICONS }) => {
+  const FactIcon = FUNFACT_ICONS[factKey];
+  return (
   <>
-    <BG photo={photo} gradient="linear-gradient(160deg, #0B1222 0%, #0f3460 100%)" />
+    <BG photo={photo} gradient="linear-gradient(160deg, hsl(var(--share-bg-from)) 0%, hsl(var(--share-bg-to)) 100%)" />
     <Overlay photo={photo} />
     <Center>
       <Draggable transform={transform}>
         <div className="rounded-2xl px-6 py-6 mb-3 text-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', maxWidth: '320px', width: '100%' }}>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '4px' }}>{liftedLabel}</p>
-          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString('cs')} kg</p>
-          <p style={{ color: '#4CC9FF', fontSize: '15px', fontWeight: 600, marginTop: '8px' }}>{factText}</p>
-          <p style={{ fontSize: '72px', lineHeight: 1.3 }}>{emoji}</p>
+          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 800, lineHeight: 1.1 }}>{Math.round(totalKg).toLocaleString(isEn ? 'en-US' : 'cs')} kg</p>
+          <p style={{ color: 'hsl(var(--primary))', fontSize: '15px', fontWeight: 600, marginTop: '8px' }}>{factText}</p>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+            <FactIcon size={72} strokeWidth={1.6} color="#ffffff" aria-hidden="true" />
+          </div>
         </div>
         <TitleBar title={title} gym={gym} gymIg={gymIg} date={date} exCount={exCount} reps={reps} bg="rgba(0,0,0,0.5)" exercisesLabel={exercisesLabel} repsLabel={repsLabel} />
       </Draggable>
     </Center>
   </>
-);
+  );
+};
 
 // ===== SHARED PARTS =====
 interface TProps { photo: string | null; title: string; gym: string; gymIg: string | null; date: string; exCount: number; reps: number; stats: Stat[]; transform: string; exercisesLabel: string; repsLabel: string; setsLabel: string; isEn: boolean }
@@ -291,14 +298,17 @@ const TitleBar = ({ title, gym, gymIg, date, exCount, reps, bg, exercisesLabel, 
     <div className="flex items-start justify-between">
       <div>
         <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700 }}>{title}</p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <MapPin className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
-          {gymIg && <span style={{ color: '#4CC9FF', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
-        </div>
+        {/* Vlastní trénink bez posilovny (17. 10.): bez prázdného špendlíku. */}
+        {gym && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <MapPin className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{gym}</span>
+            {gymIg && <span style={{ color: 'hsl(var(--primary))', fontSize: '12px', fontWeight: 600 }}>@{gymIg}</span>}
+          </div>
+        )}
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '4px' }}>{date} &middot; {exCount} {exercisesLabel} &middot; {reps} {repsLabel}</p>
       </div>
-      <span style={{ color: '#4CC9FF', fontSize: '18px', fontWeight: 800 }}>Pumplo</span>
+      <span style={{ color: 'hsl(var(--primary))', fontSize: '18px', fontWeight: 800 }}>Pumplo</span>
     </div>
   </div>
 );
@@ -475,7 +485,7 @@ export const WorkoutShareCard = ({
   }, [userPhoto, genImg]);
 
   const kcal = estimateCalories({ durationSeconds: totalDuration * 60, totalSets, goalId, weightKg: profile?.weight_kg || 75, gender: profile?.gender, age: profile?.age });
-  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || `Den ${dayLetter.replace('_EXT', '+')}`);
+  const title = isBonus ? t('workout_share.bonus_workout') : (localizeDayName(dayName, t) || t('workout.day_label', { letter: dayLetter.replace('_EXT', '+') }));
   const today = new Date();
   const dateStr = format(today, 'd. MMMM yyyy', { locale: isEn ? enUS : cs });
 
@@ -533,7 +543,7 @@ export const WorkoutShareCard = ({
 
   const stats: Stat[] = [
     { icon: Clock, color: '#22d3ee', value: `${totalDuration}`, unit: 'min' },
-    { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString('cs')}`, unit: 'kg' },
+    { icon: Weight, color: '#34d399', value: `${Math.round(totalWeight).toLocaleString(isEn ? 'en-US' : 'cs')}`, unit: 'kg' },
     { icon: Dumbbell, color: '#fbbf24', value: `${totalSets}`, unit: t('workout_share.sets_unit') },
     { icon: Flame, color: '#fb923c', value: `${kcal}`, unit: 'kcal' },
   ];
@@ -550,7 +560,7 @@ export const WorkoutShareCard = ({
     () => <T_ExerciseList {...tp} exercises={exerciseDetails} />,
     () => <T_SingleExercise {...tp} exercises={exerciseDetails} selectedEx={selectedEx} onSelectEx={setSelectedEx} />,
     ...(hasMuscles ? [() => <T_MuscleMap {...tp} muscles={muscleIntensities!} musclesTitle={t('workout_share.muscles_title')} />] : []),
-    ...(fact ? [() => <T_FunFact {...tp} totalKg={totalWeight} liftedLabel={t('workout_share.funfact_lifted')} factText={t(`workout_share.funfact_${fact.key}`)} emoji={fact.emoji} />] : []),
+    ...(fact ? [() => <T_FunFact {...tp} totalKg={totalWeight} liftedLabel={t('workout_share.funfact_lifted')} factText={t(`workout_share.funfact_${fact.key}`)} factKey={fact.key} />] : []),
   ];
   templateCountRef.current = templates.length;
   const renderTemplate = templates[templateIndex % templates.length];
@@ -616,14 +626,14 @@ export const WorkoutShareCard = ({
         </div>
         <button type="button" onClick={handleShare} disabled={isGenerating || !imageReady}
           className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
-          style={{ height: '44px', background: '#4CC9FF', color: '#fff', fontSize: '15px', fontWeight: 600, border: 'none' }}>
+          style={{ height: '44px', background: 'hsl(var(--primary))', color: '#fff', fontSize: '15px', fontWeight: 600, border: 'none' }}>
           <Share2 className="w-4 h-4" />
           {(isGenerating || !imageReady) ? t('workout.preparing') : igInstalled ? t('workout.share_instagram') : t('workout.share')}
         </button>
         {onShareLink && (
           <button type="button" onClick={async () => { setLinkBusy(true); try { await onShareLink(); } finally { setLinkBusy(false); } }} disabled={linkBusy}
             className="w-full flex items-center justify-center gap-2 rounded-xl disabled:opacity-50"
-            style={{ height: '44px', border: '1px solid rgba(76,201,255,0.6)', color: '#4CC9FF', fontSize: '15px', fontWeight: 600, background: 'rgba(76,201,255,0.08)' }}>
+            style={{ height: '44px', border: '1px solid hsl(var(--primary) / 0.6)', color: 'hsl(var(--primary))', fontSize: '15px', fontWeight: 600, background: 'hsl(var(--primary) / 0.1)' }}>
             <Link2 className="w-4 h-4" />
             {linkBusy ? t('workout.share_link_busy') : t('workout.share_link')}
           </button>
