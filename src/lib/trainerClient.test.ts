@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   NOTE_MAX_LENGTH,
   assignmentEndDate,
+  assignmentLastDay,
+  emptyStateTrainer,
   buildFeedbackUpdate,
   findLiveAssignmentForPlan,
   isAssignmentLive,
@@ -122,5 +124,40 @@ describe('progressPercent', () => {
     expect(progressPercent(20, 12)).toBe(100);
     expect(progressPercent(1, 0)).toBe(0);
     expect(progressPercent(-1, 10)).toBe(0);
+  });
+});
+
+describe('assignmentLastDay', () => {
+  it('is the day before the exclusive end (28. 10. + 8 weeks → 22. 12.)', () => {
+    const end = assignmentEndDate('2026-10-28', 8);
+    expect(end).toBe('2026-12-23');
+    expect(assignmentLastDay(end)).toBe('2026-12-22');
+  });
+  it('crosses month and year boundaries, DST and leap day', () => {
+    expect(assignmentLastDay('2027-01-01')).toBe('2026-12-31');
+    expect(assignmentLastDay('2026-03-30')).toBe('2026-03-29');
+    expect(assignmentLastDay('2028-03-01')).toBe('2028-02-29');
+  });
+  it('invalid input → null', () => {
+    expect(assignmentLastDay(null)).toBeNull();
+    expect(assignmentLastDay('5.10.2026')).toBeNull();
+  });
+  it('logic keeps the exclusive end: the last displayed day is live, the end is not', () => {
+    const a = { id: 'a', trainer_client_id: 'c', trainer_user_id: 't', plan_id: 'p', plan_name: 'P', start_date: '2026-10-28', weeks: 8, sessions_per_week: 3, ended_at: null };
+    expect(isAssignmentLive(a, '2026-12-22')).toBe(true);
+    expect(isAssignmentLive(a, '2026-12-23')).toBe(false);
+  });
+});
+
+describe('emptyStateTrainer', () => {
+  it('no trainer → null (generic empty state stays)', () => {
+    expect(emptyStateTrainer([])).toBeNull();
+    expect(emptyStateTrainer(null)).toBeNull();
+  });
+  it('names the first trainer that has a name', () => {
+    expect(emptyStateTrainer([{ trainer_name: ' ' }, { trainer_name: ' Adam ' }])).toEqual({ name: 'Adam' });
+  });
+  it('trainer without a name still counts', () => {
+    expect(emptyStateTrainer([{ trainer_name: '' }])).toEqual({ name: null });
   });
 });

@@ -34,7 +34,7 @@ import PublishPlanDialog from '@/components/PublishPlanDialog';
 import { TrainerAssignmentInfo } from '@/components/trainer/TrainerAssignmentInfo';
 import { OtherPhaseDays, PlanPhaseTimeline, ProgressionHints, useProgressionText } from '@/components/trainer/PlanPhaseTimeline';
 import { useTrainerAssignments } from '@/hooks/useTrainerAssignments';
-import { activeDaysForWeek, effectivePrescription, hasWeeklySchedule, planSchedule, progressionsForExercise, type PlanPhase } from '@/lib/planPhases';
+import { activeDaysForWeek, effectivePrescription, exerciseWeekView, hasWeeklySchedule, planSchedule, progressionsForExercise, type PlanPhase } from '@/lib/planPhases';
 import CustomPlanDayChips, { useDayLabel } from '@/components/workout/CustomPlanDayChips';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -339,6 +339,33 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
   );
 };
 
+// --- Řádek série, který právě určuje progrese od trenéra (hodnoty týdne, jen ke čtení) ---
+const LockedSetRow = ({ index, reps, weight, isCardio, setTypes }: {
+  index: number; reps: number; weight: number | null; isCardio: boolean; setTypes: (string | null)[] | null;
+}) => {
+  const cell = 'bg-muted/40 rounded-lg px-2 py-1.5 text-sm text-center text-muted-foreground';
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className={cn('w-10 shrink-0 h-8 rounded-lg bg-muted/70 flex items-center justify-center text-sm font-bold', setBadgeColor(setTypes, index))}>
+        {setBadgeLabel(setTypes, index)}
+      </div>
+      {isCardio ? (
+        <div className="flex-1 flex items-center gap-2">
+          <span className={cn(cell, 'w-14')}>{Math.floor(reps / 60)}</span>
+          <span className="text-[10px] text-muted-foreground">min</span>
+          <span className={cn(cell, 'w-14')}>{reps % 60}</span>
+          <span className="text-[10px] text-muted-foreground">s</span>
+        </div>
+      ) : (
+        <>
+          <span className={cn(cell, 'flex-1 min-w-0')}>{weight ?? '–'}</span>
+          <span className={cn(cell, 'flex-1 min-w-0')}>{reps}</span>
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- Per-exercise note (local state, saves on blur) ---
 const NoteInput = ({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) => {
   const { t } = useTranslation();
@@ -374,9 +401,11 @@ interface SortableExerciseProps {
   isSwapping?: boolean;
   // Progrese od trenéra: „Tento týden: …“, „od 5. týdne 4 série“.
   progressionHints?: string[];
+  // Cvik s hodnotami tohoto týdne, když je přepisuje progrese: tabulka je ukazuje a jde jen číst.
+  lockedWeekExercise?: CustomPlanExercise;
 }
 
-const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping, progressionHints }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping, progressionHints, lockedWeekExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -511,6 +540,22 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
             </>
           )}
         </div>
+        {lockedWeekExercise ? (
+          <>
+            {Array.from({ length: lockedWeekExercise.sets }, (_, i) => (
+              <LockedSetRow
+                key={i}
+                index={i}
+                reps={lockedWeekExercise.reps_per_set?.[i] ?? lockedWeekExercise.reps}
+                weight={lockedWeekExercise.weight_per_set?.[i] ?? lockedWeekExercise.weight_kg}
+                isCardio={isCardio}
+                setTypes={lockedWeekExercise.set_types}
+              />
+            ))}
+            <p className="mt-2 text-xs text-muted-foreground text-center">{t('trainer_client.progression_locked_hint')}</p>
+          </>
+        ) : (
+        <>
         {Array.from({ length: exercise.sets }, (_, i) => {
           const repsArr = exercise.reps_per_set || [];
           const weightArr = exercise.weight_per_set || [];
@@ -557,6 +602,8 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
           <Plus className="w-3.5 h-3.5" />
           {t('custom_plan.add_set')}
         </button>
+        </>
+        )}
       </div>
 
       {/* Incompatible alternatives */}
@@ -1400,6 +1447,7 @@ const CustomPlanDetail = () => {
                     <SortableContext items={day.exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
                       {day.exercises.map((exercise) => {
                         const incompatInfo = incompatibleExercises.find(i => i.exercise_id === exercise.exercise_id);
+                        const weekView = exerciseWeekView(exercise, plan.progressions, schedule?.week);
                         return (
                           <SortableExerciseItem
                             key={exercise.id}
@@ -1417,6 +1465,7 @@ const CustomPlanDetail = () => {
                             onSwapLong={handleRowSwapLong}
                             isSwapping={isSwappingRowId === exercise.id}
                             progressionHints={progressionHintsFor(exercise)}
+                            lockedWeekExercise={weekView.locked ? weekView.exercise : undefined}
                           />
                         );
                       })}

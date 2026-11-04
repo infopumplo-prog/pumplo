@@ -5,7 +5,7 @@ import { CalendarRange } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { TrainerPlanBadge } from '@/components/trainer/TrainerPlanBadge';
 import { useAssignmentProgress, useTrainerAssignments } from '@/hooks/useTrainerAssignments';
-import { assignmentEndDate, progressPercent } from '@/lib/trainerClient';
+import { assignmentEndDate, assignmentLastDay, progressPercent } from '@/lib/trainerClient';
 
 // Detail plánu: štítek „Od trenéra“, období přiřazení a plnění. Plán se nijak nepřepíná.
 export const TrainerAssignmentInfo = ({ planId }: { planId: string }) => {
@@ -20,7 +20,8 @@ export const TrainerAssignmentInfo = ({ planId }: { planId: string }) => {
     if (!iso) return '';
     try { return format(parseISO(iso), 'd. M. yyyy', { locale }); } catch { return iso; }
   };
-  const end = progress?.end_date ?? assignmentEndDate(assignment.start_date, assignment.weeks);
+  // end_date je výlučný (první den po plánu); klient vidí poslední den plánu.
+  const lastDay = assignmentLastDay(progress?.end_date ?? assignmentEndDate(assignment.start_date, assignment.weeks));
   const target = progress?.target_sessions ?? assignment.weeks * assignment.sessions_per_week;
   const done = progress?.done_sessions ?? null;
   const pct = progress?.progress_pct ?? (done !== null ? progressPercent(done, target) : null);
@@ -30,7 +31,7 @@ export const TrainerAssignmentInfo = ({ planId }: { planId: string }) => {
       <TrainerPlanBadge trainerName={trainerNameFor(assignment)} />
       <p className="flex items-center gap-1.5 text-sm text-foreground">
         <CalendarRange className="w-4 h-4 text-primary shrink-0" />
-        {t('trainer_client.assignment_period', { start: fmt(assignment.start_date), end: fmt(end) })}
+        {t('trainer_client.assignment_period', { start: fmt(assignment.start_date), end: fmt(lastDay) })}
       </p>
       {done !== null && pct !== null && (
         <div className="space-y-1.5">

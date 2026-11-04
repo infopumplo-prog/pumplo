@@ -3238,6 +3238,10 @@ const cs = {
   'trainer_client.share_weight_error': 'Nastavení se nepodařilo uložit. Zkus to znovu.',
   'trainer_client.share_weight_on': 'Trenér teď vidí tvoji váhu',
   'trainer_client.share_weight_off': 'Trenér už tvoji váhu nevidí',
+  'trainer_client.progression_locked_hint': 'Upravuje trenér přes progresi',
+  'trainer_client.no_plan_yet_title': 'Trenér {{name}} ti zatím nepřiřadil plán',
+  'trainer_client.no_plan_yet_title_unnamed': 'Trenér ti zatím nepřiřadil plán',
+  'trainer_client.no_plan_yet_desc': 'Můžeš si mezitím vytvořit vlastní',
 };
 
 export default cs;

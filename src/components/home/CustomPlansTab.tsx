@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Plus, Calendar, ChevronRight, ChevronDown, Trash2, Dumbbell, Play, Globe, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { nextDayForSummary, summaryActiveDayIds, useCustomPlans } from '@/hooks/useCustomPlans';
+import { nextDayForSummary, summaryActiveDayCount, summaryActiveDayIds, useCustomPlans } from '@/hooks/useCustomPlans';
 import { usePausedCustomWorkout, PausedCustomWorkoutState } from '@/hooks/usePausedCustomWorkout';
 import { cycleLetter, fetchLastCustomPlanSession, type CustomPlanSessionRow } from '@/lib/customPlanCycle';
 import { customDayName, useDayLabel } from '@/components/workout/CustomPlanDayChips';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { CustomPlanSummary } from '@/hooks/useCustomPlans';
 import { useTrainerAssignments } from '@/hooks/useTrainerAssignments';
 import { TrainerPlanBadge } from '@/components/trainer/TrainerPlanBadge';
+import { emptyStateTrainer } from '@/lib/trainerClient';
 
 const CustomPlansTab = () => {
   const navigate = useNavigate();
@@ -30,7 +31,8 @@ const CustomPlansTab = () => {
   const { pausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const { user } = useAuth();
   // Plán od trenéra jen označíme — co klient trénuje, si vybírá sám (26. 10. 2026).
-  const { assignmentForPlan, trainerNameFor, assignments } = useTrainerAssignments();
+  const { assignmentForPlan, trainerNameFor, assignments, trainers, isLoading: trainersLoading } = useTrainerAssignments();
+  const emptyTrainer = emptyStateTrainer(trainers);
   // Fáze plánu (trenér): „Další“ se točí jen mezi dny platnými tento týden; týden
   // se počítá od startu přiřazení. Plány bez fází zůstávají beze změny.
   const plans = useMemo(
@@ -147,6 +149,8 @@ const CustomPlansTab = () => {
         ? { id: playable[0].id, index: days.indexOf(playable[0]), day: playable[0] }
         : null;
     const isCycle = plan.day_count >= 2;
+    // Popisek karty: jen dny platné tento týden (dny jiných fází se nepočítají).
+    const activeCount = summaryActiveDayCount(plan, assignments);
     const rowTitle = target
       ? (isCycle ? nextDayText({ ...target.day, index: target.index }) : dayLabel(target.day, target.index))
       : t('custom_plan.hero_add_exercises');
@@ -184,9 +188,9 @@ const CustomPlansTab = () => {
                     {plan.published_at && <Globe className="w-4 h-4 text-white/80 shrink-0" aria-label={t('public_workouts.published_badge')} />}
                   </h3>
                   <p className="text-white/70 text-sm">
-                    {isCycle
-                      ? t('custom_plan.hero_days_cycle', { count: plan.day_count, days: dayWord(plan.day_count) })
-                      : `${plan.day_count} ${dayWord(plan.day_count)}`}
+                    {activeCount >= 2
+                      ? t('custom_plan.hero_days_cycle', { count: activeCount, days: dayWord(activeCount) })
+                      : `${activeCount} ${dayWord(activeCount)}`}
                   </p>
                   {trainerBadge(plan.id, 'hero')}
                 </div>
@@ -295,7 +299,7 @@ const CustomPlansTab = () => {
       {plans.length === 0 ? (
         <>
           {newPlanForm}
-          {!showNewPlan && (
+          {!showNewPlan && !trainersLoading && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -304,9 +308,15 @@ const CustomPlansTab = () => {
               <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Dumbbell className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-foreground mb-1">{t('home.no_custom_plans')}</h3>
+              <h3 className="font-semibold text-foreground mb-1">
+                {!emptyTrainer
+                  ? t('home.no_custom_plans')
+                  : emptyTrainer.name
+                    ? t('trainer_client.no_plan_yet_title', { name: emptyTrainer.name })
+                    : t('trainer_client.no_plan_yet_title_unnamed')}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                {t('home.no_custom_plans_desc')}
+                {emptyTrainer ? t('trainer_client.no_plan_yet_desc') : t('home.no_custom_plans_desc')}
               </p>
             </motion.div>
           )}
@@ -338,7 +348,7 @@ const CustomPlansTab = () => {
                       </h4>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
                         <Calendar className="w-3 h-3 shrink-0" />
-                        <span className="shrink-0">{plan.day_count} {dayWord(plan.day_count)}</span>
+                        <span className="shrink-0">{summaryActiveDayCount(plan, assignments)} {dayWord(summaryActiveDayCount(plan, assignments))}</span>
                         {plan.next_day && (
                           <span className="font-semibold text-primary flex items-center gap-1 min-w-0 ml-1">
                             <Repeat className="w-3 h-3 shrink-0" />

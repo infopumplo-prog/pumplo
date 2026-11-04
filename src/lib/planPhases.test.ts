@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  exerciseWeekView,
   activeDaysForWeek, applyProgressionToExercise, currentPlanWeek, effectivePhaseForWeek, effectivePrescription,
   findPlanAssignment, hasWeeklySchedule, phaseForWeek, planSchedule, planStartDate, planTotalWeeks, pragueIsoDate,
   resizePerSet, toPragueDate, upcomingProgressions, type ExerciseProgression, type PlanPhase,
@@ -216,5 +217,43 @@ describe('assignment start & schedule', () => {
     expect(hasWeeklySchedule(undefined, null)).toBe(false);
     expect(hasWeeklySchedule([home], [])).toBe(true);
     expect(hasWeeklySchedule([], [rule(2)])).toBe(true);
+  });
+});
+
+describe('exerciseWeekView', () => {
+  const base = {
+    id: 'e1', sets: 4, reps: 10, weight_kg: 50,
+    reps_per_set: [10, 10, 10, 10], weight_per_set: [50, 50, 50, 50],
+    rest_per_set: null, set_types: ['normal', 'normal', 'normal', 'normal'],
+  };
+  const rule = { plan_exercise_id: 'e1', from_week: 2, sets: 5, reps: 8, weight_kg: 60 };
+
+  it('active rule → effective values for the table (same as the player) and locked', () => {
+    const view = exerciseWeekView(base, [rule], 2);
+    expect(view.locked).toBe(true);
+    expect(view.exercise).toMatchObject({ sets: 5, reps: 8, weight_kg: 60, reps_per_set: null, weight_per_set: null });
+    expect(view.exercise.set_types).toHaveLength(5);
+  });
+  it('sets-only rule keeps per-set values and pads them to the new length', () => {
+    const view = exerciseWeekView(base, [{ ...rule, reps: null, weight_kg: null }], 3);
+    expect(view.locked).toBe(true);
+    expect(view.exercise.reps_per_set).toEqual([10, 10, 10, 10, 10]);
+  });
+  it('never mutates the base values', () => {
+    const snapshot = JSON.parse(JSON.stringify(base));
+    exerciseWeekView(base, [rule], 2);
+    expect(base).toEqual(snapshot);
+  });
+  it('future rule, other exercise, rule changing nothing, no schedule → same object, editable', () => {
+    for (const view of [
+      exerciseWeekView(base, [rule], 1),
+      exerciseWeekView(base, [{ ...rule, plan_exercise_id: 'other' }], 5),
+      exerciseWeekView(base, [{ ...rule, sets: null, reps: null, weight_kg: null, notes: 'x' }], 5),
+      exerciseWeekView(base, [], 5),
+      exerciseWeekView(base, [rule], null),
+    ]) {
+      expect(view.locked).toBe(false);
+      expect(view.exercise).toBe(base);
+    }
   });
 });

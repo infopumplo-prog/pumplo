@@ -32,3 +32,20 @@ export const writeAppConsent = (c: AppConsent, storage: WriteStorage | null = de
     storage?.setItem(APP_CONSENT_KEY, JSON.stringify({ v: APP_CONSENT_VERSION, analytics: c.analytics, marketing: c.marketing, ts: new Date().toISOString() }));
   } catch { /* storage blocked: the choice still applies for this session */ }
 };
+
+// Never interrupt sign-in, public share pages, the policy itself or a workout.
+const CONSENT_BLOCKED_PREFIXES = ['/auth', '/reset-password', '/privacy', '/terms', '/install', '/plan/', '/cvik/', '/s/', '/go/', '/custom-workout/'];
+
+export const isConsentBlockedPath = (pathname: string): boolean =>
+  CONSENT_BLOCKED_PREFIXES.some((p) => pathname.startsWith(p));
+
+/**
+ * The first-run consent sheet is on screen or about to be, so nothing else may open
+ * over it. `consent` stays null only in the native app (the web gets a fixed answer).
+ */
+export const isConsentPromptPending = ({ hasUser, consent, pathname, workoutActive }: {
+  hasUser: boolean;
+  consent: AppConsent | null;
+  pathname: string;
+  workoutActive: boolean;
+}): boolean => hasUser && consent === null && !workoutActive && !isConsentBlockedPath(pathname);

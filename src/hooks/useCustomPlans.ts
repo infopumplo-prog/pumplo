@@ -113,6 +113,12 @@ export const summaryActiveDayIds = (
   return new Set(activeDaysForWeek(plan.cycle_days, plan.phases, week).map(d => d.id));
 };
 
+/** Počet dnů na kartě plánu: s fázemi jen dny platné tento týden, bez fází všechny. */
+export const summaryActiveDayCount = (
+  plan: Pick<CustomPlanSummary, 'id' | 'created_at' | 'duration_weeks' | 'phases' | 'cycle_days' | 'day_count'>,
+  assignments: readonly AssignmentLike[] | null | undefined,
+): number => summaryActiveDayIds(plan, assignments)?.size ?? plan.day_count;
+
 /** Další den souhrnu s ohledem na fáze (start přiřazení od trenéra). Bez fází = plan.next_day. */
 export const nextDayForSummary = (
   plan: CustomPlanSummary,

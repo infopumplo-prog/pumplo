@@ -61,6 +61,17 @@ export const assignmentEndDate = (startDate: string, weeks: number): string | nu
 };
 
 /**
+ * Poslední den plánu pro zobrazení: `end` (assignmentEndDate i RPC end_date) je
+ * výlučný — první den po plánu. Logika (živé přiřazení, finished) dál počítá s výlučným.
+ */
+export const assignmentLastDay = (exclusiveEnd: string | null | undefined): string | null => {
+  const m = ISO_DATE_RE.exec(exclusiveEnd ?? '');
+  if (!m) return null;
+  const last = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - 86_400_000);
+  return `${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, '0')}-${String(last.getUTCDate()).padStart(2, '0')}`;
+};
+
+/**
  * Přiřazení je živé: trenér ho neukončil a ještě neuplynulo (dnešek < konec).
  * Budoucí start se počítá taky — plán už u klienta je a je „od trenéra“.
  */
@@ -91,6 +102,18 @@ export const isTrainerAssignedPlan = (
   assignments: readonly TrainerAssignment[] | null | undefined,
   today: string = toLocalIsoDate(),
 ): boolean => findLiveAssignmentForPlan(planId, assignments, today) !== null;
+
+/**
+ * Prázdný seznam plánů u klienta s aktivním trenérem (my_trainers vrací jen aktivní):
+ * koho jmenovat. Null = bez trenéra, name null = trenér bez jména.
+ */
+export const emptyStateTrainer = (
+  trainers: readonly Pick<MyTrainer, 'trainer_name'>[] | null | undefined,
+): { name: string | null } | null => {
+  if (!trainers?.length) return null;
+  const named = trainers.find(tr => tr.trainer_name?.trim());
+  return { name: named ? named.trainer_name.trim() : null };
+};
 
 export const isValidDifficulty = (value: unknown): value is Difficulty =>
   typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5;

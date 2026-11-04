@@ -5,7 +5,7 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 vi.mock('@/i18n', () => ({ default: { t: (k: string) => k } }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 
-import { nextDayForSummary, summarizeNextDay, type CustomPlanSummary } from './useCustomPlans';
+import { nextDayForSummary, summarizeNextDay, summaryActiveDayCount, type CustomPlanSummary } from './useCustomPlans';
 
 const day = (id: string, n: number, phase_id: string | null = null, count = 3) =>
   ({ id, day_number: n, name: null, name_en: null, phase_id, exerciseCount: count });
@@ -53,5 +53,20 @@ describe('nextDayForSummary with phases', () => {
     vi.setSystemTime(new Date('2026-10-02T10:00:00Z'));
     expect(nextDayForSummary(plan(), [])?.id).toBe('h1');
     vi.useRealTimers();
+  });
+});
+
+describe('summaryActiveDayCount', () => {
+  const assignments = [{ plan_id: 'p1', start_date: '2026-09-20', weeks: 8, ended_at: null }];
+  it('counts only days of the current phase plus whole-plan days', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T10:00:00Z')); // týden 6 → posilovna
+    expect(summaryActiveDayCount(plan(), assignments)).toBe(2);
+    const withWholePlanDay = plan({ day_count: 5, cycle_days: [...plan().cycle_days, day('x', 5)] });
+    expect(summaryActiveDayCount(withWholePlanDay, assignments)).toBe(3);
+    vi.useRealTimers();
+  });
+  it('plan without phases keeps day_count', () => {
+    expect(summaryActiveDayCount(plan({ phases: [], day_count: 3 }), [])).toBe(3);
   });
 });

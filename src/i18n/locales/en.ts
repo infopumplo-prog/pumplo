@@ -3235,6 +3235,10 @@ const en = {
   'trainer_client.share_weight_error': 'The setting could not be saved. Please try again.',
   'trainer_client.share_weight_on': 'Your trainer can now see your weight',
   'trainer_client.share_weight_off': 'Your trainer no longer sees your weight',
+  'trainer_client.progression_locked_hint': 'Set by your trainer via progression',
+  'trainer_client.no_plan_yet_title': "Trainer {{name}} hasn't assigned you a plan yet",
+  'trainer_client.no_plan_yet_title_unnamed': "Your trainer hasn't assigned you a plan yet",
+  'trainer_client.no_plan_yet_desc': 'You can create your own in the meantime',
 };
 
 export default en;

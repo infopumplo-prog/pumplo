@@ -256,6 +256,26 @@ export const applyProgressionToExercise = <T extends PlanExerciseShape>(
   };
 };
 
+/**
+ * Cvik pro detail plánu v týdnu N. Když progrese právě přepisuje série/opakování/váhu,
+ * ukazují se hodnoty týdne a řádky jsou zamčené: úprava by se zapsala do základních
+ * sloupců a tiše přepsala základ. Jinak vstup beze změny a odemčeno.
+ */
+export const exerciseWeekView = <T extends PlanExerciseShape>(
+  exercise: T,
+  progressions: readonly ExerciseProgression[] | null | undefined,
+  week: number | null | undefined,
+): { exercise: T; locked: boolean } => {
+  if (week == null) return { exercise, locked: false };
+  const eff = effectivePrescription(
+    { sets: exercise.sets, reps: exercise.reps, weight_kg: exercise.weight_kg },
+    progressionsForExercise(progressions, exercise.id),
+    week,
+  );
+  if (!eff.setsOverridden && !eff.repsOverridden && !eff.weightOverridden) return { exercise, locked: false };
+  return { exercise: applyProgressionToExercise(exercise, progressions, week), locked: true };
+};
+
 /** Pravidla, která teprve přijdou (from_week > N) — pro nápovědu „od 5. týdne 4 série“. */
 export const upcomingProgressions = (
   progressions: readonly ExerciseProgression[] | null | undefined,
