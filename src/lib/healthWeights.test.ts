@@ -171,3 +171,12 @@ describe('platform helpers', () => {
     expect(availabilityFromResult('android', { available: false, reason: 'Health Connect is unavailable on this device.' })).toBe('not_installed');
   });
 });
+
+describe('načítání pluginu', () => {
+  it('asynchronní funkce nevrací proxy pluginu (await by volal Health.then)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('./healthWeights.ts', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/\)\)\.Health;/);
+    expect(source).not.toContain('const Health = await');
+  });
+});

@@ -168,13 +168,14 @@ export const getHealthPlatform = (): HealthPlatform | null => {
   return p === 'ios' || p === 'android' ? p : null;
 };
 
-const loadHealth = async () => (await import('@capgo/capacitor-health')).Health;
+// Vrací modul, ne plugin: plugin je Capacitor proxy a `await` na něm zavolá neexistující Health.then().
+const loadHealth = () => import('@capgo/capacitor-health');
 
 export const checkHealthAvailability = async (): Promise<HealthAvailability> => {
   const platform = getHealthPlatform();
   if (!platform) return 'unsupported';
   try {
-    const Health = await loadHealth();
+    const { Health } = await loadHealth();
     return availabilityFromResult(platform, await Health.isAvailable());
   } catch (e) {
     console.warn('[health] availability check failed', e);
@@ -198,7 +199,7 @@ export const syncHealthWeights = (userId: string): Promise<HealthSyncResult> => 
     if (!state.connected) return { ok: false, reason: 'not_connected' };
     const startedAt = new Date();
     try {
-      const Health = await loadHealth();
+      const { Health } = await loadHealth();
       const range = syncRange(state.lastSyncAt, startedAt);
       const { samples } = await Health.readSamples({ dataType: 'weight', ...range, limit: 2000, ascending: true });
       const entries = mapHealthSamples((samples ?? []) as RawHealthSample[], healthSourceFor(platform));
@@ -225,7 +226,7 @@ export const connectHealth = async (userId: string): Promise<HealthConnectResult
   const availability = await checkHealthAvailability();
   if (availability !== 'available') return { ok: false, reason: availability };
   try {
-    const Health = await loadHealth();
+    const { Health } = await loadHealth();
     // Android: READ_HEALTH_DATA_HISTORY → první import i starší než 30 dní (90 dní, David 29. 10.); iOS volbu ignoruje.
     const status = await Health.requestAuthorization({ read: ['weight'], write: [], requestHistoryAccess: true });
     // iOS záměrně neprozradí, zda čtení povolil — zamítnutí se projeví jen prázdnými daty.
@@ -254,7 +255,7 @@ export const openHealthConnectStore = async () => {
 /** Android: zamítnuté oprávnění → nastavení Health Connect, kde ho jde povolit. */
 export const openHealthSettings = async () => {
   try {
-    const Health = await loadHealth();
+    const { Health } = await loadHealth();
     await Health.openHealthConnectSettings();
   } catch (e) {
     console.warn('[health] cannot open settings', e);
