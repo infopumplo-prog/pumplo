@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HevyImportSection } from '@/components/settings/HevyImportSection';
+import { MyTrainersSection } from '@/components/settings/MyTrainersSection';
 import AccentPicker from '@/components/AccentPicker';
 import type { AccentColor } from '@/lib/accentColors';
 import { motion } from 'framer-motion';
@@ -599,6 +600,9 @@ const Settings = () => {
               </div>
             </SettingsGroup>
           </motion.div>
+
+          {/* ── Můj trenér (jen když klient nějakého má) ── */}
+          <MyTrainersSection />
 
           {/* ── Trénink ── */}
           <motion.div variants={itemVariants}>

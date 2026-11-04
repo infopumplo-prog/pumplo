@@ -28,15 +28,18 @@ import {
   OnboardingEquipmentStep,
   OnboardingTrainerTip,
 } from '@/components/onboarding';
+import { isQuestionnaireSkipped } from '@/lib/trainerClientOnboarding';
 
 const TOTAL_STEPS = 7; // 0-6 (no registration step in edit mode)
 
 interface OnboardingDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Dotazník dokončen (plán vygenerovaný / profil uložený) — rodič si obnoví plán a profil. */
+  onCompleted?: () => void;
 }
 
-const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
+const OnboardingDrawer = ({ open, onOpenChange, onCompleted }: OnboardingDrawerProps) => {
   const { t, i18n } = useTranslation();
   const { profile, updateProfile, refetch } = useUserProfile();
   const { generateWorkoutPlan, isGenerating } = useWorkoutGenerator();
@@ -63,7 +66,10 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
   const [hasJustCompleted, setHasJustCompleted] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const isEditMode = profile?.onboarding_completed ?? false;
+  // Klient trenéra po krátké registraci (26. 10. 2026): appka je odemčená (onboarding_completed),
+  // ale dotazník vyplňuje poprvé → chovat se jako nový uživatel, jen nikdy appku znovu nezamknout.
+  const questionnaireSkipped = isQuestionnaireSkipped(profile);
+  const isEditMode = (profile?.onboarding_completed ?? false) && !questionnaireSkipped;
 
   // Load existing profile data - skip if we just completed to prevent reset
   useEffect(() => {
@@ -165,7 +171,9 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         first_name: firstName.trim() || null,
         last_name: lastName.trim() || null,
         gender,
-        primary_goal: primaryGoal,
+        // Klient trenéra: cíl až s plánem (handleComplete) — jinak by rozdělaný dotazník
+        // schoval nabídku dotazníku a nechal ho bez Pumplo plánu.
+        ...(questionnaireSkipped ? {} : { primary_goal: primaryGoal }),
         training_days: trainingDays,
         preferred_time: preferredTime,
         training_duration_minutes: trainingDuration,
@@ -178,7 +186,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
         equipment_preference: equipmentPreference,
         user_level: userLevel as any,
         current_step: currentStep,
-        onboarding_completed: allValid,
+        // Klient trenéra má appku odemčenou už z registrace — zavření dotazníku ji nezamkne.
+        onboarding_completed: allValid || questionnaireSkipped,
       });
       if (saveResult.success) await saveInjuryNote();
 
@@ -191,6 +200,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
           description: saveResult.error || t('onboarding_drawer.save_failed_desc'),
           variant: 'destructive'
         });
+      } else if (questionnaireSkipped) {
+        // Nevtíravě: rozpracovaný dotazník si pamatujeme, bez varování.
       } else if (allValid) {
         toast({ title: t('onboarding_drawer.saved_title'), description: t('onboarding_drawer.saved_desc') });
       } else {
@@ -270,7 +281,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
       split_override: splitOverride,
       equipment_preference: equipmentPreference,
       user_level: userLevel as any,
-      onboarding_completed: isEditMode,
+      // Klient trenéra zůstává odemčený i během generování (jinak by zmizely plány od trenéra).
+      onboarding_completed: isEditMode || questionnaireSkipped,
       current_step: TOTAL_STEPS - 1,
     });
 
@@ -361,6 +373,8 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
               .eq('id', activePlan.id);
           }
           setHasJustCompleted(false);
+          // Klient trenéra bez plánu: cíl zpět na null, ať mu nabídka dotazníku zůstane.
+          if (questionnaireSkipped && !activePlan?.id) await updateProfile({ primary_goal: null });
           toast({
             title: t('onboarding.generate_failed_title'),
             description: t('onboarding.generate_failed_desc'),
@@ -406,6 +420,7 @@ const OnboardingDrawer = ({ open, onOpenChange }: OnboardingDrawerProps) => {
     }
 
     if (!isEditMode) trackTutorialComplete();
+    onCompleted?.();
     onOpenChange(false);
     } finally {
       setIsCompleting(false);

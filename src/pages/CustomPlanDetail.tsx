@@ -31,6 +31,10 @@ import { translateMuscle } from '@/lib/muscleTranslation';
 import { ExerciseInfoContent } from '@/components/workout/ExerciseInfoContent';
 import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePicker';
 import PublishPlanDialog from '@/components/PublishPlanDialog';
+import { TrainerAssignmentInfo } from '@/components/trainer/TrainerAssignmentInfo';
+import { OtherPhaseDays, PlanPhaseTimeline, ProgressionHints, useProgressionText } from '@/components/trainer/PlanPhaseTimeline';
+import { useTrainerAssignments } from '@/hooks/useTrainerAssignments';
+import { activeDaysForWeek, effectivePrescription, exerciseWeekView, hasWeeklySchedule, planSchedule, progressionsForExercise, type PlanPhase } from '@/lib/planPhases';
 import CustomPlanDayChips, { useDayLabel } from '@/components/workout/CustomPlanDayChips';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -335,6 +339,33 @@ const SetRowInput = ({ index, reps, weight, isCardio, setTypes, onRepsChange, on
   );
 };
 
+// --- Řádek série, který právě určuje progrese od trenéra (hodnoty týdne, jen ke čtení) ---
+const LockedSetRow = ({ index, reps, weight, isCardio, setTypes }: {
+  index: number; reps: number; weight: number | null; isCardio: boolean; setTypes: (string | null)[] | null;
+}) => {
+  const cell = 'bg-muted/40 rounded-lg px-2 py-1.5 text-sm text-center text-muted-foreground';
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className={cn('w-10 shrink-0 h-8 rounded-lg bg-muted/70 flex items-center justify-center text-sm font-bold', setBadgeColor(setTypes, index))}>
+        {setBadgeLabel(setTypes, index)}
+      </div>
+      {isCardio ? (
+        <div className="flex-1 flex items-center gap-2">
+          <span className={cn(cell, 'w-14')}>{Math.floor(reps / 60)}</span>
+          <span className="text-[10px] text-muted-foreground">min</span>
+          <span className={cn(cell, 'w-14')}>{reps % 60}</span>
+          <span className="text-[10px] text-muted-foreground">s</span>
+        </div>
+      ) : (
+        <>
+          <span className={cn(cell, 'flex-1 min-w-0')}>{weight ?? '–'}</span>
+          <span className={cn(cell, 'flex-1 min-w-0')}>{reps}</span>
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- Per-exercise note (local state, saves on blur) ---
 const NoteInput = ({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) => {
   const { t } = useTranslation();
@@ -368,9 +399,13 @@ interface SortableExerciseProps {
   onSwapQuick?: (exercise: CustomPlanExercise) => void;
   onSwapLong?: (exercise: CustomPlanExercise) => void;
   isSwapping?: boolean;
+  // Progrese od trenéra: „Tento týden: …“, „od 5. týdne 4 série“.
+  progressionHints?: string[];
+  // Cvik s hodnotami tohoto týdne, když je přepisuje progrese: tabulka je ukazuje a jde jen číst.
+  lockedWeekExercise?: CustomPlanExercise;
 }
 
-const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping }: SortableExerciseProps) => {
+const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onShowDetail, onOpenRestSheet, onOpenTypeSheet, isIncompatible, alternatives, onSwapExercise, onSwapQuick, onSwapLong, isSwapping, progressionHints, lockedWeekExercise }: SortableExerciseProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exercise.id });
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
@@ -475,6 +510,8 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
         </div>
       </div>
 
+      {progressionHints && <ProgressionHints hints={progressionHints} />}
+
       {/* Note */}
       <div className="ml-7 mt-1.5">
         <NoteInput value={exercise.notes} onSave={(v) => onUpdate(exercise.id, { notes: v })} />
@@ -503,6 +540,22 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
             </>
           )}
         </div>
+        {lockedWeekExercise ? (
+          <>
+            {Array.from({ length: lockedWeekExercise.sets }, (_, i) => (
+              <LockedSetRow
+                key={i}
+                index={i}
+                reps={lockedWeekExercise.reps_per_set?.[i] ?? lockedWeekExercise.reps}
+                weight={lockedWeekExercise.weight_per_set?.[i] ?? lockedWeekExercise.weight_kg}
+                isCardio={isCardio}
+                setTypes={lockedWeekExercise.set_types}
+              />
+            ))}
+            <p className="mt-2 text-xs text-muted-foreground text-center">{t('trainer_client.progression_locked_hint')}</p>
+          </>
+        ) : (
+        <>
         {Array.from({ length: exercise.sets }, (_, i) => {
           const repsArr = exercise.reps_per_set || [];
           const weightArr = exercise.weight_per_set || [];
@@ -549,6 +602,8 @@ const SortableExerciseItem = ({ exercise, onUpdate, onRemove, onDuplicate, onSho
           <Plus className="w-3.5 h-3.5" />
           {t('custom_plan.add_set')}
         </button>
+        </>
+        )}
       </div>
 
       {/* Incompatible alternatives */}
@@ -1133,14 +1188,70 @@ const CustomPlanDetail = () => {
     () => sortCycleDays((plan?.days ?? []).map(d => ({ ...d, exerciseCount: d.exercises.length }))),
     [plan],
   );
-  const nextDay = useMemo(() => getNextCycleDay(cycleDays, lastCompleted?.dayId), [cycleDays, lastCompleted]);
+  // Fáze + progrese od trenéra (migrace 20261029). Týden plánu se počítá od startu
+  // přiřazení, jinak od vytvoření plánu. Plán bez fází: všechny dny jako dřív.
+  const { assignments } = useTrainerAssignments();
+  const weeklyPlan = !!plan && hasWeeklySchedule(plan.phases, plan.progressions);
+  const schedule = useMemo(
+    () => (plan && weeklyPlan ? planSchedule(plan, assignments) : null),
+    [plan, weeklyPlan, assignments],
+  );
+  const hasPhases = (plan?.phases.length ?? 0) > 0;
+  const activeDayIds = useMemo(
+    () => (plan && schedule && hasPhases ? new Set(activeDaysForWeek(cycleDays, plan.phases, schedule.week).map(d => d.id)) : null),
+    [plan, schedule, hasPhases, cycleDays],
+  );
+  const activeCycleDays = useMemo(
+    () => (activeDayIds ? cycleDays.filter(d => activeDayIds.has(d.id)) : cycleDays),
+    [cycleDays, activeDayIds],
+  );
+  const nextDay = useMemo(() => getNextCycleDay(activeCycleDays, lastCompleted?.dayId), [activeCycleDays, lastCompleted]);
+  // Dny ostatních fází: budoucí → „Další fáze“, minulé → „Předchozí fáze“.
+  const otherPhaseDays = useMemo(() => {
+    const next: { id: string; name: string | null; name_en?: string | null; index: number; phase: PlanPhase }[] = [];
+    const prev: typeof next = [];
+    if (!plan || !schedule || !activeDayIds) return { next, prev };
+    const byId = new Map(plan.phases.map(p => [p.id, p]));
+    cycleDays.forEach((d, index) => {
+      if (activeDayIds.has(d.id)) return;
+      const phase = d.phase_id ? byId.get(d.phase_id) : undefined;
+      if (!phase) return;
+      const item = { id: d.id, name: d.name, name_en: d.name_en, index, phase };
+      (phase.start_week > schedule.week ? next : prev).push(item);
+    });
+    const byWeek = (a: { phase: PlanPhase; index: number }, b: { phase: PlanPhase; index: number }) =>
+      a.phase.start_week - b.phase.start_week || a.index - b.index;
+    return { next: next.sort(byWeek), prev: prev.sort(byWeek) };
+  }, [plan, schedule, activeDayIds, cycleDays]);
+  const progressionText = useProgressionText();
+  const progressionHintsFor = (exercise: CustomPlanExercise): string[] | undefined => {
+    if (!plan || !schedule || !plan.progressions.length) return undefined;
+    const rules = progressionsForExercise(plan.progressions, exercise.id);
+    if (!rules.length) return undefined;
+    const hints: string[] = [];
+    const eff = effectivePrescription({ sets: exercise.sets, reps: exercise.reps, weight_kg: exercise.weight_kg }, rules, schedule.week);
+    if (eff.progressed) {
+      const now = progressionText.thisWeek({
+        sets: eff.setsOverridden ? eff.sets : null,
+        reps: eff.repsOverridden ? eff.reps : null,
+        weight_kg: eff.weightOverridden ? eff.weight_kg : null,
+      });
+      if (now) hints.push(now);
+    }
+    for (const r of rules) {
+      if (r.from_week <= schedule.week) continue;
+      const h = progressionText.fromWeek(r);
+      if (h) hints.push(h);
+    }
+    return hints;
+  };
 
-  // Výchozí výběr = další den kruhu; po smazání vybraného dne také.
+  // Výchozí výběr = další den kruhu (u fází z tohoto týdne); po smazání vybraného dne také.
   useEffect(() => {
     if (cycleDays.length === 0) return;
     if (selectedDayId && cycleDays.some(d => d.id === selectedDayId)) return;
-    setSelectedDayId(nextDay?.id ?? cycleDays[0].id);
-  }, [cycleDays, nextDay, selectedDayId]);
+    setSelectedDayId(nextDay?.id ?? activeCycleDays[0]?.id ?? cycleDays[0].id);
+  }, [cycleDays, activeCycleDays, nextDay, selectedDayId]);
 
   const selectedDay = cycleDays.find(d => d.id === selectedDayId) ?? null;
   // Spouští se vybraný den; prázdný vybraný den by nešel odcvičit → další v kruhu.
@@ -1173,11 +1284,13 @@ const CustomPlanDetail = () => {
     const dx = t1.clientX - start.x;
     const dy = t1.clientY - start.y;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const idx = cycleDays.findIndex(d => d.id === selectedDayId);
+    // Fáze: swipe jen mezi čipy tohoto týdne (dny jiných fází jsou sbalené níž).
+    const swipeDays = activeCycleDays.some(d => d.id === selectedDayId) ? activeCycleDays : cycleDays;
+    const idx = swipeDays.findIndex(d => d.id === selectedDayId);
     const nextIdx = idx + (dx < 0 ? 1 : -1);
-    if (idx < 0 || nextIdx < 0 || nextIdx >= cycleDays.length) return;
+    if (idx < 0 || nextIdx < 0 || nextIdx >= swipeDays.length) return;
     // Čip nového dne se odroluje do záběru v CustomPlanDayChips (efekt na activeDayId).
-    setSelectedDayId(cycleDays[nextIdx].id);
+    setSelectedDayId(swipeDays[nextIdx].id);
   };
 
   const handleAddDay = async () => {
@@ -1275,6 +1388,9 @@ const CustomPlanDetail = () => {
               {t('public_workouts.published_badge')}
             </button>
           )}
+          {/* Plán od trenéra: štítek + období + plnění (jen info, trénuje se dál cokoli) */}
+          <TrainerAssignmentInfo planId={plan.id} />
+          {schedule && hasPhases && <PlanPhaseTimeline phases={plan.phases} schedule={schedule} />}
           <PublishPlanDialog
             open={publishOpen}
             onOpenChange={setPublishOpen}
@@ -1297,7 +1413,14 @@ const CustomPlanDetail = () => {
               onMove={moveDay}
               onDelete={removeDay}
               adding={addingDay}
+              visibleIds={activeDayIds}
             />
+          )}
+          {!isSingleDay && activeDayIds && (otherPhaseDays.next.length > 0 || otherPhaseDays.prev.length > 0) && (
+            <div className="space-y-2">
+              <OtherPhaseDays title={t('trainer_client.phase_next_days')} days={otherPhaseDays.next} selectedDayId={selectedDayId} onSelect={setSelectedDayId} />
+              <OtherPhaseDays title={t('trainer_client.phase_prev_days')} days={otherPhaseDays.prev} selectedDayId={selectedDayId} onSelect={setSelectedDayId} />
+            </div>
           )}
           {plan.days.filter(day => isSingleDay || day.id === selectedDayId).map((day) => (
             <motion.div
@@ -1324,6 +1447,7 @@ const CustomPlanDetail = () => {
                     <SortableContext items={day.exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
                       {day.exercises.map((exercise) => {
                         const incompatInfo = incompatibleExercises.find(i => i.exercise_id === exercise.exercise_id);
+                        const weekView = exerciseWeekView(exercise, plan.progressions, schedule?.week);
                         return (
                           <SortableExerciseItem
                             key={exercise.id}
@@ -1340,6 +1464,8 @@ const CustomPlanDetail = () => {
                             onSwapQuick={handleRowSwapQuick}
                             onSwapLong={handleRowSwapLong}
                             isSwapping={isSwappingRowId === exercise.id}
+                            progressionHints={progressionHintsFor(exercise)}
+                            lockedWeekExercise={weekView.locked ? weekView.exercise : undefined}
                           />
                         );
                       })}

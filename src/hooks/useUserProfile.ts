@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FETCH_TIMEOUT_MS, readCache, resolveWithCache, withNetworkTimeout, writeCache } from '@/lib/offlineCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { tr } from '@/lib/uiLocale';
+import { PROFILE_CHANGED_EVENT } from '@/lib/trainerClientOnboarding';
 
 export interface UserProfile {
   id: string;
@@ -158,7 +159,14 @@ export const useUserProfile = () => {
       }
     });
     
-    return () => subscription.unsubscribe();
+    // Profil zapsaný mimo tenhle hook (dokončení krátké registrace přes trenéra) → načíst znovu.
+    const onChanged = () => { fetchProfile(); };
+    window.addEventListener(PROFILE_CHANGED_EVENT, onChanged);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(PROFILE_CHANGED_EVENT, onChanged);
+    };
   }, [user]);
 
   return { profile, isLoading, updateProfile, refetch: fetchProfile };

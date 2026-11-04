@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +34,9 @@ import { buildCustomWatchState, isStandaloneWatchWorkoutActive, type WatchAction
 import { useWatchBridge } from '@/hooks/useWatchBridge';
 import { cycleLetter, fetchLastCompletedDays, getNextCycleDay, NO_GYM_PARAM, recordLocalCompleted, sortCycleDays, tagSessionWithCycleDay } from '@/lib/customPlanCycle';
 import { customDayName } from '@/components/workout/CustomPlanDayChips';
+import { useInvalidateTrainerData, useTrainerAssignments } from '@/hooks/useTrainerAssignments';
+import { activeDaysForWeek, applyProgressionToExercise, hasWeeklySchedule, planSchedule } from '@/lib/planPhases';
+import { TrainerFeedbackSheet } from '@/components/trainer/TrainerFeedbackSheet';
 
 interface ExerciseWithVideo {
   id: string;
@@ -129,6 +132,19 @@ const CustomWorkoutPlayer = () => {
   const { plan, isLoading } = useCustomPlanDetail(id || null);
   const { pausedWorkout, savePausedWorkout, clearPausedWorkout } = usePausedCustomWorkout();
   const { profile } = useUserProfile();
+  // Plán od trenéra → po uložení tréninku se zeptat na obtížnost (uložení na tom nezávisí).
+  const { assignmentForPlan, trainerNameFor, assignments, isLoading: assignmentsLoading } = useTrainerAssignments();
+  // Fáze + progrese od trenéra (migrace 20261029): série/opakování/váha podle
+  // aktuálního týdne plánu. Plán bez nich jede přesně jako dřív.
+  const weeklyPlan = !!plan && hasWeeklySchedule(plan.phases, plan.progressions);
+  const planWeek = useMemo(
+    () => (plan && weeklyPlan ? planSchedule(plan, assignments).week : 1),
+    [plan, weeklyPlan, assignments],
+  );
+  // Týden u plánu od trenéra se počítá od startu přiřazení → počkat na přiřazení.
+  const scheduleReady = !weeklyPlan || !assignmentsLoading;
+  const invalidateTrainerData = useInvalidateTrainerData();
+  const [trainerFeedback, setTrainerFeedback] = useState<{ sessionId: string; trainerName: string | null } | null>(null);
   const searchParams = new URLSearchParams(window.location.search);
   const resumeMode = searchParams.get('resume') === 'true';
   // Gym chosen already on the plan page (selector + location gate ran there) —
@@ -530,7 +546,10 @@ const CustomWorkoutPlayer = () => {
     const dataMap = new Map<string, { name_en: string | null; video_path: string | null; machine_id: string | null; unit_type: string; category: string; primary_muscles: string[]; secondary_muscles: string[] }>();
     exerciseData?.forEach(e => dataMap.set(e.id, { name_en: (e as any).name_en || null, video_path: e.video_path, machine_id: e.machine_id, unit_type: (e as any).unit_type || 'reps', category: e.category || '', primary_muscles: (e as any).primary_muscles || [], secondary_muscles: (e as any).secondary_muscles || [] }));
 
-    const loaded: ExerciseWithVideo[] = day.exercises.map(e => ({
+    const dayExercises = weeklyPlan
+      ? day.exercises.map(e => applyProgressionToExercise(e, plan.progressions, planWeek))
+      : day.exercises;
+    const loaded: ExerciseWithVideo[] = dayExercises.map(e => ({
       id: e.id,
       exercise_id: e.exercise_id,
       exercise_name: e.exercise_name || 'Cvik',
@@ -585,7 +604,7 @@ const CustomWorkoutPlayer = () => {
 
     // Check equipment compatibility
     await checkEquipmentCompatibility(loaded);
-  }, [plan, checkEquipmentCompatibility]);
+  }, [plan, checkEquipmentCompatibility, weeklyPlan, planWeek]);
 
   // Start day
   const handleStartDay = (dayId: string) => {
@@ -603,6 +622,7 @@ const CustomWorkoutPlayer = () => {
   useEffect(() => {
     if (!plan || resumeApplied) return;
     if (playerState !== 'select_day') return;
+    if (!scheduleReady) return;
 
     // Souběh s hodinkami: dokud tam běží samostatný trénink, telefon žádný
     // nespouští ani neobnovuje. Rozdělaný trénink zůstává uložený na později.
@@ -642,7 +662,7 @@ const CustomWorkoutPlayer = () => {
     if (plan.days.length === 1 && playerState === 'select_day') {
       handleStartDay(plan.days[0].id);
     }
-  }, [plan, playerState]);
+  }, [plan, playerState, scheduleReady]);
 
   // Rest timer — uses real clock so it survives phone sleep
   const restEndTimeRef = useRef<number>(0);
@@ -1165,8 +1185,10 @@ const CustomWorkoutPlayer = () => {
 
   // Finish workout — save session + navigate home
   const handleFinishWorkout = async () => {
+    if (isSaving || trainerFeedback) return;
     try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {}
     setIsSaving(true);
+    let feedbackFor: { sessionId: string; trainerName: string | null } | null = null;
     try {
       if (user) {
         const completedAt = new Date();
@@ -1227,11 +1249,22 @@ const CustomWorkoutPlayer = () => {
           recordLocalCompleted(id, selectedDayId, completedAt.toISOString());
           if (!sessionError && session) await tagSessionWithCycleDay(session.id, id, selectedDayId);
         }
+        // Trénink plánu od trenéra (session je uložená a označená custom_plan_id) → dotaz pro trenéra.
+        const assignment = assignmentForPlan(id);
+        if (!sessionError && session && assignment) {
+          feedbackFor = { sessionId: session.id, trainerName: trainerNameFor(assignment) };
+          void invalidateTrainerData(); // plnění plánu v detailu
+        }
       }
     } catch (err) {
       console.error('Error saving custom workout session:', err);
     }
     clearPausedWorkout();
+    if (feedbackFor) {
+      setIsSaving(false);
+      setTrainerFeedback(feedbackFor);
+      return;
+    }
     navigate('/');
   };
 
@@ -1337,8 +1370,10 @@ const CustomWorkoutPlayer = () => {
             {(() => {
               // Pořadí kruhu A/B/C a štítek „Další“ (feedback 13. 10.).
               const cycle = sortCycleDays(plan.days.map(d => ({ ...d, exerciseCount: d.exercises.length })));
-              const nextId = getNextCycleDay(cycle, lastCycleDayId)?.id ?? null;
-              return cycle.map((day, index) => day.exerciseCount > 0 && (
+              // Fáze: v kruhu a výběru jen dny platné tento týden (písmena podle celého plánu).
+              const activeIds = new Set(activeDaysForWeek(cycle, plan.phases, planWeek).map(d => d.id));
+              const nextId = getNextCycleDay(cycle.filter(d => activeIds.has(d.id)), lastCycleDayId)?.id ?? null;
+              return cycle.map((day, index) => day.exerciseCount > 0 && activeIds.has(day.id) && (
                 <button
                   key={day.id}
                   onClick={() => handleStartDay(day.id)}
@@ -1447,6 +1482,7 @@ const CustomWorkoutPlayer = () => {
   if (playerState === 'completed') {
     const sc = shareCache;
     return (
+      <>
       <WorkoutShareCard
         dayLetter={sc?.dayLetter ?? plan?.name.substring(0, 2).toUpperCase() ?? ''}
         dayName={sc?.dayName ?? plan?.name ?? ''}
@@ -1468,6 +1504,14 @@ const CustomWorkoutPlayer = () => {
         isSaving={isSaving}
         onAbandon={() => { try { localStorage.removeItem(SHARE_CACHE_KEY); } catch {} navigate(-1); }}
       />
+      {trainerFeedback && (
+        <TrainerFeedbackSheet
+          sessionId={trainerFeedback.sessionId}
+          trainerName={trainerFeedback.trainerName}
+          onDone={() => { setTrainerFeedback(null); void invalidateTrainerData(); navigate('/'); }}
+        />
+      )}
+      </>
     );
   }
 

@@ -33,6 +33,8 @@ import PageTransition from '@/components/PageTransition';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import OnboardingWarning from '@/components/OnboardingWarning';
 import OnboardingDrawer from '@/components/OnboardingDrawer';
+import TrainerQuestionnaireCard from '@/components/home/TrainerQuestionnaireCard';
+import { isQuestionnaireSkipped } from '@/lib/trainerClientOnboarding';
 import NotificationOnboardingDrawer from '@/components/notifications/NotificationOnboardingDrawer';
 import { WorkoutSession } from '@/components/workout/WorkoutSession';
 import { GymLocationGate } from '@/components/workout/GymLocationGate';
@@ -1723,6 +1725,25 @@ const Training = () => {
           </div>
 
           <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+        </div>
+      </PageTransition>
+    );
+  }
+
+  // Klient trenéra bez dotazníku (26. 10. 2026): Pumplo plán vznikne z dotazníku, ne z výběru cíle
+  // (výběr cíle bez úrovně a dnů by plán nevygeneroval).
+  if (!plan && !planLoading && !isGenerating && isQuestionnaireSkipped(profile)) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-background p-4 pb-nav">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">{t('training.title')}</h1>
+          </div>
+          <TrainerQuestionnaireCard placement="pumplo_tab" onStart={() => setOnboardingOpen(true)} />
+          <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} onCompleted={() => { void refetchProfile(); void refetchPlan(); }} />
         </div>
       </PageTransition>
     );

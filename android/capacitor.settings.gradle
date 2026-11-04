@@ -41,6 +41,9 @@ project(':capgo-capacitor-app-tracking-transparency').projectDir = new File('../
 include ':capgo-capacitor-facebook-analytics'
 project(':capgo-capacitor-facebook-analytics').projectDir = new File('../node_modules/@capgo/capacitor-facebook-analytics/android')
 
+include ':capgo-capacitor-health'
+project(':capgo-capacitor-health').projectDir = new File('../node_modules/@capgo/capacitor-health/android')
+
 include ':capgo-capacitor-install-referrer'
 project(':capgo-capacitor-install-referrer').projectDir = new File('../node_modules/@capgo/capacitor-install-referrer/android')
 

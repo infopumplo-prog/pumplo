@@ -25,6 +25,7 @@ let package = Package(
         .package(name: "CapacitorStatusBar", path: "../../../node_modules/@capacitor/status-bar"),
         .package(name: "CapgoCapacitorAppTrackingTransparency", path: "../../../node_modules/@capgo/capacitor-app-tracking-transparency"),
         .package(name: "CapgoCapacitorFacebookAnalytics", path: "../../../node_modules/@capgo/capacitor-facebook-analytics"),
+        .package(name: "CapgoCapacitorHealth", path: "../../../node_modules/@capgo/capacitor-health"),
         .package(name: "CapgoCapacitorInstallReferrer", path: "../../../node_modules/@capgo/capacitor-install-referrer"),
         .package(name: "SentryCapacitor", path: "../../../node_modules/@sentry/capacitor")
     ],
@@ -47,6 +48,7 @@ let package = Package(
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar"),
                 .product(name: "CapgoCapacitorAppTrackingTransparency", package: "CapgoCapacitorAppTrackingTransparency"),
                 .product(name: "CapgoCapacitorFacebookAnalytics", package: "CapgoCapacitorFacebookAnalytics"),
+                .product(name: "CapgoCapacitorHealth", package: "CapgoCapacitorHealth"),
                 .product(name: "CapgoCapacitorInstallReferrer", package: "CapgoCapacitorInstallReferrer"),
                 .product(name: "SentryCapacitor", package: "SentryCapacitor")
             ]

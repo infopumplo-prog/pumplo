@@ -29,6 +29,16 @@ import { WorkoutSessionCard } from '@/components/workout/WorkoutSessionCard';
 import { StartWorkoutButton } from '@/components/home/StartWorkoutButton';
 import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import CustomPlansTab from '@/components/home/CustomPlansTab';
+import TrainerQuestionnaireCard from '@/components/home/TrainerQuestionnaireCard';
+import TrainerCheckinCard from '@/components/home/TrainerCheckinCard';
+import {
+  defaultHomeTab,
+  dismissQuestionnaireCard,
+  isQuestionnaireSkipped,
+  readQuestionnaireCardDismissedAt,
+  shouldShowQuestionnaireCard,
+  trainerClientHomeTourOrder,
+} from '@/lib/trainerClientOnboarding';
 import { FirstWorkoutCard } from '@/components/home/FirstWorkoutCard';
 import { useGuest } from '@/contexts/GuestContext';
 import { shouldShowFirstWorkoutCard, readFirstWorkoutDismissed, dismissFirstWorkoutForToday, localDateKey } from '@/lib/firstWorkoutCard';
@@ -59,7 +69,8 @@ const Home = () => {
   const {
     profile,
     isLoading,
-    updateProfile
+    updateProfile,
+    refetch: refetchProfile
   } = useUserProfile();
   const {
     isAdmin,
@@ -108,7 +119,7 @@ const Home = () => {
     const dx = t1.clientX - start.x;
     const dy = t1.clientY - start.y;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    setActiveTab(dx < 0 ? 'custom' : 'pumplo');
+    selectTab(dx < 0 ? 'custom' : 'pumplo');
   };
 
   const toggleFavorite = (tab: 'pumplo' | 'custom') => {
@@ -116,6 +127,33 @@ const Home = () => {
     localStorage.setItem('pumplo_favorite_tab', tab);
   };
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  // Klient trenéra po krátké registraci (26. 10. 2026): appka bez dotazníku, Home začíná
+  // na plánech od trenéra a dotazník (Pumplo plán) jen nevtíravě nabízí.
+  const questionnaireSkipped = isQuestionnaireSkipped(profile);
+  const tabChosenByUser = useRef(false);
+  const selectTab = (tab: 'pumplo' | 'custom') => { tabChosenByUser.current = true; setActiveTab(tab); };
+  // Jen pro profil bez dotazníku a až po načtení plánu — ostatním výchozí záložku neměníme.
+  useEffect(() => {
+    if (!questionnaireSkipped || planLoading || tabChosenByUser.current) return;
+    let stored: string | null = null;
+    try { stored = localStorage.getItem('pumplo_favorite_tab'); } catch { /* noop */ }
+    setActiveTab(defaultHomeTab({ storedFavorite: stored, questionnaireSkipped, hasActivePlan: !!plan, hasPausedCustomWorkout: !!pausedCustomWorkout }));
+  }, [questionnaireSkipped, planLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [qCardDismissedAt, setQCardDismissedAt] = useState<number | null>(null);
+  useEffect(() => { setQCardDismissedAt(readQuestionnaireCardDismissedAt(user?.id)); }, [user?.id]);
+  const showQuestionnaireCardInCustomTab = shouldShowQuestionnaireCard({
+    profile, hasActivePlan: !!plan, planLoading, placement: 'custom_tab', dismissedAt: qCardDismissedAt, now: Date.now(),
+  });
+  const showQuestionnaireCardInPumploTab = shouldShowQuestionnaireCard({
+    profile, hasActivePlan: !!plan, planLoading, placement: 'pumplo_tab', dismissedAt: qCardDismissedAt, now: Date.now(),
+  });
+  const handleQuestionnaireCompleted = () => {
+    refetchPlan();
+    void refetchProfile();
+    tabChosenByUser.current = true;
+    setActiveTab('pumplo');
+  };
   const [showSessionDetail, setShowSessionDetail] = useState(false);
   const [todayWorkoutSession, setTodayWorkoutSession] = useState<TodayWorkoutSession | null>(null);
   
@@ -178,7 +216,7 @@ const Home = () => {
     nav_profile: { target: '[data-coach="nav-profile"]', title: t('tour.home.nav_profile_title'), body: t('tour.home.nav_profile_body') },
     help: { target: '[data-coach="help-btn"]', title: t('tour.common.help_title'), body: t('tour.common.help_body') },
   };
-  const tourSteps = homeTourOrder(planChoice).map((k) => homeSteps[k]);
+  const tourSteps = (questionnaireSkipped && !plan ? trainerClientHomeTourOrder() : homeTourOrder(planChoice)).map((k) => homeSteps[k]);
 
   // Refetch plan and stats when navigating back to Home
   useEffect(() => {
@@ -374,12 +412,17 @@ const Home = () => {
             <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
           </div>}
 
+        {/* Check-in pro trenéra (jen klienti trenéra s nastaveným check-inem) */}
+        <div className="px-6 pt-2 space-y-3 empty:hidden">
+          <TrainerCheckinCard />
+        </div>
+
         {/* Tab Switch */}
         {isOnboardingComplete && (
           <div className="px-6 pt-2">
             <div className="flex gap-1 border-b border-border/50" data-coach="home-tabs">
               <button
-                onClick={() => setActiveTab('pumplo')}
+                onClick={() => selectTab('pumplo')}
                 data-coach="home-tab-pumplo"
                 className={cn(
                   "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
@@ -405,7 +448,7 @@ const Home = () => {
                 )}
               </button>
               <button
-                onClick={() => setActiveTab('custom')}
+                onClick={() => selectTab('custom')}
                 data-coach="home-tab-custom"
                 className={cn(
                   "flex-1 justify-center min-h-[48px] flex items-center gap-2 px-3 py-3 text-[15px] font-semibold transition-all border-b-[3px] -mb-px rounded-t-xl active:bg-muted/60",
@@ -445,8 +488,20 @@ const Home = () => {
         >
           {/* Custom Plans Tab */}
           {isOnboardingComplete && activeTab === 'custom' && (
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="space-y-6">
               <CustomPlansTab />
+              {showQuestionnaireCardInCustomTab && (
+                <TrainerQuestionnaireCard
+                  placement="custom_tab"
+                  onStart={() => setOnboardingOpen(true)}
+                  onDismiss={() => {
+                    if (!user) return;
+                    const now = Date.now();
+                    dismissQuestionnaireCard(user.id, now);
+                    setQCardDismissedAt(now);
+                  }}
+                />
+              )}
             </motion.div>
           )}
 
@@ -454,7 +509,10 @@ const Home = () => {
           {isOnboardingComplete && activeTab === 'pumplo' && <>
               {/* Gym is picked right before the first workout — the plan card
                   shows even without one. */}
-              {!plan && !planLoading ? (/* No plan yet */
+              {showQuestionnaireCardInPumploTab ? (/* Klient trenéra bez dotazníku */
+          <motion.div variants={itemVariants}>
+                  <TrainerQuestionnaireCard placement="pumplo_tab" onStart={() => setOnboardingOpen(true)} />
+                </motion.div>) : !plan && !planLoading ? (/* No plan yet */
           <motion.div variants={itemVariants}>
                   <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 via-primary/10 to-transparent border border-primary/20 p-6">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
@@ -684,7 +742,7 @@ const Home = () => {
         </motion.div>
 
         {/* Onboarding Drawer */}
-        <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+        <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} onCompleted={handleQuestionnaireCompleted} />
 
         {/* Today's Workout Detail Drawer */}
         <Drawer open={showSessionDetail} onOpenChange={setShowSessionDetail}>

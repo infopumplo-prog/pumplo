@@ -55,6 +55,10 @@ import {
 } from '@/lib/onboardingFlow';
 import { trackSignUp, trackTutorialComplete } from '@/lib/appAnalytics';
 import { GUEST_HOME, enterGuestMode, peekGuestReturnPath } from '@/lib/guestMode';
+import { clearPendingTrainerInvite, readPendingTrainerInvite } from '@/lib/trainerInvite';
+import { fetchTrainerInviteInfo, type TrainerInviteInfo } from '@/lib/trainerApi';
+import { authVariant, clearTrainerLightSignup, markTrainerLightSignup, type AuthVariant } from '@/lib/trainerClientOnboarding';
+import { applyLightRegistration } from '@/lib/lightRegistration';
 
 type AuthMode = 'login' | 'register';
 
@@ -66,6 +70,14 @@ const Auth = () => {
   const loginFirst = searchParams.get('mode') === 'login';
   // Host z „Vyplnit dotazník“: úvod trenéra ukázat (David 15. 10.), jen bez tlačítka „Vyzkoušet bez registrace“.
   const fromGuest = searchParams.get('start') === 'questionnaire';
+  // Pozvánka od trenéra (26. 10. 2026): krátká registrace bez dotazníku a bez úvodu trenéra.
+  // Dotazník si klient může vyplnit později z Home (TrainerQuestionnaireCard).
+  const [variant, setVariant] = useState<AuthVariant>(() => authVariant({
+    pendingInviteToken: readPendingTrainerInvite(),
+    hasOnboardingDraft: loadOnboardingDraft() !== null,
+  }));
+  const isTrainerLight = variant === 'trainer_light';
+  const [inviteInfo, setInviteInfo] = useState<TrainerInviteInfo | null>(null);
   // Registration first: almost everyone who opens this screen has just
   // installed the app and has no account yet. Landing them on a login form was
   // asking for a password they never set.
@@ -108,7 +120,7 @@ const Auth = () => {
   const [showTrainerTip, setShowTrainerTip] = useState(false);
   // Matches the 'register' default above: the trainer welcome is the first thing
   // a new install sees, not a screen you have to switch modes to reach.
-  const [showTrainerWelcome, setShowTrainerWelcome] = useState(!loginFirst);
+  const [showTrainerWelcome, setShowTrainerWelcome] = useState(!loginFirst && !isTrainerLight);
   const [showOutcomeStep, setShowOutcomeStep] = useState(false);
   const [selectedGymId, setSelectedGymId] = useState<string | null>(gymIdFromQR);
   const [equipmentPreference, setEquipmentPreference] = useState<string | null>(null);
@@ -127,6 +139,24 @@ const Auth = () => {
     fetchSocialProof().then((p) => { if (!cancelled) setSocialProof(p); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+  // Jméno a fotka trenéra pro krátkou registraci. Neplatná pozvánka → běžná registrace.
+  useEffect(() => {
+    if (!isTrainerLight) return;
+    const token = readPendingTrainerInvite();
+    if (!token) { setVariant('standard'); setShowTrainerWelcome(!loginFirst); return; }
+    let cancelled = false;
+    fetchTrainerInviteInfo(token).then(({ data, error }) => {
+      if (cancelled || error) return; // síť: formulář funguje i bez jména trenéra
+      if (!data || !data.is_valid) {
+        clearPendingTrainerInvite(token);
+        setVariant('standard');
+        setShowTrainerWelcome(!loginFirst);
+        return;
+      }
+      setInviteInfo(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isTrainerLight, loginFirst]);
   const stepId = ONBOARDING_STEPS[onboardingStep] ?? 'register';
 
   // Každý krok dotazníku začíná nahoře — dřív zůstával scroll z předchozího kroku (feedback 13. 10.).
@@ -185,9 +215,13 @@ const Auth = () => {
     try {
       // Registrace přes Apple/Google: odpovědi na disk dřív, než nás přihlášení
       // z Auth odvede — dopíše je PendingOnboardingFinisher v App.tsx.
-      if (mode === 'register') saveOnboardingDraft(currentDraft());
+      // Pozvánka od trenéra: místo konceptu dotazníku jen příznak — profil bez dotazníku
+      // dokončí PendingTrainerLightSignup v App.tsx (hotový účet nechá být).
+      if (isTrainerLight) markTrainerLightSignup();
+      else if (mode === 'register') saveOnboardingDraft(currentDraft());
       const result = await loginWithProvider(provider);
       if (!result.success) {
+        if (isTrainerLight) clearTrainerLightSignup();
         setError(result.error || t('auth.login_failed'));
       }
     } catch {
@@ -225,10 +259,13 @@ const Auth = () => {
     setIsSubmitting(true);
     // Přihlášení z režimu hosta: zpět na obrazovku hosta zavede GuestProvider, ne '/'.
     const guestReturn = peekGuestReturnPath();
+    // Přihlášení z pozvánky: účet s nedokončeným dotazníkem odemkne krátká registrace (App.tsx).
+    if (isTrainerLight) markTrainerLightSignup();
 
     try {
       const result = await login(email, password);
       if (!result.success) {
+        if (isTrainerLight) clearTrainerLightSignup();
         setError(result.error || t('auth.login_failed'));
       } else {
         if (gymIdFromQR) {
@@ -330,6 +367,63 @@ const Auth = () => {
     } finally {
       // Zámek se musí pustit na KAŽDÉ cestě ven — jinak AuthRoute schová
       // formulář i s chybovou hláškou za nekonečný spinner.
+      setIsRegistering(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const isLightFormValid = firstName.trim().length >= 1 && regEmail.trim() !== '' && regPassword.length >= 6;
+
+  // Krátká registrace klienta trenéra: účet → profil s onboarding_completed bez dotazníku → Home.
+  const handleLightRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLightFormValid) return;
+    setError('');
+    setIsSubmitting(true);
+    setIsRegistering(true);
+    // Kdyby zápis profilu tady selhal, dokončí ho po přihlášení PendingTrainerLightSignup.
+    markTrainerLightSignup();
+    try {
+      const result = await register(regEmail, regPassword, firstName.trim(), lastName.trim());
+      let userId = result.userId;
+      if (result.success && userId) trackSignUp('email');
+
+      if (!result.success || !userId) {
+        // Stejně jako plná registrace: timeout neznamená, že účet nevznikl.
+        const recovered = await login(regEmail, regPassword);
+        if (recovered.success) {
+          const { data: { user: recoveredUser } } = await supabase.auth.getUser();
+          userId = recoveredUser?.id;
+        }
+        if (!userId) {
+          clearTrainerLightSignup();
+          if (result.error?.includes('rate limit') || result.error?.includes('429')) {
+            setError(t('auth.rate_limit'));
+          } else {
+            setError(result.error || t('auth.register_failed'));
+          }
+          return;
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const saved = await applyLightRegistration(userId, {
+        firstName,
+        lastName,
+        marketingOptOut,
+        optOutOffered: true,
+      });
+      if (!saved) {
+        setError(t('trainer_client.light_save_failed'));
+        return;
+      }
+      clearTrainerLightSignup();
+      setIsRegistering(false);
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Light registration error:', err);
+      setError(t('auth.something_wrong'));
+    } finally {
       setIsRegistering(false);
       setIsSubmitting(false);
     }
@@ -666,7 +760,117 @@ const Auth = () => {
 
   // Kroky dotazníku: bez loga a volby jazyka — jen zabíraly místo (feedback 8. 10.).
   // Logo + jazyk zůstávají na úvodní obrazovce s trenérem a na přihlášení.
-  const compactHeader = mode === 'register' && !showTrainerWelcome;
+  const compactHeader = mode === 'register' && !showTrainerWelcome && !isTrainerLight;
+
+  const oauthButtons = (kind: 'register' | 'login') => (
+    <div className="space-y-3">
+      <Button variant="outline" size="lg" className="w-full" onClick={() => handleOAuthLogin('google')} disabled={isSubmitting}>
+        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        {t(kind === 'register' ? 'auth.google_register' : 'auth.google_login')}
+      </Button>
+      {Capacitor.getPlatform() !== 'android' && (
+        <Button variant="outline" size="lg" className="w-full" onClick={() => handleOAuthLogin('apple')} disabled={isSubmitting}>
+          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+          </svg>
+          {t(kind === 'register' ? 'auth.apple_register' : 'auth.apple_login')}
+        </Button>
+      )}
+    </div>
+  );
+
+  // Krátká registrace z pozvánky trenéra — jméno, e-mail, heslo (+ Apple/Google), žádný dotazník.
+  const renderTrainerLightRegister = () => (
+    <div className="pb-8" data-testid="trainer-light-register">
+      <div className="text-center mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-3">{t('trainer_client.invite_title')}</p>
+        {inviteInfo?.trainer_photo && (
+          <img src={inviteInfo.trainer_photo} alt={inviteInfo.trainer_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-3 ring-4 ring-primary/20" />
+        )}
+        <h2 className="text-2xl font-bold">
+          {inviteInfo?.trainer_name
+            ? t('trainer_client.light_title', { name: inviteInfo.trainer_name })
+            : t('trainer_client.light_title_noname')}
+        </h2>
+        <p className="text-muted-foreground mt-2 text-sm">{t('trainer_client.light_desc')}</p>
+      </div>
+      <form onSubmit={handleLightRegister} className="space-y-4">
+        <div className="relative">
+          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input type="text" autoComplete="given-name" placeholder={t('auth.first_name')} value={firstName}
+            onChange={(e) => setFirstName(e.target.value)} className="pl-12" required />
+        </div>
+        <div className="relative">
+          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input type="text" autoComplete="family-name" placeholder={t('trainer_client.light_last_name_optional')} value={lastName}
+            onChange={(e) => setLastName(e.target.value)} className="pl-12" />
+        </div>
+        <div className="relative">
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input type="email" autoComplete="email" placeholder={t('auth.email')} value={regEmail}
+            onChange={(e) => setRegEmail(e.target.value)} className="pl-12" required />
+        </div>
+        <div>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input type={showRegPassword ? 'text' : 'password'} autoComplete="new-password" placeholder={t('auth.password')}
+              value={regPassword} onChange={(e) => setRegPassword(e.target.value)} className="pl-12 pr-12" required minLength={6} />
+            <button type="button" onClick={() => setShowRegPassword(!showRegPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+              {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 pl-1">{t('auth.min_chars')}</p>
+        </div>
+
+        {error && (
+          <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-destructive text-sm text-center py-2">
+            {error}
+          </motion.p>
+        )}
+
+        <label htmlFor="marketing-optout-light" className="flex items-start gap-3 pt-1 cursor-pointer select-none">
+          <Checkbox id="marketing-optout-light" checked={marketingOptOut} onCheckedChange={(v) => setMarketingOptOut(v === true)} className="mt-0.5" />
+          <span className="text-sm text-muted-foreground leading-snug">{t('auth.marketing_optout')}</span>
+        </label>
+
+        <Button type="submit" size="lg" className="w-full mt-4" disabled={isSubmitting || !isLightFormValid}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>{t('auth.creating_account')}</span>
+            </>
+          ) : (
+            <span>{t('trainer_client.light_submit')}</span>
+          )}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
+          {t('auth.terms_consent')}{' '}
+          <Link to="/terms" className="underline hover:text-foreground" target="_blank">{t('auth.terms')}</Link>{' '}{t('auth.and')}{' '}
+          <Link to="/privacy" className="underline hover:text-foreground" target="_blank">{t('auth.privacy')}</Link>.
+        </p>
+      </form>
+
+      <div className="flex items-center gap-3 my-6">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground">{t('auth.or')}</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+      {oauthButtons('register')}
+
+      <p className="text-center text-muted-foreground text-sm mt-8">
+        {t('auth.have_account')}{' '}
+        <button type="button" onClick={toggleMode} className="text-primary font-semibold hover:underline">
+          {t('auth.sign_in')}
+        </button>
+      </p>
+    </div>
+  );
 
   return (
     <div className="h-full bg-background flex flex-col safe-bottom relative">
@@ -873,6 +1077,8 @@ const Auth = () => {
                 </button>
               </p>
             </>
+          ) : isTrainerLight ? (
+            renderTrainerLightRegister()
           ) : (
             <>
               {showTrainerWelcome ? (

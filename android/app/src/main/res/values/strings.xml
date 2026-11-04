@@ -4,4 +4,6 @@
     <string name="title_activity_main">Pumplo</string>
     <string name="package_name">com.pumplo.app</string>
     <string name="custom_url_scheme">com.pumplo.app</string>
+    <!-- Health Connect: „Zásady ochrany soukromí“ v dialogu oprávnění (PermissionsRationaleActivity pluginu) -->
+    <string name="health_connect_privacy_policy_url">https://app.pumplo.com/privacy</string>
 </resources>
