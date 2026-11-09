@@ -31,6 +31,7 @@ import { PausedWorkoutCard } from '@/components/home/PausedWorkoutCard';
 import CustomPlansTab from '@/components/home/CustomPlansTab';
 import TrainerQuestionnaireCard from '@/components/home/TrainerQuestionnaireCard';
 import TrainerCheckinCard from '@/components/home/TrainerCheckinCard';
+import HealthConnectOfferCard from '@/components/home/HealthConnectOfferCard';
 import {
   defaultHomeTab,
   dismissQuestionnaireCard,
@@ -412,9 +413,10 @@ const Home = () => {
             <OnboardingWarning onClick={() => setOnboardingOpen(true)} />
           </div>}
 
-        {/* Check-in pro trenéra (jen klienti trenéra s nastaveným check-inem) */}
+        {/* Check-in pro trenéra (jen klienti trenéra s nastaveným check-inem) + nabídka propojení se Zdravím */}
         <div className="px-6 pt-2 space-y-3 empty:hidden">
           <TrainerCheckinCard />
+          <HealthConnectOfferCard onboardingComplete={isOnboardingComplete} />
         </div>
 
         {/* Tab Switch */}

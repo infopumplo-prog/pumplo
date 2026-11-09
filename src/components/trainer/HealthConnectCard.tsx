@@ -1,24 +1,11 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { cs, enUS } from 'date-fns/locale';
 import { HeartPulse, Loader2, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useHealthSyncState } from '@/hooks/useHealthWeights';
-import { useInvalidateTrainerData } from '@/hooks/useTrainerAssignments';
-import {
-  connectHealth,
-  disconnectHealth,
-  getHealthPlatform,
-  openHealthConnectStore,
-  openHealthSettings,
-  syncHealthWeights,
-  type HealthSyncResult,
-} from '@/lib/healthWeights';
-
-type Problem = 'denied' | 'not_installed' | 'update_required' | 'unsupported' | null;
+import { useHealthConnectActions, useHealthSyncState } from '@/hooks/useHealthWeights';
+import { getHealthPlatform, openHealthConnectStore, openHealthSettings } from '@/lib/healthWeights';
 
 // Propojení se Zdravím (iOS) / Health Connect (Android): import vah, stav, ruční synchronizace.
 // Na webu/PWA se nezobrazuje.
@@ -26,10 +13,7 @@ const HealthConnectCard = ({ className = '' }: { className?: string }) => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const state = useHealthSyncState();
-  const invalidate = useInvalidateTrainerData();
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem>(null);
-  const [emptyHint, setEmptyHint] = useState(false);
+  const { busy, problem, emptyHint, connect, syncNow, disconnect } = useHealthConnectActions();
   const platform = getHealthPlatform();
   if (!platform || !user) return null;
 
@@ -38,44 +22,6 @@ const HealthConnectCard = ({ className = '' }: { className?: string }) => {
   const lastSync = state.lastSyncAt ? (() => {
     try { return format(parseISO(state.lastSyncAt), 'd. M. HH:mm', { locale }); } catch { return null; }
   })() : null;
-
-  const afterSync = async (res: HealthSyncResult) => {
-    if (!('imported' in res)) { toast.error(t('trainer_client.health_sync_error')); return; }
-    if (res.failed > 0) toast.error(t('trainer_client.health_sync_partial', { count: res.failed }));
-    else if (res.imported > 0) toast.success(t('trainer_client.health_sync_done', { count: res.imported }));
-    else toast(t('trainer_client.health_sync_nothing'));
-    // iOS neprozradí zamítnuté čtení — bez dat nabídnout, kde ho povolit.
-    setEmptyHint(ios && res.imported === 0 && res.failed === 0);
-    if (res.imported > 0) await invalidate();
-  };
-
-  const connect = async () => {
-    if (busy) return;
-    setBusy(true);
-    setProblem(null);
-    const res = await connectHealth(user.id);
-    setBusy(false);
-    if ('reason' in res) {
-      if (res.reason === 'error') { toast.error(t('trainer_client.health_sync_error')); return; }
-      setProblem(res.reason);
-      return;
-    }
-    if ('sync' in res) await afterSync(res.sync);
-  };
-
-  const syncNow = async () => {
-    if (busy) return;
-    setBusy(true);
-    const res = await syncHealthWeights(user.id);
-    setBusy(false);
-    await afterSync(res);
-  };
-
-  const disconnect = () => {
-    disconnectHealth(user.id);
-    setEmptyHint(false);
-    toast(t('trainer_client.health_disconnected'));
-  };
 
   return (
     <div className={`rounded-2xl border border-border bg-card p-4 space-y-3 ${className}`}>

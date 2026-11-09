@@ -22,7 +22,6 @@ import { hasCheckinConfigured } from '@/lib/trainerCheckin';
 import { useTrainerCheckins } from '@/hooks/useTrainerCheckins';
 import TrainerCheckinSheet from '@/components/trainer/TrainerCheckinSheet';
 import BodyWeightSheet from '@/components/trainer/BodyWeightSheet';
-import HealthConnectCard from '@/components/trainer/HealthConnectCard';
 
 // Nastavení → „Můj trenér“: s kým klient spolupracuje + ukončení spolupráce. Bez trenéra se neukazuje.
 export const MyTrainersSection = () => {
@@ -153,7 +152,6 @@ export const MyTrainersSection = () => {
         )}
       </div>
       <p className="px-4 mt-2 text-xs text-muted-foreground">{t('trainer_client.my_trainer_footer')}</p>
-      {weightsAvailable && <HealthConnectCard className="mt-3" />}
 
       <TrainerCheckinSheet trainer={checkinFor} open={!!checkinFor} onClose={() => setCheckinFor(null)} initialTab="history" />
       <BodyWeightSheet open={weightOpen} onClose={() => setWeightOpen(false)} />

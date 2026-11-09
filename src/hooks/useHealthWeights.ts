@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvalidateTrainerData } from '@/hooks/useTrainerAssignments';
 import {
+  connectHealth,
+  disconnectHealth,
   EMPTY_HEALTH_STATE,
   getHealthPlatform,
   isAutoSyncDue,
   readHealthState,
   subscribeHealthState,
   syncHealthWeights,
+  type HealthSyncResult,
   type HealthSyncState,
 } from '@/lib/healthWeights';
 
@@ -47,4 +52,60 @@ export const HealthWeightAutoSync = () => {
   }, [user, invalidate]);
 
   return null;
+};
+
+export type HealthConnectProblem = 'denied' | 'not_installed' | 'update_required' | 'unsupported' | null;
+
+// Propojit / synchronizovat / odpojit — sdílené kartou v Nastavení i nabídkou na Home.
+export const useHealthConnectActions = () => {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const invalidate = useInvalidateTrainerData();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<HealthConnectProblem>(null);
+  const [emptyHint, setEmptyHint] = useState(false);
+  const ios = getHealthPlatform() === 'ios';
+
+  const afterSync = useCallback(async (res: HealthSyncResult) => {
+    if (!('imported' in res)) { toast.error(t('trainer_client.health_sync_error')); return; }
+    if (res.failed > 0) toast.error(t('trainer_client.health_sync_partial', { count: res.failed }));
+    else if (res.imported > 0) toast.success(t('trainer_client.health_sync_done', { count: res.imported }));
+    else toast(t('trainer_client.health_sync_nothing'));
+    // iOS neprozradí zamítnuté čtení — bez dat nabídnout, kde ho povolit.
+    setEmptyHint(ios && res.imported === 0 && res.failed === 0);
+    if (res.imported > 0) await invalidate();
+  }, [t, ios, invalidate]);
+
+  /** true = propojeno; false = problém (v `problem`) nebo chyba. */
+  const connect = useCallback(async (): Promise<boolean> => {
+    if (busy || !user) return false;
+    setBusy(true);
+    setProblem(null);
+    const res = await connectHealth(user.id);
+    setBusy(false);
+    if ('reason' in res) {
+      if (res.reason === 'error') toast.error(t('trainer_client.health_sync_error'));
+      else setProblem(res.reason);
+      return false;
+    }
+    if ('sync' in res) await afterSync(res.sync);
+    return true;
+  }, [busy, user, t, afterSync]);
+
+  const syncNow = useCallback(async () => {
+    if (busy || !user) return;
+    setBusy(true);
+    const res = await syncHealthWeights(user.id);
+    setBusy(false);
+    await afterSync(res);
+  }, [busy, user, afterSync]);
+
+  const disconnect = useCallback(() => {
+    if (!user) return;
+    disconnectHealth(user.id);
+    setEmptyHint(false);
+    toast(t('trainer_client.health_disconnected'));
+  }, [user, t]);
+
+  return { busy, problem, emptyHint, connect, syncNow, disconnect };
 };
