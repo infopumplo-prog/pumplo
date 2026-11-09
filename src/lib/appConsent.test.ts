@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { APP_CONSENT_VERSION, parseAppConsent, readAppConsent, writeAppConsent } from './appConsent';
+import { APP_CONSENT_VERSION, isConsentBlockedPath, isConsentPromptPending, parseAppConsent, readAppConsent, writeAppConsent } from './appConsent';
 
 const memory = () => {
   const m = new Map<string, string>();
@@ -31,5 +31,24 @@ describe('read/write', () => {
     const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
     expect(readAppConsent(broken)).toBeNull();
     expect(() => writeAppConsent({ analytics: true, marketing: true }, broken)).not.toThrow();
+  });
+});
+
+describe('isConsentPromptPending', () => {
+  const pending = { hasUser: true, consent: null, pathname: '/', workoutActive: false };
+  it('new user without an answer on a normal screen → tour must wait', () =>
+    expect(isConsentPromptPending(pending)).toBe(true));
+  it('answered (either way) → tour may start, existing users unchanged', () => {
+    expect(isConsentPromptPending({ ...pending, consent: { analytics: false, marketing: false } })).toBe(false);
+    expect(isConsentPromptPending({ ...pending, consent: { analytics: true, marketing: true } })).toBe(false);
+  });
+  it('sheet is not shown → tour may start', () => {
+    expect(isConsentPromptPending({ ...pending, hasUser: false })).toBe(false);
+    expect(isConsentPromptPending({ ...pending, workoutActive: true })).toBe(false);
+    expect(isConsentPromptPending({ ...pending, pathname: '/custom-workout/p1' })).toBe(false);
+  });
+  it('blocked paths match prefixes only', () => {
+    expect(isConsentBlockedPath('/auth/callback')).toBe(true);
+    expect(isConsentBlockedPath('/map')).toBe(false);
   });
 });

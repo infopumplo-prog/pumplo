@@ -22,6 +22,7 @@ dependencies {
     implementation project(':capacitor-status-bar')
     implementation project(':capgo-capacitor-app-tracking-transparency')
     implementation project(':capgo-capacitor-facebook-analytics')
+    implementation project(':capgo-capacitor-health')
     implementation project(':capgo-capacitor-install-referrer')
     implementation project(':codetrix-studio-capacitor-google-auth')
     implementation project(':sentry-capacitor')

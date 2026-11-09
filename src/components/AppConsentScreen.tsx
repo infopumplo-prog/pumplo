@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { AppConsent } from '@/lib/appConsent';
+import { isConsentBlockedPath, type AppConsent } from '@/lib/appConsent';
 import { useAppConsent } from '@/hooks/useAppConsent';
 import {
   isWorkoutActive, onAnalyticsUiChange, saveAppConsent, takeConsentPromptRequest,
@@ -15,8 +15,6 @@ import {
 const NONE: AppConsent = { analytics: false, marketing: false };
 const ALL: AppConsent = { analytics: true, marketing: true };
 
-// Never interrupt sign-in, public share pages, the policy itself or a workout.
-const BLOCKED_PREFIXES = ['/auth', '/reset-password', '/privacy', '/terms', '/install', '/plan/', '/cvik/', '/s/', '/go/', '/custom-workout/'];
 
 const AppConsentScreen = ({ startCustomizing, initial, onSave, onCancel }: {
   startCustomizing: boolean;
@@ -144,7 +142,7 @@ export const AppConsentGate = () => {
     );
   }
 
-  const blocked = BLOCKED_PREFIXES.some((p) => pathname.startsWith(p)) || isWorkoutActive();
+  const blocked = isConsentBlockedPath(pathname) || isWorkoutActive();
   if (!user || !onboarded || consent !== null || blocked) return null;
 
   return <AppConsentScreen startCustomizing={false} initial={NONE} onSave={saveAppConsent} />;

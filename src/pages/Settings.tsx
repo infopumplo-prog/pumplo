@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HevyImportSection } from '@/components/settings/HevyImportSection';
+import { MyTrainersSection } from '@/components/settings/MyTrainersSection';
+import { ConnectedAppsSection } from '@/components/settings/ConnectedAppsSection';
 import AccentPicker from '@/components/AccentPicker';
 import type { AccentColor } from '@/lib/accentColors';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Shield, Trash2, Save, AlertTriangle, Lock, Mail, Clock, Flame, MapPin, Download, ExternalLink, Globe, Heart, Moon, Sun, Smartphone, BarChart3, ChevronRight, Calendar, Dumbbell, Upload, Palette, HelpCircle, FileText, LogOut, type LucideIcon } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,6 +40,13 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Odkaz z nabídky na Home (/settings#propojeni) → posunout na Propojené aplikace.
+  useEffect(() => {
+    if (location.hash !== '#propojeni') return;
+    const id = window.setTimeout(() => document.getElementById('propojeni')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+    return () => window.clearTimeout(id);
+  }, [location.hash]);
   const { user, logout } = useAuth();
   const { profile, updateProfile, isLoading } = useUserProfile();
   const { 
@@ -598,6 +607,14 @@ const Settings = () => {
                 </div>
               </div>
             </SettingsGroup>
+          </motion.div>
+
+          {/* ── Můj trenér (jen když klient nějakého má) ── */}
+          <MyTrainersSection />
+
+          {/* ── Propojené aplikace: Zdraví / Health Connect + další konektory (cíl #propojeni z Home) ── */}
+          <motion.div variants={itemVariants}>
+            <ConnectedAppsSection />
           </motion.div>
 
           {/* ── Trénink ── */}

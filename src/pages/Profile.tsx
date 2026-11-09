@@ -193,9 +193,8 @@ const Profile = () => {
             </button>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-foreground truncate">
-                {profile?.first_name && profile?.last_name
-                  ? `${profile.first_name} ${profile.last_name}`
-                  : user?.user_metadata?.name || t('profile.user')}
+                {[profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+                  || user?.user_metadata?.name || t('profile.user')}
               </h2>
               <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
               <Badge variant="secondary" className="mt-2 text-xs">

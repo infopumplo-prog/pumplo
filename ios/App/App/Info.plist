@@ -58,6 +58,10 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Pumplo čte tvou váhu ze Zdraví, abys ji nemusel zapisovat a tvůj trenér viděl vývoj (jen když sdílení zapneš).</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Pumplo do Zdraví nic nezapisuje, váhu jen čte.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mikrofon se používá jen při natáčení videa vlastního cviku.</string>
 	<key>NSCameraUsageDescription</key>

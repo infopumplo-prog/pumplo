@@ -100,9 +100,11 @@ interface Props {
   onMove: (dayId: string, direction: -1 | 1) => void;
   onDelete: (dayId: string) => void;
   adding?: boolean;
+  /** Fáze plánu: čipy jen pro tyto dny (písmena dál podle celého kruhu). Null = všechny. */
+  visibleIds?: ReadonlySet<string> | null;
 }
 
-const CustomPlanDayChips = ({ days, activeDayId, nextDayId, onSelect, onAdd, onRename, onMove, onDelete, adding }: Props) => {
+const CustomPlanDayChips = ({ days, activeDayId, nextDayId, onSelect, onAdd, onRename, onMove, onDelete, adding, visibleIds }: Props) => {
   const { t } = useTranslation();
   const dayLabel = useDayLabel();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -138,7 +140,7 @@ const CustomPlanDayChips = ({ days, activeDayId, nextDayId, onSelect, onAdd, onR
       </div>
 
       <div ref={scrollRef} className="-mx-6 px-6 pt-2 pb-1 flex gap-2 overflow-x-auto no-scrollbar">
-        {days.map((day, index) => (
+        {days.map((day, index) => (!visibleIds || visibleIds.has(day.id)) && (
           <DayChip
             key={day.id}
             day={day}

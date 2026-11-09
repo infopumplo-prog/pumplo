@@ -12,6 +12,8 @@ import {
   listenWeeklyCheckinTap,
   scheduleWeeklyCheckinNotification,
 } from '@/lib/weeklyCheckinNotification';
+import { useTrainerCheckins } from '@/hooks/useTrainerCheckins';
+import { pickWeeklyPrompt } from '@/lib/trainerCheckin';
 import WeeklyCheckinSheet from './WeeklyCheckinSheet';
 
 // Týdenní check-in (feedback 13. 10.). Pravidlo Davida: kdo neodpoví v neděli,
@@ -40,6 +42,9 @@ const WeeklyCheckinHost = () => {
   const [weekStart, setWeekStart] = useState(() => currentCheckinWeekStart(new Date()));
   const [tick, setTick] = useState(0);
   const backgroundedAt = useRef<number | null>(null);
+  // Check-in pro trenéra má přednost: když visí, osobní panel se sám neotevře (viz trainerCheckin.ts).
+  const { due: trainerDue, settled: trainerSettled } = useTrainerCheckins();
+  const trainerCheckinDue = trainerDue.length > 0;
 
   // Zodpovězené týdny (stačí poslední tři)
   useEffect(() => {
@@ -118,7 +123,7 @@ const WeeklyCheckinHost = () => {
 
   // Rozhodnutí o automatickém otevření
   useEffect(() => {
-    if (!user || !profile || answered === null || open) return;
+    if (!user || !profile || answered === null || open || !trainerSettled) return;
     const decision = shouldShowCheckin({
       now: new Date(),
       userCreatedAt: user.created_at,
@@ -128,7 +133,7 @@ const WeeklyCheckinHost = () => {
       snoozedThisSession,
       pathname: location.pathname,
     });
-    if (!decision.show) return;
+    if (pickWeeklyPrompt({ trainerCheckinDue, personalCheckinDue: decision.show }) !== 'personal') return;
     const timer = window.setTimeout(() => {
       // Nepřekrývat jiný otevřený panel / dialog (onboarding, prohlídka, téma…)
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
@@ -136,7 +141,7 @@ const WeeklyCheckinHost = () => {
       setOpen(true);
     }, AUTO_OPEN_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [user, profile, answered, open, location.pathname, tick]);
+  }, [user, profile, answered, open, location.pathname, tick, trainerSettled, trainerCheckinDue]);
 
   if (!user) return null;
 

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchLastCompletedDays, getNextCycleDay, moveDayInOrder, renumberDays, sortCycleDays, type LastCompletedDay } from '@/lib/customPlanCycle';
+import { activeDaysForWeek, planSchedule, type AssignmentLike, type ExerciseProgression, type PlanPhase } from '@/lib/planPhases';
 
 export interface CustomPlanDay {
   id: string;
@@ -12,6 +13,8 @@ export interface CustomPlanDay {
   name: string | null;
   // Anglický název dne u plánů z katalogu (trenér); po přejmenování se maže.
   name_en?: string | null;
+  // Fáze plánu (migrace 20261029); null/chybí = den platí po celou dobu plánu.
+  phase_id?: string | null;
   exercises: CustomPlanExercise[];
 }
 
@@ -56,6 +59,10 @@ export interface CustomPlan {
   focus: string | null;
   secondary_focuses: string[] | null;
   cover_url: string | null;
+  // Trenérská platforma (migrace 20261029) — před nasazením chybí / prázdné.
+  duration_weeks?: number | null;
+  phases: PlanPhase[];
+  progressions: ExerciseProgression[];
   days: CustomPlanDay[];
 }
 
@@ -69,18 +76,140 @@ export interface CustomPlanSummary {
   next_day: { id: string; index: number; name: string | null; name_en: string | null; day_number: number } | null;
   // Home karta naposledy používaného plánu (David 17. 10.): kdy naposledy odcvičen + dny kruhu.
   last_completed_at: string | null;
-  cycle_days: { id: string; day_number: number; name: string | null; name_en: string | null; exerciseCount: number }[];
+  last_completed_day_id: string | null;
+  cycle_days: { id: string; day_number: number; name: string | null; name_en: string | null; exerciseCount: number; phase_id: string | null }[];
+  // Fáze (migrace 20261029); prázdné = plán bez fází, rotace přes všechny dny.
+  duration_weeks: number | null;
+  phases: PlanPhase[];
 }
 
-type SummaryDayRow = { id: string; day_number: number; name: string | null; name_en: string | null; custom_plan_exercises: { count: number }[] | null };
+type SummaryDayRow = { id: string; day_number: number; name: string | null; name_en: string | null; phase_id?: string | null; custom_plan_exercises: { count: number }[] | null };
 
-/** Další den kruhu pro souhrn plánu (Home). Null u jednodenních plánů. */
-export const summarizeNextDay = (days: SummaryDayRow[], last: LastCompletedDay | null | undefined): CustomPlanSummary['next_day'] => {
+/**
+ * Další den kruhu pro souhrn plánu (Home). Null u jednodenních plánů.
+ * `activeIds` = dny platné tento týden (fáze); kruh se točí jen mezi nimi,
+ * písmeno (index) zůstává podle celého plánu.
+ */
+export const summarizeNextDay = (
+  days: SummaryDayRow[],
+  last: LastCompletedDay | null | undefined,
+  activeIds?: ReadonlySet<string> | null,
+): CustomPlanSummary['next_day'] => {
   const cycle = sortCycleDays(days.map(d => ({ ...d, exerciseCount: d.custom_plan_exercises?.[0]?.count ?? 0 })));
-  if (cycle.filter(d => d.exerciseCount > 0).length < 2) return null;
-  const next = getNextCycleDay(cycle, last?.dayId);
+  const active = activeIds ? cycle.filter(d => activeIds.has(d.id)) : cycle;
+  if (active.filter(d => d.exerciseCount > 0).length < 2) return null;
+  const next = getNextCycleDay(active, last?.dayId);
   if (!next) return null;
   return { id: next.id, index: cycle.indexOf(next), name: next.name, name_en: next.name_en, day_number: next.day_number };
+};
+
+/** Dny platné tento týden pro souhrn plánu (bez fází = všechny). */
+export const summaryActiveDayIds = (
+  plan: Pick<CustomPlanSummary, 'id' | 'created_at' | 'duration_weeks' | 'phases' | 'cycle_days'>,
+  assignments: readonly AssignmentLike[] | null | undefined,
+): Set<string> | null => {
+  if (!plan.phases.length) return null;
+  const { week } = planSchedule(plan, assignments);
+  return new Set(activeDaysForWeek(plan.cycle_days, plan.phases, week).map(d => d.id));
+};
+
+/** Počet dnů na kartě plánu: s fázemi jen dny platné tento týden, bez fází všechny. */
+export const summaryActiveDayCount = (
+  plan: Pick<CustomPlanSummary, 'id' | 'created_at' | 'duration_weeks' | 'phases' | 'cycle_days' | 'day_count'>,
+  assignments: readonly AssignmentLike[] | null | undefined,
+): number => summaryActiveDayIds(plan, assignments)?.size ?? plan.day_count;
+
+/** Další den souhrnu s ohledem na fáze (start přiřazení od trenéra). Bez fází = plan.next_day. */
+export const nextDayForSummary = (
+  plan: CustomPlanSummary,
+  assignments: readonly AssignmentLike[] | null | undefined,
+): CustomPlanSummary['next_day'] => {
+  const activeIds = summaryActiveDayIds(plan, assignments);
+  if (!activeIds) return plan.next_day;
+  const rows: SummaryDayRow[] = plan.cycle_days.map(d => ({ ...d, custom_plan_exercises: [{ count: d.exerciseCount }] }));
+  const last = plan.last_completed_day_id && plan.last_completed_at
+    ? { dayId: plan.last_completed_day_id, completedAt: plan.last_completed_at }
+    : null;
+  return summarizeNextDay(rows, last, activeIds);
+};
+
+const SUMMARY_SELECT_V2 = 'id, name, created_at, published_at, duration_weeks, custom_plan_days(id, day_number, name, name_en, phase_id, custom_plan_exercises(count))';
+const SUMMARY_SELECT_V1 = 'id, name, created_at, published_at, custom_plan_days(id, day_number, name, name_en, custom_plan_exercises(count))';
+
+type SummaryPlanRow = {
+  id: string; name: string; created_at: string; published_at: string | null;
+  duration_weeks?: number | null;
+  custom_plan_days: SummaryDayRow[] | null;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const untypedDb = () => supabase as any;
+
+/**
+ * Plány uživatele. Nejdřív s fázemi (migrace 20261029); když migrace ještě není
+ * nasazená (chybí sloupec/tabulka → chyba), stejný dotaz jako dřív.
+ */
+let summaryV2Unsupported = false;
+
+const fetchPlanSummaries = async (userId: string): Promise<SummaryPlanRow[] | null> => {
+  const run = (select: string) => untypedDb()
+    .from('custom_plans')
+    .select(select)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (!summaryV2Unsupported) {
+    try {
+      const v2 = await run(SUMMARY_SELECT_V2);
+      if (!v2.error && v2.data) return v2.data as SummaryPlanRow[];
+      // 4xx = schéma bez nových sloupců → do konce běhu appky se už nezkouší.
+      if (v2.error && v2.status === 400) summaryV2Unsupported = true;
+    } catch { /* fallback níž */ }
+  }
+  const v1 = await run(SUMMARY_SELECT_V1);
+  return !v1.error && v1.data ? (v1.data as SummaryPlanRow[]) : null;
+};
+
+const PHASE_SELECT = 'id, plan_id, order_index, name, name_en, start_week, end_week, notes';
+
+/**
+ * Fáze plánů zvlášť (embed z custom_plans by byl nejednoznačný — custom_plan_days
+ * má FK na plán i na fázi). Chyba / nenasazená migrace = žádné fáze.
+ */
+// Tabulka ještě neexistuje (404) → do konce běhu appky se už nedotazujeme.
+let phasesTableMissing = false;
+let progressionsTableMissing = false;
+
+export const fetchPhasesForPlans = async (planIds: string[]): Promise<Record<string, PlanPhase[]>> => {
+  const out: Record<string, PlanPhase[]> = {};
+  if (!planIds.length || phasesTableMissing) return out;
+  try {
+    const { data, error, status } = await untypedDb()
+      .from('custom_plan_phases')
+      .select(PHASE_SELECT)
+      .in('plan_id', planIds)
+      .order('order_index');
+    if (error && status === 404) phasesTableMissing = true;
+    if (error || !Array.isArray(data)) return out;
+    for (const row of data as (PlanPhase & { plan_id: string })[]) (out[row.plan_id] ??= []).push(row);
+  } catch { /* bez fází */ }
+  return out;
+};
+
+/** Progrese cviků (chyba / nenasazená migrace = žádné). */
+export const fetchProgressionsForExercises = async (planExerciseIds: string[]): Promise<ExerciseProgression[]> => {
+  if (!planExerciseIds.length || progressionsTableMissing) return [];
+  try {
+    const { data, error, status } = await untypedDb()
+      .from('custom_plan_exercise_progressions')
+      .select('plan_exercise_id, from_week, sets, reps, weight_kg, notes')
+      .in('plan_exercise_id', planExerciseIds)
+      .order('from_week');
+    if (error && status === 404) progressionsTableMissing = true;
+    if (error || !Array.isArray(data)) return [];
+    return data as ExerciseProgression[];
+  } catch {
+    return [];
+  }
 };
 
 export function useCustomPlans() {
@@ -96,27 +225,37 @@ export function useCustomPlans() {
     }
 
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('custom_plans')
-      .select('id, name, created_at, published_at, custom_plan_days(id, day_number, name, name_en, custom_plan_exercises(count))')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const data = await fetchPlanSummaries(user.id);
 
-    if (!error && data) {
-      const lastByPlan = await fetchLastCompletedDays(user.id, data.map(p => p.id));
+    if (data) {
+      const ids = data.map(p => p.id);
+      // Fáze má smysl číst jen když existuje sloupec phase_id (V2 dotaz prošel).
+      const hasPhaseColumn = data.some(p => (p.custom_plan_days ?? []).some(d => d.phase_id !== undefined));
+      const [lastByPlan, phasesByPlan] = await Promise.all([
+        fetchLastCompletedDays(user.id, ids),
+        hasPhaseColumn ? fetchPhasesForPlans(ids) : Promise.resolve({} as Record<string, PlanPhase[]>),
+      ]);
       setPlans(
         data.map((p) => {
-          const days = (p.custom_plan_days as unknown as SummaryDayRow[] | null) ?? [];
-          return {
+          const days = p.custom_plan_days ?? [];
+          const phases = phasesByPlan[p.id] ?? [];
+          const cycle_days = sortCycleDays(days.map(d => ({ id: d.id, day_number: d.day_number, name: d.name, name_en: d.name_en, exerciseCount: d.custom_plan_exercises?.[0]?.count ?? 0, phase_id: d.phase_id ?? null })));
+          const summary: CustomPlanSummary = {
             id: p.id,
             name: p.name,
             created_at: p.created_at,
             published_at: p.published_at ?? null,
             day_count: days.length,
-            next_day: summarizeNextDay(days, lastByPlan[p.id]),
+            next_day: null,
             last_completed_at: lastByPlan[p.id]?.completedAt ?? null,
-            cycle_days: sortCycleDays(days.map(d => ({ id: d.id, day_number: d.day_number, name: d.name, name_en: d.name_en, exerciseCount: d.custom_plan_exercises?.[0]?.count ?? 0 }))),
+            last_completed_day_id: lastByPlan[p.id]?.dayId ?? null,
+            cycle_days,
+            duration_weeks: p.duration_weeks ?? null,
+            phases,
           };
+          // Bez přiřazení od trenéra: týden od vytvoření plánu (Home to přepočítá s přiřazením).
+          summary.next_day = summarizeNextDay(days, lastByPlan[p.id], summaryActiveDayIds(summary, null));
+          return summary;
         })
       );
     }
@@ -244,7 +383,13 @@ export function useCustomPlanDetail(planId: string | null) {
         })),
     }));
 
-    setPlan({ ...planData, days });
+    // Fáze + progrese (migrace 20261029) — samostatné dotazy; chyba = plán jako dřív.
+    const [phasesByPlan, progressions] = await Promise.all([
+      fetchPhasesForPlans([planId]),
+      fetchProgressionsForExercises((exercisesData || []).map((e: { id: string }) => e.id)),
+    ]);
+
+    setPlan({ ...planData, days, phases: phasesByPlan[planId] ?? [], progressions });
     setIsLoading(false);
   }, [planId]);
 

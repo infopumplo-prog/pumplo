@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { useConsentPromptPending } from '@/hooks/useAppConsent';
 
 // First-run guided tour ("coach marks"). Each screen declares its steps; the
 // tour auto-opens once per (screenId, version) — new users and everyone after
@@ -160,8 +161,11 @@ export const CoachTour = ({ screenId, steps, version = 1, open, onClose }: {
 export const useCoachTour = (screenId: string, version = 1, ready = true) => {
   const [open, setOpen] = useState(false);
   const autoShown = useRef(false);
+  // Na čerstvě registrovaném účtu se tour a souhlas s měřením kreslily přes sebe:
+  // tour počká na odpověď (po uložení souhlasu se efekt spustí znovu).
+  const consentPending = useConsentPromptPending();
   useEffect(() => {
-    if (!ready || autoShown.current) return;
+    if (!ready || consentPending || autoShown.current) return;
     if (hasSeenTour(screenId, version)) return;
     // Small delay so the screen paints first (and skeletons disappear).
     // autoShown flips only when the timer actually fires — StrictMode's
@@ -172,7 +176,7 @@ export const useCoachTour = (screenId: string, version = 1, ready = true) => {
       setOpen(true);
     }, 700);
     return () => clearTimeout(id);
-  }, [ready, screenId, version]);
+  }, [ready, consentPending, screenId, version]);
   return { open, openTour: () => setOpen(true), closeTour: () => setOpen(false) };
 };
 

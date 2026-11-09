@@ -15,6 +15,8 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, Area
 import { format, subDays, startOfWeek } from 'date-fns';
 import { HISTORY_RANGES, buildHistoryBuckets, type HistoryRange } from '@/lib/historyRanges';
 import { cs, enUS } from 'date-fns/locale';
+import { useSessionTrainerFeedback } from '@/hooks/useTrainerAssignments';
+import { SessionTrainerFeedback } from '@/components/trainer/SessionTrainerFeedback';
 
 const WorkoutHistory = () => {
   const { t, i18n } = useTranslation();
@@ -33,6 +35,9 @@ const WorkoutHistory = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') ?? 'overview';
   const [activeTab, setActiveTab] = useState(['overview', 'exercises', 'sessions'].includes(initialTab) ? initialTab : 'overview');
+  // Srdíčka od trenéra + vlastní hodnocení jen pro zobrazené tréninky (jeden dávkový dotaz).
+  const visibleSessions = sessions.slice(0, 20);
+  const { data: trainerFeedback } = useSessionTrainerFeedback(activeTab === 'sessions' ? visibleSessions.map(s => s.id) : []);
 
   // Rozsah grafů: dřív jen posledních 7 dní (feedback 13. 10.). Den / týden / měsíc
   // podle délky rozsahu; v jednom sloupci se sčítají všechny tréninky (dřív jen první v daný den).
@@ -301,7 +306,7 @@ const WorkoutHistory = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  sessions.slice(0, 20).map((session, index) => (
+                  visibleSessions.map((session, index) => (
                     <motion.div
                       key={session.id}
                       initial={{ opacity: 0, y: 10 }}
@@ -309,6 +314,13 @@ const WorkoutHistory = () => {
                       transition={{ delay: index * 0.03 }}
                     >
                       <WorkoutSessionCard session={session} variant="full" />
+                      {trainerFeedback && (
+                        <SessionTrainerFeedback
+                          heart={trainerFeedback.hearts.has(session.id)}
+                          difficulty={trainerFeedback.own.get(session.id)?.difficulty ?? null}
+                          note={trainerFeedback.own.get(session.id)?.note ?? null}
+                        />
+                      )}
                     </motion.div>
                   ))
                 )}

@@ -13,7 +13,8 @@ import { Capacitor } from '@capacitor/core';
 // public (required for App Store / Play review) and /reset-password is the
 // member auth callback. Everything else funnels straight to the app/store.
 // /plan/ a /cvik/ = sdílený trénink a cvik: musí být vidět v prohlížeči i bez appky (David 21. 9.)
-const PUBLIC_PREFIXES: string[] = ['/s/', '/plan/', '/cvik/'];
+// /trener/ = pozvánka od trenéra: klient bez appky musí vidět, kdo ho zve (26. 10. 2026).
+const PUBLIC_PREFIXES: string[] = ['/s/', '/plan/', '/cvik/', '/trener/'];
 // /odhlasit = potvrzení odhlášení z e-mailů (odkaz z patičky, bez přihlášení).
 const PUBLIC_EXACT = ['/privacy', '/terms', '/reset-password', '/odhlasit'];
 
