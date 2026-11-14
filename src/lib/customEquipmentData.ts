@@ -4,9 +4,9 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { fetchWithCache, SHARED_SCOPE } from '@/lib/offlineCache';
-import { fetchGymBoundAlternatives } from '@/lib/exerciseSwap';
+import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
 import { supabaseAdaptDeps, type AdaptDeps } from '@/lib/gymAdaptation';
-import { resolveMachineIds, type MachineRow } from '@/lib/customEquipment';
+import { resolveMachineIds, sanitizeCustomEquipment, type MachineRow } from '@/lib/customEquipment';
 
 /** Klíč „posilovny" pro adaptExercisesToGym v režimu vlastního vybavení. */
 export const CUSTOM_EQUIPMENT_GYM_KEY = 'custom-equipment';
@@ -36,4 +36,25 @@ export function customEquipmentAdaptDeps(selected: string[]): AdaptDeps {
       return fetchGymBoundAlternatives({ ...opts, machineIds: ids ?? new Set() });
     },
   };
+}
+
+/**
+ * Náhrady pro ruční výměnu cviku: stroje posilovny, když je trénink v posilovně;
+ * bez posilovny vlastní vybavení z profilu; bez obojího všechny stroje (nic
+ * neskrývat). Dřív se bez posilovny četly stroje pro prázdné gym_id → žádné
+ * náhrady (bug 14. 11.).
+ */
+export async function fetchSlotAlternatives(
+  opts: Omit<Parameters<typeof fetchGymBoundAlternatives>[0], 'gymId' | 'machineIds'> & {
+    gymId?: string | null;
+    customEquipment?: string[] | null;
+  },
+): Promise<SwapCandidate[]> {
+  const { gymId, customEquipment, ...rest } = opts;
+  if (gymId) return fetchGymBoundAlternatives({ ...rest, gymId });
+  const equipment = sanitizeCustomEquipment(customEquipment);
+  const machineIds = equipment.length > 0
+    ? await fetchCustomEquipmentMachineIds(equipment)
+    : new Set((await fetchAllMachines() ?? []).map(m => m.id));
+  return fetchGymBoundAlternatives({ ...rest, gymId: '', machineIds: machineIds ?? new Set() });
 }

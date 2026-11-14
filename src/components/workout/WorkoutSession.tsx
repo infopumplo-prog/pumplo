@@ -34,7 +34,8 @@ import { toast } from 'sonner';
 import { CooldownPlayer } from './CooldownPlayer';
 import { ExerciseSwapSheet } from './ExerciseSwapSheet';
 import { ExerciseInfoSheet } from './ExerciseInfoSheet';
-import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { type SwapCandidate } from '@/lib/exerciseSwap';
+import { fetchSlotAlternatives } from '@/lib/customEquipmentData';
 import { resolveWatchRestEndsAt, resolveLoggedWeight, resolveSetStep, type BuildInput, type WatchAction } from '@/lib/watchWorkout';
 import { useWatchBridge } from '@/hooks/useWatchBridge';
 // Pauzy podle kategorie jsou sdílené pravidlo se serverovou funkcí pro hodinky.
@@ -58,6 +59,8 @@ interface WorkoutSessionProps {
   goalId: TrainingGoalId;
   planId: string | null;
   gymId: string;
+  /** Vlastní vybavení pro trénink bez posilovny (gymId prázdné) — zdroj náhrad při výměně. */
+  customEquipment?: string[] | null;
   isBonus?: boolean;
   onComplete: (results: ExerciseResult[]) => void;
   onCancel: () => void;
@@ -78,6 +81,7 @@ export const WorkoutSession = ({
   goalId,
   planId,
   gymId,
+  customEquipment,
   isBonus = false,
   onComplete,
   onCancel,
@@ -259,8 +263,8 @@ export const WorkoutSession = ({
       });
   }, [gymId]);
   
-  // All valid alternatives for the current slot (same role, available at gym,
-  // not already in the workout). Feeds both the quick swap and the hold-to-pick
+  // All valid alternatives for the current slot (same role, available at the gym
+  // or with the user's own equipment, not already in the workout). Feeds both the quick swap and the hold-to-pick
   // sheet.
   const fetchSwapCandidates = useCallback(async (): Promise<SwapCandidate[]> => {
     const exercise = liveExercises[currentExerciseIndex];
@@ -272,14 +276,15 @@ export const WorkoutSession = ({
       .map(e => e.exerciseId)
       .filter((id): id is string => !!id);
 
-    return fetchGymBoundAlternatives({
+    return fetchSlotAlternatives({
       primaryRole: roleId,
       isCardio: CARDIO_ROLE_IDS.includes(roleId),
       excludeIds,
       gymId,
+      customEquipment,
       baseExerciseId: exercise.exerciseId,
     });
-  }, [currentExerciseIndex, liveExercises, gymId]);
+  }, [currentExerciseIndex, liveExercises, gymId, customEquipment]);
 
   // Apply a chosen alternative to the current slot (DB + in-memory).
   const applySwap = useCallback(async (pick: SwapCandidate) => {

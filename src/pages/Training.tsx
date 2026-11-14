@@ -1598,7 +1598,8 @@ const Training = () => {
         dayLetter={plan?.currentDayLetter || 'A'}
         dayName={localizeDayName(getTodayDayName(), t)}
         estimatedDuration={calculateWorkoutDuration(generatedExercises, 4, plan?.goalId)}
-        gymId={selectedWorkoutGymId || plan?.gymId}
+        gymId={selectedWorkoutGymId || (customEquipmentActive ? undefined : plan?.gymId)}
+        customEquipment={customEquipmentList}
         planId={plan?.id}
         isLoading={isAdaptingToGym}
         onStartWarmup={handleStartWarmup}
@@ -1639,6 +1640,7 @@ const Training = () => {
         dayLetter={isBonusWorkout ? 'BONUS' : isExtensionWorkout ? `${plan?.currentDayLetter || 'A'}_EXT` : (plan?.currentDayLetter || 'A')}
         goalId={plan?.goalId || 'general_fitness'}
         gymId={selectedWorkoutGymId || profile?.selected_gym_id || ''}
+        customEquipment={customEquipmentList}
         planId={plan?.id || null}
         isBonus={isBonusWorkout}
         cooldownExercises={cooldownExercises}
