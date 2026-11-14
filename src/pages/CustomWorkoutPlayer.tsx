@@ -18,7 +18,8 @@ import ExercisePicker, { PickerExercise } from '@/components/workout/ExercisePic
 import LogWorkoutView from '@/components/workout/LogWorkoutView';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedVideoUrl, getVideoThumbUrl, enterVideoFullscreen } from '@/lib/videoUtils';
-import { fetchGymBoundAlternatives, type SwapCandidate } from '@/lib/exerciseSwap';
+import { type SwapCandidate } from '@/lib/exerciseSwap';
+import { fetchSlotAlternatives } from '@/lib/customEquipmentData';
 import { ExerciseSwapSheet } from '@/components/workout/ExerciseSwapSheet';
 import { ExerciseInfoSheet } from '@/components/workout/ExerciseInfoSheet';
 import { useLongPress } from '@/lib/useLongPress';
@@ -956,11 +957,11 @@ const CustomWorkoutPlayer = () => {
 
   // --- Gym-bound swap (playback) ---
   // Alternatives are filtered by the selected gym's machines (same as the
-  // generated player). Custom-plan slots lack a role_id, so we read the
+  // generated player); a skipped gym falls back to the user's own equipment. Custom-plan slots lack a role_id, so we read the
   // exercise's primary_role from the DB (cardio slots skip the role query).
   const fetchAltsForIndex = useCallback(async (idx: number): Promise<SwapCandidate[]> => {
     const ex = exercises[idx];
-    if (!ex || !selectedGymId) return [];
+    if (!ex) return [];
     const isCardio = ex.unit_type === 'time_min' || ex.category === 'cardio';
     let primaryRole: string | null = null;
     if (!isCardio) {
@@ -968,8 +969,11 @@ const CustomWorkoutPlayer = () => {
       primaryRole = (data as { primary_role: string | null } | null)?.primary_role ?? null;
     }
     const excludeIds = exercises.map(e => e.exercise_id).filter(Boolean);
-    return fetchGymBoundAlternatives({ primaryRole, isCardio, excludeIds, gymId: selectedGymId, baseExerciseId: ex.exercise_id });
-  }, [exercises, selectedGymId]);
+    return fetchSlotAlternatives({
+      primaryRole, isCardio, excludeIds, gymId: selectedGymId,
+      customEquipment: profile?.custom_equipment, baseExerciseId: ex.exercise_id,
+    });
+  }, [exercises, selectedGymId, profile?.custom_equipment]);
 
   // Replace a slot with the picked alternative: update the running session AND
   // persist to the plan (mirrors how rest/notes persist mid-workout). Ad-hoc

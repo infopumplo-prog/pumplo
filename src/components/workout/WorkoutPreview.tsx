@@ -9,6 +9,7 @@ import { WorkoutExercise } from '@/lib/trainingGoals';
 import { getTrainingRoleName } from '@/lib/trainingRoles';
 import { CARDIO_ROLE_IDS } from '@/lib/bmiUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchSlotAlternatives } from '@/lib/customEquipmentData';
 import { getSignedVideoUrl } from '@/lib/videoUtils';
 import { WorkoutExitDialog } from './WorkoutExitDialog';
 import { toast } from 'sonner';
@@ -47,6 +48,8 @@ interface WorkoutPreviewProps {
   dayName: string;
   estimatedDuration: number;
   gymId?: string;
+  /** Vlastní vybavení pro trénink bez posilovny — zdroj náhrad, když gymId chybí. */
+  customEquipment?: string[] | null;
   planId?: string;
   onStartWarmup: () => void;
   onClose: () => void;
@@ -61,6 +64,7 @@ export const WorkoutPreview = ({
   dayName,
   estimatedDuration,
   gymId,
+  customEquipment,
   planId,
   onStartWarmup,
   onClose,
@@ -106,7 +110,7 @@ export const WorkoutPreview = ({
 
   const handleSwapExercise = async (idx: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (swappingIndex !== null || !gymId) return;
+    if (swappingIndex !== null) return;
     setSwappingIndex(idx);
 
     try {
@@ -117,35 +121,14 @@ export const WorkoutPreview = ({
       const isCardio = CARDIO_ROLE_IDS.includes(roleId);
       const excludeIds = exercises.map(ex => ex.exerciseId).filter((id): id is string => !!id);
 
-      const { data: gymMachines } = await supabase
-        .from('gym_machines')
-        .select('machine_id')
-        .eq('gym_id', gymId);
-      const machineIds = new Set((gymMachines || []).map(m => m.machine_id));
-
-      let query = supabase
-        .from('exercises')
-        .select('id, name, name_en, primary_role, machine_id, equipment_type, category')
-        .eq('allowed_phase', 'main');
-
-      if (isCardio) {
-        query = query.eq('category', 'cardio');
-      } else {
-        query = query.eq('primary_role', roleId);
-      }
-
-      const { data: candidates, error } = await query;
-      if (error || !candidates?.length) {
-        toast.error(t('workout.no_replacement'));
-        return;
-      }
-
-      const valid = candidates.filter(c => {
-        if (excludeIds.includes(c.id)) return false;
-        if (c.machine_id && !machineIds.has(c.machine_id)) return false;
-        return true;
+      const valid = await fetchSlotAlternatives({
+        primaryRole: roleId,
+        isCardio,
+        excludeIds,
+        gymId,
+        customEquipment,
+        baseExerciseId: exercise.exerciseId,
       });
-
       if (valid.length === 0) {
         toast.error(t('workout.no_replacement'));
         return;
@@ -188,7 +171,7 @@ export const WorkoutPreview = ({
         // Localized fields MUST follow the new exercise — keeping the old
         // exerciseNameEn made EN-mode users see the old exercise's name while
         // the video already showed the new one (bug D2).
-        exerciseNameEn: (pick as Record<string, unknown>).name_en as string | null || null,
+        exerciseNameEn: pick.name_en || null,
         machineName: newMachineName,
         machineNameEn: newMachineNameEn,
         isFallback: true,
@@ -295,15 +278,13 @@ export const WorkoutPreview = ({
               </div>
 
               {/* Swap button */}
-              {gymId && (
-                <button
-                  onClick={(e) => handleSwapExercise(idx, e)}
-                  disabled={swappingIndex !== null}
-                  className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 text-muted-foreground ${swappingIndex === idx ? 'animate-spin text-primary' : ''}`} />
-                </button>
-              )}
+              <button
+                onClick={(e) => handleSwapExercise(idx, e)}
+                disabled={swappingIndex !== null}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 text-muted-foreground ${swappingIndex === idx ? 'animate-spin text-primary' : ''}`} />
+              </button>
 
               {/* Chevron */}
               <ChevronRight className="w-4 h-4 shrink-0 flex-none text-muted-foreground/50" />
