@@ -170,6 +170,8 @@ export interface RenderInput {
   currentStep: number | null | undefined;
   ctaUrl: string;
   unsubscribeUrl: string;
+  /** F1: další proměnné šablony (gym_name, next_day_line, …); do HTML jdou escapované. */
+  extraVars?: Record<string, string>;
 }
 
 const fill = (s: string, vars: Record<string, string>): string =>
@@ -181,18 +183,32 @@ export function renderEmail(r: RenderInput): { subject: string; html: string; te
   const line = stepLine(r.locale, r.currentStep);
   const kind = r.template.kind === 'marketing' ? 'marketing' : 'service';
   const footer = buildFooter({ locale: r.locale, kind, unsubscribeUrl: r.unsubscribeUrl });
-  const htmlVars = { greeting: escapeHtml(g), step_line: escapeHtml(line), cta_url: escapeHtml(r.ctaUrl) };
-  const textVars = { greeting: g, step_line: line, cta_url: r.ctaUrl };
+  const extra = r.extraVars ?? {};
+  const htmlVars: Record<string, string> = { greeting: escapeHtml(g), step_line: escapeHtml(line), cta_url: escapeHtml(r.ctaUrl) };
+  const textVars: Record<string, string> = { greeting: g, step_line: line, cta_url: r.ctaUrl };
+  for (const [k, v] of Object.entries(extra)) {
+    if (k in textVars) continue; // základní proměnné F0 nejdou přepsat
+    htmlVars[k] = escapeHtml(v);
+    textVars[k] = v;
+  }
   const pre = r.template.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(r.template.preheader)}</div>`
     : '';
   const html =
     `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">` +
     pre + fill(r.template.html, htmlVars) + footer.html + `</div>`;
+  if (!r.extraVars) {
+    return {
+      subject: fill(r.template.subject, textVars),
+      html,
+      text: fill(r.template.text, textVars) + footer.text,
+    };
+  }
+  // F1: prázdná volitelná věta (např. next_day_line) nesmí nechat prázdný odstavec.
   return {
-    subject: fill(r.template.subject, textVars),
-    html,
-    text: fill(r.template.text, textVars) + footer.text,
+    subject: fill(r.template.subject, textVars).replace(/\s{2,}/g, ' ').trim(),
+    html: html.replace(/<p[^>]*>\s*<\/p>/g, ''),
+    text: (fill(r.template.text, textVars).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()) + footer.text,
   };
 }
 
@@ -201,3 +217,9 @@ export const unsubscribeHeaders = (unsubscribeUrl: string): Record<string, strin
   'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:info@pumplo.com?subject=unsubscribe>`,
   'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
 });
+
+
+// F1 retargeting M3–M8 se odsud přesunul do Loops (19. 10. 2026, rozhodnutí Davida):
+// Supabase počítá kontakty, právní bránu a události (supabase/functions/loops-sync),
+// e-maily a časování řídí journeys v Loops (docs/email/loops-journeys.md).
+// lifecycle-emails dál posílá jen M2A (servisní, beze změny chování).

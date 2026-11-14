@@ -163,6 +163,12 @@ const en = {
   'theme_intro.body': 'The app now follows your phone automatically. You can also pick how you want it.',
   'theme_intro.hint': 'You can change this anytime in Settings → Appearance.',
   'theme_intro.confirm': 'Got it',
+  // E-mail tips consent (F1 e-mails 19 Oct)
+  'email_consent.title': 'Would you like an occasional training tip by e-mail?',
+  'email_consent.body': 'Short and only now and then: how to start, how to get back on track, what is new in the app. No spam.',
+  'email_consent.yes': 'Yes, send them',
+  'email_consent.no': 'No, thanks',
+  'email_consent.hint': 'You can change this anytime in Settings → Tips by e-mail.',
   'settings.appearance': 'Appearance',
   'settings.theme_light': 'Light',
   'settings.theme_dark': 'Dark',
@@ -2984,11 +2990,15 @@ const en = {
   // GDPR check-in text — approved by David 17. 10. 2026
   'privacy.checkin_title': '9. Weekly check-in',
   'privacy.checkin_body': 'Once a week (Sunday evening) the app offers a short check-in: how you feel and how your workouts went (rating 1–5) and, optionally, your current weight (we show its change since last week and also save it to your profile), what was hardest and what you would improve in the app (max. 300 characters each). We use the answers to improve your training and the Pumplo app (legitimate interest, Art. 6(1)(f) GDPR). Only the Pumplo team sees them; they are not shared with your gym. The check-in is voluntary — you can skip it at any time. We keep the answers for as long as your account exists and they are deleted together with it; they are also included in the data export in Settings.',
-  // ČEKÁ NA SCHVÁLENÍ DAVIDA (F0 e-maily 18. 10. 2026) — návrh odstavců do zásad
+  // E-maily z aplikace (F0) — schválil David 18. 10. 2026
   'privacy.emails_title': '10. E-mails from the app',
   'privacy.emails_service': 'We may send a service e-mail about your account to the address you registered with, for example a reminder that the intro questionnaire still needs to be finished to build your training plan. The legal basis is performance of a contract (Art. 6(1)(b) GDPR). Service e-mails contain no advertising.',
   'privacy.emails_tips': "If you did not tick “I don't want to receive tips and news by e-mail” when registering, we may send you, as a Pumplo user, training tips and news about the app (Section 7(3) of Czech Act No. 480/2004 Coll., legitimate interest under Art. 6(1)(f) GDPR). These e-mails are marked as commercial messages. We never personalise them based on health data, weight, height or age.",
   'privacy.emails_processor': 'We send e-mails through Resend (USA) as our processor under standard contractual clauses (Art. 46 GDPR); it receives only your e-mail address, name and the e-mail content. We keep a record of sent e-mails (when, which e-mail, delivery result) for as long as your account exists. Addresses that bounce or that reported spam are kept on a block list so that nothing else is sent to them.',
+  // Loops jako zpracovatel obchodních e-mailů — schválil David 18. 10. 2026
+  'privacy.emails_processor_loops': 'We send tips and news (commercial messages) through Loops (operated by Astrodon Corporation, USA) as our processor under standard contractual clauses (Art. 46 GDPR). It receives your e-mail address, first name, language, the name of your selected gym, sign-up date, whether you finished the questionnaire and have a training plan, the number and date of completed workouts and whether we may send you tips and comeback reminders. Apart from the welcome e-mail (see below), we only share your contact while we may send you tips; once you decline, unsubscribe or withdraw consent, we delete your contact in Loops. We never share health data, weight, height, age or gender with it. Unsubscribing in Loops is immediately reflected in Pumplo; when you delete your account we also delete your contact in Loops.',
+  // AWAITING DAVID'S APPROVAL / ČEKÁ NA SCHVÁLENÍ DAVIDA (18 Oct 2026) — M0 welcome e-mail via Loops workflow (service, all new members).
+  'privacy.emails_welcome_loops': 'After you sign up we send you one welcome e-mail (who is behind Pumplo and how to get started with the app). It is a service e-mail without advertising; the legal basis is performance of a contract (Art. 6(1)(b) GDPR). It is sent automatically through Loops (Astrodon Corporation, USA, standard contractual clauses), which receives only your e-mail address, first name, language and sign-up date for it. If you have not allowed us to send you tips and news, we delete your contact in Loops 7 days after sign-up and you receive no commercial messages. If you have unsubscribed from e-mails, we do not send the welcome e-mail.',
   'privacy.emails_optout': 'You can unsubscribe at any time with one click via the link in the footer of every e-mail, in the app under Settings → Notifications → Tips by e-mail, or via the contact e-mail below. E-mails needed for login and password reset keep arriving after you unsubscribe.',
   'admin.checkins_title': 'Weekly check-ins',
   'admin.checkins_empty': 'No check-ins yet.',

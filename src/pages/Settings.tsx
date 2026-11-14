@@ -23,6 +23,7 @@ import { Capacitor } from '@capacitor/core';
 import { useAppConsent } from '@/hooks/useAppConsent';
 import { openAppConsentSettings } from '@/lib/appAnalytics';
 import { loadInjuryNote } from '@/lib/injuryNote';
+import { hasMarketingBasis } from '@/lib/emailConsent';
 import { CoachTour, useCoachTour, CoachHelpButton } from '@/components/coach/CoachTour';
 import {
   AlertDialog,
@@ -328,15 +329,16 @@ const Settings = () => {
     visible: { opacity: 1, y: 0 },
   };
 
-  // E-maily s tipy: zapnuto = není odhlášený ani neodmítl tipy při registraci.
-  // Zapnutí je výslovná volba, proto ruší i odmítnutí z registrace.
+  // E-maily s tipy: zapnuto = tipy opravdu chodí (právní brána F1 — souhlas, nebo
+  // nabídnuté a neodmítnuté odmítnutí) a není odhlášený. Zapnutí je výslovná volba:
+  // ruší odmítnutí z registrace a zapisuje souhlas (marketing_consent_at).
   const [isTogglingEmailTips, setIsTogglingEmailTips] = useState(false);
-  const emailTipsEnabled = !profile?.email_unsubscribed_at && !profile?.marketing_optout_at;
+  const emailTipsEnabled = !profile?.email_unsubscribed_at && hasMarketingBasis(profile);
   const handleEmailTipsToggle = async (enabled: boolean) => {
     setIsTogglingEmailTips(true);
     const result = await updateProfile(
       enabled
-        ? { email_unsubscribed_at: null, marketing_optout_at: null }
+        ? { email_unsubscribed_at: null, marketing_optout_at: null, marketing_consent_at: new Date().toISOString() }
         : { email_unsubscribed_at: new Date().toISOString() },
     );
     setIsTogglingEmailTips(false);

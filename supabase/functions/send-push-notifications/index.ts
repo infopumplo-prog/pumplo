@@ -1,9 +1,12 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sendFcmToUser } from "../_shared/fcm.ts";
+import { hadEmailSince, logContact } from "../_shared/contactLog.ts";
 import {
   decidePushKind,
   daysSinceSignup,
   missedWindowStart,
+  pragueDayStartIso,
+  skipMorningPushForEmail,
   usableTemplates,
   fillTemplate,
 } from "./rules.ts";
@@ -696,6 +699,8 @@ async function logNotification(
     notification_type: notificationType,
     date_key: dateKey,
   });
+  // F1 e-maily: strop 1 kontakt / den napříč kanály čte contact_log (best-effort).
+  await logContact(supabase, userId, 'push', notificationType);
 }
 
 // Odešla dnes už ranní připomínka jakéhokoliv druhu? (David 18. 10.)
@@ -813,6 +818,12 @@ async function processMorningNotifications(
       recentMissedCount,
     });
     if (kind === 'none') {
+      stats.skipped++;
+      continue;
+    }
+
+    // F1 e-maily: dnes už odešel e-mail (lifecycle-emails) → ranní push vynechat (1 kontakt / den).
+    if (skipMorningPushForEmail(kind, await hadEmailSince(supabase, user.user_id, pragueDayStartIso(dateKey)))) {
       stats.skipped++;
       continue;
     }

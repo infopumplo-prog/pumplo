@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildUnsubscribePageUrl, buildUnsubscribeUrl } from "../_shared/emailUnsubToken.ts";
+import { logContact } from "../_shared/contactLog.ts";
 import {
   M2A_CTA_URL,
   M2A_EPISODE,
@@ -18,7 +19,9 @@ import {
   type TemplateRow,
 } from "./rules.ts";
 
-// Lifecycle e-maily (F0, 18. 10. 2026) — zatím JEN M2-A (servisní: dotazník nedokončen).
+// Lifecycle e-maily (F0, 18. 10. 2026 — M2-A servisní: dotazník nedokončen).
+// Obchodní M3–M8 tahle funkce NEPOSÍLÁ: od 19. 10. 2026 je řídí Loops
+// (supabase/functions/loops-sync + docs/email/loops-journeys.md).
 // Spouští pg_cron každou hodinu v :30 (SQL v migraci 20261018_email_f0.sql, zakomentované).
 //
 // Pojistky:
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
   if (tplErr) return json({ error: tplErr.message }, 500);
   const templates = (tplRows ?? []) as TemplateRow[];
 
-  // Náhled pro schválení: vezme nejnovější verzi v daném jazyce (i draft), nic neposílá.
+  // Náhled pro schválení: vezme nejnovější verzi M2A v daném jazyce (i draft), nic neposílá.
   if (body?.preview) {
     const locale = normalizeLocale(body.locale);
     const latest = templates
@@ -112,14 +115,33 @@ Deno.serve(async (req) => {
       template: latest, locale, firstName: "Jana", currentStep: 0,
       ctaUrl: M2A_CTA_URL, unsubscribeUrl: "https://app.pumplo.com/odhlasit?u=…&t=…",
     });
-    return json({ preview: true, version: latest.version, status: latest.status, ...mail });
+    return json({ preview: true, key: M2A_KEY, version: latest.version, status: latest.status, ...mail });
   }
 
+  const m2a = await runM2A({ supabase, templates, now, dryRun, unsubSecret, supabaseUrl, apiKey });
+  if ("error" in m2a) return json({ error: m2a.error }, 500);
+  return json(m2a);
+});
+
+type RunCtx = {
+  // deno-lint-ignore no-explicit-any
+  supabase: any;
+  templates: TemplateRow[];
+  now: Date;
+  dryRun: boolean;
+  unsubSecret: string;
+  supabaseUrl: string;
+  apiKey: string;
+};
+
+// ─── M2A (F0) — chování beze změny, jen navíc zápis do contact_log po odeslání ───
+async function runM2A(ctx: RunCtx): Promise<Record<string, unknown> & { processed?: number } | { error: string }> {
+  const { supabase, templates, now, dryRun, unsubSecret, supabaseUrl, apiKey } = ctx;
   if (!templates.some((t) => t.status === "approved")) {
-    return json({ dry_run: dryRun, sent: 0, reason: "no_approved_template" });
+    return { dry_run: dryRun, sent: 0, reason: "no_approved_template", processed: 0 };
   }
   if (!inSendWindow(now)) {
-    return json({ dry_run: dryRun, sent: 0, reason: "outside_send_window" });
+    return { dry_run: dryRun, sent: 0, reason: "outside_send_window", processed: 0 };
   }
 
   const from = new Date(now.getTime() - M2A_MAX_HOURS * 3_600_000).toISOString();
@@ -132,7 +154,7 @@ Deno.serve(async (req) => {
     .lte("signed_up_at", to)
     .order("signed_up_at", { ascending: true })
     .limit(500);
-  if (eligErr) return json({ error: eligErr.message }, 500);
+  if (eligErr) return { error: eligErr.message };
   const candidates = (rows ?? []) as EligibleRow[];
 
   const episode = episodeKeyFor(M2A_EPISODE, dryRun);
@@ -145,7 +167,7 @@ Deno.serve(async (req) => {
       .eq("template_key", M2A_KEY)
       .eq("episode_key", episode)
       .in("user_id", ids);
-    if (sentErr) return json({ error: sentErr.message }, 500);
+    if (sentErr) return { error: sentErr.message };
     for (const r of sentRows ?? []) already.add((r as { user_id: string }).user_id);
   }
 
@@ -203,6 +225,7 @@ Deno.serve(async (req) => {
     const sent = await sendViaResend(apiKey, c.email!, mail, unsubscribeHeaders(oneClickUrl));
     if (sent.ok) {
       await supabase.from("email_sends").update({ status: "sent", resend_id: sent.id, error: null }).eq("id", claimed.id);
+      await logContact(supabase, c.user_id, "email", M2A_KEY);
       results.push({ user_id: c.user_id, status: "sent" });
     } else {
       console.error("M2A send failed", c.user_id, sent.error);
@@ -211,12 +234,12 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({
+  return {
     dry_run: dryRun,
     template: M2A_KEY,
     candidates: candidates.length,
     processed,
     cap: MAX_EMAILS_PER_RUN,
     results,
-  });
-});
+  };
+}

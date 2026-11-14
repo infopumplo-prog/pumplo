@@ -97,3 +97,39 @@ export function fillTemplate(text: string, workout: string, minutes: number | nu
     .replace(/\{minutes\}/g, minutes != null ? String(minutes) : '');
   return filled.charAt(0).toUpperCase() + filled.slice(1);
 }
+
+// ─── F1 e-maily (19. 10. 2026): push × e-mail téhož dne ───────────────────────
+// Strop „1 kontakt za pražský den napříč kanály“: když lifecycle-emails dnes
+// uživateli poslal e-mail (contact_log, channel 'email'), ranní připomínka
+// (morning / missed / first_workout) se ten den nepošle. Closing a comeback
+// zůstávají beze změny (e-mail M8 se dni comeback pushe vyhýbá sám).
+
+export const PUSH_KINDS_SKIPPED_AFTER_EMAIL: readonly MorningPushKind[] = ['morning', 'missed', 'first_workout'];
+
+export function skipMorningPushForEmail(kind: MorningPushKind, emailSentToday: boolean): boolean {
+  return emailSentToday && PUSH_KINDS_SKIPPED_AFTER_EMAIL.includes(kind);
+}
+
+/** Posun Prahy proti UTC v minutách (60 nebo 120) v daném okamžiku. */
+export function pragueOffsetMinutes(at: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Prague',
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(at);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'));
+  return Math.round((asUtc - Math.floor(at.getTime() / 60000) * 60000) / 60000);
+}
+
+/** Okamžik pražské půlnoci daného YYYY-MM-DD jako ISO (UTC). */
+export function pragueDayStartIso(dateKey: string): string {
+  const utcMidnight = keyToUtc(dateKey);
+  // Přechod na letní/zimní čas je v 1:00 UTC, takže posun o půlnoci UTC platí i pro pražskou půlnoc.
+  const offset = pragueOffsetMinutes(new Date(utcMidnight));
+  return new Date(utcMidnight - offset * 60000).toISOString();
+}

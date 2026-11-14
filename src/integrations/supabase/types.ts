@@ -931,6 +931,8 @@ export type Database = {
           current_streak: number | null
           custom_equipment: string[] | null
           email_unsubscribed_at: string | null
+          email_optout_offered_at: string | null
+          marketing_consent_at: string | null
           marketing_optout_at: string | null
           equipment_preference: string | null
           first_name: string | null
@@ -974,6 +976,8 @@ export type Database = {
           current_streak?: number | null
           custom_equipment?: string[] | null
           email_unsubscribed_at?: string | null
+          email_optout_offered_at?: string | null
+          marketing_consent_at?: string | null
           marketing_optout_at?: string | null
           equipment_preference?: string | null
           first_name?: string | null
@@ -1017,6 +1021,8 @@ export type Database = {
           current_streak?: number | null
           custom_equipment?: string[] | null
           email_unsubscribed_at?: string | null
+          email_optout_offered_at?: string | null
+          marketing_consent_at?: string | null
           marketing_optout_at?: string | null
           equipment_preference?: string | null
           first_name?: string | null
